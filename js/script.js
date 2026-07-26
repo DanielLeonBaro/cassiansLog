@@ -24,6 +24,7 @@ function initializeApp() {
   loadAbilities();
   loadInventory();
   loadCombat();
+  loadState()
   setupEvents();
 }
 function refreshUI() {
@@ -73,6 +74,7 @@ function damageHP(amount) {
     character.hp.temp = 0;
     character.hp.current = Math.max(0, character.hp.current - amount);
   }
+  saveState();
   refreshUI();
 }
 function healHP(amount) {
@@ -81,11 +83,13 @@ function healHP(amount) {
     character.hp.max,
     character.hp.current + amount,
   );
+  saveState();
   refreshUI();
 }
 function setTempHP(amount) {
   if (amount === 0) return;
   character.hp.temp = amount;
+  saveState();
   refreshUI();
 }
 function getTotalHP() {
@@ -205,6 +209,7 @@ function changeResource(id, delta) {
     0,
     Math.min(ability.uses.max, ability.uses.current + delta),
   );
+  saveState();
   refreshUI();
 }
 //Abilities
@@ -266,6 +271,7 @@ function shortRest() {
     .filter((a) => a.uses?.reset === "short")
     .forEach((a) => (a.uses.current = a.uses.max));
   character.hp.temp = 0;
+  saveState();
   refreshUI();
 }
 function longRest() {
@@ -274,6 +280,7 @@ function longRest() {
     .forEach((a) => (a.uses.current = a.uses.max));
   character.hp.current = character.hp.max;
   character.hp.temp = 0;
+  saveState();
   refreshUI();
 }
 function setupEvents() {
@@ -379,4 +386,37 @@ function saveCombat() {
 function loadCombat() {
   const saved = JSON.parse(localStorage.getItem(COMBAT_KEY));
   if (saved) character.combat = saved;
+}
+let state={
+    hp:{
+        current:character.hp.current,
+        temp:character.hp.temp
+    },
+    combat:structuredClone(character.combat),
+    abilities:character.abilities.map(a=>({
+        id:a.id,
+        current:a.uses?.current
+    }))
+};
+const STATE_KEY="cassian-state";
+
+function saveState(){
+    localStorage.setItem(STATE_KEY,JSON.stringify(state));
+}
+function loadState(){
+    const saved=JSON.parse(localStorage.getItem(STATE_KEY));
+    if(!saved)return;
+
+    state=saved;
+
+    character.hp.current=state.hp.current;
+    character.hp.temp=state.hp.temp;
+
+    character.combat=state.combat;
+
+    state.abilities.forEach(s=>{
+        const ability=character.abilities.find(a=>a.id===s.id);
+        if(ability?.uses)
+            ability.uses.current=s.current;
+    });
 }
