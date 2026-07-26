@@ -1,0 +1,9 @@
+body{
+    background:#121212;
+}
+.card{
+    border-radius:1rem;
+}
+.navbar{
+    backdrop-filter:blur(12px);
+}

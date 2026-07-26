@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cassian's Log</title>
+    <link rel="stylesheet" href="bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="bootstrap/bootstrap-icons.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="bat.ico" />
+</head>
+
+<body class="bg-dark">
+    <div class="container py-3 pb-5">
+        <!-- ===================== COMBAT PAGE ===================== -->
+        <section id="combat-page">
+            <!-- Character -->
+            <div class="card mb-3" id="characterDescription">
+                <div class="card-body text-center">
+                    <img src="data/portrait.png" class="img-thumbnail mb-3" width="150" height="150" alt="Portrait">
+                    <h3 class="card-title mb-1">
+                        <span id="character-name"></span>
+                    </h3>
+                    <p class="card-text text-body-secondary mb-1">
+                        Lv.
+                        <span id="character-level"></span>
+                        •
+                        <span id="character-race"></span>
+                        •
+                        <span id="character-class"></span>
+                    </p>
+                    <p class="card-text text-body-secondary">
+                        <span id="character-background"></span>
+                        •
+                        <span id="character-gender"></span>
+                        •
+                        <span id="character-alignment"></span>
+                    </p>
+                </div>
+            </div>
+            <!-- Quick Stats -->
+            <div class="card mb-3">
+                <div class="card-header" id="quickStats">
+                    Quick Stats
+                </div>
+                <div class="card-body">
+                    <div class="row row-cols-7 text-center g-2">
+                        <div class="col">
+                            <i class="bi bi-shield-fill-plus text-danger"></i>
+                            <div class="small text-secondary">
+                                AC
+                            </div>
+                            <div class="fw-bold">
+                                <span id="character-ac"></span>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <i class="bi bi-heart-fill text-danger"></i>
+                            <div class="small text-secondary">
+                                HP
+                            </div>
+                            <div class="fw-bold">
+                                <span id="character-hp"></span>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <i class="bi bi-lightning-fill text-danger"></i>
+                            <div class="small text-secondary">
+                                Initiative
+                            </div>
+                            <div class="fw-bold">
+                                <span id="character-initiative"></span>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <i class="bi bi-award-fill text-danger"></i>
+                            <div class="small text-secondary">
+                                Proficiency
+                            </div>
+                            <div class="fw-bold">
+                                <span id="character-proficiency"></span>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <i class="bi bi-person-walking text-danger"></i>
+                            <div class="small text-secondary">
+                                Walk
+                            </div>
+                            <div class="fw-bold">
+                                <span id="character-walk"></span> ft
+                            </div>
+                        </div>
+                        <div class="col">
+                            <i class="bi bi-airplane-fill text-danger"></i>
+                            <div class="small text-secondary">
+                                Fly
+                            </div>
+                            <div class="fw-bold">
+                                <span id="character-fly"></span> ft
+                            </div>
+                        </div>
+                        <div class="col">
+                            <i class="bi bi-eye-fill text-danger"></i>
+                            <div class="small text-secondary">
+                                Perception
+                            </div>
+                            <div class="fw-bold">
+                                <span id="character-passive-perception"></span>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <i class="bi bi-eye text-danger"></i>
+                            <div class="small text-secondary">
+                                Darkvision
+                            </div>
+                            <div class="fw-bold">
+                                <span id="character-dark"></span> ft
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Skills & Saving Throws -->
+            <div class="accordion mb-4" id="combatAccordion">
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#skillsCollapse">
+                            <i class="bi bi-bar-chart-fill me-2"></i>
+                            Skills & Saving Throws
+                        </button>
+                    </h2>
+                    <div id="skillsCollapse" class="accordion-collapse collapse" data-bs-parent="#combatAccordion">
+                        <div class="accordion-body">
+                            <div id="skills-container" class="row row-cols-1 row-cols-lg-2 g-3">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- HP Manager -->
+            <div class="card mb-3" id="hpManager">
+                <div class="card-header">
+                    HP Manager
+                </div>
+                <div class="card-body">
+                    <div class="row text-center mb-4">
+                        <div class="col">
+                            <h6>Effective HP</h6>
+                            <div class="display-6">
+                                <span id="effective-hp"></span>
+                                /
+                                <span id="max-hp"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row text-center mb-3">
+                        <div class="col">
+                            <label class="form-label">
+                                Current HP
+                            </label>
+                            <div class="fs-4 fw-bold">
+                                <span id="current-hp"></span>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <label class="form-label">
+                                Temp HP
+                            </label>
+                            <div class="fs-4 fw-bold">
+                                <span id="temp-hp"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="input-group mb-3">
+                        <span class="input-group-text">
+                            Hit Points
+                        </span>
+                        <input id="hp-amount" type="number" class="form-control" placeholder="0" min="0">
+                        <button id="damage-btn" class="btn btn-danger">
+                            <i class="bi bi-dash-circle"></i>
+                            Damage
+                        </button>
+                        <button id="heal-btn" class="btn btn-success">
+                            <i class="bi bi-plus-circle"></i>
+                            Heal
+                        </button>
+                    </div>
+                    <hr>
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            Temporary HP
+                        </span>
+                        <input id="temp-input" type="number" class="form-control" placeholder="0" min="0">
+                        <button id="temp-btn" class="btn btn-warning">
+                            Set
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <!-- Combat Resources -->
+            <div class="card mb-3" id="combatResources">
+                <div class="card-header">
+                    Combat Resources
+                </div>
+                <div class="card-body">
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="echo1-toggle">
+                                <label class="form-check-label">Echo 1</label>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="echo2-toggle">
+                                <label class="form-check-label">Echo 2</label>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="concentration-toggle">
+                                <label class="form-check-label">Concentrating</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="resources-container" class="row g-3"></div>
+                </div>
+            </div>
+            <!-- All Possibilities -->
+            <div class="accordion mb-3" id="allPossibilities">
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" data-bs-toggle="collapse"
+                            data-bs-target="#abilitiesCollapse">
+                            <i class="bi bi-stars me-2"></i>
+                            All Possibilities
+                        </button>
+                    </h2>
+                    <div id="abilitiesCollapse" class="accordion-collapse collapse">
+                        <div class="accordion-body">
+                            <div id="abilities-container" class="row g-3"></div>
+                        </div>
+                    </div>
+                </div>
+        </section>
+        <!-- ===================== INVENTORY ===================== -->
+        <section id="inventory-page"">
+            <div class=" accordion mb-3" id="inventoryAccordion">
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" data-bs-toggle="collapse"
+                        data-bs-target="#inventoryCollapse">
+                        <i class="bi bi-backpack me-2"></i>
+                        Inventory
+                    </button>
+                </h2>
+                <div id="inventoryCollapse" class="accordion-collapse collapse">
+                    <div class="accordion-body">
+                        <div id="inventory-container" class="row g-3"></div>
+                    </div>
+                </div>
+            </div>
+    </div>
+    </section>
+    <!-- ===================== NOTES ===================== -->
+    <div class="card mb-3" id="notesSection">
+        <div class="card-header">
+            Notes
+        </div>
+        <div class="card-body">
+            <div class="row g-2 mb-3">
+                <div class="col-md-4">
+                    <input id="note-title" class="form-control" placeholder="Title">
+                </div>
+                <div class="col-md-6">
+                    <input id="note-body" class="form-control" placeholder="Note">
+                </div>
+                <div class="col-md-2 d-grid">
+                    <button id="save-note-btn" class="btn btn-primary">
+                        Save
+                    </button>
+                </div>
+            </div>
+            <div id="notes-container" class="row g-3"></div>
+        </div>
+    </div>
+    <!-- Floating Navigation -->
+    <nav class="position-fixed bottom-0 start-50 translate-middle-x mb-3">
+        <ul class="pagination pagination-sm justify-content-center">
+            <li class="page-item">
+                <a class="page-link text-danger" href="#characterDescription">
+                    <i class="bi bi-person-fill"></i>
+                    Character
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link text-danger" href="#quickStats">
+                    <i class="bi bi-bar-chart-fill"></i>
+                    Stats
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link text-danger" href="#hpManager">
+                    <i class="bi bi-heart-fill"></i>
+                    HP
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link text-danger" href="#combatResources">
+                    <i class="bi bi-hourglass-split text-danger"></i>
+                    Combat
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link text-danger" href="#allPossibilities">
+                    <i class="bi bi-stars text-danger"></i>
+                    All
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link text-danger" href="#inventoryAccordion">
+                    <i class="bi bi-backpack-fill text-danger"></i>
+                    Inv.
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link text-danger" href="#notesSection">
+                    <i class="bi bi-pen-fill text-danger"></i>
+                    Notes
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link text-warning" id="shortRest-btn">
+                    <i class="bi bi-moon-fill text-danger"></i>
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link text-success" id="longRest-btn">
+                    <i class="bi bi-moon-stars-fill text-danger"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <script src="bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="data/character.js"></script>
+    <script src="js/script.js"></script>
+</body>
+</html>
