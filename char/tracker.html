@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <base href="../">
+    <title>Character Tracker</title>
+    <link rel="stylesheet" href="bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="bootstrap/bootstrap-icons.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="bat.ico">
+</head>
+
+<body class="bg-body" id="bodyStart">
+    <main class="container py-3 pb-5">
+        <section id="combat-page">
+            <div class="card mb-3" id="characterDescription">
+                <div class="card-body">
+                    <div class="d-flex flex-column flex-sm-row align-items-center align-items-sm-start gap-3">
+                        <img id="character-portrait" src="bat.ico" class="img-thumbnail flex-shrink-0"
+                            style="width:180px;aspect-ratio:1/1;object-fit:cover;" alt="Character portrait">
+                        <div class="flex-grow-1 text-center text-sm-start">
+                            <h3 class="card-title mb-2"><span id="character-name"></span></h3>
+                            <p class="card-text text-body-secondary mb-1">Level <span id="character-level"></span></p>
+                            <p class="card-text mb-1"><strong><span id="character-race"></span> • <span
+                                        id="character-class"></span></strong></p>
+                            <p class="card-text text-body-secondary mb-1"><span id="character-background"></span> •
+                                <span id="character-gender"></span></p>
+                            <p class="card-text text-body-secondary mb-0"><span id="character-alignment"></span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card mb-3">
+                <div class="card-header" id="quickStats">Quick Stats</div>
+                <div class="card-body">
+                    <div class="row row-cols-2 row-cols-sm-4 g-3 text-center">
+                        <div class="col"><i class="bi bi-shield-fill-plus text-danger"></i>
+                            <div class="small text-secondary">AC</div>
+                            <div class="fw-bold"><span id="character-ac"></span></div>
+                        </div>
+                        <div class="col"><i class="bi bi-heart-fill text-danger"></i>
+                            <div class="small text-secondary">HP</div>
+                            <div class="fw-bold"><span id="character-hp"></span></div>
+                        </div>
+                        <div class="col"><i class="bi bi-lightning-fill text-danger"></i>
+                            <div class="small text-secondary">Initiative</div>
+                            <div class="fw-bold"><span id="character-initiative"></span></div>
+                        </div>
+                        <div class="col"><i class="bi bi-award-fill text-danger"></i>
+                            <div class="small text-secondary">Proficiency</div>
+                            <div class="fw-bold"><span id="character-proficiency"></span></div>
+                        </div>
+                        <div class="col"><i class="bi bi-person-walking text-danger"></i>
+                            <div class="small text-secondary">Walk</div>
+                            <div class="fw-bold"><span id="character-walk"></span> ft</div>
+                        </div>
+                        <div class="col"><i class="bi bi-airplane-fill text-danger"></i>
+                            <div class="small text-secondary">Fly</div>
+                            <div class="fw-bold"><span id="character-fly"></span> ft</div>
+                        </div>
+                        <div class="col"><i class="bi bi-eye-fill text-danger"></i>
+                            <div class="small text-secondary">Perception</div>
+                            <div class="fw-bold"><span id="character-passive-perception"></span></div>
+                        </div>
+                        <div class="col"><i class="bi bi-eye text-danger"></i>
+                            <div class="small text-secondary">Darkvision</div>
+                            <div class="fw-bold"><span id="character-dark"></span> ft</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion mb-3" id="combatAccordion">
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#skillsCollapse" aria-expanded="false" aria-controls="skillsCollapse"><i
+                                class="bi bi-bar-chart-fill me-2"></i>Skills & Saving Throws</button>
+                    </h2>
+                    <div id="skillsCollapse" class="accordion-collapse collapse" data-bs-parent="#combatAccordion">
+                        <div class="accordion-body">
+                            <div id="skills-container" class="row g-3"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card mb-3" id="hpManager">
+                <div class="card-header">HP Manager</div>
+                <div class="card-body">
+                    <div class="row text-center mb-4">
+                        <div class="col">
+                            <h6>Effective HP</h6>
+                            <div class="display-6"><span id="effective-hp"></span> / <span id="max-hp"></span></div>
+                        </div>
+                    </div>
+                    <div class="row text-center mb-3">
+                        <div class="col"><label class="form-label">Current HP</label>
+                            <div class="fs-4 fw-bold"><span id="current-hp"></span></div>
+                        </div>
+                        <div class="col"><label class="form-label">Temp HP</label>
+                            <div class="fs-4 fw-bold"><span id="temp-hp"></span></div>
+                        </div>
+                    </div>
+                    <div class="input-group mb-3">
+                        <span class="input-group-text">Hit Points</span>
+                        <input id="hp-amount" type="number" class="form-control" placeholder="0" min="0">
+                        <button id="damage-btn" type="button" class="btn btn-danger"><i class="bi bi-dash-circle"></i>
+                            Damage</button>
+                        <button id="heal-btn" type="button" class="btn btn-success"><i class="bi bi-plus-circle"></i>
+                            Heal</button>
+                    </div>
+                    <hr>
+                    <div class="input-group">
+                        <span class="input-group-text">Temporary HP</span>
+                        <input id="temp-input" type="number" class="form-control" placeholder="0" min="0">
+                        <button id="temp-btn" type="button" class="btn btn-warning">Set</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card mb-3" id="combatResources">
+                <div class="card-header">Combat Resources</div>
+                <div class="card-body">
+                    <div class="card mb-3 d-none" id="trackers-card">
+                        <div class="card-body" id="trackers-container"></div>
+                    </div>
+                    <div id="resources-container" class="row g-3"></div>
+                </div>
+            </div>
+            <div class="card mb-3 d-none" id="spellcastingSection">
+                <div class="card-header"><i class="bi bi-magic me-2"></i>Spellcasting</div>
+                <div class="card-body">
+                    <div id="spellcasting-profiles" class="row g-3 mb-3"></div>
+                    <div id="spell-slots-container" class="row g-3"></div>
+                </div>
+            </div>
+            <div class="card mb-3" id="allPossibilities">
+                <div class="card-header"><i class="bi bi-stars me-2"></i>All Possibilities</div>
+                <div class="card-body">
+                    <div class="accordion" id="allAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header"><button class="accordion-button collapsed" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#actionsCollapse" aria-expanded="false"
+                                    aria-controls="actionsCollapse">Actions</button></h2>
+                            <div id="actionsCollapse" class="accordion-collapse collapse"
+                                data-bs-parent="#allAccordion">
+                                <div class="accordion-body">
+                                    <div id="actions-container" class="row g-3"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header"><button class="accordion-button collapsed" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#spellsCollapse" aria-expanded="false"
+                                    aria-controls="spellsCollapse">Spells</button></h2>
+                            <div id="spellsCollapse" class="accordion-collapse collapse" data-bs-parent="#allAccordion">
+                                <div class="accordion-body">
+                                    <div id="spells-container" class="row g-3"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header"><button class="accordion-button collapsed" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#featuresCollapse" aria-expanded="false"
+                                    aria-controls="featuresCollapse">Features</button></h2>
+                            <div id="featuresCollapse" class="accordion-collapse collapse"
+                                data-bs-parent="#allAccordion">
+                                <div class="accordion-body">
+                                    <div id="features-container" class="row g-3"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <section id="inventory-page">
+            <div class="accordion mb-3" id="inventoryAccordion">
+                <div class="accordion-item">
+                    <h2 class="accordion-header"><button class="accordion-button collapsed" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#inventoryCollapse" aria-expanded="false"
+                            aria-controls="inventoryCollapse"><i class="bi bi-backpack me-2"></i>Inventory</button></h2>
+                    <div id="inventoryCollapse" class="accordion-collapse collapse">
+                        <div class="accordion-body">
+                            <div class="accordion-body">
+                                <div id="currency-container" class="mb-3"></div>
+                                <div id="inventory-container" class="row g-3"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <section class="card mb-3" id="notesSection">
+            <div class="card-header">Notes</div>
+            <div class="card-body">
+                <div class="row g-2 mb-3">
+                    <div class="col-12 col-md-4"><input id="note-title" class="form-control" placeholder="Title"></div>
+                    <div class="col-12 col-md-6"><input id="note-body" class="form-control" placeholder="Note"></div>
+                    <div class="col-12 col-md-2 d-grid"><button id="save-note-btn" type="button"
+                            class="btn btn-primary">Save</button></div>
+                </div>
+                <div id="notes-container" class="row g-3"></div>
+            </div>
+        </section>
+    </main>
+    <div class="position-fixed top-0 start-0 p-3 d-flex gap-2 z-3">
+        <a class="btn btn-outline-secondary" href="./" aria-label="All characters"><i
+                class="bi bi-people-fill"></i></a>
+        <button type="button" class="btn btn-secondary" id="shortRest-btn"><i class="bi bi-moon-fill"></i></button>
+        <button type="button" class="btn btn-success" id="longRest-btn"><i class="bi bi-moon-stars-fill"></i></button>
+    </div>
+    <div class="position-fixed top-0 end-0 p-3 z-3">
+        <div class="btn-group" role="group">
+            <button id="btnGroupDrop1" type="button" class="btn btn-danger dropdown-toggle" data-bs-toggle="dropdown"
+                aria-expanded="false"><i class="bi bi-arrow-down-square-fill"></i></button>
+            <div class="dropdown-menu dropdown-menu-end" aria-labelledby="btnGroupDrop1">
+                <a class="dropdown-item text-danger" href="#bodyStart"><i class="bi bi-person-fill"></i> Character</a>
+                <a class="dropdown-item text-danger" href="#quickStats"><i class="bi bi-bar-chart-fill"></i> Stats</a>
+                <a class="dropdown-item text-danger" href="#hpManager"><i class="bi bi-heart-fill"></i> HP</a>
+                <a class="dropdown-item text-danger" href="#combatResources"><i class="bi bi-hourglass-split"></i>
+                    Combat</a>
+                <a class="dropdown-item text-danger" href="#spellcastingSection"><i class="bi bi-magic"></i>
+                    Spellcasting</a>
+                <a class="dropdown-item text-danger" href="#allPossibilities"><i class="bi bi-stars"></i> All
+                    Possibilities</a>
+                <a class="dropdown-item text-danger" href="#inventoryAccordion"><i class="bi bi-backpack-fill"></i>
+                    Inventory</a>
+                <a class="dropdown-item text-danger" href="#notesSection"><i class="bi bi-pen-fill"></i> Notes</a>
+            </div>
+        </div>
+    </div>
+    <button id="theme-toggle" type="button" class="btn btn-sm btn-outline-light position-fixed bottom-0 end-0 m-3 z-3"
+        aria-label="Switch theme">
+        <i id="theme-icon" class="bi bi-sun-fill"></i>
+    </button>
+    <script src="bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (function () {
+            const params = new URLSearchParams(window.location.search);
+            const requested = params.get("character") || "cassian";
+            const characterName = /^[a-z0-9-]+$/i.test(requested) ? requested : "cassian";
+            const characterScript = document.createElement("script");
+            characterScript.src = `./data/characters/${characterName}.js`;
+            characterScript.onload = function () {
+                if (!window.character) {
+                    document.body.innerHTML = '<main class="container py-5"><div class="alert alert-danger">The character file loaded, but window.character was not found.</div></main>';
+                    return;
+                }
+                const appScript = document.createElement("script");
+                appScript.src = "./js/script.js";
+                document.body.appendChild(appScript);
+            };
+            characterScript.onerror = function () {
+                document.body.innerHTML = `<main class="container py-5"><div class="alert alert-danger">Could not load data/characters/${characterName}.js</div></main>`;
+            };
+            document.body.appendChild(characterScript);
+        })();
+    </script>
+</body>
+
+</html>

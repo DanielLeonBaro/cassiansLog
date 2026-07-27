@@ -1,0 +1,14 @@
+[
+  {
+    "id": "cassian",
+    "name": "Cassian Aurelius von Bloodington III",
+    "description": "Level 5 Noctir Fighter · Echo Knight",
+    "portrait": "data/portraits/cassian.png"
+  },
+  {
+    "id": "template",
+    "name": "Character Template",
+    "description": "A clean starting point for a new adventurer",
+    "portrait": "bat.ico"
+  }
+]
