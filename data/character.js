@@ -11,7 +11,7 @@ const character = {
   hp: {
     max: 50,
     current: 50,
-    temp: 0,
+    temp: 0
   },
   initiative: 5,
   proficiency: 3,
@@ -22,9 +22,15 @@ const character = {
   combat: {
     concentration: false,
     echoes: [
-      { name: "Echo 1", active: false },
-      { name: "Echo 2", active: false },
-    ],
+      {
+        name: "Echo 1",
+        active: false
+      },
+      {
+        name: "Echo 2",
+        active: false
+      }
+    ]
   },
   stats: {
     str: {
@@ -35,9 +41,9 @@ const character = {
         {
           name: "Athletics",
           modifier: 3,
-          proficiency: false,
-        },
-      ],
+          proficiency: false
+        }
+      ]
     },
     dex: {
       score: 20,
@@ -47,25 +53,25 @@ const character = {
         {
           name: "Acrobatics",
           modifier: 8,
-          proficiency: true,
+          proficiency: true
         },
         {
           name: "Sleight of Hand",
           modifier: 5,
-          proficiency: false,
+          proficiency: false
         },
         {
           name: "Stealth",
           modifier: 5,
-          proficiency: false,
-        },
-      ],
+          proficiency: false
+        }
+      ]
     },
     con: {
       score: 16,
       modifier: 3,
       save: 6,
-      skills: [],
+      skills: []
     },
     int: {
       score: 14,
@@ -75,29 +81,29 @@ const character = {
         {
           name: "Arcana",
           modifier: 2,
-          proficiency: false,
+          proficiency: false
         },
         {
           name: "History",
           modifier: 5,
-          proficiency: true,
+          proficiency: true
         },
         {
           name: "Investigation",
           modifier: 2,
-          proficiency: false,
+          proficiency: false
         },
         {
           name: "Nature",
           modifier: 2,
-          proficiency: false,
+          proficiency: false
         },
         {
           name: "Religion",
           modifier: 2,
-          proficiency: false,
-        },
-      ],
+          proficiency: false
+        }
+      ]
     },
     wis: {
       score: 15,
@@ -107,29 +113,29 @@ const character = {
         {
           name: "Animal Handling",
           modifier: 2,
-          proficiency: false,
+          proficiency: false
         },
         {
           name: "Insight",
           modifier: 5,
-          proficiency: true,
+          proficiency: true
         },
         {
           name: "Medicine",
           modifier: 2,
-          proficiency: false,
+          proficiency: false
         },
         {
           name: "Perception",
           modifier: 2,
-          proficiency: false,
+          proficiency: false
         },
         {
           name: "Survival",
           modifier: 2,
-          proficiency: false,
-        },
-      ],
+          proficiency: false
+        }
+      ]
     },
     cha: {
       score: 19,
@@ -139,51 +145,58 @@ const character = {
         {
           name: "Deception",
           modifier: 4,
-          proficiency: false,
+          proficiency: false
         },
         {
           name: "Intimidation",
           modifier: 4,
-          proficiency: false,
+          proficiency: false
         },
         {
           name: "Performance",
           modifier: 4,
-          proficiency: false,
+          proficiency: false
         },
         {
           name: "Persuasion",
           modifier: 7,
-          proficiency: true,
-        },
-      ],
-    },
+          proficiency: true
+        }
+      ]
+    }
   },
-  abilities: [
+  actions: [
     {
-      id: "shortsword",
+      id: "shortsword-action",
       name: "Shortsword",
-      category: "Item",
-      action: "Action | Bonus Action",
-      uses: {
-        current: 0,
-        max: 0,
-        reset: "short",
-      },
-      description: "+5 Hit. 1d6+5 Piercing Damage",
+      category: "Weapon",
+      action: "Action",
+      range: "5 ft",
+      attack: "+8 vs AC",
+      damage: "1d6+5 piercing",
+      description: "Attack twice when you take the Attack action."
+    },
+    {
+      id: "shortsword-bonus",
+      name: "Offhand Shortsword",
+      category: "Weapon",
+      action: "Bonus Action",
+      range: "5 ft",
+      attack: "+8 vs AC",
+      damage: "1d6+5 piercing",
+      description: "Make one offhand attack using Two-Weapon Fighting."
     },
     {
       id: "action-surge",
       name: "Action Surge",
       category: "Class Feature",
-      action: "Action",
+      action: "Free Action",
       uses: {
         current: 1,
         max: 1,
-        reset: "short",
+        reset: "short"
       },
-      description:
-        "Starting at 2nd level, you can push yourself beyond your normal limits for a moment. On your turn, you can take one additional action on top of your regular action and a possible bonus action. Once you use this feature, you must finish a short or long rest before you can use it again. Starting at 17th level, you can use it twice before a rest, but only once on the same turn.",
+      description: "Take one additional action on your turn."
     },
     {
       id: "second-wind",
@@ -193,53 +206,268 @@ const character = {
       uses: {
         current: 1,
         max: 1,
-        reset: "short",
+        reset: "short"
       },
-      description:
-        "You have a limited well of stamina that you can draw on to protect yourself from harm. On your turn, you can use a bonus action to regain hit points equal to 1d10 + your fighter level. Once you use this feature, you must finish a short or long rest before you can use it again.",
+      description: "Regain 1d10+5 hit points."
     },
     {
       id: "manifest-echo",
       name: "Manifest Echo",
-      category: "Class Feature",
+      category: "Echo Knight",
       action: "Bonus Action",
-      uses: {
-        current: 2,
-        max: 2,
-        reset: "short",
-      },
-      description:
-        "At 3rd level, you can use a bonus action to magically manifest an echo of yourself in an unoccupied space you can see within 15 feet of you. This echo is a magical, translucent, gray image of you that lasts until it is destroyed, until you dismiss it as a bonus action, until you manifest another echo, or until you're incapacitated. Your echo has AC 14 + your proficiency bonus, 1 hit point, and immunity to all conditions. If it has to make a saving throw, it uses your saving throw bonus for the roll. It is the same size as you, and it occupies its space. On your turn, you can mentally command the echo to move up to 30 feet in any direction (no action required). If your echo is ever more than 30 feet from you at the end of your turn, it is destroyed. As a bonus action, you can teleport, magically swapping places with your echo at a cost of 15 feet of your movement, regardless of the distance between the two of you. When you take the Attack action on your turn, any attack you make with that action can originate from your space or the echo's space. You make this choice for each attack. When a creature that you can see within 5 feet of your echo moves at least 5 feet away from it, you can use your reaction to make an opportunity attack against that creature as if you were in the echo's space.",
+      range: "15 ft",
+      description: "Create an echo that can move 30 ft and attack from its space."
+    },
+    {
+      id: "echo-teleport",
+      name: "Swap with Echo",
+      category: "Echo Knight",
+      action: "Bonus Action",
+      description: "Spend 15 ft of movement to swap places with your echo."
     },
     {
       id: "unleash-incarnation",
       name: "Unleash Incarnation",
-      category: "Class Feature",
+      category: "Echo Knight",
+      action: "Free Action",
+      uses: {
+        current: 3,
+        max: 3,
+        reset: "long"
+      },
+      description: "After attacking, make one extra melee attack from the echo."
+    },
+    {
+      id: "vestige-night",
+      name: "Vestige of the Night",
+      category: "Feat",
+      action: "Action",
+      duration: "10 min; 1 hour at night",
       uses: {
         current: 1,
         max: 1,
-        reset: "short",
+        reset: "long"
       },
-      action: "Free Action",
-      description:
-        "At 3rd level, you can heighten your echo's fury. Whenever you take the Attack action, you can make one additional melee attack from the echo's position. You can use this feature a number of times equal to your Constitution modifier (a minimum of once). You regain all expended uses when you finish a long rest.",
+      description: "Become a Tiny bat and ignore sunlight radiant damage."
     },
+    {
+      id: "opportunity-attack",
+      name: "Opportunity Attack",
+      category: "Reaction",
+      action: "Reaction",
+      range: "Melee reach",
+      description: "Make one melee attack when a visible foe leaves your reach."
+    }
+  ],
+  spells: [
+    {
+      id: "vampiric-touch",
+      name: "Vampiric Touch",
+      category: "3rd-level Spell",
+      action: "Action",
+      spellcasting: "DEX",
+      range: "Self",
+      duration: "Up to 1 minute",
+      concentration: true,
+      uses: {
+        current: 1,
+        max: 1,
+        reset: "long"
+      },
+      description: "Deal 3d6 necrotic and heal half the damage dealt."
+    },
+    {
+      id: "charm-person",
+      name: "Charm Person",
+      category: "1st-level Spell",
+      action: "Action",
+      spellcasting: "CHA",
+      range: "30 ft",
+      duration: "1 hour",
+      uses: {
+        current: 1,
+        max: 1,
+        reset: "long"
+      },
+      description: "A humanoid failing its WIS save is charmed until the spell ends."
+    },
+    {
+      id: "disguise-self",
+      name: "Disguise Self",
+      category: "1st-level Spell",
+      action: "Action",
+      spellcasting: "CHA",
+      range: "Self",
+      duration: "1 hour",
+      uses: {
+        current: 1,
+        max: 1,
+        reset: "long"
+      },
+      description: "Create an illusory appearance that fails physical inspection."
+    },
+    {
+      id: "suggestion",
+      name: "Suggestion",
+      category: "2nd-level Spell",
+      action: "Action",
+      spellcasting: "CHA",
+      range: "30 ft",
+      duration: "Up to 8 hours",
+      concentration: true,
+      uses: {
+        current: 1,
+        max: 1,
+        reset: "long"
+      },
+      description: "A failed WIS save makes the target follow a reasonable request."
+    },
+    {
+      id: "friends",
+      name: "Friends",
+      category: "Cantrip",
+      action: "Action",
+      spellcasting: "CHA",
+      range: "Self",
+      duration: "Up to 1 minute",
+      concentration: true,
+      description: "Gain advantage on CHA checks against one nonhostile creature."
+    },
+    {
+      id: "message",
+      name: "Message",
+      category: "Cantrip",
+      action: "Action",
+      spellcasting: "CHA",
+      range: "120 ft",
+      duration: "1 round",
+      description: "Whisper to one creature; it can quietly reply."
+    },
+    {
+      id: "thaumaturgy",
+      name: "Thaumaturgy",
+      category: "Cantrip",
+      action: "Action",
+      spellcasting: "CHA",
+      range: "30 ft",
+      duration: "Up to 1 minute",
+      description: "Create a minor supernatural effect, sound, tremor, or omen."
+    }
+  ],
+  features: [
+    {
+      id: "darkvision",
+      name: "Darkvision",
+      category: "Racial Trait",
+      description: "See in darkness within 60 ft as though it were dim light."
+    },
+    {
+      id: "two-weapon-fighting",
+      name: "Two-Weapon Fighting",
+      category: "Fighting Style",
+      description: "Add your ability modifier to your offhand attack damage."
+    },
+    {
+      id: "extra-attack",
+      name: "Extra Attack",
+      category: "Class Feature",
+      description: "Make two attacks whenever you take the Attack action."
+    },
+    {
+      id: "echo-rules",
+      name: "Echo Rules",
+      category: "Echo Knight",
+      description: "Echo: AC 17, 1 HP, condition immunity; destroyed beyond 30 ft."
+    },
+    {
+      id: "vampiric-heritage",
+      name: "Vampiric Heritage",
+      category: "Racial Trait",
+      description: "Cast Vampiric Touch once per long rest using Dexterity."
+    },
+    {
+      id: "bloodbound-whisper",
+      name: "Bloodbound Whisper",
+      category: "Feat",
+      description: "CHA powers Friends, Message, Thaumaturgy, Charm, Disguise, and Suggestion."
+    },
+    {
+      id: "sunlight-weakness",
+      name: "Sunlight Weakness",
+      category: "Racial Trait",
+      description: "Sunlight hinders attacks and sight; take 3 radiant each turn."
+    },
+    {
+      id: "radiant-vulnerability",
+      name: "Radiant Vulnerability",
+      category: "Racial Trait",
+      description: "Radiant damage dealt to you is doubled."
+    },
+    {
+      id: "invitation-bound",
+      name: "Invitation Bound",
+      category: "Racial Trait",
+      description: "You cannot enter a private residence without an invitation."
+    },
+    {
+      id: "mirrorless",
+      name: "Mirrorless",
+      category: "Racial Trait",
+      description: "Your image does not appear in ordinary reflections."
+    },
+    {
+      id: "undead-physiology",
+      name: "Undead Physiology",
+      category: "Racial Trait",
+      description: "You have no heartbeat and remain unnaturally cold."
+    },
+    {
+      id: "position-of-privilege",
+      name: "Position of Privilege",
+      category: "Background Feature",
+      description: "High society recognizes your status and grants easier access."
+    }
   ],
   inventory: [
     {
       name: "Shortsword",
       quantity: 2,
-      description: "1d6 piercing, finesse, light.",
+      description: "1d6 piercing; finesse and light."
     },
     {
       name: "Potion of Healing",
       quantity: 3,
-      description: "Regain 2d4+2 HP.",
+      description: "Regain 2d4+2 hit points."
     },
     {
       name: "Bag of Holding",
       quantity: 1,
-      description: "La más bonix.",
+      description: "Stores far more equipment than its outside size suggests."
     },
-  ],
+    {
+      name: "Copper Pieces (CP)",
+      quantity: 0,
+      description: "Base currency."
+    },
+    {
+      name: "Silver Pieces (SP)",
+      quantity: 0,
+      description: "1 SP equals 10 CP."
+    },
+    {
+      name: "Electrum Pieces (EP)",
+      quantity: 0,
+      description: "1 EP equals 5 SP."
+    },
+    {
+      name: "Gold Pieces (GP)",
+      quantity: 150,
+      description: "1 GP equals 10 SP."
+    },
+    {
+      name: "Platinum Pieces (PP)",
+      quantity: 0,
+      description: "1 PP equals 10 GP."
+    }
+  ]
 };
