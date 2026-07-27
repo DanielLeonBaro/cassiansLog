@@ -1,7 +1,6 @@
 // Initialization
 document.addEventListener("DOMContentLoaded", initializeApp);
 function initializeApp() {
-  refreshUI();
   document.getElementById("damage-btn");
   document.getElementById("damage-btn").addEventListener("click", () => {
     damageHP(getHPAmount());
@@ -26,6 +25,7 @@ function initializeApp() {
   loadCombat();
   loadState()
   setupEvents();
+  refreshUI();
 }
 function refreshUI() {
   loadHeader();
@@ -399,8 +399,18 @@ let state={
     }))
 };
 const STATE_KEY="cassian-state";
-
 function saveState(){
+    state.hp.current=character.hp.current;
+    state.hp.temp=character.hp.temp;
+    state.combat=structuredClone(character.combat);
+
+    state.abilities=character.abilities
+        .filter(a=>a.uses)
+        .map(a=>({
+            id:a.id,
+            current:a.uses.current
+        }));
+
     localStorage.setItem(STATE_KEY,JSON.stringify(state));
 }
 function loadState(){
