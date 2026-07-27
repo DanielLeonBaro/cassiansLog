@@ -2,7 +2,7 @@ const character = window.character;
 const CHARACTER_ID = character.id || "character";
 const NOTES_KEY = `dnd-${CHARACTER_ID}-notes`;
 const STATE_KEY = `dnd-${CHARACTER_ID}-state`;
-const THEME_KEY="dnd-theme";
+const THEME_KEY = "dnd-theme";
 const statNames = {
   str: "Strength",
   dex: "Dexterity",
@@ -24,6 +24,18 @@ const actionGroups = [
   { value: "Reaction", label: "Reactions" },
   { value: "Other", label: "Other Resources" },
 ];
+const ui = {
+  card: "h-full overflow-hidden rounded-2xl border border-stone-300/80 bg-white/75 shadow-card dark:border-white/10 dark:bg-white/[.055]",
+  cardHeader: "flex items-center justify-between gap-3 border-b border-stone-200/80 bg-stone-100/70 px-5 py-4 font-bold leading-none dark:border-white/10 dark:bg-white/[.045]",
+  cardBody: "p-5",
+  badge: "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold",
+  badgeDanger: "bg-blood-500 text-white",
+  badgeSecondary: "bg-stone-200 text-stone-700 dark:bg-white/10 dark:text-stone-200",
+  badgeWarning: "bg-amber-300 text-stone-900",
+  badgeSuccess: "bg-emerald-600 text-white",
+  badgePrimary: "bg-sky-700 text-white",
+  iconButton: "inline-flex h-9 w-9 items-center justify-center rounded-full border border-stone-300 bg-stone-100 text-sm font-bold text-stone-700 shadow-sm transition hover:border-blood-500 hover:bg-blood-500 hover:text-white dark:border-white/15 dark:bg-white/10 dark:text-stone-100 dark:hover:bg-blood-500",
+};
 let notes = [];
 let editingNote = null;
 function initializeApp() {
@@ -117,6 +129,11 @@ function clearHPInputs() {
   document.getElementById("hp-amount").value = "";
   document.getElementById("temp-input").value = "";
 }
+function stepInput(id, delta) {
+  const input = document.getElementById(id);
+  if (!input) return;
+  input.value = Math.max(0, (Number(input.value) || 0) + delta);
+}
 function loadStats() {
   const container = document.getElementById("skills-container");
   if (!container) return;
@@ -128,21 +145,21 @@ function renderStatCard(name, stat) {
   const skills = (stat.skills || [])
     .map(
       (skill) =>
-        `<li class="list-group-item d-flex justify-content-between align-items-center"><div>${skill.proficiency ? '<i class="bi bi-star-fill text-danger me-2"></i>' : '<i class="bi bi-dot me-2"></i>'}${escapeHTML(skill.name)}</div><span class="badge text-bg-secondary">${formatModifier(skill.modifier)}</span></li>`,
+        `<li class="flex items-center justify-between border-t border-stone-200 px-4 py-3 first:border-0 dark:border-white/10"><div>${skill.proficiency ? '<i class="bi bi-star-fill mr-2 text-blood-500"></i>' : '<i class="bi bi-dot mr-2"></i>'}${escapeHTML(skill.name)}</div><span class="${ui.badge} ${ui.badgeSecondary}">${formatModifier(skill.modifier)}</span></li>`,
     )
     .join("");
-  return `<div class="col-12 col-md-6"><div class="card"><div class="card-header d-flex justify-content-between align-items-center"><span class="badge text-bg-warning">${stat.score}</span><strong>${escapeHTML(name)}</strong><span class="badge text-bg-danger">${formatModifier(stat.modifier)}</span></div><ul class="list-group list-group-flush"><li class="list-group-item d-flex justify-content-between align-items-center"><strong><i class="bi bi-shield-check me-2"></i>Saving Throw</strong><span class="badge text-bg-warning">${formatModifier(stat.save)}</span></li>${skills}</ul></div></div>`;
+  return `<div class="${ui.card}"><div class="${ui.cardHeader}"><span class="${ui.badge} ${ui.badgeWarning}">${stat.score}</span><strong>${escapeHTML(name)}</strong><span class="${ui.badge} ${ui.badgeDanger}">${formatModifier(stat.modifier)}</span></div><ul><li class="flex items-center justify-between px-4 py-3"><strong><i class="bi bi-shield-check mr-2"></i>Saving Throw</strong><span class="${ui.badge} ${ui.badgeWarning}">${formatModifier(stat.save)}</span></li>${skills}</ul></div>`;
 }
 function loadTrackers() {
   const trackers = character.trackers || [];
   const card = document.getElementById("trackers-card");
   const container = document.getElementById("trackers-container");
   if (!card || !container) return;
-  card.classList.toggle("d-none", trackers.length === 0);
+  card.classList.toggle("hidden", trackers.length === 0);
   container.innerHTML = trackers
     .map(
       (tracker) =>
-        `<div class="form-check form-switch"><input class="form-check-input character-tracker" type="checkbox" id="tracker-${escapeAttribute(tracker.id)}" data-tracker-id="${escapeAttribute(tracker.id)}"${tracker.active ? " checked" : ""}><label class="form-check-label" for="tracker-${escapeAttribute(tracker.id)}">${escapeHTML(tracker.name)}</label></div>`,
+        `<div class="flex items-center gap-3 py-1"><input class="character-tracker peer h-5 w-9 cursor-pointer appearance-none rounded-full bg-stone-300 after:block after:h-4 after:w-4 after:translate-x-0.5 after:translate-y-0.5 after:rounded-full after:bg-white after:transition checked:bg-blood-500 checked:after:translate-x-[1.125rem]" type="checkbox" id="tracker-${escapeAttribute(tracker.id)}" data-tracker-id="${escapeAttribute(tracker.id)}"${tracker.active ? " checked" : ""}><label for="tracker-${escapeAttribute(tracker.id)}">${escapeHTML(tracker.name)}</label></div>`,
     )
     .join("");
 }
@@ -159,20 +176,20 @@ function loadResources() {
           : item.action === group.value,
       );
       if (!items.length) return "";
-      return `<div class="col-12"><h6 class="text-body-secondary mb-2">${group.label}</h6><div class="row g-3">${items.map(renderResourceCard).join("")}</div></div>`;
+      return `<div><h6 class="mb-2 text-sm font-semibold text-stone-500 dark:text-stone-400">${group.label}</h6><div class="grid grid-cols-1 gap-4 md:grid-cols-2">${items.map(renderResourceCard).join("")}</div></div>`;
     })
     .join("");
 }
 function renderResourceCard(item) {
   let usage = "";
   if (item.uses) {
-    usage = `<div class="btn-group btn-group-sm" role="group"><button type="button" class="btn btn-outline-secondary" onclick="changeResource('${escapeAttribute(item.id)}',-1)">−</button><button type="button" class="btn btn-outline-secondary" onclick="changeResource('${escapeAttribute(item.id)}',1)">+</button></div><div class="d-flex gap-2"><span class="badge text-bg-success">${item.uses.current}/${item.uses.max}</span><span class="badge text-bg-warning">${formatReset(item.uses.reset)}</span></div>`;
+    usage = `<div class="inline-flex gap-2" role="group"><button type="button" class="${ui.iconButton}" aria-label="Decrease ${escapeAttribute(item.name)}" onclick="changeResource('${escapeAttribute(item.id)}',-1)">−</button><button type="button" class="${ui.iconButton}" aria-label="Increase ${escapeAttribute(item.name)}" onclick="changeResource('${escapeAttribute(item.id)}',1)">+</button></div><div class="flex gap-2"><span class="${ui.badge} ${ui.badgeSuccess}">${item.uses.current}/${item.uses.max}</span><span class="${ui.badge} ${ui.badgeWarning}">${formatReset(item.uses.reset)}</span></div>`;
   } else if (item.slotLevel) {
-    usage = `<span class="badge text-bg-primary">Uses level ${item.slotLevel} slot</span>`;
+    usage = `<span class="${ui.badge} ${ui.badgePrimary}">Uses level ${item.slotLevel} slot</span>`;
   } else {
-    usage = '<span class="badge text-bg-secondary">At will</span>';
+    usage = `<span class="${ui.badge} ${ui.badgeSecondary}">At will</span>`;
   }
-  return `<div class="col-12 col-md-6"><div class="card h-100"><div class="card-header d-flex justify-content-between align-items-center"><strong>${escapeHTML(item.name)}</strong><span class="badge text-bg-danger">${escapeHTML(item.category || "Ability")}</span></div><div class="card-body py-2"><div class="d-flex justify-content-between align-items-center gap-2 flex-wrap">${usage}</div>${renderDetailBadges(item)}<p class="small mb-0 mt-2">${escapeHTML(item.description || "")}</p></div></div></div>`;
+  return `<div class="${ui.card}"><div class="${ui.cardHeader}"><strong>${escapeHTML(item.name)}</strong><span class="${ui.badge} ${ui.badgeDanger}">${escapeHTML(item.category || "Ability")}</span></div><div class="p-5"><div class="flex flex-wrap items-center justify-between gap-2">${usage}</div>${renderDetailBadges(item)}<p class="mt-2 text-sm">${escapeHTML(item.description || "")}</p></div></div>`;
 }
 function changeResource(id, delta) {
   const item = findCharacterItem(id);
@@ -193,18 +210,18 @@ function loadSpellcasting() {
   const profiles = spellcasting?.profiles || [];
   const slots = (spellcasting?.slots || []).filter((slot) => slot.max > 0);
   const enabled = Boolean(spellcasting?.enabled);
-  section.classList.toggle("d-none", !enabled);
+  section.classList.toggle("hidden", !enabled);
   if (!enabled) return;
   profilesContainer.innerHTML = profiles
     .map(
       (profile) =>
-        `<div class="col-12 col-md-6"><div class="card h-100"><div class="card-header"><strong>${escapeHTML(profile.name || "Spellcasting")}</strong></div><div class="card-body py-2"><div class="d-flex gap-2 flex-wrap"><span class="badge text-bg-primary">${escapeHTML(profile.ability || "—")}</span>${profile.saveDC !== null && profile.saveDC !== undefined ? `<span class="badge text-bg-warning">Save DC ${profile.saveDC}</span>` : ""}${profile.attackBonus !== null && profile.attackBonus !== undefined ? `<span class="badge text-bg-success">Attack ${formatModifier(profile.attackBonus)}</span>` : ""}</div></div></div></div>`,
+        `<div class="${ui.card}"><div class="${ui.cardHeader}"><strong>${escapeHTML(profile.name || "Spellcasting")}</strong></div><div class="p-5"><div class="flex flex-wrap gap-2"><span class="${ui.badge} ${ui.badgePrimary}">${escapeHTML(profile.ability || "—")}</span>${profile.saveDC !== null && profile.saveDC !== undefined ? `<span class="${ui.badge} ${ui.badgeWarning}">Save DC ${profile.saveDC}</span>` : ""}${profile.attackBonus !== null && profile.attackBonus !== undefined ? `<span class="${ui.badge} ${ui.badgeSuccess}">Attack ${formatModifier(profile.attackBonus)}</span>` : ""}</div></div></div>`,
     )
     .join("");
-  slotsContainer.innerHTML = `<div class="col-12"><h6 class="text-body-secondary mb-2">Spell Slots</h6>${slots.length ? `<div class="row g-3">${slots.map(renderSpellSlot).join("")}</div>` : `<div class="card"><div class="card-body py-2 text-body-secondary">This character has no spell slots.</div></div>`}</div>`;
+  slotsContainer.innerHTML = `<div><h6 class="mb-2 text-sm font-semibold text-stone-500 dark:text-stone-400">Spell Slots</h6>${slots.length ? `<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">${slots.map(renderSpellSlot).join("")}</div>` : `<div class="${ui.card}"><div class="p-5 text-stone-500 dark:text-stone-400">This character has no spell slots.</div></div>`}</div>`;
 }
 function renderSpellSlot(slot) {
-  return `<div class="col-12 col-sm-6 col-lg-4"><div class="card h-100"><div class="card-header d-flex justify-content-between align-items-center"><strong>Level ${slot.level}</strong><span class="badge text-bg-danger">Max: ${slot.max}</span></div><div class="card-body py-2"><div class="d-flex justify-content-between align-items-center"><div class="btn-group btn-group-sm"><button type="button" class="btn btn-outline-secondary" onclick="changeSpellSlot('${escapeAttribute(slot.id)}',-1)">−</button><button type="button" class="btn btn-outline-secondary" onclick="changeSpellSlot('${escapeAttribute(slot.id)}',1)">+</button></div><span class="badge text-bg-warning">${slot.current}/${slot.max}</span><span class="badge text-bg-secondary">${formatReset(slot.reset || "long")}</span></div></div></div></div>`;
+  return `<div class="${ui.card}"><div class="${ui.cardHeader}"><strong>Level ${slot.level}</strong><span class="${ui.badge} ${ui.badgeDanger}">Max: ${slot.max}</span></div><div class="p-5"><div class="flex items-center justify-between"><div class="inline-flex gap-2"><button type="button" class="${ui.iconButton}" aria-label="Decrease level ${slot.level} spell slots" onclick="changeSpellSlot('${escapeAttribute(slot.id)}',-1)">−</button><button type="button" class="${ui.iconButton}" aria-label="Increase level ${slot.level} spell slots" onclick="changeSpellSlot('${escapeAttribute(slot.id)}',1)">+</button></div><span class="${ui.badge} ${ui.badgeWarning}">${slot.current}/${slot.max}</span><span class="${ui.badge} ${ui.badgeSecondary}">${formatReset(slot.reset || "long")}</span></div></div></div>`;
 }
 function changeSpellSlot(id, delta) {
   const slot = findSpellSlot(id);
@@ -223,52 +240,52 @@ function loadAbilitySection(id, items) {
   if (!container) return;
   container.innerHTML = items.length
     ? items.map(renderAbilityCard).join("")
-    : '<div class="col-12"><p class="text-body-secondary mb-0">Nothing added yet.</p></div>';
+    : '<p class="text-stone-500 dark:text-stone-400">Nothing added yet.</p>';
 }
 function renderAbilityCard(item) {
   const useBadges = item.uses
-    ? `<span class="badge text-bg-success">${item.uses.current}/${item.uses.max}</span><span class="badge text-bg-secondary">${formatReset(item.uses.reset)}</span>`
+    ? `<span class="${ui.badge} ${ui.badgeSuccess}">${item.uses.current}/${item.uses.max}</span><span class="${ui.badge} ${ui.badgeSecondary}">${formatReset(item.uses.reset)}</span>`
     : "";
-  return `<div class="col-12 col-md-6"><div class="card h-100"><div class="card-header d-flex justify-content-between align-items-center"><strong>${escapeHTML(item.name)}</strong><span class="badge text-bg-danger">${escapeHTML(item.category || "Ability")}</span></div><div class="card-body py-2"><div class="d-flex justify-content-between align-items-center gap-2 flex-wrap"><div class="d-flex gap-2 flex-wrap">${item.action ? `<span class="badge text-bg-primary">${escapeHTML(item.action)}</span>` : ""}</div><div class="d-flex gap-2 flex-wrap">${useBadges}</div></div>${renderDetailBadges(item)}<p class="small mb-0 mt-2">${escapeHTML(item.description || "")}</p></div></div></div>`;
+  return `<div class="${ui.card}"><div class="${ui.cardHeader}"><strong>${escapeHTML(item.name)}</strong><span class="${ui.badge} ${ui.badgeDanger}">${escapeHTML(item.category || "Ability")}</span></div><div class="p-5"><div class="flex flex-wrap items-center justify-between gap-2"><div class="flex flex-wrap gap-2">${item.action ? `<span class="${ui.badge} ${ui.badgePrimary}">${escapeHTML(item.action)}</span>` : ""}</div><div class="flex flex-wrap gap-2">${useBadges}</div></div>${renderDetailBadges(item)}<p class="mt-2 text-sm">${escapeHTML(item.description || "")}</p></div></div>`;
 }
 function renderDetailBadges(item) {
   const badges = [];
   if (item.level !== undefined && item.level !== null)
     badges.push(
-      `<span class="badge text-bg-dark border">${formatSpellLevel(item.level)}</span>`,
+      `<span class="${ui.badge} bg-stone-800 text-white">${formatSpellLevel(item.level)}</span>`,
     );
   if (item.school)
     badges.push(
-      `<span class="badge text-bg-dark border">${escapeHTML(item.school)}</span>`,
+      `<span class="${ui.badge} bg-stone-800 text-white">${escapeHTML(item.school)}</span>`,
     );
   if (item.range)
     badges.push(
-      `<span class="badge text-bg-dark border">Range: ${escapeHTML(item.range)}</span>`,
+      `<span class="${ui.badge} bg-stone-800 text-white">Range: ${escapeHTML(item.range)}</span>`,
     );
   if (item.attack)
     badges.push(
-      `<span class="badge text-bg-dark border">${escapeHTML(item.attack)}</span>`,
+      `<span class="${ui.badge} bg-stone-800 text-white">${escapeHTML(item.attack)}</span>`,
     );
   if (item.damage)
     badges.push(
-      `<span class="badge text-bg-dark border">${escapeHTML(item.damage)}</span>`,
+      `<span class="${ui.badge} bg-stone-800 text-white">${escapeHTML(item.damage)}</span>`,
     );
   if (item.duration)
     badges.push(
-      `<span class="badge text-bg-dark border">Duration: ${escapeHTML(item.duration)}</span>`,
+      `<span class="${ui.badge} bg-stone-800 text-white">Duration: ${escapeHTML(item.duration)}</span>`,
     );
   if (item.components)
     badges.push(
-      `<span class="badge text-bg-dark border">${escapeHTML(item.components)}</span>`,
+      `<span class="${ui.badge} bg-stone-800 text-white">${escapeHTML(item.components)}</span>`,
     );
   if (item.spellcasting)
     badges.push(
-      `<span class="badge text-bg-dark border">${escapeHTML(item.spellcasting)}</span>`,
+      `<span class="${ui.badge} bg-stone-800 text-white">${escapeHTML(item.spellcasting)}</span>`,
     );
   if (item.concentration)
-    badges.push('<span class="badge text-bg-warning">Concentration</span>');
+    badges.push(`<span class="${ui.badge} ${ui.badgeWarning}">Concentration</span>`);
   return badges.length
-    ? `<div class="d-flex gap-2 flex-wrap mt-2">${badges.join("")}</div>`
+    ? `<div class="mt-2 flex flex-wrap gap-2">${badges.join("")}</div>`
     : "";
 }
 function loadInventory() {
@@ -280,16 +297,16 @@ function loadInventory() {
     ? inventory
         .map(
           (item) =>
-            `<div class="col-12 col-md-6"><div class="card h-100"><div class="card-header d-flex justify-content-between align-items-center"><strong>${escapeHTML(item.name)}</strong><span class="badge text-bg-primary">x${item.quantity}</span></div><div class="card-body"><small>${escapeHTML(item.description || "")}</small></div></div></div>`,
+            `<div class="${ui.card}"><div class="${ui.cardHeader}"><strong>${escapeHTML(item.name)}</strong><span class="${ui.badge} ${ui.badgePrimary}">x${item.quantity}</span></div><div class="${ui.cardBody}"><small>${escapeHTML(item.description || "")}</small></div></div>`,
         )
         .join("")
-    : '<div class="col-12"><p class="text-body-secondary mb-0">Inventory is empty.</p></div>';
+    : '<p class="text-stone-500 dark:text-stone-400">Inventory is empty.</p>';
 }
 function loadCurrency() {
   const container = document.getElementById("currency-container");
   if (!container) return;
   const currency = character.currency || {};
-  container.innerHTML = `<div class="card"><div class="card-header">Currency</div><div class="card-body py-2"><div class="d-flex gap-2 flex-wrap"><span class="badge text-bg-secondary">CP: ${currency.cp ?? 0}</span><span class="badge text-bg-light text-dark border">SP: ${currency.sp ?? 0}</span><span class="badge text-bg-info text-dark">EP: ${currency.ep ?? 0}</span><span class="badge text-bg-warning text-dark">GP: ${currency.gp ?? 0}</span><span class="badge text-bg-primary">PP: ${currency.pp ?? 0}</span></div></div></div>`;
+  container.innerHTML = `<div class="${ui.card}"><div class="${ui.cardHeader}">Currency</div><div class="${ui.cardBody}"><div class="flex flex-wrap gap-2"><span class="${ui.badge} ${ui.badgeSecondary}">CP: ${currency.cp ?? 0}</span><span class="${ui.badge} bg-stone-100 text-stone-900">SP: ${currency.sp ?? 0}</span><span class="${ui.badge} bg-cyan-300 text-stone-900">EP: ${currency.ep ?? 0}</span><span class="${ui.badge} ${ui.badgeWarning}">GP: ${currency.gp ?? 0}</span><span class="${ui.badge} ${ui.badgePrimary}">PP: ${currency.pp ?? 0}</span></div></div></div>`;
 }
 function shortRest() {
   getAllCharacterItems()
@@ -318,7 +335,7 @@ function loadNotes() {
   container.innerHTML = notes
     .map(
       (note, index) =>
-        `<div class="col-12 col-md-6"><div class="card h-100"><div class="card-header d-flex justify-content-between align-items-center"><strong>${escapeHTML(note.title)}</strong><div class="btn-group btn-group-sm"><button type="button" class="btn btn-outline-primary" onclick="editNote(${index})"><i class="bi bi-pencil"></i></button><button type="button" class="btn btn-outline-danger" onclick="deleteNote(${index})"><i class="bi bi-trash"></i></button></div></div><div class="card-body">${escapeHTML(note.body)}</div></div></div>`,
+        `<div class="${ui.card}"><div class="${ui.cardHeader}"><strong>${escapeHTML(note.title)}</strong><div class="inline-flex"><button type="button" class="inline-flex items-center justify-center rounded-l-xl border border-sky-500 px-3 py-1.5 text-xs font-bold text-sky-600 transition hover:bg-sky-500 hover:text-white" onclick="editNote(${index})"><i class="bi bi-pencil"></i></button><button type="button" class="inline-flex items-center justify-center rounded-r-xl border border-blood-500 px-3 py-1.5 text-xs font-bold text-blood-500 transition hover:bg-blood-500 hover:text-white" onclick="deleteNote(${index})"><i class="bi bi-trash"></i></button></div></div><div class="${ui.cardBody}">${escapeHTML(note.body)}</div></div>`,
     )
     .join("");
 }
@@ -421,10 +438,66 @@ function setupEvents() {
     setTempHP(getTempAmount());
     clearHPInputs();
   });
+  on("hp-decrease-btn", "click", () => stepInput("hp-amount", -1));
+  on("hp-increase-btn", "click", () => stepInput("hp-amount", 1));
+  on("temp-decrease-btn", "click", () => stepInput("temp-input", -1));
+  on("temp-increase-btn", "click", () => stepInput("temp-input", 1));
   on("shortRest-btn", "click", shortRest);
   on("longRest-btn", "click", longRest);
   on("save-note-btn", "click", saveNote);
   on("theme-toggle", "click", toggleTheme);
+  document.querySelectorAll("[data-collapse-target]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const panel = document.getElementById(button.dataset.collapseTarget);
+      if (!panel) return;
+      const expanded = button.getAttribute("aria-expanded") === "true";
+      const accordion = button.closest("#allAccordion");
+      if (!expanded && accordion) {
+        accordion.querySelectorAll("[data-collapse-target]").forEach((otherButton) => {
+          if (otherButton === button) return;
+          otherButton.setAttribute("aria-expanded", "false");
+          document
+            .getElementById(otherButton.dataset.collapseTarget)
+            ?.classList.add("hidden");
+        });
+      }
+      button.setAttribute("aria-expanded", String(!expanded));
+      panel.classList.toggle("hidden", expanded);
+    });
+  });
+  const navigationButton = document.getElementById("navigation-menu-button");
+  const navigationMenu = document.getElementById("navigation-menu");
+  navigationButton?.addEventListener("click", () => {
+    const expanded = navigationButton.getAttribute("aria-expanded") === "true";
+    navigationButton.setAttribute("aria-expanded", String(!expanded));
+    navigationMenu?.classList.toggle("hidden", expanded);
+  });
+  document.addEventListener("click", (event) => {
+    if (
+      navigationMenu?.classList.contains("hidden") ||
+      navigationButton?.parentElement?.contains(event.target)
+    ) {
+      return;
+    }
+    navigationButton?.setAttribute("aria-expanded", "false");
+    navigationMenu?.classList.add("hidden");
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    navigationButton?.setAttribute("aria-expanded", "false");
+    navigationMenu?.classList.add("hidden");
+    navigationButton?.focus();
+  });
+  document.querySelectorAll("[data-scroll-to]").forEach((button) => {
+    button.addEventListener("click", () => {
+      document.getElementById(button.dataset.scrollTo)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+      navigationButton?.setAttribute("aria-expanded", "false");
+      navigationMenu?.classList.add("hidden");
+    });
+  });
   const trackerContainer = document.getElementById("trackers-container");
   if (trackerContainer)
     trackerContainer.addEventListener("change", (event) => {
@@ -443,19 +516,17 @@ function loadTheme() {
 }
 function toggleTheme() {
   const current =
-    document.documentElement.getAttribute("data-bs-theme") || "dark";
+    document.documentElement.getAttribute("data-theme") || "dark";
   applyTheme(current === "dark" ? "light" : "dark");
 }
 function applyTheme(theme) {
-  document.documentElement.setAttribute("data-bs-theme", theme);
-  document.body.classList.remove("bg-dark");
-  document.body.classList.add("bg-body");
+  document.documentElement.setAttribute("data-theme", theme);
   localStorage.setItem(THEME_KEY, theme);
   const button = document.getElementById("theme-toggle");
   const icon = document.getElementById("theme-icon");
   if (!button || !icon) return;
   const dark = theme === "dark";
-  button.className = `btn btn-sm ${dark ? "btn-outline-light" : "btn-outline-dark"} position-fixed bottom-0 end-0 m-3 z-3`;
+  button.className = `fixed bottom-0 right-0 z-30 m-3 inline-flex items-center justify-center rounded-xl border px-3 py-1.5 text-xs font-bold shadow-sm backdrop-blur transition hover:border-blood-500 hover:text-blood-500 ${dark ? "border-white/20 bg-stone-900/80 text-stone-200" : "border-stone-400 bg-white/80 text-stone-700"}`;
   icon.className = dark ? "bi bi-sun-fill" : "bi bi-moon-stars-fill";
 }
 function getCombatItems() {

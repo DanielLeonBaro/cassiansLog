@@ -1,107 +1,99 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
+<html lang="en" data-theme="dark">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Choose a character and open their tracker.">
     <title>Cassian's Log — Characters</title>
-    <link rel="stylesheet" href="bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="bootstrap/bootstrap-icons.css">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="dist/tailwind.css">
     <link rel="icon" href="bat.ico">
 </head>
 
-<body class="bg-body-tertiary min-vh-100 d-flex flex-column">
-    <nav class="navbar border-bottom bg-body shadow-sm">
-        <div class="container py-2">
-            <a class="navbar-brand d-flex align-items-center gap-2 fw-semibold" href="./">
-                <i class="bi bi-journal-bookmark-fill text-danger"></i>
+<body class="flex min-h-screen flex-col bg-parchment font-sans text-stone-900 antialiased transition-colors dark:bg-ink dark:text-stone-100">
+    <nav class="sticky top-0 z-40 border-b border-stone-300/70 bg-parchment/85 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-ink/85">
+        <div class="relative mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-2 sm:px-6 lg:px-8">
+            <a class="flex items-center gap-2 font-display text-lg font-semibold hover:text-blood-500" href="./">
+                <i class="bi bi-journal-bookmark-fill text-blood-500"></i>
                 Cassian's Log
             </a>
-            <button id="theme-toggle" type="button" class="btn btn-sm btn-outline-secondary"
+            <button id="theme-toggle" type="button" class="inline-flex items-center justify-center rounded-xl border border-stone-400 bg-white/60 px-3 py-1.5 text-xs font-bold text-stone-700 shadow-sm transition hover:border-blood-500 hover:text-blood-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/20 dark:bg-white/5 dark:text-stone-200"
                 aria-label="Switch color theme">
                 <i id="theme-icon" class="bi bi-sun-fill"></i>
             </button>
         </div>
     </nav>
 
-    <main class="container py-5 flex-grow-1">
-        <header class="mx-auto mb-5 text-center" style="max-width: 42rem;">
-            <span class="badge rounded-pill text-bg-danger mb-3">
-                <i class="bi bi-dice-20-fill me-1"></i> Character archive
+    <main class="relative mx-auto w-full max-w-6xl grow px-4 py-12 sm:px-6 lg:px-8">
+        <header class="mx-auto mb-10 max-w-2xl text-center">
+            <span class="mb-4 inline-flex items-center rounded-full bg-blood-500 px-3 py-1 text-xs font-bold text-white">
+                <i class="bi bi-dice-20-fill mr-1"></i> Character archive
             </span>
-            <h1 class="display-5 fw-bold">Choose your character</h1>
-            <p class="lead text-body-secondary mb-0">
+            <h1 class="font-display text-4xl font-bold sm:text-5xl">Choose your character</h1>
+            <p class="mt-4 text-lg leading-relaxed text-stone-500 dark:text-stone-400">
                 Open a character sheet to track hit points, resources, spells, inventory, and notes.
             </p>
         </header>
 
         <section aria-labelledby="characters-heading">
-            <h2 id="characters-heading" class="visually-hidden">Available characters</h2>
-            <div id="characters" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4 justify-content-center"
+            <h2 id="characters-heading" class="sr-only">Available characters</h2>
+            <div id="characters" class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3"
                 aria-live="polite">
-                <div class="col-12 text-center py-5">
-                    <div class="spinner-border text-danger" role="status">
-                        <span class="visually-hidden">Loading characters...</span>
+                <div class="py-12 text-center md:col-span-2 xl:col-span-3">
+                    <div class="inline-block h-9 w-9 animate-spin rounded-full border-4 border-blood-500 border-r-transparent" role="status">
+                        <span class="sr-only">Loading characters...</span>
                     </div>
                 </div>
             </div>
         </section>
     </main>
 
-    <footer class="container py-4 text-center text-body-secondary small">
+    <footer class="relative mx-auto w-full max-w-6xl px-4 py-4 text-center text-sm text-stone-500 dark:text-stone-400 sm:px-6 lg:px-8">
         Select a character to begin.
     </footer>
 
-    <script src="bootstrap/js/bootstrap.bundle.min.js"></script>
     <script>
         const THEME_KEY = "dnd-theme";
 
         function applyTheme(theme) {
             const dark = theme === "dark";
-            document.documentElement.setAttribute("data-bs-theme", theme);
+            document.documentElement.setAttribute("data-theme", theme);
             document.getElementById("theme-icon").className =
                 dark ? "bi bi-sun-fill" : "bi bi-moon-stars-fill";
         }
 
         function createCharacterCard(character) {
-            const column = document.createElement("div");
-            column.className = "col";
-
             const card = document.createElement("article");
-            card.className = "card h-100 border-0 shadow-sm overflow-hidden";
+            card.className = "group relative h-full overflow-hidden rounded-2xl border border-stone-300/80 bg-white/75 shadow-card backdrop-blur-sm transition hover:-translate-y-1 hover:border-blood-500/40 hover:shadow-xl dark:border-white/10 dark:bg-white/[.055]";
 
             const portrait = document.createElement("img");
-            portrait.className = "card-img-top";
+            portrait.className = "aspect-[16/10] w-full object-cover";
             portrait.src = character.portrait || "bat.ico";
             portrait.alt = `${character.name} portrait`;
-            portrait.style.aspectRatio = "16 / 10";
-            portrait.style.objectFit = "cover";
             portrait.addEventListener("error", () => {
                 portrait.src = "bat.ico";
             }, { once: true });
 
             const body = document.createElement("div");
-            body.className = "card-body d-flex flex-column p-4";
+            body.className = "flex flex-col p-5";
 
             const name = document.createElement("h3");
-            name.className = "h4 card-title";
+            name.className = "font-display text-2xl font-bold";
             name.textContent = character.name;
 
             const description = document.createElement("p");
-            description.className = "card-text text-body-secondary flex-grow-1";
+            description.className = "mt-2 grow leading-relaxed text-stone-500 dark:text-stone-400";
             description.textContent = character.description || "Open character tracker.";
 
             const link = document.createElement("a");
-            link.className = "btn btn-danger stretched-link align-self-start";
+            link.className = "mt-5 inline-flex self-start items-center justify-center gap-2 rounded-xl border border-blood-500 bg-blood-500 px-4 py-2 text-sm font-bold text-white shadow-sm transition after:absolute after:inset-0 hover:border-blood-600 hover:bg-blood-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold";
             link.href = `char/${encodeURIComponent(character.id)}/`;
-            link.innerHTML = 'Open tracker <i class="bi bi-arrow-right ms-1"></i>';
+            link.innerHTML = 'Open tracker <i class="bi bi-arrow-right ml-1"></i>';
 
             body.append(name, description, link);
             card.append(portrait, body);
-            column.append(card);
-            return column;
+            return card;
         }
 
         async function loadCharacters() {
@@ -113,7 +105,7 @@
                 container.replaceChildren(...characters.map(createCharacterCard));
             } catch (error) {
                 container.innerHTML =
-                    '<div class="col-12"><div class="alert alert-danger">Could not load the character list.</div></div>';
+                    '<div class="rounded-2xl border border-blood-500/30 bg-blood-500/10 p-4 text-blood-600 dark:text-red-300 md:col-span-2 xl:col-span-3">Could not load the character list.</div>';
                 console.error("Could not load characters:", error);
             }
         }
@@ -121,7 +113,7 @@
         const savedTheme = localStorage.getItem(THEME_KEY) || "dark";
         applyTheme(savedTheme);
         document.getElementById("theme-toggle").addEventListener("click", () => {
-            const current = document.documentElement.getAttribute("data-bs-theme");
+            const current = document.documentElement.getAttribute("data-theme");
             const next = current === "dark" ? "light" : "dark";
             localStorage.setItem(THEME_KEY, next);
             applyTheme(next);
