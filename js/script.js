@@ -14,18 +14,11 @@ function initializeApp() {
     setTempHP(getTempAmount());
     clearInputs();
   });
-  loadHeader();
-  loadNotesFromStorage();
-  loadNotes();
-  loadStats();
-  loadHP();
-  loadResources();
-  loadAbilities();
-  loadInventory();
-  loadCombat();
-  loadState()
-  setupEvents();
-  refreshUI();
+    loadNotesFromStorage();
+    loadState();
+    loadStats();
+    setupEvents();
+    refreshUI();
 }
 function refreshUI() {
   loadHeader();
@@ -33,7 +26,6 @@ function refreshUI() {
   loadResources();
   loadAbilities();
   loadNotes();
-  loadCombat();
 }
 // Header
 function loadHeader() {
@@ -289,17 +281,20 @@ function setupEvents() {
   document.getElementById("save-note-btn").addEventListener("click", saveNote);
   document.getElementById("echo1-toggle").addEventListener("change", (e) => {
     character.combat.echoes[0].active = e.target.checked;
-    saveCombat();
+    saveState();
+refreshUI();
   });
   document.getElementById("echo2-toggle").addEventListener("change", (e) => {
     character.combat.echoes[1].active = e.target.checked;
-    saveCombat();
+    saveState();
+refreshUI();
   });
   document
     .getElementById("concentration-toggle")
     .addEventListener("change", (e) => {
       character.combat.concentration = e.target.checked;
-      saveCombat();
+      saveState();
+refreshUI();
     });
 }
 const resetLabels = {
@@ -380,13 +375,6 @@ function loadNotesFromStorage() {
   notes = JSON.parse(localStorage.getItem(NOTES_KEY)) || [];
 }
 const COMBAT_KEY = "cassian-combat";
-function saveCombat() {
-  localStorage.setItem(COMBAT_KEY, JSON.stringify(character.combat));
-}
-function loadCombat() {
-  const saved = JSON.parse(localStorage.getItem(COMBAT_KEY));
-  if (saved) character.combat = saved;
-}
 let state={
     hp:{
         current:character.hp.current,

@@ -204,8 +204,8 @@ const character = {
       category: "Class Feature",
       action: "Bonus Action",
       uses: {
-        current: "2",
-        max: "2",
+        current: 2,
+        max: 2,
         reset: "short",
       },
       description:
