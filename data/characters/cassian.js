@@ -1,6 +1,6 @@
 window.character = {
   id: "cassian",
-  portrait: "data/portraits/cassian.png",
+  portrait: "data/portraits/Chibi Cassian (1).jpg",
   name: "Cassian Aurelius von Bloodington III",
   class: "Fighter",
   subclass: "Echo Knight",
