@@ -1,6 +1,6 @@
 window.character = {
   id: "cassian",
-  portrait: "data/portraits/Chibi Cassian (1).jpg",
+  portrait: "data/portraits/Chibi Cassian.jpg",
   name: "Cassian Aurelius von Bloodington III",
   class: "Fighter",
   subclass: "Echo Knight",
@@ -15,7 +15,7 @@ window.character = {
   initiative: 5,
   proficiency: 3,
   walk: 30,
-  fly: 0,
+  fly: 30,
   passivePerception: 12,
   darkvision: 60,
   trackers: [
@@ -366,11 +366,6 @@ window.character = {
       name: "Bag of Holding",
       quantity: 1,
       description: "Stores far more than its outside size suggests.",
-    },
-    {
-      name: "Gold Pieces",
-      quantity: 150,
-      description: "Standard gold currency.",
     },
   ],
 };

@@ -89,9 +89,9 @@
     const toggle = document.createElement("button");
     toggle.id = "edit-character-toggle";
     toggle.type = "button";
-    toggle.className = `${classes.button} fixed bottom-3 left-3 z-40`;
-    toggle.innerHTML = '<i class="bi bi-pencil-square"></i><span>Edit sheet</span>';
-    document.body.appendChild(toggle);
+    toggle.className = "inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-blood-500 bg-blood-500 px-3 text-sm font-bold text-white shadow-sm transition hover:bg-blood-600";
+    toggle.innerHTML = '<i class="bi bi-pencil-square"></i><span class="hidden sm:inline">Edit sheet</span>';
+    (document.getElementById("editor-toggle-slot") || document.body).appendChild(toggle);
 
     const overlay = document.createElement("div");
     overlay.id = "character-editor";

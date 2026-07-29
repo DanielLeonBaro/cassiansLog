@@ -1,3 +1,69 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-image:
+      radial-gradient(circle at center, rgb(39 39 42 / 0.08), transparent 58%),
+      linear-gradient(rgb(39 39 42 / 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(39 39 42 / 0.035) 1px, transparent 1px);
+    background-size: auto, 18px 18px, 18px 18px;
+    background-attachment: fixed;
+  }
+
+  [data-theme="dark"] body {
+    background-image:
+      radial-gradient(circle at center, rgb(255 255 255 / 0.055), transparent 58%),
+      linear-gradient(rgb(255 255 255 / 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(255 255 255 / 0.025) 1px, transparent 1px);
+  }
+
+  ::selection {
+    background: rgb(184 59 53 / 0.28);
+  }
+
+  p {
+    line-height: 1.65;
+  }
+}
+
+@layer components {
+  main,
+  main section,
+  main section > * {
+    min-width: 0;
+  }
+
+  main strong,
+  main p {
+    overflow-wrap: anywhere;
+  }
+
+  #quick-stats-grid > div {
+    @apply rounded-xl border border-stone-200/80 bg-white/55 px-3 py-3 dark:border-white/10 dark:bg-white/[.035];
+  }
+
+  #quick-stats-grid i {
+    @apply mb-1 inline-block text-lg;
+  }
+
+  #hp-controls > *,
+  #temp-hp-controls > * {
+    @apply rounded-xl;
+  }
+
+  [id$="Section"],
+  #characterDescription,
+  #quickStats,
+  #hpManager,
+  #combatResources,
+  #allPossibilities,
+  #inventoryAccordion {
+    scroll-margin-top: 5.5rem;
+  }
+}

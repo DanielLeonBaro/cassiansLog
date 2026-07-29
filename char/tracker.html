@@ -12,7 +12,45 @@
 </head>
 
 <body class="min-h-screen bg-parchment font-sans text-stone-900 antialiased transition-colors dark:bg-ink dark:text-stone-100" id="bodyStart">
-    <main class="relative mx-auto w-full max-w-6xl px-4 pb-12 pt-20 sm:px-6 lg:px-8">
+    <nav class="sticky top-0 z-30 border-b border-stone-300/70 bg-parchment/90 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-ink/90" aria-label="Character tools">
+        <div class="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:px-8">
+            <div class="flex items-center gap-2">
+                <a class="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-stone-400 bg-white/70 px-3 text-sm font-bold text-stone-700 shadow-sm transition hover:border-blood-500 hover:text-blood-500 dark:border-white/20 dark:bg-white/5 dark:text-stone-200" href="./" aria-label="All characters">
+                    <i class="bi bi-people-fill"></i><span class="hidden sm:inline">Characters</span>
+                </a>
+                <button type="button" class="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-stone-400 bg-white/70 px-3 text-sm font-bold text-stone-700 shadow-sm transition hover:border-blood-500 hover:text-blood-500 dark:border-white/20 dark:bg-white/5 dark:text-stone-200" id="shortRest-btn" aria-label="Take a short rest">
+                    <i class="bi bi-moon-fill"></i><span class="hidden md:inline">Short rest</span>
+                </button>
+                <button type="button" class="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-emerald-700/50 bg-emerald-700 px-3 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800" id="longRest-btn" aria-label="Take a long rest">
+                    <i class="bi bi-moon-stars-fill"></i><span class="hidden md:inline">Long rest</span>
+                </button>
+            </div>
+            <div class="flex items-center gap-2">
+                <div id="editor-toggle-slot"></div>
+                <div class="relative" role="group">
+                    <button id="navigation-menu-button" type="button" class="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-blood-500 bg-blood-500 px-3 text-sm font-bold text-white shadow-sm transition hover:bg-blood-600"
+                        aria-expanded="false" aria-controls="navigation-menu">
+                        <i class="bi bi-compass-fill"></i><span class="hidden sm:inline">Jump to</span>
+                    </button>
+                    <div id="navigation-menu" class="absolute right-0 mt-2 hidden min-w-56 rounded-2xl border border-stone-200 bg-white p-2 shadow-2xl dark:border-white/10 dark:bg-stone-900" aria-labelledby="navigation-menu-button">
+                        <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="bodyStart"><i class="bi bi-person-fill"></i> Character</button>
+                        <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="quickStats"><i class="bi bi-bar-chart-fill"></i> Stats</button>
+                        <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="hpManager"><i class="bi bi-heart-fill"></i> HP</button>
+                        <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="combatResources"><i class="bi bi-hourglass-split"></i> Combat</button>
+                        <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="spellcastingSection"><i class="bi bi-magic"></i> Spellcasting</button>
+                        <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="allPossibilities"><i class="bi bi-stars"></i> All Possibilities</button>
+                        <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="inventoryAccordion"><i class="bi bi-backpack-fill"></i> Inventory</button>
+                        <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="notesSection"><i class="bi bi-pen-fill"></i> Notes</button>
+                    </div>
+                </div>
+                <button id="theme-toggle" type="button" class="inline-flex h-10 items-center justify-center rounded-xl border border-stone-400 bg-white/70 px-3 text-sm font-bold text-stone-700 shadow-sm transition hover:border-blood-500 hover:text-blood-500 dark:border-white/20 dark:bg-white/5 dark:text-stone-200"
+                    aria-label="Switch theme">
+                    <i id="theme-icon" class="bi bi-sun-fill"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+    <main class="relative mx-auto w-full max-w-7xl px-4 pb-16 pt-6 sm:px-6 sm:pt-8 lg:px-8">
         <section id="combat-page">
             <div class="mb-4 overflow-hidden rounded-2xl border border-stone-300/80 bg-white/75 shadow-card backdrop-blur-sm dark:border-white/10 dark:bg-white/[.055]" id="characterDescription">
                 <div class="p-5">
@@ -34,7 +72,7 @@
             <div class="mb-4 overflow-hidden rounded-2xl border border-stone-300/80 bg-white/75 shadow-card backdrop-blur-sm dark:border-white/10 dark:bg-white/[.055]">
                 <div class="flex items-center border-b border-stone-200/80 bg-stone-100/70 px-5 py-4 font-bold leading-none tracking-wide dark:border-white/10 dark:bg-white/[.045]" id="quickStats">Quick Stats</div>
                 <div class="p-5">
-                    <div class="grid grid-cols-2 gap-4 text-center sm:grid-cols-4">
+                    <div id="quick-stats-grid" class="grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
                         <div><i class="bi bi-shield-fill-plus text-blood-500"></i>
                             <div class="text-sm text-stone-500 dark:text-stone-400">AC</div>
                             <div class="font-bold"><span id="character-ac"></span></div>
@@ -101,7 +139,7 @@
                             <div class="text-2xl font-bold"><span id="temp-hp"></span></div>
                         </div>
                     </div>
-                    <div class="mb-4 flex flex-wrap">
+                    <div class="mb-4 flex flex-wrap gap-2" id="hp-controls">
                         <span class="rounded-l-xl border border-stone-300 bg-white/80 px-3 py-2.5 dark:border-white/15 dark:bg-white/5">Hit Points</span>
                         <button id="hp-decrease-btn" type="button" class="inline-flex w-10 items-center justify-center border-y border-l border-stone-300 bg-stone-100 font-bold text-stone-700 transition hover:bg-stone-200 dark:border-white/15 dark:bg-white/10 dark:text-stone-100 dark:hover:bg-white/15" aria-label="Decrease hit point amount">−</button>
                         <input id="hp-amount" type="text" inputmode="numeric" pattern="[0-9]*" class="min-w-16 flex-1 border border-stone-300 bg-white/80 px-3 py-2.5 text-center text-stone-900 placeholder:text-stone-400 dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="0">
@@ -111,7 +149,7 @@
                         <button id="heal-btn" type="button" class="inline-flex items-center justify-center gap-2 rounded-r-xl border border-emerald-600 bg-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700"><i class="bi bi-plus-circle"></i>
                             Heal</button>
                     </div>
-                    <div class="flex">
+                    <div class="flex flex-wrap gap-2" id="temp-hp-controls">
                         <span class="rounded-l-xl border border-stone-300 bg-white/80 px-3 py-2.5 dark:border-white/15 dark:bg-white/5">Temporary HP</span>
                         <button id="temp-decrease-btn" type="button" class="inline-flex w-10 items-center justify-center border-y border-l border-stone-300 bg-stone-100 font-bold text-stone-700 transition hover:bg-stone-200 dark:border-white/15 dark:bg-white/10 dark:text-stone-100 dark:hover:bg-white/15" aria-label="Decrease temporary hit points">−</button>
                         <input id="temp-input" type="text" inputmode="numeric" pattern="[0-9]*" class="min-w-16 flex-1 border border-stone-300 bg-white/80 px-3 py-2.5 text-center text-stone-900 placeholder:text-stone-400 dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="0">
@@ -121,8 +159,9 @@
                 </div>
             </div>
             <div class="mb-4 overflow-hidden rounded-2xl border border-stone-300/80 bg-white/75 shadow-card backdrop-blur-sm dark:border-white/10 dark:bg-white/[.055]" id="combatResources">
-                <div class="flex items-center border-b border-stone-200/80 bg-stone-100/70 px-5 py-4 font-bold leading-none tracking-wide dark:border-white/10 dark:bg-white/[.045]">Combat Resources</div>
+                <div class="flex items-center border-b border-stone-200/80 bg-stone-100/70 px-5 py-4 font-bold leading-none tracking-wide dark:border-white/10 dark:bg-white/[.045]"><i class="bi bi-lightning-charge-fill mr-2 text-blood-500"></i>Combat Resources</div>
                 <div class="p-5">
+                    <div id="combat-filters" class="mb-5"></div>
                     <div class="mb-4 hidden overflow-hidden rounded-2xl border border-stone-300/80 bg-white/75 shadow-card dark:border-white/10 dark:bg-white/[.055]" id="trackers-card">
                         <div class="p-5" id="trackers-container"></div>
                     </div>
@@ -139,11 +178,12 @@
             <div class="mb-4 overflow-hidden rounded-2xl border border-stone-300/80 bg-white/75 shadow-card backdrop-blur-sm dark:border-white/10 dark:bg-white/[.055]" id="allPossibilities">
                 <div class="flex items-center border-b border-stone-200/80 bg-stone-100/70 px-5 py-4 font-bold leading-none tracking-wide dark:border-white/10 dark:bg-white/[.045]"><i class="bi bi-stars mr-2"></i>All Possibilities</div>
                 <div class="p-5">
+                    <div id="all-filters" class="mb-5"></div>
                     <div class="space-y-3" id="allAccordion">
                         <div class="overflow-hidden rounded-2xl border border-stone-300/80 bg-white/75 dark:border-white/10 dark:bg-white/[.055]">
                             <h2><button class="flex w-full items-center bg-transparent px-5 py-4 text-left font-display font-bold transition hover:bg-blood-500/10 after:ml-auto after:text-blood-500 after:content-['＋'] aria-expanded:after:content-['−']" type="button"
                                     data-collapse-target="actionsCollapse" aria-expanded="false"
-                                    aria-controls="actionsCollapse">Actions</button></h2>
+                                    aria-controls="actionsCollapse">Actions <span id="actions-count" class="ml-2 text-xs font-semibold text-stone-500 dark:text-stone-400"></span></button></h2>
                             <div id="actionsCollapse" class="hidden">
                                 <div class="p-4 sm:p-5">
                                     <div id="actions-container" class="grid grid-cols-1 gap-4 md:grid-cols-2"></div>
@@ -153,7 +193,7 @@
                         <div class="overflow-hidden rounded-2xl border border-stone-300/80 bg-white/75 dark:border-white/10 dark:bg-white/[.055]">
                             <h2><button class="flex w-full items-center bg-transparent px-5 py-4 text-left font-display font-bold transition hover:bg-blood-500/10 after:ml-auto after:text-blood-500 after:content-['＋'] aria-expanded:after:content-['−']" type="button"
                                     data-collapse-target="spellsCollapse" aria-expanded="false"
-                                    aria-controls="spellsCollapse">Spells</button></h2>
+                                    aria-controls="spellsCollapse">Spells <span id="spells-count" class="ml-2 text-xs font-semibold text-stone-500 dark:text-stone-400"></span></button></h2>
                             <div id="spellsCollapse" class="hidden">
                                 <div class="p-4 sm:p-5">
                                     <div id="spells-container" class="grid grid-cols-1 gap-4 md:grid-cols-2"></div>
@@ -163,10 +203,22 @@
                         <div class="overflow-hidden rounded-2xl border border-stone-300/80 bg-white/75 dark:border-white/10 dark:bg-white/[.055]">
                             <h2><button class="flex w-full items-center bg-transparent px-5 py-4 text-left font-display font-bold transition hover:bg-blood-500/10 after:ml-auto after:text-blood-500 after:content-['＋'] aria-expanded:after:content-['−']" type="button"
                                     data-collapse-target="featuresCollapse" aria-expanded="false"
-                                    aria-controls="featuresCollapse">Features</button></h2>
+                                    aria-controls="featuresCollapse">Features <span id="features-count" class="ml-2 text-xs font-semibold text-stone-500 dark:text-stone-400"></span></button></h2>
                             <div id="featuresCollapse" class="hidden">
                                 <div class="p-4 sm:p-5">
                                     <div id="features-container" class="grid grid-cols-1 gap-4 md:grid-cols-2"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="overflow-hidden rounded-2xl border border-stone-300/80 bg-white/75 dark:border-white/10 dark:bg-white/[.055]">
+                            <h2>
+                                <button class="flex w-full items-center bg-transparent px-5 py-4 text-left font-display font-bold transition hover:bg-blood-500/10 after:ml-auto after:text-blood-500 after:content-['＋'] aria-expanded:after:content-['−']" type="button"
+                                    data-collapse-target="possibilityResourcesCollapse" aria-expanded="false"
+                                    aria-controls="possibilityResourcesCollapse">Resources <span id="possibility-resources-count" class="ml-2 text-xs font-semibold text-stone-500 dark:text-stone-400"></span></button>
+                            </h2>
+                            <div id="possibilityResourcesCollapse" class="hidden">
+                                <div class="p-4 sm:p-5">
+                                    <div id="possibility-resources-container" class="grid grid-cols-1 gap-4 md:grid-cols-2"></div>
                                 </div>
                             </div>
                         </div>
@@ -204,32 +256,6 @@
             </div>
         </section>
     </main>
-    <div class="fixed left-0 top-0 z-30 flex gap-2 p-3">
-        <a class="inline-flex items-center justify-center rounded-xl border border-stone-400 bg-white/80 px-4 py-2 text-sm font-bold text-stone-700 shadow-sm backdrop-blur transition hover:border-blood-500 hover:text-blood-500 dark:border-white/20 dark:bg-stone-900/80 dark:text-stone-200" href="./" aria-label="All characters"><i
-                class="bi bi-people-fill"></i></a>
-        <button type="button" class="inline-flex items-center justify-center rounded-xl border border-stone-600 bg-stone-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-stone-700" id="shortRest-btn"><i class="bi bi-moon-fill"></i></button>
-        <button type="button" class="inline-flex items-center justify-center rounded-xl border border-emerald-600 bg-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700" id="longRest-btn"><i class="bi bi-moon-stars-fill"></i></button>
-    </div>
-    <div class="fixed right-0 top-0 z-30 p-3">
-        <div class="relative" role="group">
-            <button id="navigation-menu-button" type="button" class="inline-flex items-center justify-center rounded-xl border border-blood-500 bg-blood-500 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-blood-600"
-                aria-expanded="false"><i class="bi bi-arrow-down-square-fill"></i></button>
-            <div id="navigation-menu" class="absolute right-0 mt-2 hidden min-w-56 rounded-2xl border border-stone-200 bg-white p-2 shadow-2xl dark:border-white/10 dark:bg-stone-900" aria-labelledby="navigation-menu-button">
-                <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="bodyStart"><i class="bi bi-person-fill"></i> Character</button>
-                <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="quickStats"><i class="bi bi-bar-chart-fill"></i> Stats</button>
-                <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="hpManager"><i class="bi bi-heart-fill"></i> HP</button>
-                <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="combatResources"><i class="bi bi-hourglass-split"></i> Combat</button>
-                <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="spellcastingSection"><i class="bi bi-magic"></i> Spellcasting</button>
-                <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="allPossibilities"><i class="bi bi-stars"></i> All Possibilities</button>
-                <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="inventoryAccordion"><i class="bi bi-backpack-fill"></i> Inventory</button>
-                <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="notesSection"><i class="bi bi-pen-fill"></i> Notes</button>
-            </div>
-        </div>
-    </div>
-    <button id="theme-toggle" type="button" class="fixed bottom-0 right-0 z-30 m-3 inline-flex items-center justify-center rounded-xl border border-stone-400 bg-white/80 px-3 py-1.5 text-xs font-bold text-stone-700 shadow-sm backdrop-blur transition hover:border-blood-500 hover:text-blood-500 dark:border-white/20 dark:bg-stone-900/80 dark:text-stone-200"
-        aria-label="Switch theme">
-        <i id="theme-icon" class="bi bi-sun-fill"></i>
-    </button>
     <script>
         (function () {
             const params = new URLSearchParams(window.location.search);

@@ -12,20 +12,20 @@
 </head>
 
 <body class="flex min-h-screen flex-col bg-parchment font-sans text-stone-900 antialiased transition-colors dark:bg-ink dark:text-stone-100">
-    <nav class="sticky top-0 z-40 border-b border-stone-300/70 bg-parchment/85 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-ink/85">
-        <div class="relative mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-2 sm:px-6 lg:px-8">
-            <a class="flex items-center gap-2 font-display text-lg font-semibold hover:text-blood-500" href="./">
+    <nav class="sticky top-0 z-30 border-b border-stone-300/70 bg-parchment/90 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-ink/90" aria-label="Site navigation">
+        <div class="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:px-8">
+            <a class="flex h-10 items-center gap-2 font-display text-lg font-semibold hover:text-blood-500" href="./">
                 <i class="bi bi-journal-bookmark-fill text-blood-500"></i>
                 Cassian's Log
             </a>
-            <button id="theme-toggle" type="button" class="inline-flex items-center justify-center rounded-xl border border-stone-400 bg-white/60 px-3 py-1.5 text-xs font-bold text-stone-700 shadow-sm transition hover:border-blood-500 hover:text-blood-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/20 dark:bg-white/5 dark:text-stone-200"
+            <button id="theme-toggle" type="button" class="inline-flex h-10 items-center justify-center rounded-xl border border-stone-400 bg-white/70 px-3 text-sm font-bold text-stone-700 shadow-sm transition hover:border-blood-500 hover:text-blood-500 dark:border-white/20 dark:bg-white/5 dark:text-stone-200"
                 aria-label="Switch color theme">
                 <i id="theme-icon" class="bi bi-sun-fill"></i>
             </button>
         </div>
     </nav>
 
-    <main class="relative mx-auto w-full max-w-6xl grow px-4 py-12 sm:px-6 lg:px-8">
+    <main class="relative mx-auto w-full max-w-7xl grow px-4 py-12 sm:px-6 lg:px-8">
         <header class="mx-auto mb-10 max-w-2xl text-center">
             <span class="mb-4 inline-flex items-center rounded-full bg-blood-500 px-3 py-1 text-xs font-bold text-white">
                 <i class="bi bi-dice-20-fill mr-1"></i> Character archive
@@ -52,7 +52,7 @@
         </section>
     </main>
 
-    <footer class="relative mx-auto w-full max-w-6xl px-4 py-4 text-center text-sm text-stone-500 dark:text-stone-400 sm:px-6 lg:px-8">
+    <footer class="relative mx-auto w-full max-w-7xl px-4 py-4 text-center text-sm text-stone-500 dark:text-stone-400 sm:px-6 lg:px-8">
         Select a character to begin.
     </footer>
 

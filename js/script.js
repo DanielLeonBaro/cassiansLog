@@ -25,8 +25,8 @@ const actionGroups = [
   { value: "Other", label: "Other Resources" },
 ];
 const ui = {
-  card: "h-full overflow-hidden rounded-2xl border border-stone-300/80 bg-white/75 shadow-card dark:border-white/10 dark:bg-white/[.055]",
-  cardHeader: "flex items-center justify-between gap-3 border-b border-stone-200/80 bg-stone-100/70 px-5 py-4 font-bold leading-none dark:border-white/10 dark:bg-white/[.045]",
+  card: "min-w-0 h-full overflow-hidden rounded-2xl border border-stone-300/80 bg-white/75 shadow-card dark:border-white/10 dark:bg-white/[.055]",
+  cardHeader: "flex flex-wrap items-center justify-between gap-3 border-b border-stone-200/80 bg-stone-100/70 px-5 py-4 font-bold leading-none dark:border-white/10 dark:bg-white/[.045]",
   cardBody: "p-5",
   badge: "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold",
   badgeDanger: "bg-blood-500 text-white",
@@ -36,6 +36,30 @@ const ui = {
   badgePrimary: "bg-sky-700 text-white",
   iconButton: "inline-flex h-9 w-9 items-center justify-center rounded-full border border-stone-300 bg-stone-100 text-sm font-bold text-stone-700 shadow-sm transition hover:border-blood-500 hover:bg-blood-500 hover:text-white dark:border-white/15 dark:bg-white/10 dark:text-stone-100 dark:hover:bg-blood-500",
 };
+const filterFocusOptions = [
+  { value: "", label: "Any focus" },
+  { value: "damage-spell", label: "Damage spells" },
+  { value: "healing-spell", label: "Healing spells" },
+  { value: "utility-spell", label: "Utility spells" },
+  { value: "melee-spell", label: "Melee spells" },
+  { value: "melee-attack", label: "Melee attacks" },
+  { value: "ranged-attack", label: "Ranged attacks" },
+  { value: "feat", label: "Feats" },
+  { value: "feature", label: "Features" },
+  { value: "resource", label: "Resources" },
+];
+const blankFilterState = () => ({
+  search: "",
+  source: "",
+  focus: "",
+  level: "",
+  category: "",
+  action: "",
+});
+const filterState = {
+  combat: blankFilterState(),
+  all: blankFilterState(),
+};
 let notes = [];
 let editingNote = null;
 function initializeApp() {
@@ -43,6 +67,7 @@ function initializeApp() {
   loadNotesFromStorage();
   loadState();
   loadStats();
+  initializeFilters();
   refreshUI();
   setupEvents();
 }
@@ -81,6 +106,10 @@ function loadHeader() {
   Object.entries(fields).forEach(([id, value]) => setText(id, value));
   const portrait = document.getElementById("character-portrait");
   if (portrait) {
+    portrait.onerror = () => {
+      portrait.onerror = null;
+      portrait.src = "bat.ico";
+    };
     portrait.src = character.portrait || "bat.ico";
     portrait.alt = `${character.name} portrait`;
   }
@@ -164,12 +193,272 @@ function loadTrackers() {
     )
     .join("");
 }
+function initializeFilters() {
+  renderFilterControls("combat", getCombatItemRecords());
+  renderFilterControls("all", getAllPossibilityRecords());
+}
+function renderFilterControls(scope, records) {
+  const container = document.getElementById(`${scope}-filters`);
+  if (!container) return;
+  const categories = uniqueValues(records.map(({ item }) => item.category));
+  const actions = uniqueValues(records.map(({ item }) => item.action));
+  const levels = [
+    ...new Set(
+      records
+        .map(({ item }) => item.level)
+        .filter((level) => level !== undefined && level !== null)
+        .map(Number),
+    ),
+  ].sort((a, b) => a - b);
+  const availableSources = new Set(records.map((record) => record.source));
+  const sourceOptions = [
+    { value: "", label: "All sources" },
+    { value: "actions", label: "Actions & attacks" },
+    { value: "spells", label: "Spells" },
+    { value: "features", label: "Features & feats" },
+    { value: "resources", label: "Resources" },
+  ].filter((option) => !option.value || availableSources.has(option.value));
+  const fieldClass =
+    "min-w-0 w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-sm text-stone-900 shadow-sm outline-none transition focus:border-blood-500 focus:ring-2 focus:ring-blood-500/20 dark:border-white/15 dark:bg-white/5 dark:text-white";
+  const labelClass =
+    "mb-1.5 block text-xs font-bold uppercase tracking-wide text-stone-500 dark:text-stone-400";
+  container.innerHTML = `
+    <div class="rounded-2xl border border-stone-200/90 bg-stone-50/70 p-4 dark:border-white/10 dark:bg-black/10">
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 class="font-display font-bold"><i class="bi bi-funnel-fill mr-2 text-blood-500"></i>Find an option</h3>
+          <p class="mt-1 text-sm text-stone-500 dark:text-stone-400">Combine filters to narrow the list.</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <span id="${scope}-filter-summary" class="text-sm font-semibold text-stone-500 dark:text-stone-400" aria-live="polite"></span>
+          <button type="button" data-filter-reset class="hidden rounded-xl border border-stone-300 bg-white/70 px-3 py-2 text-xs font-bold text-stone-600 transition hover:border-blood-500 hover:text-blood-500 dark:border-white/15 dark:bg-white/5 dark:text-stone-300">
+            <i class="bi bi-arrow-counterclockwise mr-1"></i>Clear
+          </button>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-7">
+        <label class="min-w-0 sm:col-span-2">
+          <span class="${labelClass}">Search</span>
+          <span class="relative block">
+            <i class="bi bi-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400"></i>
+            <input type="search" data-filter-key="search" class="${fieldClass} pl-9" placeholder="Name, effect, damage..." autocomplete="off">
+          </span>
+        </label>
+        ${renderFilterSelect("source", "Source", sourceOptions, fieldClass, labelClass)}
+        ${renderFilterSelect("focus", "Focus", filterFocusOptions, fieldClass, labelClass)}
+        ${renderFilterSelect(
+          "level",
+          "Spell level",
+          [
+            { value: "", label: "Any level" },
+            ...levels.map((level) => ({
+              value: String(level),
+              label: formatSpellLevel(level),
+            })),
+          ],
+          fieldClass,
+          labelClass,
+        )}
+        ${renderFilterSelect(
+          "category",
+          "Category",
+          [
+            { value: "", label: "Any category" },
+            ...categories.map((category) => ({
+              value: category,
+              label: category,
+            })),
+          ],
+          fieldClass,
+          labelClass,
+        )}
+        ${renderFilterSelect(
+          "action",
+          "Timing",
+          [
+            { value: "", label: "Any timing" },
+            ...actions.map((action) => ({ value: action, label: action })),
+          ],
+          fieldClass,
+          labelClass,
+        )}
+      </div>
+    </div>`;
+  container.addEventListener("input", (event) => {
+    const input = event.target.closest("[data-filter-key]");
+    if (!input || input.tagName === "SELECT") return;
+    updateFilters(scope, input.dataset.filterKey, input.value);
+  });
+  container.addEventListener("change", (event) => {
+    const input = event.target.closest("select[data-filter-key]");
+    if (!input) return;
+    updateFilters(scope, input.dataset.filterKey, input.value);
+  });
+  container
+    .querySelector("[data-filter-reset]")
+    ?.addEventListener("click", () => resetFilters(scope));
+}
+function renderFilterSelect(key, label, options, fieldClass, labelClass) {
+  return `<label class="min-w-0"><span class="${labelClass}">${escapeHTML(label)}</span><select data-filter-key="${key}" class="${fieldClass}">${options
+    .map(
+      (option) =>
+        `<option value="${escapeHTML(option.value)}">${escapeHTML(option.label)}</option>`,
+    )
+    .join("")}</select></label>`;
+}
+function updateFilters(scope, key, value) {
+  filterState[scope][key] = value;
+  if (scope === "combat") loadResources();
+  else loadAbilities();
+  updateFilterResetButton(scope);
+}
+function resetFilters(scope) {
+  filterState[scope] = blankFilterState();
+  const container = document.getElementById(`${scope}-filters`);
+  container?.querySelectorAll("[data-filter-key]").forEach((input) => {
+    input.value = "";
+  });
+  if (scope === "combat") loadResources();
+  else {
+    document
+      .querySelectorAll("#allAccordion [data-collapse-target]")
+      .forEach((button) => {
+        button.setAttribute("aria-expanded", "false");
+        document
+          .getElementById(button.dataset.collapseTarget)
+          ?.classList.add("hidden");
+      });
+    loadAbilities();
+  }
+  updateFilterResetButton(scope);
+}
+function updateFilterResetButton(scope) {
+  document
+    .querySelector(`#${scope}-filters [data-filter-reset]`)
+    ?.classList.toggle("hidden", !hasActiveFilters(filterState[scope]));
+}
+function updateFilterSummary(scope, visible, total) {
+  const summary = document.getElementById(`${scope}-filter-summary`);
+  if (summary)
+    summary.textContent = hasActiveFilters(filterState[scope])
+      ? `${visible} of ${total}`
+      : `${total} ${total === 1 ? "option" : "options"}`;
+}
+function hasActiveFilters(state) {
+  return Object.values(state).some((value) => String(value).trim());
+}
+function uniqueValues(values) {
+  return [...new Set(values.filter(Boolean).map(String))].sort((a, b) =>
+    a.localeCompare(b),
+  );
+}
+function itemMatchesFilters(record, state) {
+  const { item, source } = record;
+  if (state.source && source !== state.source) return false;
+  if (
+    state.level !== "" &&
+    (item.level === undefined || Number(item.level) !== Number(state.level))
+  )
+    return false;
+  if (state.category && item.category !== state.category) return false;
+  if (state.action && item.action !== state.action) return false;
+  if (state.focus && !matchesFocus(record, state.focus)) return false;
+  const terms = normalizeFilterText(state.search).split(/\s+/).filter(Boolean);
+  if (terms.length) {
+    const haystack = itemFilterText(record);
+    if (!terms.every((term) => haystack.includes(term))) return false;
+  }
+  return true;
+}
+function matchesFocus(record, focus) {
+  const { item, source } = record;
+  const text = itemFilterText(record);
+  const spell = source === "spells";
+  const healing =
+    /\b(heal|healing|cure|stabiliz)/.test(text) ||
+    /\b(regain|restore)[a-z ]{0,24}\bhit points?\b/.test(text);
+  const damaging = Boolean(item.damage) || /\bdeals?\b.{0,32}\bdamage\b/.test(text);
+  const rangeText = normalizeFilterText(item.range);
+  const description = normalizeFilterText(item.description);
+  const distances = [...String(item.range || "").matchAll(/\d+/g)].map(
+    (match) => Number(match[0]),
+  );
+  const attack =
+    Boolean(item.attack) ||
+    /\battack\b/.test(normalizeFilterText(`${item.name} ${item.description}`));
+  const melee =
+    /\b(melee|touch|adjacent)\b/.test(`${rangeText} ${description}`) ||
+    (attack && distances.length > 0 && Math.min(...distances) <= 5);
+  const ranged =
+    /\b(ranged|thrown)\b/.test(description) ||
+    (attack && distances.some((distance) => distance > 5));
+  switch (focus) {
+    case "damage-spell":
+      return spell && damaging;
+    case "healing-spell":
+      return spell && healing;
+    case "utility-spell":
+      return spell && !damaging && !healing;
+    case "melee-spell":
+      return spell && melee;
+    case "melee-attack":
+      return attack && melee;
+    case "ranged-attack":
+      return attack && ranged;
+    case "feat":
+      return /\bfeat\b/.test(
+        normalizeFilterText(`${item.name} ${item.category}`),
+      );
+    case "feature":
+      return source === "features" || /\b(feature|trait)\b/.test(text);
+    case "resource":
+      return source === "resources";
+    default:
+      return true;
+  }
+}
+function itemFilterText({ item, source }) {
+  return normalizeFilterText(
+    [
+      item.name,
+      item.category,
+      item.action,
+      item.description,
+      item.school,
+      item.range,
+      item.attack,
+      item.damage,
+      item.duration,
+      item.components,
+      item.level !== undefined ? formatSpellLevel(item.level) : "",
+      source,
+    ].join(" "),
+  );
+}
+function normalizeFilterText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+function renderEmptyFilterState(scope) {
+  const filtering = hasActiveFilters(filterState[scope]);
+  return `<div class="rounded-2xl border border-dashed border-stone-300 bg-stone-50/60 px-5 py-10 text-center text-stone-500 dark:border-white/15 dark:bg-white/[.025] dark:text-stone-400"><i class="bi ${filtering ? "bi-search" : "bi-journal-plus"} mb-2 block text-2xl text-blood-500"></i><strong class="block text-stone-700 dark:text-stone-200">${filtering ? "No matching options" : "No options added yet"}</strong><span class="mt-1 block text-sm">${filtering ? "Try removing a filter or using a broader search." : "Add an action, spell, feature, or resource in the character editor."}</span>${filtering ? `<button type="button" class="mt-4 rounded-xl border border-stone-300 px-3 py-2 text-xs font-bold hover:border-blood-500 hover:text-blood-500 dark:border-white/15" onclick="resetFilters('${scope}')">Clear filters</button>` : ""}</div>`;
+}
 function loadResources() {
   const container = document.getElementById("resources-container");
   if (!container) return;
+  const records = getCombatItemRecords().filter((record) =>
+    itemMatchesFilters(record, filterState.combat),
+  );
+  updateFilterSummary("combat", records.length, getCombatItemRecords().length);
+  if (!records.length) {
+    container.innerHTML = renderEmptyFilterState("combat");
+    return;
+  }
   container.innerHTML = actionGroups
     .map((group) => {
-      const items = getCombatItems().filter((item) =>
+      const items = records.map((record) => record.item).filter((item) =>
         group.value === "Other"
           ? !["Action", "Bonus Action", "Free Action", "Reaction"].includes(
               item.action,
@@ -232,9 +521,61 @@ function changeSpellSlot(id, delta) {
   refreshUI();
 }
 function loadAbilities() {
-  loadAbilitySection("actions-container", character.actions || []);
-  loadAbilitySection("spells-container", character.spells || []);
-  loadAbilitySection("features-container", character.features || []);
+  const allRecords = getAllPossibilityRecords();
+  const records = allRecords.filter((record) =>
+    itemMatchesFilters(record, filterState.all),
+  );
+  updateFilterSummary("all", records.length, allRecords.length);
+  const sections = [
+    {
+      source: "actions",
+      containerId: "actions-container",
+      countId: "actions-count",
+      collapseId: "actionsCollapse",
+    },
+    {
+      source: "spells",
+      containerId: "spells-container",
+      countId: "spells-count",
+      collapseId: "spellsCollapse",
+    },
+    {
+      source: "features",
+      containerId: "features-container",
+      countId: "features-count",
+      collapseId: "featuresCollapse",
+    },
+    {
+      source: "resources",
+      containerId: "possibility-resources-container",
+      countId: "possibility-resources-count",
+      collapseId: "possibilityResourcesCollapse",
+    },
+  ];
+  const filtering = hasActiveFilters(filterState.all);
+  sections.forEach((section) => {
+    const items = records
+      .filter((record) => record.source === section.source)
+      .map((record) => record.item);
+    loadAbilitySection(section.containerId, items);
+    setText(section.countId, `(${items.length})`);
+    const panel = document.getElementById(section.collapseId);
+    const button = document.querySelector(
+      `[data-collapse-target="${section.collapseId}"]`,
+    );
+    const card = button?.closest(".overflow-hidden");
+    const sourceTotal = allRecords.filter(
+      (record) => record.source === section.source,
+    ).length;
+    card?.classList.toggle(
+      "hidden",
+      sourceTotal === 0 || (filtering && items.length === 0),
+    );
+    if (filtering && items.length) {
+      panel?.classList.remove("hidden");
+      button?.setAttribute("aria-expanded", "true");
+    }
+  });
 }
 function loadAbilitySection(id, items) {
   const container = document.getElementById(id);
@@ -527,15 +868,36 @@ function applyTheme(theme) {
   const icon = document.getElementById("theme-icon");
   if (!button || !icon) return;
   const dark = theme === "dark";
-  button.className = `fixed bottom-0 right-0 z-30 m-3 inline-flex items-center justify-center rounded-xl border px-3 py-1.5 text-xs font-bold shadow-sm backdrop-blur transition hover:border-blood-500 hover:text-blood-500 ${dark ? "border-white/20 bg-stone-900/80 text-stone-200" : "border-stone-400 bg-white/80 text-stone-700"}`;
+  button.setAttribute(
+    "aria-label",
+    dark ? "Switch to light theme" : "Switch to dark theme",
+  );
   icon.className = dark ? "bi bi-sun-fill" : "bi bi-moon-stars-fill";
 }
 function getCombatItems() {
+  return getCombatItemRecords().map((record) => record.item);
+}
+function getCombatItemRecords() {
   return [
-    ...(character.actions || []),
-    ...(character.spells || []),
-    ...(character.resources || []),
+    ...createItemRecords("actions", character.actions),
+    ...createItemRecords("spells", character.spells),
+    ...createItemRecords("resources", character.resources),
+    ...createItemRecords(
+      "features",
+      (character.features || []).filter((item) => item.action),
+    ),
   ];
+}
+function getAllPossibilityRecords() {
+  return [
+    ...createItemRecords("actions", character.actions),
+    ...createItemRecords("spells", character.spells),
+    ...createItemRecords("features", character.features),
+    ...createItemRecords("resources", character.resources),
+  ];
+}
+function createItemRecords(source, items) {
+  return (items || []).map((item) => ({ source, item }));
 }
 function getAllCharacterItems() {
   return [
