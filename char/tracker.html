@@ -38,6 +38,7 @@
                         <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="hpManager"><i class="bi bi-heart-fill"></i> HP</button>
                         <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="combatResources"><i class="bi bi-hourglass-split"></i> Combat</button>
                         <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="spellcastingSection"><i class="bi bi-magic"></i> Spellcasting</button>
+                        <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="preparedSpellsSection"><i class="bi bi-journal-check"></i> Prepared Spells</button>
                         <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="allPossibilities"><i class="bi bi-stars"></i> All Possibilities</button>
                         <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="inventoryAccordion"><i class="bi bi-backpack-fill"></i> Inventory</button>
                         <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="notesSection"><i class="bi bi-pen-fill"></i> Notes</button>
@@ -173,6 +174,19 @@
                 <div class="p-5">
                     <div id="spellcasting-profiles" class="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2"></div>
                     <div id="spell-slots-container" class="grid grid-cols-1 gap-4"></div>
+                </div>
+            </div>
+            <div class="mb-4 hidden overflow-hidden rounded-2xl border border-stone-300/80 bg-white/75 shadow-card backdrop-blur-sm dark:border-white/10 dark:bg-white/[.055]" id="preparedSpellsSection">
+                <h2>
+                    <button class="flex w-full items-center bg-transparent px-5 py-4 text-left font-display font-bold transition hover:bg-blood-500/10 after:ml-auto after:text-blood-500 after:content-['＋'] aria-expanded:after:content-['−']" type="button"
+                        data-collapse-target="preparedSpellsCollapse" aria-expanded="false"
+                        aria-controls="preparedSpellsCollapse"><i class="bi bi-journal-check mr-2"></i>Prepare Spells <span id="prepared-spells-total" class="ml-2 text-xs font-semibold text-stone-500 dark:text-stone-400"></span></button>
+                </h2>
+                <div id="preparedSpellsCollapse" class="hidden">
+                    <div class="border-t border-stone-200/80 p-4 dark:border-white/10 sm:p-5">
+                        <p class="mb-4 text-sm text-stone-500 dark:text-stone-400">Choose the spells this character currently has prepared. Cantrips and always-prepared spells do not count against a profile's limit.</p>
+                        <div id="prepared-spells-container" class="space-y-4"></div>
+                    </div>
                 </div>
             </div>
             <div class="mb-4 overflow-hidden rounded-2xl border border-stone-300/80 bg-white/75 shadow-card backdrop-blur-sm dark:border-white/10 dark:bg-white/[.055]" id="allPossibilities">

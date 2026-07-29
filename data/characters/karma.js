@@ -24,10 +24,14 @@ window.character = {
   ],
   spellcasting: {
     enabled: true,
-    profiles: [{ name: "Cleric · Grave Domain", ability: "WIS", saveDC: 14, attackBonus: 6 }],
+    profiles: [
+      { id: "cleric", name: "Cleric · Grave Domain", ability: "WIS", saveDC: 14, attackBonus: 6, preparedLimit: 8 },
+      { id: "wayfinder", name: "Wayfinder", ability: "WIS", saveDC: 14, attackBonus: 6, preparedLimit: 0 },
+      { id: "tiefling", name: "Tiefling Legacy", ability: "CHA", saveDC: 12, attackBonus: 4, preparedLimit: 0 },
+    ],
     slots: [
-      { id: "slot-1", level: 1, current: 1, max: 4, reset: "long" },
-      { id: "slot-2", level: 2, current: 3, max: 3, reset: "long" },
+      { id: "slot-1", profileId: "cleric", level: 1, current: 1, max: 4, reset: "long" },
+      { id: "slot-2", profileId: "cleric", level: 2, current: 3, max: 3, reset: "long" },
     ],
   },
   stats: {
@@ -135,14 +139,14 @@ window.character = {
     },
     {
       id: "wayfinder-invisibility", name: "Wayfinder Invisibility", category: "Wayfinder",
-      action: "Action or Reaction", level: 0, school: "Illusion", spellcasting: "WIS",
+      action: "Action or Reaction", level: 0, school: "Illusion", spellcasting: "WIS", source: "wayfinder",
       range: "Self", duration: "Until the start of your next turn",
       uses: { current: 2, max: 2, reset: "long" },
       description: "Become invisible. In combat, react before learning whether an incoming attack hits; that attack has disadvantage.",
     },
     {
       id: "cause-fear", name: "Cause Fear", category: "Wayfinder", action: "Action",
-      level: 1, school: "Necromancy", spellcasting: "WIS", range: "60 ft",
+      level: 1, school: "Necromancy", spellcasting: "WIS", source: "wayfinder", range: "60 ft",
       duration: "Concentration, up to 1 minute", components: "V", concentration: true,
       uses: { current: 1, max: 1, reset: "long" },
       description: "A non-construct, non-undead target that fails a Wisdom save is frightened and can repeat the save each turn.",
@@ -221,7 +225,7 @@ window.character = {
     },
     {
       id: "hellish-rebuke", name: "Hellish Rebuke", category: "Tiefling", action: "Reaction",
-      level: 2, school: "Evocation", spellcasting: "CHA", range: "60 ft", damage: "3d10 fire",
+      level: 2, school: "Evocation", spellcasting: "CHA", source: "tiefling", range: "60 ft", damage: "3d10 fire",
       duration: "Instantaneous", components: "V, S", uses: { current: 1, max: 1, reset: "long" },
       description: "A creature that damaged you makes a Dexterity save, taking full fire damage on a failure or half on a success.",
     },

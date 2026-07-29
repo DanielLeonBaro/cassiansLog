@@ -1,7 +1,7 @@
 {
   "scripts": {
     "build:css": "tailwindcss -i ./src/tailwind.css -o ./dist/tailwind.css --minify",
-    "test": "npm run build:css"
+    "test": "node tests/spellcasting.test.cjs && npm run build:css"
   },
   "devDependencies": {
     "tailwindcss": "^3.4.17"

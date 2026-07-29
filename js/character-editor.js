@@ -28,24 +28,38 @@
   }
 
   function blankFor(path, items) {
+    const name = path[path.length - 1];
     if (items.length) {
       const blank = clone(items[0]);
+      const idPrefixes = {
+        profiles: "profile",
+        slots: "slot",
+        trackers: "tracker",
+        actions: "action",
+        spells: "spell",
+        resources: "resource",
+        features: "feature",
+      };
       Object.keys(blank).forEach(key => {
-        if (key === "id") blank[key] = `item-${Date.now()}`;
+        if (key === "id") blank[key] = `${idPrefixes[name] || "item"}-${Date.now()}`;
         else if (typeof blank[key] === "string") blank[key] = "";
         else if (typeof blank[key] === "number") blank[key] = 0;
         else if (typeof blank[key] === "boolean") blank[key] = false;
       });
+      if (name === "slots") blank.profileId = draft.spellcasting?.profiles?.[0]?.id || "";
+      if (name === "spells") {
+        blank.source = draft.spellcasting?.profiles?.[0]?.id || "";
+        blank.prepared = false;
+      }
       return blank;
     }
-    const name = path[path.length - 1];
     const defaults = {
       trackers: { id: `tracker-${Date.now()}`, name: "", active: false },
-      profiles: { name: "", ability: "", saveDC: 0, attackBonus: 0 },
-      slots: { id: `slot-${Date.now()}`, level: 1, current: 0, max: 0, reset: "long" },
+      profiles: { id: `profile-${Date.now()}`, name: "", ability: "", saveDC: 0, attackBonus: 0, preparedLimit: 0 },
+      slots: { id: `slot-${Date.now()}`, profileId: draft.spellcasting?.profiles?.[0]?.id || "", level: 1, current: 0, max: 0, reset: "long" },
       skills: { name: "", modifier: 0, proficiency: false },
       actions: { id: `action-${Date.now()}`, name: "", category: "", action: "Action", description: "" },
-      spells: { id: `spell-${Date.now()}`, name: "", category: "Spell", action: "Action", level: 1, description: "" },
+      spells: { id: `spell-${Date.now()}`, name: "", category: "Spell", action: "Action", level: 1, source: draft.spellcasting?.profiles?.[0]?.id || "", prepared: false, description: "" },
       resources: { id: `resource-${Date.now()}`, name: "", category: "Resource", action: "Other", description: "" },
       features: { id: `feature-${Date.now()}`, name: "", category: "Feature", description: "" },
       inventory: { name: "", quantity: 1, description: "" },
@@ -55,6 +69,23 @@
 
   function renderPrimitive(value, path, key) {
     const id = `editor-${path.join("-")}`;
+    const profileField =
+      (path[0] === "spells" && key === "source") ||
+      (path[0] === "spellcasting" && path[1] === "slots" && key === "profileId");
+    if (profileField) {
+      const options = draft.spellcasting?.profiles || [];
+      return `<label class="block"><span class="mb-1 block text-xs font-bold text-stone-500 dark:text-stone-400">${path[0] === "spells" ? "Source spellcasting profile" : "Spellcasting profile"}</span><select id="${id}" data-path="${path.join(".")}" class="${classes.field}"><option value="">No profile</option>${options.map(profile => `<option value="${escapeAttributeValue(profile.id)}" ${profile.id === value ? "selected" : ""}>${escapeHTML(profile.name || profile.id)}</option>`).join("")}</select></label>`;
+    }
+    if (path[0] === "spells" && key === "prepared") {
+      return `<div><span class="mb-1 block text-xs font-bold text-stone-500 dark:text-stone-400">Prepared</span><p class="rounded-xl border border-stone-300 bg-stone-100/70 px-3 py-2 text-sm text-stone-500 dark:border-white/15 dark:bg-white/5 dark:text-stone-400">Managed from the Prepare Spells section.</p></div>`;
+    }
+    const profileIdField =
+      path[0] === "spellcasting" &&
+      path[1] === "profiles" &&
+      key === "id";
+    if (profileIdField) {
+      return `<label class="block"><span class="mb-1 block text-xs font-bold text-stone-500 dark:text-stone-400">Profile ID</span><input id="${id}" data-path="${path.join(".")}" type="text" value="${escapeAttributeValue(value)}" readonly class="${classes.field} opacity-70"><span class="mt-1 block text-xs text-stone-500">Used to connect spells and slots to this profile.</span></label>`;
+    }
     if (typeof value === "boolean") {
       return `<label class="flex items-center gap-3"><input id="${id}" data-path="${path.join(".")}" type="checkbox" ${value ? "checked" : ""} class="h-5 w-5 accent-red-700"><span>${title(key)}</span></label>`;
     }
@@ -169,6 +200,8 @@
 
   function save() {
     const oldId = window.character.id;
+    if (typeof normalizeSpellcastingData === "function")
+      normalizeSpellcastingData(draft);
     window.character = clone(draft);
     Object.keys(character).forEach(key => delete character[key]);
     Object.assign(character, window.character);

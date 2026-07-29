@@ -25,8 +25,8 @@ window.character = {
   ],
   spellcasting: {
     enabled: true,
-    profiles: [{ name: "Artificer Spellcasting", ability: "INT", saveDC: 15, attackBonus: 7 }],
-    slots: [{ id: "slot-1", level: 1, current: 1, max: 3, reset: "long" }],
+    profiles: [{ id: "artificer", name: "Artificer Spellcasting", ability: "INT", saveDC: 15, attackBonus: 7, preparedLimit: 7 }],
+    slots: [{ id: "slot-1", profileId: "artificer", level: 1, current: 1, max: 3, reset: "long" }],
   },
   stats: {
     str: { score: 11, modifier: 0, save: 0, skills: [{ name: "Athletics", modifier: 0, proficiency: false }] },
@@ -123,17 +123,17 @@ window.character = {
       components: "V, S", slotLevel: 1, description: "Gain +5 AC until the start of your next turn.",
     },
     {
-      id: "cure-wounds", name: "Cure Wounds", category: "Artificer Spell", action: "Action", level: 1,
+      id: "cure-wounds", name: "Cure Wounds", category: "Artificer Spell", action: "Action", level: 1, prepared: true,
       school: "Abjuration", spellcasting: "INT", range: "Touch", duration: "Instantaneous",
       components: "V, S", slotLevel: 1, description: "Restore hit points to a creature you touch.",
     },
     {
-      id: "catapult", name: "Catapult", category: "Artificer Spell", action: "Action", level: 1,
+      id: "catapult", name: "Catapult", category: "Artificer Spell", action: "Action", level: 1, prepared: true,
       school: "Transmutation", spellcasting: "INT", range: "60 ft", duration: "Instantaneous",
       components: "S", slotLevel: 1, description: "Hurl an object, dealing 3d8 bludgeoning damage on impact.",
     },
     {
-      id: "absorb-elements", name: "Absorb Elements", category: "Artificer Spell", action: "Reaction", level: 1,
+      id: "absorb-elements", name: "Absorb Elements", category: "Artificer Spell", action: "Reaction", level: 1, prepared: true,
       school: "Abjuration", spellcasting: "INT", range: "Self", duration: "1 round",
       components: "S", slotLevel: 1, description: "Gain resistance to elemental damage and empower your next melee attack.",
     },
