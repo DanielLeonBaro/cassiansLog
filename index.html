@@ -90,7 +90,7 @@
 
         function createCharacterCard(character) {
             const card = document.createElement("article");
-            card.className = "group relative h-full overflow-hidden rounded-2xl border border-stone-300/80 bg-white/75 shadow-card backdrop-blur-sm transition hover:-translate-y-1 hover:border-blood-500/40 hover:shadow-xl dark:border-white/10 dark:bg-white/[.055]";
+            card.className = "group relative flex h-full flex-col overflow-hidden rounded-2xl border border-stone-300/80 bg-white/75 shadow-card backdrop-blur-sm transition hover:-translate-y-1 hover:border-blood-500/40 hover:shadow-xl dark:border-white/10 dark:bg-white/[.055]";
 
             const portrait = document.createElement("img");
             portrait.className = "aspect-[16/10] w-full object-cover";
@@ -101,21 +101,21 @@
             }, { once: true });
 
             const body = document.createElement("div");
-            body.className = "flex flex-col p-5";
+            body.className = "flex grow flex-col p-5";
 
             const name = document.createElement("h3");
             name.className = "font-display text-2xl font-bold";
             name.textContent = character.name;
 
             const description = document.createElement("p");
-            description.className = "mt-2 grow leading-relaxed text-stone-500 dark:text-stone-400";
+            description.className = "mt-2 leading-relaxed text-stone-500 dark:text-stone-400";
             description.textContent = character.description || "Open character tracker.";
 
             const route = character.custom
                 ? `char/template/?character=${encodeURIComponent(character.id)}`
                 : `char/${encodeURIComponent(character.id)}/`;
             const actions = document.createElement("div");
-            actions.className = "relative z-10 mt-5 flex flex-wrap gap-2";
+            actions.className = "relative z-10 mt-auto flex flex-wrap gap-2 pt-5";
 
             const link = document.createElement("a");
             link.className = "inline-flex grow items-center justify-center gap-2 rounded-xl border border-blood-500 bg-blood-500 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:border-blood-600 hover:bg-blood-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold";
@@ -149,6 +149,15 @@
             }
         }
 
+        function characterDescription(character) {
+            const ancestryAndClass = [
+                character.race,
+                character.class,
+                character.subclass,
+            ].filter(Boolean).join(" · ");
+            return `Level ${character.level ?? "—"} ${ancestryAndClass}`.trim();
+        }
+
         function removeCharacter(character) {
             if (!confirm(`Remove ${character.name}? This only affects this browser.`)) return;
             const stored = storedCharacters();
@@ -179,7 +188,7 @@
                             ...character,
                             name: override.name,
                             portrait: override.portrait,
-                            description: `Level ${override.level ?? "—"} ${override.race || ""} ${override.class || ""}`.trim(),
+                            description: characterDescription(override),
                         } : character;
                     });
                 Object.values(saved).forEach(character => {
@@ -187,7 +196,7 @@
                         characters.push({
                             ...character,
                             custom: true,
-                            description: `Level ${character.level ?? "—"} ${character.race || ""} ${character.class || ""}`.trim(),
+                            description: characterDescription(character),
                         });
                     }
                 });
