@@ -101,7 +101,10 @@
             }, { once: true });
 
             const body = document.createElement("div");
-            body.className = "flex grow flex-col p-5";
+            body.className = "flex grow flex-col justify-between p-5";
+
+            const text = document.createElement("div");
+            text.className = "shrink-0";
 
             const name = document.createElement("h3");
             name.className = "font-display text-2xl font-bold";
@@ -115,7 +118,7 @@
                 ? `char/template/?character=${encodeURIComponent(character.id)}`
                 : `char/${encodeURIComponent(character.id)}/`;
             const actions = document.createElement("div");
-            actions.className = "relative z-10 mt-auto flex flex-wrap gap-2 pt-5";
+            actions.className = "relative z-10 flex shrink-0 flex-wrap gap-2 pt-5";
 
             const link = document.createElement("a");
             link.className = "inline-flex grow items-center justify-center gap-2 rounded-xl border border-blood-500 bg-blood-500 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:border-blood-600 hover:bg-blood-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold";
@@ -135,8 +138,9 @@
             remove.innerHTML = '<i class="bi bi-trash-fill"></i>';
             remove.addEventListener("click", () => removeCharacter(character));
 
+            text.append(name, description);
             actions.append(link, edit, remove);
-            body.append(name, description, actions);
+            body.append(text, actions);
             card.append(portrait, body);
             return card;
         }
