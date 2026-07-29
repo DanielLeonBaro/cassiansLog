@@ -1,6 +1,12 @@
 (function () {
   const loaderScript = document.currentScript;
-  const characterName = loaderScript?.dataset.character;
+  const bundledCharacter = loaderScript?.dataset.character;
+  const params = new URLSearchParams(window.location.search);
+  const requestedCharacter = params.get("character") || bundledCharacter;
+  const characterName = /^[a-z0-9-]+$/i.test(requestedCharacter || "")
+    ? requestedCharacter
+    : bundledCharacter;
+  const storageKey = "dnd-characters";
   const trackerURL = new URL("../tracker.html", window.location.href);
 
   function loadScript(source) {
@@ -39,9 +45,25 @@
       document.body.id = trackerDocument.body.id;
       document.body.innerHTML = trackerDocument.body.innerHTML;
 
-      await loadScript(`data/characters/${characterName}.js`);
+      const savedCharacters = JSON.parse(localStorage.getItem(storageKey) || "{}");
+      const savedCharacter = savedCharacters[characterName];
+      const sourceCharacter = savedCharacter ? "template" : bundledCharacter;
+      await loadScript(`data/characters/${sourceCharacter}.js`);
       if (!window.character) throw new Error("The character data is missing.");
+      if (savedCharacter) {
+        window.character = savedCharacter;
+      } else if (params.get("new") === "1") {
+        const pending = JSON.parse(localStorage.getItem("dnd-new-character") || "{}");
+        window.character = JSON.parse(JSON.stringify(window.character));
+        window.character.id = characterName;
+        window.character.name = pending.name || "New Character";
+        window.character.portrait = "bat.ico";
+        savedCharacters[characterName] = window.character;
+        localStorage.setItem(storageKey, JSON.stringify(savedCharacters));
+        localStorage.removeItem("dnd-new-character");
+      }
       await loadScript("js/script.js");
+      await loadScript("js/character-editor.js");
     } catch (error) {
       console.error("Could not load character page:", error);
       showError(error.message);

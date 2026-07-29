@@ -63,6 +63,7 @@ function loadHeader() {
   const fields = {
     "character-name": character.name,
     "character-level": character.level,
+    "character-experience": character.experience ?? 0,
     "character-race": character.race,
     "character-class": className,
     "character-background": character.background,

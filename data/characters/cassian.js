@@ -6,6 +6,7 @@ window.character = {
   subclass: "Echo Knight",
   race: "Noctir",
   level: 5,
+  experience: 6500,
   background: "Noble",
   alignment: "Neutral Good",
   gender: "Male",

@@ -6,6 +6,7 @@ window.character = {
   subclass: "",
   race: "Any Core Race",
   level: 1,
+  experience: 0,
   background: "Adventurer",
   alignment: "Neutral",
   gender: "Any",

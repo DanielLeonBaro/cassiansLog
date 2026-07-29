@@ -34,6 +34,9 @@
             <p class="mt-4 text-lg leading-relaxed text-stone-500 dark:text-stone-400">
                 Open a character sheet to track hit points, resources, spells, inventory, and notes.
             </p>
+            <button id="add-character" type="button" class="mt-6 inline-flex items-center justify-center gap-2 rounded-xl border border-blood-500 bg-blood-500 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blood-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">
+                <i class="bi bi-person-plus-fill"></i> Create character
+            </button>
         </header>
 
         <section aria-labelledby="characters-heading">
@@ -53,8 +56,30 @@
         Select a character to begin.
     </footer>
 
+    <div id="character-dialog" class="fixed inset-0 z-50 hidden items-center justify-center bg-ink/80 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+        <form id="character-form" class="w-full max-w-md rounded-2xl border border-stone-300 bg-parchment p-6 shadow-2xl dark:border-white/15 dark:bg-ink">
+            <div class="mb-5 flex items-start justify-between gap-3">
+                <div>
+                    <h2 id="dialog-title" class="font-display text-2xl font-bold">Create a character</h2>
+                    <p class="mt-1 text-sm text-stone-500 dark:text-stone-400">Start with the complete blank character template.</p>
+                </div>
+                <button id="close-dialog" type="button" class="rounded-xl p-2 hover:bg-stone-200 dark:hover:bg-white/10" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <label class="block">
+                <span class="mb-1 block text-sm font-bold">Character name</span>
+                <input id="new-character-name" required maxlength="80" autocomplete="off" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="New adventurer">
+            </label>
+            <div class="mt-5 flex justify-end gap-3">
+                <button id="cancel-dialog" type="button" class="rounded-xl border border-stone-400 px-4 py-2 text-sm font-bold">Cancel</button>
+                <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-white hover:bg-blood-600"><i class="bi bi-arrow-right"></i> Create & edit</button>
+            </div>
+        </form>
+    </div>
+
     <script>
         const THEME_KEY = "dnd-theme";
+        const CHARACTERS_KEY = "dnd-characters";
+        const DELETED_KEY = "dnd-deleted-characters";
 
         function applyTheme(theme) {
             const dark = theme === "dark";
@@ -86,14 +111,55 @@
             description.className = "mt-2 grow leading-relaxed text-stone-500 dark:text-stone-400";
             description.textContent = character.description || "Open character tracker.";
 
+            const route = character.custom
+                ? `char/template/?character=${encodeURIComponent(character.id)}`
+                : `char/${encodeURIComponent(character.id)}/`;
+            const actions = document.createElement("div");
+            actions.className = "relative z-10 mt-5 flex flex-wrap gap-2";
+
             const link = document.createElement("a");
-            link.className = "mt-5 inline-flex self-start items-center justify-center gap-2 rounded-xl border border-blood-500 bg-blood-500 px-4 py-2 text-sm font-bold text-white shadow-sm transition after:absolute after:inset-0 hover:border-blood-600 hover:bg-blood-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold";
-            link.href = `char/${encodeURIComponent(character.id)}/`;
+            link.className = "inline-flex grow items-center justify-center gap-2 rounded-xl border border-blood-500 bg-blood-500 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:border-blood-600 hover:bg-blood-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold";
+            link.href = route;
             link.innerHTML = 'Open tracker <i class="bi bi-arrow-right ml-1"></i>';
 
-            body.append(name, description, link);
+            const edit = document.createElement("a");
+            edit.className = "inline-flex h-10 w-10 items-center justify-center rounded-xl border border-sky-600 text-sky-600 transition hover:bg-sky-600 hover:text-white";
+            edit.href = `${route}${route.includes("?") ? "&" : "?"}edit=1`;
+            edit.setAttribute("aria-label", `Edit ${character.name}`);
+            edit.innerHTML = '<i class="bi bi-pencil-fill"></i>';
+
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "inline-flex h-10 w-10 items-center justify-center rounded-xl border border-blood-500 text-blood-500 transition hover:bg-blood-500 hover:text-white";
+            remove.setAttribute("aria-label", `Remove ${character.name}`);
+            remove.innerHTML = '<i class="bi bi-trash-fill"></i>';
+            remove.addEventListener("click", () => removeCharacter(character));
+
+            actions.append(link, edit, remove);
+            body.append(name, description, actions);
             card.append(portrait, body);
             return card;
+        }
+
+        function storedCharacters() {
+            try {
+                return JSON.parse(localStorage.getItem(CHARACTERS_KEY) || "{}");
+            } catch {
+                return {};
+            }
+        }
+
+        function removeCharacter(character) {
+            if (!confirm(`Remove ${character.name}? This only affects this browser.`)) return;
+            const stored = storedCharacters();
+            delete stored[character.id];
+            localStorage.setItem(CHARACTERS_KEY, JSON.stringify(stored));
+            if (!character.custom) {
+                const deleted = new Set(JSON.parse(localStorage.getItem(DELETED_KEY) || "[]"));
+                deleted.add(character.id);
+                localStorage.setItem(DELETED_KEY, JSON.stringify([...deleted]));
+            }
+            loadCharacters();
         }
 
         async function loadCharacters() {
@@ -101,7 +167,30 @@
             try {
                 const response = await fetch("data/characters.json");
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const characters = await response.json();
+                const bundled = await response.json();
+                const saved = storedCharacters();
+                const deleted = new Set(JSON.parse(localStorage.getItem(DELETED_KEY) || "[]"));
+                const bundledIds = new Set(bundled.map(character => character.id));
+                const characters = bundled
+                    .filter(character => !deleted.has(character.id))
+                    .map(character => {
+                        const override = saved[character.id];
+                        return override ? {
+                            ...character,
+                            name: override.name,
+                            portrait: override.portrait,
+                            description: `Level ${override.level ?? "—"} ${override.race || ""} ${override.class || ""}`.trim(),
+                        } : character;
+                    });
+                Object.values(saved).forEach(character => {
+                    if (!bundledIds.has(character.id)) {
+                        characters.push({
+                            ...character,
+                            custom: true,
+                            description: `Level ${character.level ?? "—"} ${character.race || ""} ${character.class || ""}`.trim(),
+                        });
+                    }
+                });
                 container.replaceChildren(...characters.map(createCharacterCard));
             } catch (error) {
                 container.innerHTML =
@@ -117,6 +206,40 @@
             const next = current === "dark" ? "light" : "dark";
             localStorage.setItem(THEME_KEY, next);
             applyTheme(next);
+        });
+        const dialog = document.getElementById("character-dialog");
+        const nameInput = document.getElementById("new-character-name");
+        function openDialog() {
+            dialog.classList.remove("hidden");
+            dialog.classList.add("flex");
+            nameInput.focus();
+        }
+        function closeDialog() {
+            dialog.classList.add("hidden");
+            dialog.classList.remove("flex");
+            document.getElementById("character-form").reset();
+        }
+        document.getElementById("add-character").addEventListener("click", openDialog);
+        document.getElementById("close-dialog").addEventListener("click", closeDialog);
+        document.getElementById("cancel-dialog").addEventListener("click", closeDialog);
+        dialog.addEventListener("click", event => {
+            if (event.target === dialog) closeDialog();
+        });
+        document.getElementById("character-form").addEventListener("submit", event => {
+            event.preventDefault();
+            const name = nameInput.value.trim();
+            if (!name) return;
+            const base = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "character";
+            const occupied = new Set([
+                ...Object.keys(storedCharacters()),
+                "cassian", "template",
+            ]);
+            let id = base;
+            let suffix = 2;
+            while (occupied.has(id)) id = `${base}-${suffix++}`;
+            localStorage.setItem("dnd-new-character", JSON.stringify({ id, name }));
+            location.href = `char/template/?character=${encodeURIComponent(id)}&new=1&edit=1`;
         });
         loadCharacters();
     </script>
