@@ -22,11 +22,5 @@
     "name": "Elaria Vaelmont",
     "description": "Level 4 Variant Aasimar Bard · College of Lore",
     "portrait": "bat.ico"
-  },
-  {
-    "id": "template",
-    "name": "Character Template",
-    "description": "A clean starting point for a new adventurer",
-    "portrait": "bat.ico"
   }
 ]
