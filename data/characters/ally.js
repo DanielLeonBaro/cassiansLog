@@ -1,0 +1,182 @@
+window.character = {
+  id: "ally",
+  portrait: "data/portraits/ally.png",
+  name: "Allium",
+  class: "Artificer",
+  subclass: "Battle Smith · Steelborn Amalgam",
+  race: "Plasmoid",
+  level: 4,
+  experience: 2700,
+  background: "House Agent",
+  alignment: "",
+  gender: "",
+  ac: 16,
+  hp: { max: 29, current: 29, temp: 0 },
+  initiative: 0,
+  proficiency: 2,
+  walk: 30,
+  fly: 0,
+  passivePerception: 11,
+  darkvision: 60,
+  trackers: [
+    { id: "armor-mode", name: "Armor Mode (Fused)", active: true },
+    { id: "steel-defender-deployed", name: "Steel Defender Deployed", active: false },
+    { id: "concentration", name: "Concentrating", active: false },
+  ],
+  spellcasting: {
+    enabled: true,
+    profiles: [{ name: "Artificer Spellcasting", ability: "INT", saveDC: 15, attackBonus: 7 }],
+    slots: [{ id: "slot-1", level: 1, current: 1, max: 3, reset: "long" }],
+  },
+  stats: {
+    str: { score: 11, modifier: 0, save: 0, skills: [{ name: "Athletics", modifier: 0, proficiency: false }] },
+    dex: {
+      score: 10, modifier: 0, save: 0,
+      skills: [
+        { name: "Acrobatics", modifier: 0, proficiency: false },
+        { name: "Sleight of Hand", modifier: 2, proficiency: true },
+        { name: "Stealth", modifier: 0, proficiency: false },
+      ],
+    },
+    con: { score: 14, modifier: 2, save: 4, skills: [] },
+    int: {
+      score: 20, modifier: 5, save: 7,
+      skills: [
+        { name: "Arcana", modifier: 7, proficiency: true },
+        { name: "History", modifier: 5, proficiency: false },
+        { name: "Investigation", modifier: 7, proficiency: true },
+        { name: "Nature", modifier: 7, proficiency: true },
+        { name: "Religion", modifier: 5, proficiency: false },
+      ],
+    },
+    wis: {
+      score: 12, modifier: 1, save: 1,
+      skills: [
+        { name: "Animal Handling", modifier: 1, proficiency: false },
+        { name: "Insight", modifier: 1, proficiency: false },
+        { name: "Medicine", modifier: 1, proficiency: false },
+        { name: "Perception", modifier: 1, proficiency: false },
+        { name: "Survival", modifier: 1, proficiency: false },
+      ],
+    },
+    cha: {
+      score: 10, modifier: 0, save: 0,
+      skills: [
+        { name: "Deception", modifier: 0, proficiency: false },
+        { name: "Intimidation", modifier: 0, proficiency: false },
+        { name: "Performance", modifier: 0, proficiency: false },
+        { name: "Persuasion", modifier: 0, proficiency: false },
+      ],
+    },
+  },
+  actions: [
+    {
+      id: "force-empowered-rend", name: "Force-Empowered Rend", category: "Steel Defender",
+      action: "Bonus Action", range: "5 ft", attack: "+7 vs AC", damage: "1d8 + 2 force",
+      description: "Command the deployed Steel Defender to make a melee weapon attack against one visible target.",
+    },
+    {
+      id: "deploy-steel-defender", name: "Deploy Endoskeleton", category: "Steelborn Amalgam",
+      action: "Action", range: "5 ft",
+      description: "Eject the endoskeleton into an unoccupied adjacent space. Until the start of your next turn, your speed is halved and you have disadvantage on Strength and Dexterity saving throws.",
+    },
+    {
+      id: "rejoin-steel-defender", name: "Rejoin Endoskeleton", category: "Steelborn Amalgam",
+      action: "Action", range: "Adjacent",
+      description: "Absorb the adjacent endoskeleton and return to Armor Mode. In combat this provokes opportunity attacks; outside combat it takes 1 minute of concentration.",
+    },
+    {
+      id: "repair", name: "Repair", category: "Steel Defender", action: "Bonus Action", range: "5 ft",
+      uses: { current: 3, max: 3, reset: "long" },
+      description: "The defender restores 2d8 + 2 hit points to itself or to one construct or object within 5 feet.",
+    },
+    {
+      id: "deflect-attack", name: "Deflect Attack", category: "Steel Defender",
+      action: "Reaction", range: "5 ft",
+      description: "The deployed defender imposes disadvantage on an attack by a visible creature within 5 feet when the target is not the defender.",
+    },
+    {
+      id: "shape-self", name: "Shape Self", category: "Plasmoid", action: "Action",
+      description: "Reshape your body to form a head and one or two arms. As a bonus action, extrude or reabsorb a pseudopod up to 6 inches wide and 10 feet long.",
+    },
+  ],
+  spells: [
+    {
+      id: "mending", name: "Mending", category: "Cantrip", action: "1 minute", level: 0,
+      school: "Transmutation", spellcasting: "INT", range: "Touch", duration: "Instantaneous",
+      components: "V, S, M", description: "Repair a single break or tear in an object you touch.",
+    },
+    {
+      id: "guidance", name: "Guidance", category: "Cantrip", action: "Action", level: 0,
+      school: "Divination", spellcasting: "INT", range: "Touch", duration: "Concentration, up to 1 minute",
+      components: "V, S", concentration: true, description: "The target can add 1d4 to one ability check.",
+    },
+    {
+      id: "heroism", name: "Heroism", category: "Battle Smith Spell", action: "Action", level: 1,
+      school: "Enchantment", spellcasting: "INT", range: "Touch", duration: "Concentration, up to 1 minute",
+      components: "V, S", slotLevel: 1, concentration: true,
+      description: "A willing creature becomes immune to being frightened and gains temporary hit points each turn.",
+    },
+    {
+      id: "shield", name: "Shield", category: "Battle Smith Spell", action: "Reaction", level: 1,
+      school: "Abjuration", spellcasting: "INT", range: "Self", duration: "1 round",
+      components: "V, S", slotLevel: 1, description: "Gain +5 AC until the start of your next turn.",
+    },
+    {
+      id: "cure-wounds", name: "Cure Wounds", category: "Artificer Spell", action: "Action", level: 1,
+      school: "Abjuration", spellcasting: "INT", range: "Touch", duration: "Instantaneous",
+      components: "V, S", slotLevel: 1, description: "Restore hit points to a creature you touch.",
+    },
+    {
+      id: "catapult", name: "Catapult", category: "Artificer Spell", action: "Action", level: 1,
+      school: "Transmutation", spellcasting: "INT", range: "60 ft", duration: "Instantaneous",
+      components: "S", slotLevel: 1, description: "Hurl an object, dealing 3d8 bludgeoning damage on impact.",
+    },
+    {
+      id: "absorb-elements", name: "Absorb Elements", category: "Artificer Spell", action: "Reaction", level: 1,
+      school: "Abjuration", spellcasting: "INT", range: "Self", duration: "1 round",
+      components: "S", slotLevel: 1, description: "Gain resistance to elemental damage and empower your next melee attack.",
+    },
+  ],
+  resources: [
+    {
+      id: "steel-defender-hp", name: "Steel Defender HP", category: "Companion", action: "Other",
+      uses: { current: 27, max: 27, reset: "long" },
+      description: "AC 15; Speed 40 ft.; STR 14, DEX 12, CON 14, INT 4, WIS 10, CHA 6. Immune to poison damage and the charmed, exhaustion, and poisoned conditions.",
+    },
+  ],
+  features: [
+    {
+      id: "steelborn-amalgam", name: "Steelborn Amalgam", category: "Battle Smith Specialization",
+      description: "An autonomous mechanical endoskeleton can be assimilated into Allium's plasmoid body or deployed as a Steel Defender.",
+    },
+    {
+      id: "armor-mode", name: "Armor Mode", category: "Steelborn Amalgam",
+      description: "While fused, you are Medium, have advantage on Athletics checks and saves against being pushed or knocked prone, and your AC cannot be lower than 16. You cannot use Amorphous, the defender's actions, or Deflect Attack.",
+    },
+    {
+      id: "battle-ready", name: "Battle Ready", category: "Battle Smith",
+      description: "Proficient with martial weapons. With a magic weapon, use Intelligence instead of Strength or Dexterity for attack and damage rolls.",
+    },
+    {
+      id: "tool-proficiency", name: "Tool Proficiency", category: "Battle Smith",
+      description: "Proficient with smith's tools and another type of artisan's tools.",
+    },
+    { id: "lucky", name: "Lucky", category: "Origin", description: "Allium possesses the Lucky trait noted on the character sheet." },
+    {
+      id: "amorphous", name: "Amorphous", category: "Plasmoid",
+      description: "Squeeze through spaces as narrow as 1 inch and gain advantage on checks to initiate or escape a grapple. Unavailable while fused.",
+    },
+    { id: "hold-breath", name: "Hold Breath", category: "Plasmoid", description: "You can hold your breath for 1 hour." },
+    {
+      id: "natural-resilience", name: "Natural Resilience", category: "Plasmoid",
+      description: "Resistance to acid and poison damage, and advantage on saving throws against being poisoned.",
+    },
+  ],
+  currency: { cp: 100, sp: 0, ep: 0, gp: 0, pp: 0 },
+  inventory: [
+    { name: "Light or Medium Armor", quantity: 1, description: "Proficient with light armor, medium armor, and shields." },
+    { name: "Smith's Tools", quantity: 1, description: "Tools used for Steelborn Amalgam work." },
+    { name: "Artisan's Tools", quantity: 1, description: "Additional artisan's tools." },
+  ],
+};

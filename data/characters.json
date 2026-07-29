@@ -6,6 +6,24 @@
     "portrait": "data/portraits/Chibi Cassian (1).jpg"
   },
   {
+    "id": "ally",
+    "name": "Allium",
+    "description": "Level 4 Plasmoid Artificer · Battle Smith",
+    "portrait": "data/portraits/ally.png"
+  },
+  {
+    "id": "karma",
+    "name": "Karma Noragon",
+    "description": "Level 4 Tiefling Cleric · Grave Domain",
+    "portrait": "data/portraits/karma.jpg"
+  },
+  {
+    "id": "elaria",
+    "name": "Elaria Vaelmont",
+    "description": "Level 4 Variant Aasimar Bard · College of Lore",
+    "portrait": "bat.ico"
+  },
+  {
     "id": "template",
     "name": "Character Template",
     "description": "A clean starting point for a new adventurer",
