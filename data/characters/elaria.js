@@ -22,12 +22,13 @@ window.character = {
   spellcasting: {
     enabled: true,
     profiles: [
-      { name: "Bard Spellcasting", ability: "CHA", saveDC: 14, attackBonus: 6 },
-      { name: "Magic Initiate (Cleric)", ability: "CHA", saveDC: 14, attackBonus: 6 },
+      { id: "bard", name: "Bard Spellcasting", ability: "CHA", saveDC: 14, attackBonus: 6, preparedLimit: 0 },
+      { id: "magic-initiate-cleric", name: "Magic Initiate (Cleric)", ability: "CHA", saveDC: 14, attackBonus: 6, preparedLimit: 0 },
+      { id: "celestial-legacy", name: "Celestial Legacy", ability: "CHA", saveDC: 14, attackBonus: 6, preparedLimit: 0 },
     ],
     slots: [
-      { id: "slot-1", level: 1, current: 4, max: 4, reset: "long" },
-      { id: "slot-2", level: 2, current: 3, max: 3, reset: "long" },
+      { id: "slot-1", profileId: "bard", level: 1, current: 4, max: 4, reset: "long" },
+      { id: "slot-2", profileId: "bard", level: 2, current: 3, max: 3, reset: "long" },
     ],
   },
   stats: {
@@ -117,18 +118,18 @@ window.character = {
     },
     {
       id: "spare-the-dying", name: "Spare the Dying", category: "Magic Initiate Cantrip", action: "Action",
-      level: 0, school: "Necromancy", spellcasting: "CHA", range: "15 ft",
+      level: 0, school: "Necromancy", spellcasting: "CHA", source: "magic-initiate-cleric", range: "15 ft",
       duration: "Instantaneous", components: "V, S", description: "Stabilize a dying creature.",
     },
     {
       id: "sacred-flame", name: "Sacred Flame", category: "Magic Initiate Cantrip", action: "Action",
-      level: 0, school: "Evocation", spellcasting: "CHA", range: "60 ft",
+      level: 0, school: "Evocation", spellcasting: "CHA", source: "magic-initiate-cleric", range: "60 ft",
       damage: "1d8 radiant", duration: "Instantaneous", components: "V, S",
       description: "A target that fails a Dexterity save takes radiant damage.",
     },
     {
       id: "light", name: "Light", category: "Celestial Legacy Cantrip", action: "Action",
-      level: 0, school: "Evocation", spellcasting: "CHA", range: "Touch / 20-ft sphere",
+      level: 0, school: "Evocation", spellcasting: "CHA", source: "celestial-legacy", range: "Touch / 20-ft sphere",
       duration: "1 hour", components: "V, M", description: "Make an object shed bright and dim light.",
     },
     {
@@ -157,7 +158,7 @@ window.character = {
     },
     {
       id: "guiding-bolt", name: "Guiding Bolt", category: "Magic Initiate Spell", action: "Action",
-      level: 1, school: "Evocation", spellcasting: "CHA", range: "120 ft", attack: "+6 spell attack",
+      level: 1, school: "Evocation", spellcasting: "CHA", source: "magic-initiate-cleric", range: "120 ft", attack: "+6 spell attack",
       damage: "4d6 radiant", duration: "1 round", components: "V, S",
       uses: { current: 1, max: 1, reset: "long" },
       description: "The next attack roll against the target has advantage. It can also be cast using a spell slot.",
@@ -182,7 +183,7 @@ window.character = {
     },
     {
       id: "lesser-restoration", name: "Lesser Restoration", category: "Celestial Legacy",
-      action: "Action", level: 2, school: "Abjuration", spellcasting: "CHA", range: "Touch",
+      action: "Action", level: 2, school: "Abjuration", spellcasting: "CHA", source: "celestial-legacy", range: "Touch",
       duration: "Instantaneous", components: "V, S", uses: { current: 1, max: 1, reset: "long" },
       description: "End one disease or one blinded, deafened, paralyzed, or poisoned condition.",
     },

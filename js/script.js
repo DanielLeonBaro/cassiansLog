@@ -1,4 +1,6 @@
 const character = window.character;
+normalizeSpellcastingData(character);
+enforcePreparedLimits();
 const CHARACTER_ID = character.id || "character";
 const NOTES_KEY = `dnd-${CHARACTER_ID}-notes`;
 const STATE_KEY = `dnd-${CHARACTER_ID}-state`;
@@ -77,6 +79,7 @@ function refreshUI() {
   loadTrackers();
   loadResources();
   loadSpellcasting();
+  loadPreparedSpells();
   loadAbilities();
   loadInventory();
   loadNotes();
@@ -223,65 +226,72 @@ function renderFilterControls(scope, records) {
   const labelClass =
     "mb-1.5 block text-xs font-bold uppercase tracking-wide text-stone-500 dark:text-stone-400";
   container.innerHTML = `
-    <div class="rounded-2xl border border-stone-200/90 bg-stone-50/70 p-4 dark:border-white/10 dark:bg-black/10">
-      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h3 class="font-display font-bold"><i class="bi bi-funnel-fill mr-2 text-blood-500"></i>Find an option</h3>
-          <p class="mt-1 text-sm text-stone-500 dark:text-stone-400">Combine filters to narrow the list.</p>
-        </div>
-        <div class="flex items-center gap-3">
-          <span id="${scope}-filter-summary" class="text-sm font-semibold text-stone-500 dark:text-stone-400" aria-live="polite"></span>
-          <button type="button" data-filter-reset class="hidden rounded-xl border border-stone-300 bg-white/70 px-3 py-2 text-xs font-bold text-stone-600 transition hover:border-blood-500 hover:text-blood-500 dark:border-white/15 dark:bg-white/5 dark:text-stone-300">
-            <i class="bi bi-arrow-counterclockwise mr-1"></i>Clear
-          </button>
-        </div>
-      </div>
-      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-7">
-        <label class="min-w-0 sm:col-span-2">
-          <span class="${labelClass}">Search</span>
-          <span class="relative block">
-            <i class="bi bi-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400"></i>
-            <input type="search" data-filter-key="search" class="${fieldClass} pl-9" placeholder="Name, effect, damage..." autocomplete="off">
+    <div class="overflow-hidden rounded-2xl border border-stone-200/90 bg-stone-50/70 dark:border-white/10 dark:bg-black/10">
+      <div class="flex items-center gap-2 p-2">
+        <button type="button" data-collapse-target="${scope}FiltersCollapse" aria-expanded="false" aria-controls="${scope}FiltersCollapse" class="group flex min-w-0 grow items-center gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-blood-500/10">
+          <i class="bi bi-funnel-fill shrink-0 text-blood-500"></i>
+          <span class="min-w-0 grow">
+            <span class="block font-display font-bold">Find an option</span>
+            <span class="block text-xs text-stone-500 dark:text-stone-400">Search and filters</span>
           </span>
-        </label>
-        ${renderFilterSelect("source", "Source", sourceOptions, fieldClass, labelClass)}
-        ${renderFilterSelect("focus", "Focus", filterFocusOptions, fieldClass, labelClass)}
-        ${renderFilterSelect(
-          "level",
-          "Spell level",
-          [
-            { value: "", label: "Any level" },
-            ...levels.map((level) => ({
-              value: String(level),
-              label: formatSpellLevel(level),
-            })),
-          ],
-          fieldClass,
-          labelClass,
-        )}
-        ${renderFilterSelect(
-          "category",
-          "Category",
-          [
-            { value: "", label: "Any category" },
-            ...categories.map((category) => ({
-              value: category,
-              label: category,
-            })),
-          ],
-          fieldClass,
-          labelClass,
-        )}
-        ${renderFilterSelect(
-          "action",
-          "Timing",
-          [
-            { value: "", label: "Any timing" },
-            ...actions.map((action) => ({ value: action, label: action })),
-          ],
-          fieldClass,
-          labelClass,
-        )}
+          <span id="${scope}-filter-summary" class="text-sm font-semibold text-stone-500 dark:text-stone-400" aria-live="polite"></span>
+          <i class="bi bi-chevron-down shrink-0 text-stone-400 transition group-aria-expanded:rotate-180"></i>
+        </button>
+        <button type="button" data-filter-reset class="hidden shrink-0 rounded-xl border border-stone-300 bg-white/70 px-3 py-2 text-xs font-bold text-stone-600 transition hover:border-blood-500 hover:text-blood-500 dark:border-white/15 dark:bg-white/5 dark:text-stone-300">
+          <i class="bi bi-arrow-counterclockwise mr-1"></i>Clear
+        </button>
+      </div>
+      <div id="${scope}FiltersCollapse" class="hidden">
+        <div class="border-t border-stone-200/90 p-4 dark:border-white/10">
+          <p class="mb-4 text-sm text-stone-500 dark:text-stone-400">Combine filters to narrow the list.</p>
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-7">
+            <label class="min-w-0 sm:col-span-2">
+              <span class="${labelClass}">Search</span>
+              <span class="relative block">
+                <i class="bi bi-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400"></i>
+                <input type="search" data-filter-key="search" class="${fieldClass} pl-9" placeholder="Name, effect, damage..." autocomplete="off">
+              </span>
+            </label>
+            ${renderFilterSelect("source", "Source", sourceOptions, fieldClass, labelClass)}
+            ${renderFilterSelect("focus", "Focus", filterFocusOptions, fieldClass, labelClass)}
+            ${renderFilterSelect(
+              "level",
+              "Spell level",
+              [
+                { value: "", label: "Any level" },
+                ...levels.map((level) => ({
+                  value: String(level),
+                  label: formatSpellLevel(level),
+                })),
+              ],
+              fieldClass,
+              labelClass,
+            )}
+            ${renderFilterSelect(
+              "category",
+              "Category",
+              [
+                { value: "", label: "Any category" },
+                ...categories.map((category) => ({
+                  value: category,
+                  label: category,
+                })),
+              ],
+              fieldClass,
+              labelClass,
+            )}
+            ${renderFilterSelect(
+              "action",
+              "Timing",
+              [
+                { value: "", label: "Any timing" },
+                ...actions.map((action) => ({ value: action, label: action })),
+              ],
+              fieldClass,
+              labelClass,
+            )}
+          </div>
+        </div>
       </div>
     </div>`;
   container.addEventListener("input", (event) => {
@@ -505,13 +515,21 @@ function loadSpellcasting() {
   profilesContainer.innerHTML = profiles
     .map(
       (profile) =>
-        `<div class="${ui.card}"><div class="${ui.cardHeader}"><strong>${escapeHTML(profile.name || "Spellcasting")}</strong></div><div class="p-5"><div class="flex flex-wrap gap-2"><span class="${ui.badge} ${ui.badgePrimary}">${escapeHTML(profile.ability || "—")}</span>${profile.saveDC !== null && profile.saveDC !== undefined ? `<span class="${ui.badge} ${ui.badgeWarning}">Save DC ${profile.saveDC}</span>` : ""}${profile.attackBonus !== null && profile.attackBonus !== undefined ? `<span class="${ui.badge} ${ui.badgeSuccess}">Attack ${formatModifier(profile.attackBonus)}</span>` : ""}</div></div></div>`,
+        `<div class="${ui.card}"><div class="${ui.cardHeader}"><strong>${escapeHTML(profile.name || "Spellcasting")}</strong></div><div class="p-5"><div class="flex flex-wrap gap-2"><span class="${ui.badge} ${ui.badgePrimary}">${escapeHTML(profile.ability || "—")}</span>${profile.saveDC !== null && profile.saveDC !== undefined ? `<span class="${ui.badge} ${ui.badgeWarning}">Save DC ${profile.saveDC}</span>` : ""}${profile.attackBonus !== null && profile.attackBonus !== undefined ? `<span class="${ui.badge} ${ui.badgeSuccess}">Attack ${formatModifier(profile.attackBonus)}</span>` : ""}${profile.preparedLimit > 0 ? `<span class="${ui.badge} ${ui.badgeSecondary}">Prepare up to ${profile.preparedLimit}</span>` : ""}</div></div></div>`,
     )
     .join("");
-  slotsContainer.innerHTML = `<div><h6 class="mb-2 text-sm font-semibold text-stone-500 dark:text-stone-400">Spell Slots</h6>${slots.length ? `<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">${slots.map(renderSpellSlot).join("")}</div>` : `<div class="${ui.card}"><div class="p-5 text-stone-500 dark:text-stone-400">This character has no spell slots.</div></div>`}</div>`;
+  slotsContainer.innerHTML = profiles
+    .map((profile) => {
+      const profileSlots = slots.filter(
+        (slot) => slot.profileId === profile.id,
+      );
+      return `<section class="${ui.card}"><div class="${ui.cardHeader}"><div><div class="text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">Spell slots</div><strong>${escapeHTML(profile.name || "Spellcasting")}</strong></div><span class="${ui.badge} ${ui.badgeSecondary}">${profileSlots.length} level${profileSlots.length === 1 ? "" : "s"}</span></div><div class="p-4 sm:p-5">${profileSlots.length ? `<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">${profileSlots.map((slot) => renderSpellSlot(slot, profile)).join("")}</div>` : '<p class="text-sm text-stone-500 dark:text-stone-400">This profile has no spell slots.</p>'}</div></section>`;
+    })
+    .join("");
 }
-function renderSpellSlot(slot) {
-  return `<div class="${ui.card}"><div class="${ui.cardHeader}"><strong>Level ${slot.level}</strong><span class="${ui.badge} ${ui.badgeDanger}">Max: ${slot.max}</span></div><div class="p-5"><div class="flex items-center justify-between"><div class="inline-flex gap-2"><button type="button" class="${ui.iconButton}" aria-label="Decrease level ${slot.level} spell slots" onclick="changeSpellSlot('${escapeAttribute(slot.id)}',-1)">−</button><button type="button" class="${ui.iconButton}" aria-label="Increase level ${slot.level} spell slots" onclick="changeSpellSlot('${escapeAttribute(slot.id)}',1)">+</button></div><span class="${ui.badge} ${ui.badgeWarning}">${slot.current}/${slot.max}</span><span class="${ui.badge} ${ui.badgeSecondary}">${formatReset(slot.reset || "long")}</span></div></div></div>`;
+function renderSpellSlot(slot, profile) {
+  const profileName = profile?.name || "spellcasting";
+  return `<div class="rounded-xl border border-stone-200 bg-stone-50/70 dark:border-white/10 dark:bg-white/[.035]"><div class="flex items-center justify-between gap-3 border-b border-stone-200 px-4 py-3 dark:border-white/10"><strong>Level ${slot.level}</strong><span class="${ui.badge} ${ui.badgeDanger}">Max: ${slot.max}</span></div><div class="p-4"><div class="flex items-center justify-between gap-3"><div class="inline-flex gap-2"><button type="button" class="${ui.iconButton}" aria-label="Decrease ${escapeAttribute(profileName)} level ${slot.level} spell slots" onclick="changeSpellSlot('${escapeAttribute(slot.id)}',-1)">−</button><button type="button" class="${ui.iconButton}" aria-label="Increase ${escapeAttribute(profileName)} level ${slot.level} spell slots" onclick="changeSpellSlot('${escapeAttribute(slot.id)}',1)">+</button></div><span class="${ui.badge} ${ui.badgeWarning}">${slot.current}/${slot.max}</span><span class="${ui.badge} ${ui.badgeSecondary}">${formatReset(slot.reset || "long")}</span></div></div></div>`;
 }
 function changeSpellSlot(id, delta) {
   const slot = findSpellSlot(id);
@@ -519,6 +537,137 @@ function changeSpellSlot(id, delta) {
   slot.current = Math.max(0, Math.min(slot.max, Number(slot.current) + delta));
   saveState();
   refreshUI();
+}
+function loadPreparedSpells() {
+  const section = document.getElementById("preparedSpellsSection");
+  const container = document.getElementById("prepared-spells-container");
+  const navigationItem = document.querySelector(
+    '[data-scroll-to="preparedSpellsSection"]',
+  );
+  if (!section || !container) return;
+  const profiles = character.spellcasting?.profiles || [];
+  const spells = character.spells || [];
+  const enabled =
+    Boolean(character.spellcasting?.enabled) &&
+    spells.length > 0 &&
+    profiles.some((profile) => profile.preparedLimit > 0);
+  section.classList.toggle("hidden", !enabled);
+  navigationItem?.classList.toggle("hidden", !enabled);
+  if (!enabled) return;
+
+  container.innerHTML = profiles
+    .filter(
+      (profile) =>
+        profile.preparedLimit > 0 ||
+        spells.some((spell) => spell.source === profile.id),
+    )
+    .map((profile) => renderPreparedProfile(profile))
+    .join("");
+  const totals = profiles
+    .filter((profile) => profile.preparedLimit > 0)
+    .map(
+      (profile) =>
+        `${getPreparedCount(profile.id)}/${profile.preparedLimit}`,
+    );
+  setText("prepared-spells-total", `(${totals.join(" · ")})`);
+}
+function renderPreparedProfile(profile) {
+  const spells = (character.spells || [])
+    .filter((spell) => spell.source === profile.id)
+    .sort(
+      (left, right) =>
+        Number(left.level || 0) - Number(right.level || 0) ||
+        String(left.name).localeCompare(String(right.name)),
+    );
+  const preparedCount = getPreparedCount(profile.id);
+  const atLimit =
+    profile.preparedLimit > 0 && preparedCount >= profile.preparedLimit;
+  const limitLabel =
+    profile.preparedLimit > 0
+      ? `${preparedCount} / ${profile.preparedLimit} prepared`
+      : "No preparation required";
+  return `<section class="${ui.card}"><div class="${ui.cardHeader}"><div><div class="text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">Spellcasting profile</div><strong>${escapeHTML(profile.name || "Spellcasting")}</strong></div><span class="${ui.badge} ${atLimit ? ui.badgeWarning : ui.badgeSuccess}">${limitLabel}</span></div><div class="divide-y divide-stone-200 dark:divide-white/10">${spells.length ? spells.map((spell) => renderPreparedSpell(spell, profile, atLimit)).join("") : '<p class="p-5 text-sm text-stone-500 dark:text-stone-400">No spells use this profile yet. Choose it as the source while editing a spell.</p>'}</div></section>`;
+}
+function renderPreparedSpell(spell, profile, atLimit) {
+  const cantrip = Number(spell.level) === 0;
+  const alwaysPrepared = isAlwaysPreparedSpell(spell);
+  const canPrepare = profile.preparedLimit > 0 && !cantrip && !alwaysPrepared;
+  const prepared =
+    profile.preparedLimit <= 0 ||
+    alwaysPrepared ||
+    cantrip ||
+    Boolean(spell.prepared);
+  const disabled = !canPrepare || (!prepared && atLimit);
+  const status = cantrip
+    ? "Cantrip · always ready"
+    : alwaysPrepared
+      ? "Always prepared"
+      : profile.preparedLimit <= 0
+        ? "Always available"
+        : prepared
+          ? "Prepared"
+          : atLimit
+            ? "Limit reached"
+            : "Not prepared";
+  return `<div class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="font-bold">${escapeHTML(spell.name || "Unnamed spell")}</div><div class="mt-1 flex flex-wrap gap-2"><span class="${ui.badge} ${ui.badgeSecondary}">${formatSpellLevel(spell.level)}</span>${spell.category ? `<span class="text-xs text-stone-500 dark:text-stone-400">${escapeHTML(spell.category)}</span>` : ""}</div></div><button type="button" role="switch" aria-checked="${prepared}" ${disabled ? "disabled" : ""} onclick="togglePreparedSpell('${escapeAttribute(spell.id)}')" class="inline-flex shrink-0 items-center gap-2 self-start rounded-full border px-3 py-2 text-xs font-bold transition sm:self-auto ${prepared ? "border-emerald-600 bg-emerald-600 text-white" : "border-stone-300 bg-stone-100 text-stone-600 hover:border-blood-500 dark:border-white/15 dark:bg-white/10 dark:text-stone-300"} disabled:cursor-not-allowed disabled:opacity-60"><span class="relative h-5 w-9 rounded-full bg-black/20"><span class="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition ${prepared ? "left-[18px]" : "left-0.5"}"></span></span>${status}</button></div>`;
+}
+function togglePreparedSpell(id) {
+  const spell = (character.spells || []).find((item) => item.id === id);
+  const profile = getSpellcastingProfile(spell?.source);
+  if (
+    !spell ||
+    !profile ||
+    profile.preparedLimit <= 0 ||
+    Number(spell.level) === 0 ||
+    isAlwaysPreparedSpell(spell)
+  )
+    return;
+  if (!spell.prepared && getPreparedCount(profile.id) >= profile.preparedLimit)
+    return;
+  spell.prepared = !spell.prepared;
+  saveState();
+  refreshUI();
+}
+function getPreparedCount(profileId) {
+  return (character.spells || []).filter(
+    (spell) =>
+      spell.source === profileId &&
+      Number(spell.level) > 0 &&
+      !isAlwaysPreparedSpell(spell) &&
+      Boolean(spell.prepared),
+  ).length;
+}
+function isAlwaysPreparedSpell(spell) {
+  return (
+    Boolean(spell.alwaysPrepared) ||
+    /\b(always prepared|domain spell|battle smith spell)\b/i.test(
+      spell.category || "",
+    )
+  );
+}
+function getSpellcastingProfile(id) {
+  return (character.spellcasting?.profiles || []).find(
+    (profile) => profile.id === id,
+  );
+}
+function enforcePreparedLimits() {
+  (character.spellcasting?.profiles || [])
+    .filter((profile) => profile.preparedLimit > 0)
+    .forEach((profile) => {
+      let remaining = profile.preparedLimit;
+      (character.spells || [])
+        .filter(
+          (spell) =>
+            spell.source === profile.id &&
+            Number(spell.level) > 0 &&
+            !isAlwaysPreparedSpell(spell) &&
+            Boolean(spell.prepared),
+        )
+        .forEach((spell) => {
+          if (remaining > 0) remaining -= 1;
+          else spell.prepared = false;
+        });
+    });
 }
 function loadAbilities() {
   const allRecords = getAllPossibilityRecords();
@@ -624,6 +773,19 @@ function renderDetailBadges(item) {
     badges.push(
       `<span class="${ui.badge} bg-stone-800 text-white">${escapeHTML(item.spellcasting)}</span>`,
     );
+  if (item.source) {
+    const profile = getSpellcastingProfile(item.source);
+    badges.push(
+      `<span class="${ui.badge} ${ui.badgePrimary}">${escapeHTML(profile?.name || item.source)}</span>`,
+    );
+  }
+  if (
+    item.level !== undefined &&
+    Number(item.level) > 0 &&
+    item.prepared &&
+    !isAlwaysPreparedSpell(item)
+  )
+    badges.push(`<span class="${ui.badge} ${ui.badgeSuccess}">Prepared</span>`);
   if (item.concentration)
     badges.push(`<span class="${ui.badge} ${ui.badgeWarning}">Concentration</span>`);
   return badges.length
@@ -734,6 +896,10 @@ function saveState() {
       id: slot.id,
       current: slot.current,
     })),
+    prepared: (character.spells || []).map((spell) => ({
+      id: spell.id,
+      prepared: Boolean(spell.prepared),
+    })),
   };
   localStorage.setItem(STATE_KEY, JSON.stringify(state));
 }
@@ -766,6 +932,13 @@ function loadState() {
     if (slot)
       slot.current = Math.max(0, Math.min(slot.max, Number(saved.current)));
   });
+  (state.prepared || []).forEach((saved) => {
+    const spell = (character.spells || []).find(
+      (item) => item.id === saved.id,
+    );
+    if (spell) spell.prepared = Boolean(saved.prepared);
+  });
+  enforcePreparedLimits();
 }
 function setupEvents() {
   on("damage-btn", "click", () => {
@@ -880,13 +1053,25 @@ function getCombatItems() {
 function getCombatItemRecords() {
   return [
     ...createItemRecords("actions", character.actions),
-    ...createItemRecords("spells", character.spells),
+    ...createItemRecords(
+      "spells",
+      (character.spells || []).filter(isSpellAvailableInCombat),
+    ),
     ...createItemRecords("resources", character.resources),
     ...createItemRecords(
       "features",
       (character.features || []).filter((item) => item.action),
     ),
   ];
+}
+function isSpellAvailableInCombat(spell) {
+  const profile = getSpellcastingProfile(spell.source);
+  return (
+    Number(spell.level) === 0 ||
+    isAlwaysPreparedSpell(spell) ||
+    profile?.preparedLimit <= 0 ||
+    Boolean(spell.prepared)
+  );
 }
 function getAllPossibilityRecords() {
   return [
@@ -915,6 +1100,101 @@ function findCharacterItem(id) {
 }
 function findSpellSlot(id) {
   return getSpellSlots().find((slot) => slot.id === id);
+}
+function normalizeSpellcastingData(target) {
+  if (!target.spellcasting) {
+    target.spellcasting = { enabled: false, profiles: [], slots: [] };
+  }
+  const profiles = Array.isArray(target.spellcasting.profiles)
+    ? target.spellcasting.profiles
+    : [];
+  if (
+    profiles.length === 0 &&
+    ((target.spellcasting.slots || []).length > 0 ||
+      (target.spells || []).length > 0)
+  ) {
+    profiles.push({
+      id: "spellcasting",
+      name: "Spellcasting",
+      ability: target.spells?.[0]?.spellcasting || "",
+      saveDC: null,
+      attackBonus: null,
+      preparedLimit: 0,
+    });
+  }
+  const profileIds = new Set();
+  const remappedIds = new Map();
+  profiles.forEach((profile, index) => {
+    const oldId = String(profile.id || "");
+    const base =
+      slugifyIdentifier(oldId || profile.name || `spellcasting-${index + 1}`) ||
+      `spellcasting-${index + 1}`;
+    let id = base;
+    let suffix = 2;
+    while (profileIds.has(id)) id = `${base}-${suffix++}`;
+    profileIds.add(id);
+    if (oldId) remappedIds.set(oldId, id);
+    profile.id = id;
+    const migratedLimit =
+      target.id === "karma" && /\bcleric\b/i.test(profile.name || "")
+        ? 8
+        : target.id === "ally" && /\bartificer\b/i.test(profile.name || "")
+          ? 7
+          : 0;
+    profile.preparedLimit = Math.max(
+      0,
+      Object.prototype.hasOwnProperty.call(profile, "preparedLimit")
+        ? Number(profile.preparedLimit) || 0
+        : migratedLimit,
+    );
+  });
+  target.spellcasting.profiles = profiles;
+
+  const fallbackProfile = profiles[0];
+  const slots = Array.isArray(target.spellcasting.slots)
+    ? target.spellcasting.slots
+    : [];
+  const slotIds = new Set();
+  slots.forEach((slot, index) => {
+    const base =
+      slugifyIdentifier(slot.id || `slot-${index + 1}`) || `slot-${index + 1}`;
+    let id = base;
+    let suffix = 2;
+    while (slotIds.has(id)) id = `${base}-${suffix++}`;
+    slotIds.add(id);
+    slot.id = id;
+    slot.profileId =
+      remappedIds.get(slot.profileId) ||
+      (profileIds.has(slot.profileId)
+        ? slot.profileId
+        : fallbackProfile?.id || "");
+  });
+  target.spellcasting.slots = slots;
+
+  (target.spells || []).forEach((spell) => {
+    const matchingProfile = profiles.find(
+      (profile) =>
+        String(profile.ability || "").toUpperCase() ===
+        String(spell.spellcasting || "").toUpperCase(),
+    );
+    spell.source =
+      remappedIds.get(spell.source) ||
+      (profileIds.has(spell.source)
+        ? spell.source
+        : matchingProfile?.id || fallbackProfile?.id || "");
+    if (typeof spell.prepared !== "boolean") {
+      spell.prepared =
+        /\bprepared\b/i.test(spell.category || "") &&
+        !/\bunprepared\b/i.test(spell.category || "");
+    }
+  });
+}
+function slugifyIdentifier(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 function getNumberInput(id) {
   return Math.max(0, Number(document.getElementById(id).value) || 0);

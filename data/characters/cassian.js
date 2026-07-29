@@ -27,12 +27,14 @@ window.character = {
     enabled: true,
     profiles: [
       {
+        id: "bloodbound-whisper",
         name: "Bloodbound Whisper",
         ability: "CHA",
         saveDC: 15,
         attackBonus: 7,
+        preparedLimit: 0,
       },
-      { name: "Vampiric Heritage", ability: "DEX", saveDC: 16, attackBonus: 8 },
+      { id: "vampiric-heritage", name: "Vampiric Heritage", ability: "DEX", saveDC: 16, attackBonus: 8, preparedLimit: 0 },
     ],
     slots: [],
   },
