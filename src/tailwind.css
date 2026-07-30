@@ -57,6 +57,42 @@
     @apply rounded-xl;
   }
 
+  .compendium-rich h3,
+  .compendium-rich h4,
+  .compendium-rich h5,
+  .compendium-rich h6 {
+    @apply mt-6 font-display text-lg font-bold first:mt-0;
+  }
+
+  .compendium-rich p {
+    @apply my-3;
+  }
+
+  .compendium-rich ul {
+    @apply my-3 list-disc space-y-1 pl-6;
+  }
+
+  .compendium-rich ol {
+    @apply my-3 list-decimal space-y-1 pl-6;
+  }
+
+  .compendium-rich blockquote {
+    @apply my-4 border-l-4 border-blood-500 bg-blood-500/10 px-4 py-2;
+  }
+
+  .compendium-rich table {
+    @apply my-4 block w-full overflow-x-auto rounded-xl border border-stone-300 text-sm dark:border-white/15;
+  }
+
+  .compendium-rich th,
+  .compendium-rich td {
+    @apply whitespace-nowrap border border-stone-200 px-3 py-2 text-left dark:border-white/10;
+  }
+
+  .compendium-rich th {
+    @apply bg-stone-100 font-bold dark:bg-white/10;
+  }
+
   [id$="Section"],
   #characterDescription,
   #quickStats,

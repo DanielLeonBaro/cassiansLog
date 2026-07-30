@@ -36,7 +36,7 @@ function loadCharacter(source) {
   context.window = context;
   vm.createContext(context);
   vm.runInContext(
-    `${source}\n${appCode}\nglobalThis.testAPI = { character, getPreparedCount, togglePreparedSpell, isAlwaysPreparedSpell, isSpellAvailableInCombat, getCombatItemRecords, saveState };`,
+    `${source}\n${appCode}\nglobalThis.testAPI = { character, getPreparedCount, togglePreparedSpell, isAlwaysPreparedSpell, isSpellAvailableInCombat, getCombatItemRecords, renderAbilityCard, saveState };`,
     context,
   );
   return { ...context.testAPI, storage };
@@ -47,6 +47,18 @@ const karma = loadCharacter(karmaSource);
 const cleric = karma.character.spellcasting.profiles.find(
   (profile) => profile.id === "cleric",
 );
+
+const googleCard = karma.renderAbilityCard({
+  id: "friends",
+  name: "Friends",
+  category: "Cantrip",
+  description: "A spell.",
+});
+assert.match(
+  googleCard,
+  /https:\/\/www\.google\.com\/search\?q=Friends%20D%26D%205e/,
+);
+assert.match(googleCard, /target="_blank"/);
 
 assert.equal(cleric.preparedLimit, 8);
 assert.ok(karma.character.spells.every((spell) => spell.source));
