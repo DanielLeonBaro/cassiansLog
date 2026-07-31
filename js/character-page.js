@@ -27,6 +27,40 @@
       </main>`;
   }
 
+  function applyBundledUpdates(savedCharacter, bundledData) {
+    const update = bundledData?.bundledUpdate;
+    const version = Number(update?.version) || 0;
+    const appliedVersions = savedCharacter.bundledUpdateVersions || {};
+    const appliedVersion = Number(appliedVersions[bundledData?.id]) || 0;
+
+    if (!version || version <= appliedVersion) return false;
+
+    Object.entries(update.additions || {}).forEach(([collection, ids]) => {
+      if (!Array.isArray(savedCharacter[collection])) savedCharacter[collection] = [];
+      const bundledEntries = Array.isArray(bundledData[collection])
+        ? bundledData[collection]
+        : [];
+
+      ids.forEach((id) => {
+        const alreadyPresent = savedCharacter[collection].some(
+          (entry) => entry.id === id,
+        );
+        const bundledEntry = bundledEntries.find((entry) => entry.id === id);
+        if (!alreadyPresent && bundledEntry) {
+          savedCharacter[collection].push(
+            JSON.parse(JSON.stringify(bundledEntry)),
+          );
+        }
+      });
+    });
+
+    savedCharacter.bundledUpdateVersions = {
+      ...appliedVersions,
+      [bundledData.id]: version,
+    };
+    return true;
+  }
+
   async function loadCharacterPage() {
     if (!characterName || !/^[a-z0-9-]+$/i.test(characterName)) {
       showError("This character route is invalid.");
@@ -47,10 +81,17 @@
 
       const savedCharacters = JSON.parse(localStorage.getItem(storageKey) || "{}");
       const savedCharacter = savedCharacters[characterName];
-      const sourceCharacter = savedCharacter ? "template" : bundledCharacter;
+      const sourceCharacter =
+        savedCharacter && bundledCharacter === "template"
+          ? "template"
+          : bundledCharacter;
       await loadScript(`data/characters/${sourceCharacter}.js`);
       if (!window.character) throw new Error("The character data is missing.");
       if (savedCharacter) {
+        if (applyBundledUpdates(savedCharacter, window.character)) {
+          savedCharacters[characterName] = savedCharacter;
+          localStorage.setItem(storageKey, JSON.stringify(savedCharacters));
+        }
         window.character = savedCharacter;
       } else if (params.get("new") === "1") {
         const pending = JSON.parse(localStorage.getItem("dnd-new-character") || "{}");

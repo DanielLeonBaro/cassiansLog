@@ -22,5 +22,11 @@
     "name": "Elaria Vaelmont",
     "description": "Level 4 Variant Aasimar Bard · College of Lore",
     "portrait": "bat.ico"
+  },
+  {
+    "id": "leon",
+    "name": "Leon Vein",
+    "description": "Level 4 High Elf Fighter · Gunslinger",
+    "portrait": "data/portraits/leon.png"
   }
 ]
