@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="An editable campaign wiki for the world of Breugaire.">
+    <base href="../">
+    <title>Wiki — Cassian's Log</title>
+    <link rel="stylesheet" href="bootstrap/bootstrap-icons.css">
+    <link rel="stylesheet" href="dist/tailwind.css">
+    <link rel="icon" href="bat.ico">
+</head>
+
+<body class="flex min-h-screen flex-col bg-parchment font-sans text-stone-900 antialiased transition-colors dark:bg-ink dark:text-stone-100">
+    <nav class="sticky top-0 z-30 border-b border-stone-300/70 bg-parchment/90 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-ink/90" aria-label="Site navigation">
+        <div class="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:px-8">
+            <a class="flex h-10 items-center gap-2 font-display text-lg font-semibold hover:text-blood-500" href="./">
+                <i class="bi bi-journal-bookmark-fill text-blood-500"></i>
+                Cassian's Log
+            </a>
+            <div class="flex items-center gap-2">
+                <a class="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-stone-400 bg-white/70 px-3 text-sm font-bold text-stone-700 shadow-sm transition hover:border-blood-500 hover:text-blood-500 dark:border-white/20 dark:bg-white/5 dark:text-stone-200" href="./">
+                    <i class="bi bi-people-fill"></i><span class="hidden md:inline">Characters</span>
+                </a>
+                <a class="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-stone-400 bg-white/70 px-3 text-sm font-bold text-stone-700 shadow-sm transition hover:border-blood-500 hover:text-blood-500 dark:border-white/20 dark:bg-white/5 dark:text-stone-200" href="compendium/">
+                    <i class="bi bi-journals"></i><span class="hidden md:inline">Compendium</span>
+                </a>
+                <a class="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-blood-500 bg-blood-500 px-3 text-sm font-bold text-white shadow-sm" href="wiki/" aria-current="page">
+                    <i class="bi bi-book-half"></i><span class="hidden sm:inline">Wiki</span>
+                </a>
+                <button id="theme-toggle" type="button" class="inline-flex h-10 items-center justify-center rounded-xl border border-stone-400 bg-white/70 px-3 text-sm font-bold text-stone-700 shadow-sm transition hover:border-blood-500 hover:text-blood-500 dark:border-white/20 dark:bg-white/5 dark:text-stone-200" aria-label="Switch color theme">
+                    <i id="theme-icon" class="bi bi-sun-fill"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="mx-auto flex w-full max-w-[96rem] grow gap-6 px-4 py-6 sm:px-6 lg:px-8">
+        <aside class="hidden w-72 shrink-0 xl:block" aria-label="Wiki pages">
+            <div class="sticky top-[4.75rem] max-h-[calc(100vh-6rem)] overflow-hidden rounded-2xl border border-stone-300/80 bg-white/75 shadow-card backdrop-blur-sm dark:border-white/10 dark:bg-white/[.055]">
+                <div class="border-b border-stone-200/80 p-4 dark:border-white/10">
+                    <button id="sidebar-home" type="button" class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left font-bold transition hover:bg-blood-500/10 hover:text-blood-500">
+                        <i class="bi bi-stars text-blood-500"></i> Wiki home
+                    </button>
+                </div>
+                <div id="wiki-sidebar" class="max-h-[calc(100vh-12rem)] overflow-y-auto p-3"></div>
+            </div>
+        </aside>
+
+        <div class="min-w-0 grow">
+            <section id="wiki-home" aria-labelledby="wiki-title"></section>
+            <article id="wiki-page" class="hidden" aria-live="polite"></article>
+        </div>
+    </main>
+
+    <footer class="mx-auto w-full max-w-7xl px-4 py-5 text-center text-sm text-stone-500 dark:text-stone-400 sm:px-6 lg:px-8">
+        Wiki changes are saved in this browser. Export a backup to move them elsewhere.
+    </footer>
+
+    <div id="wiki-editor" class="fixed inset-0 z-50 hidden bg-ink/85 p-3 backdrop-blur-sm sm:p-6" role="dialog" aria-modal="true" aria-labelledby="wiki-editor-title">
+        <form id="wiki-form" class="mx-auto flex h-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-stone-300 bg-parchment shadow-2xl dark:border-white/15 dark:bg-ink">
+            <header class="flex items-start justify-between gap-4 border-b border-stone-300 p-4 dark:border-white/10 sm:p-5">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-[.18em] text-blood-500">Campaign archive</p>
+                    <h2 id="wiki-editor-title" class="mt-1 font-display text-2xl font-bold">Edit page</h2>
+                </div>
+                <button id="wiki-editor-close" type="button" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-stone-300 transition hover:border-blood-500 hover:text-blood-500 dark:border-white/15" aria-label="Close editor"><i class="bi bi-x-lg"></i></button>
+            </header>
+
+            <div class="grow overflow-y-auto p-4 sm:p-6">
+                <input id="wiki-page-id" type="hidden">
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <label class="block">
+                        <span class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-stone-500 dark:text-stone-400">Page name</span>
+                        <input id="wiki-page-name" required maxlength="120" autocomplete="off" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="New lore page">
+                    </label>
+                    <label class="block">
+                        <span class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-stone-500 dark:text-stone-400">Type</span>
+                        <input id="wiki-page-type" required list="wiki-types" maxlength="60" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="Location">
+                        <datalist id="wiki-types"></datalist>
+                    </label>
+                    <label class="block md:col-span-2">
+                        <span class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-stone-500 dark:text-stone-400">Aliases <span class="normal-case tracking-normal">(comma separated)</span></span>
+                        <input id="wiki-page-aliases" maxlength="500" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="The Golden Order, Six Houses">
+                    </label>
+                    <label class="block md:col-span-2">
+                        <span class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-stone-500 dark:text-stone-400">Short summary</span>
+                        <textarea id="wiki-page-summary" rows="2" maxlength="500" class="w-full resize-y rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="Shown on search cards and hover previews."></textarea>
+                    </label>
+                    <label class="block md:col-span-2">
+                        <span class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-stone-500 dark:text-stone-400">Banner image URL</span>
+                        <input id="wiki-page-banner" type="url" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="https://…">
+                    </label>
+                    <label class="block md:col-span-2">
+                        <span class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-stone-500 dark:text-stone-400">Or upload a banner</span>
+                        <input id="wiki-page-upload" type="file" accept="image/*" class="block w-full cursor-pointer rounded-xl border border-stone-300 bg-white/80 text-sm text-stone-600 file:mr-4 file:border-0 file:bg-blood-500 file:px-4 file:py-2.5 file:font-bold file:text-white dark:border-white/15 dark:bg-white/5 dark:text-stone-300">
+                        <span class="mt-1 flex flex-wrap items-center justify-between gap-2 text-xs text-stone-500"><span>Uploaded images are stored only in this browser and count toward its storage limit.</span><button id="wiki-clear-banner" type="button" class="font-bold text-blood-500 hover:underline">Remove banner</button></span>
+                    </label>
+                </div>
+
+                <div class="mt-6">
+                    <div class="mb-2 flex flex-wrap items-end justify-between gap-3">
+                        <label for="wiki-page-body" class="text-xs font-bold uppercase tracking-wide text-stone-500 dark:text-stone-400">Page content</label>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <select id="wiki-mention-target" class="max-w-56 rounded-xl border border-stone-300 bg-white/80 px-3 py-2 text-sm text-stone-900 dark:border-white/15 dark:bg-stone-900 dark:text-white" aria-label="Page to mention"></select>
+                            <button id="wiki-insert-mention" type="button" class="inline-flex items-center gap-2 rounded-xl border border-blood-500 px-3 py-2 text-sm font-bold text-blood-500 transition hover:bg-blood-500 hover:text-white"><i class="bi bi-link-45deg"></i> Mention</button>
+                        </div>
+                    </div>
+                    <textarea id="wiki-page-body" rows="20" class="min-h-[24rem] w-full resize-y rounded-2xl border border-stone-300 bg-white/80 p-4 font-mono text-sm leading-6 text-stone-900 dark:border-white/15 dark:bg-black/20 dark:text-white" placeholder="## Heading&#10;&#10;Write lore here and mention [[Breugaire]] or [[Breugaire|the continent]]."></textarea>
+                    <div class="mt-3 rounded-2xl border border-stone-300/80 bg-stone-100/70 p-4 text-sm dark:border-white/10 dark:bg-white/[.045]">
+                        <h3 class="font-display font-bold"><i class="bi bi-markdown mr-2 text-blood-500"></i>Formatting guide</h3>
+                        <p class="mt-1 text-xs leading-relaxed text-stone-500 dark:text-stone-400">Put a blank line between paragraphs and blocks. The page name above is already the main title, so content headings begin with <code>##</code>.</p>
+                        <dl class="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 text-xs sm:grid-cols-2">
+                            <div><dt class="font-bold">Section headings</dt><dd class="mt-1 text-stone-500 dark:text-stone-400"><code>## Section title</code><br><code>### Smaller subsection</code></dd></div>
+                            <div><dt class="font-bold">Emphasis</dt><dd class="mt-1 text-stone-500 dark:text-stone-400"><code>**bold text**</code><br><code>*italic text*</code></dd></div>
+                            <div><dt class="font-bold">Bulleted and numbered lists</dt><dd class="mt-1 text-stone-500 dark:text-stone-400"><code>- First item</code><br><code>1. First step</code></dd></div>
+                            <div><dt class="font-bold">Quoted text</dt><dd class="mt-1 text-stone-500 dark:text-stone-400"><code>&gt; A remembered prophecy</code></dd></div>
+                            <div><dt class="font-bold">Mention another page</dt><dd class="mt-1 text-stone-500 dark:text-stone-400"><code>[[Breugaire]]</code><br>Creates a link with a hover preview.</dd></div>
+                            <div><dt class="font-bold">Mention with custom wording</dt><dd class="mt-1 text-stone-500 dark:text-stone-400"><code>[[Breugaire|the continent]]</code><br>Links to Breugaire but displays “the continent.”</dd></div>
+                            <div><dt class="font-bold">External link</dt><dd class="mt-1 text-stone-500 dark:text-stone-400"><code>[Link label](https://example.com)</code></dd></div>
+                            <div><dt class="font-bold">Image inside the page</dt><dd class="mt-1 text-stone-500 dark:text-stone-400"><code>![Image description](https://example.com/image.jpg)</code></dd></div>
+                            <div><dt class="font-bold">Divider</dt><dd class="mt-1 text-stone-500 dark:text-stone-400"><code>---</code></dd></div>
+                            <div><dt class="font-bold">Inline code or rules text</dt><dd class="mt-1 text-stone-500 dark:text-stone-400"><code>`1d20 + 5`</code></dd></div>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="flex flex-wrap items-center justify-between gap-3 border-t border-stone-300 p-4 dark:border-white/10 sm:px-6">
+                <button id="wiki-delete-page" type="button" class="hidden items-center gap-2 rounded-xl border border-blood-500 px-4 py-2.5 text-sm font-bold text-blood-500 transition hover:bg-blood-500 hover:text-white"><i class="bi bi-trash-fill"></i> Delete page</button>
+                <div class="ml-auto flex gap-3">
+                    <button id="wiki-editor-cancel" type="button" class="rounded-xl border border-stone-400 px-4 py-2.5 text-sm font-bold">Cancel</button>
+                    <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-blood-500 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-blood-600"><i class="bi bi-check-lg"></i> Save page</button>
+                </div>
+            </footer>
+        </form>
+    </div>
+
+    <input id="wiki-import-file" class="hidden" type="file" accept="application/json,.json">
+    <div id="wiki-hover-card" class="pointer-events-none fixed z-[70] hidden w-72 overflow-hidden rounded-2xl border border-white/15 bg-ink text-white shadow-2xl" role="tooltip"></div>
+    <div id="wiki-toast" class="pointer-events-none fixed bottom-5 left-1/2 z-[80] hidden -translate-x-1/2 rounded-xl bg-stone-900 px-4 py-3 text-sm font-bold text-white shadow-xl" role="status" aria-live="polite"></div>
+
+    <script src="data/wiki-pages.js"></script>
+    <script src="js/wiki.js"></script>
+</body>
+
+</html>

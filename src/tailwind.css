@@ -80,6 +80,54 @@
     @apply my-4 border-l-4 border-blood-500 bg-blood-500/10 px-4 py-2;
   }
 
+  .wiki-rich {
+    @apply text-[1.02rem] leading-7 text-stone-700 dark:text-stone-200;
+  }
+
+  .wiki-rich h2 {
+    @apply mb-3 mt-10 border-b border-stone-200 pb-2 font-display text-2xl font-bold text-stone-900 first:mt-0 dark:border-white/10 dark:text-white sm:text-3xl;
+  }
+
+  .wiki-rich h3 {
+    @apply mb-2 mt-8 font-display text-xl font-bold text-stone-900 dark:text-white sm:text-2xl;
+  }
+
+  .wiki-rich h4 {
+    @apply mb-2 mt-6 font-display text-lg font-bold text-stone-900 dark:text-white;
+  }
+
+  .wiki-rich p {
+    @apply my-4;
+  }
+
+  .wiki-rich ul {
+    @apply my-4 list-disc space-y-2 pl-6;
+  }
+
+  .wiki-rich ol {
+    @apply my-4 list-decimal space-y-2 pl-6;
+  }
+
+  .wiki-rich blockquote {
+    @apply my-6 rounded-r-xl border-l-4 border-gold bg-gold/10 px-5 py-3 italic text-stone-600 dark:text-stone-300;
+  }
+
+  .wiki-rich img {
+    @apply my-6 max-h-[34rem] w-full rounded-2xl border border-stone-300/80 object-cover shadow-card dark:border-white/10;
+  }
+
+  .wiki-rich a:not(.wiki-mention) {
+    @apply font-semibold text-blood-500 underline decoration-blood-500/30 underline-offset-4 hover:decoration-blood-500;
+  }
+
+  .wiki-mention {
+    @apply inline-flex items-baseline rounded-md bg-blood-500/10 px-1.5 py-0.5 font-bold text-blood-600 no-underline ring-1 ring-inset ring-blood-500/20 transition hover:bg-blood-500 hover:text-white dark:text-red-300;
+  }
+
+  .wiki-mention-missing {
+    @apply cursor-help border-b border-dashed border-stone-400 bg-stone-200/70 text-stone-500 ring-0 dark:bg-white/10 dark:text-stone-400;
+  }
+
   .compendium-rich table {
     @apply my-4 block w-full overflow-x-auto rounded-xl border border-stone-300 text-sm dark:border-white/15;
   }

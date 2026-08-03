@@ -72,6 +72,17 @@ Friends D&D 5e
 - Track copper, silver, electrum, gold, and platinum.
 - Create, edit, and delete character notes.
 
+## Campaign wiki
+
+- Browse the published Breugaire campaign lore, imagery, map, timeline, and family tree.
+- Create, edit, and delete pages in the current browser.
+- Link pages with `[[Page Name]]` or `[[Page Name|custom label]]` mentions.
+- Hover or focus a mention to preview that page's name, type, banner, and summary.
+- Search by page title, alias, type, summary, or full text.
+- Export and import JSON backups of all local changes.
+
+Run `npm run import:wiki` to refresh the bundled seed from the DM's published campaign site.
+
 ## 🦇 Compendium
 
 The compendium currently contains **16,153 entries** generated from **1,951 XML files**.
