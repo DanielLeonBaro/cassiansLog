@@ -1,3 +1,8 @@
+import { normalizeSpellcastingData } from "./features/tracker/spellcasting-model.js";
+import { readJSON, writeJSON } from "./shared/storage.js";
+import { applyDamage, applyHealing, applyTemporaryHitPoints, totalHitPoints } from "./features/tracker/hit-points.js";
+import { hasActiveFilters, normalizeFilterText, uniqueValues } from "./features/tracker/filter-utilities.js";
+
 const character = window.character;
 normalizeSpellcastingData(character);
 enforcePreparedLimits();
@@ -116,7 +121,7 @@ function loadHeader() {
     portrait.src = character.portrait || "bat.ico";
     portrait.alt = `${character.name} portrait`;
   }
-  document.title = `${character.name} — Character Tracker`;
+  document.title = `${character.name} | Character Tracker`;
 }
 function loadHP() {
   setText("effective-hp", getTotalHP());
@@ -125,32 +130,22 @@ function loadHP() {
   setText("max-hp", character.hp.max);
 }
 function damageHP(amount) {
-  if (amount <= 0) return;
-  const absorbed = Math.min(character.hp.temp, amount);
-  character.hp.temp -= absorbed;
-  character.hp.current = Math.max(
-    0,
-    character.hp.current - (amount - absorbed),
-  );
+  if (!applyDamage(character, amount)) return;
   saveState();
   refreshUI();
 }
 function healHP(amount) {
-  if (amount <= 0) return;
-  character.hp.current = Math.min(
-    character.hp.max,
-    character.hp.current + amount,
-  );
+  if (!applyHealing(character, amount)) return;
   saveState();
   refreshUI();
 }
 function setTempHP(amount) {
-  character.hp.temp = Math.max(0, amount);
+  applyTemporaryHitPoints(character, amount);
   saveState();
   refreshUI();
 }
 function getTotalHP() {
-  return character.hp.current + character.hp.temp;
+  return totalHitPoints(character);
 }
 function getHPAmount() {
   return getNumberInput("hp-amount");
@@ -243,7 +238,7 @@ function renderFilterControls(scope, records) {
       </div>
       <div id="${scope}FiltersCollapse" class="hidden">
         <div class="border-t border-stone-200/90 p-4 dark:border-white/10">
-          <p class="mb-4 text-sm text-stone-500 dark:text-stone-400">Combine filters to narrow the list.</p>
+          <p class="mb-4 text-sm text-stone-500 dark:text-stone-400">Use any filters you need.</p>
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-7">
             <label class="min-w-0 sm:col-span-2">
               <span class="${labelClass}">Search</span>
@@ -354,14 +349,6 @@ function updateFilterSummary(scope, visible, total) {
       ? `${visible} of ${total}`
       : `${total} ${total === 1 ? "option" : "options"}`;
 }
-function hasActiveFilters(state) {
-  return Object.values(state).some((value) => String(value).trim());
-}
-function uniqueValues(values) {
-  return [...new Set(values.filter(Boolean).map(String))].sort((a, b) =>
-    a.localeCompare(b),
-  );
-}
 function itemMatchesFilters(record, state) {
   const { item, source } = record;
   if (state.source && source !== state.source) return false;
@@ -445,15 +432,9 @@ function itemFilterText({ item, source }) {
     ].join(" "),
   );
 }
-function normalizeFilterText(value) {
-  return String(value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-}
 function renderEmptyFilterState(scope) {
   const filtering = hasActiveFilters(filterState[scope]);
-  return `<div class="rounded-2xl border border-dashed border-stone-300 bg-stone-50/60 px-5 py-10 text-center text-stone-500 dark:border-white/15 dark:bg-white/[.025] dark:text-stone-400"><i class="bi ${filtering ? "bi-search" : "bi-journal-plus"} mb-2 block text-2xl text-blood-500"></i><strong class="block text-stone-700 dark:text-stone-200">${filtering ? "No matching options" : "No options added yet"}</strong><span class="mt-1 block text-sm">${filtering ? "Try removing a filter or using a broader search." : "Add an action, spell, feature, or resource in the character editor."}</span>${filtering ? `<button type="button" class="mt-4 rounded-xl border border-stone-300 px-3 py-2 text-xs font-bold hover:border-blood-500 hover:text-blood-500 dark:border-white/15" onclick="resetFilters('${scope}')">Clear filters</button>` : ""}</div>`;
+  return `<div class="rounded-2xl border border-dashed border-stone-300 bg-stone-50/60 px-5 py-10 text-center text-stone-500 dark:border-white/15 dark:bg-white/[.025] dark:text-stone-400"><i class="bi ${filtering ? "bi-search" : "bi-journal-plus"} mb-2 block text-2xl text-blood-500"></i><strong class="block text-stone-700 dark:text-stone-200">${filtering ? "No matching options" : "No options added yet"}</strong><span class="mt-1 block text-sm">${filtering ? "Clear a filter or shorten the search." : "Add an action, spell, feature, or resource in the character editor."}</span>${filtering ? `<button type="button" class="mt-4 rounded-xl border border-stone-300 px-3 py-2 text-xs font-bold hover:border-blood-500 hover:text-blood-500 dark:border-white/15" data-tracker-action="reset-filters" data-scope="${escapeAttribute(scope)}">Clear filters</button>` : ""}</div>`;
 }
 function loadResources() {
   const container = document.getElementById("resources-container");
@@ -483,7 +464,7 @@ function loadResources() {
 function renderResourceCard(item) {
   let usage = "";
   if (item.uses) {
-    usage = `<div class="inline-flex gap-2" role="group"><button type="button" class="${ui.iconButton}" aria-label="Decrease ${escapeAttribute(item.name)}" onclick="changeResource('${escapeAttribute(item.id)}',-1)">−</button><button type="button" class="${ui.iconButton}" aria-label="Increase ${escapeAttribute(item.name)}" onclick="changeResource('${escapeAttribute(item.id)}',1)">+</button></div><div class="flex gap-2"><span class="${ui.badge} ${ui.badgeSuccess}">${item.uses.current}/${item.uses.max}</span><span class="${ui.badge} ${ui.badgeWarning}">${formatReset(item.uses.reset)}</span></div>`;
+    usage = `<div class="inline-flex gap-2" role="group"><button type="button" class="${ui.iconButton}" aria-label="Decrease ${escapeAttribute(item.name)}" data-tracker-action="resource" data-id="${escapeAttribute(item.id)}" data-delta="-1">−</button><button type="button" class="${ui.iconButton}" aria-label="Increase ${escapeAttribute(item.name)}" data-tracker-action="resource" data-id="${escapeAttribute(item.id)}" data-delta="1">+</button></div><div class="flex gap-2"><span class="${ui.badge} ${ui.badgeSuccess}">${item.uses.current}/${item.uses.max}</span><span class="${ui.badge} ${ui.badgeWarning}">${formatReset(item.uses.reset)}</span></div>`;
   } else if (item.slotLevel) {
     usage = `<span class="${ui.badge} ${ui.badgePrimary}">Uses level ${item.slotLevel} slot</span>`;
   } else {
@@ -529,7 +510,7 @@ function loadSpellcasting() {
 }
 function renderSpellSlot(slot, profile) {
   const profileName = profile?.name || "spellcasting";
-  return `<div class="rounded-xl border border-stone-200 bg-stone-50/70 dark:border-white/10 dark:bg-white/[.035]"><div class="flex items-center justify-between gap-3 border-b border-stone-200 px-4 py-3 dark:border-white/10"><strong>Level ${slot.level}</strong><span class="${ui.badge} ${ui.badgeDanger}">Max: ${slot.max}</span></div><div class="p-4"><div class="flex items-center justify-between gap-3"><div class="inline-flex gap-2"><button type="button" class="${ui.iconButton}" aria-label="Decrease ${escapeAttribute(profileName)} level ${slot.level} spell slots" onclick="changeSpellSlot('${escapeAttribute(slot.id)}',-1)">−</button><button type="button" class="${ui.iconButton}" aria-label="Increase ${escapeAttribute(profileName)} level ${slot.level} spell slots" onclick="changeSpellSlot('${escapeAttribute(slot.id)}',1)">+</button></div><span class="${ui.badge} ${ui.badgeWarning}">${slot.current}/${slot.max}</span><span class="${ui.badge} ${ui.badgeSecondary}">${formatReset(slot.reset || "long")}</span></div></div></div>`;
+  return `<div class="rounded-xl border border-stone-200 bg-stone-50/70 dark:border-white/10 dark:bg-white/[.035]"><div class="flex items-center justify-between gap-3 border-b border-stone-200 px-4 py-3 dark:border-white/10"><strong>Level ${slot.level}</strong><span class="${ui.badge} ${ui.badgeDanger}">Max: ${slot.max}</span></div><div class="p-4"><div class="flex items-center justify-between gap-3"><div class="inline-flex gap-2"><button type="button" class="${ui.iconButton}" aria-label="Decrease ${escapeAttribute(profileName)} level ${slot.level} spell slots" data-tracker-action="spell-slot" data-id="${escapeAttribute(slot.id)}" data-delta="-1">−</button><button type="button" class="${ui.iconButton}" aria-label="Increase ${escapeAttribute(profileName)} level ${slot.level} spell slots" data-tracker-action="spell-slot" data-id="${escapeAttribute(slot.id)}" data-delta="1">+</button></div><span class="${ui.badge} ${ui.badgeWarning}">${slot.current}/${slot.max}</span><span class="${ui.badge} ${ui.badgeSecondary}">${formatReset(slot.reset || "long")}</span></div></div></div>`;
 }
 function changeSpellSlot(id, delta) {
   const slot = findSpellSlot(id);
@@ -609,7 +590,7 @@ function renderPreparedSpell(spell, profile, atLimit) {
           : atLimit
             ? "Limit reached"
             : "Not prepared";
-  return `<div class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="font-bold">${escapeHTML(spell.name || "Unnamed spell")}</div><div class="mt-1 flex flex-wrap gap-2"><span class="${ui.badge} ${ui.badgeSecondary}">${formatSpellLevel(spell.level)}</span>${spell.category ? `<span class="text-xs text-stone-500 dark:text-stone-400">${escapeHTML(spell.category)}</span>` : ""}</div></div><button type="button" role="switch" aria-checked="${prepared}" ${disabled ? "disabled" : ""} onclick="togglePreparedSpell('${escapeAttribute(spell.id)}')" class="inline-flex shrink-0 items-center gap-2 self-start rounded-full border px-3 py-2 text-xs font-bold transition sm:self-auto ${prepared ? "border-emerald-600 bg-emerald-600 text-white" : "border-stone-300 bg-stone-100 text-stone-600 hover:border-blood-500 dark:border-white/15 dark:bg-white/10 dark:text-stone-300"} disabled:cursor-not-allowed disabled:opacity-60"><span class="relative h-5 w-9 rounded-full bg-black/20"><span class="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition ${prepared ? "left-[18px]" : "left-0.5"}"></span></span>${status}</button></div>`;
+  return `<div class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="font-bold">${escapeHTML(spell.name || "Unnamed spell")}</div><div class="mt-1 flex flex-wrap gap-2"><span class="${ui.badge} ${ui.badgeSecondary}">${formatSpellLevel(spell.level)}</span>${spell.category ? `<span class="text-xs text-stone-500 dark:text-stone-400">${escapeHTML(spell.category)}</span>` : ""}</div></div><button type="button" role="switch" aria-checked="${prepared}" ${disabled ? "disabled" : ""} data-tracker-action="prepared-spell" data-id="${escapeAttribute(spell.id)}" class="inline-flex shrink-0 items-center gap-2 self-start rounded-full border px-3 py-2 text-xs font-bold transition sm:self-auto ${prepared ? "border-emerald-600 bg-emerald-600 text-white" : "border-stone-300 bg-stone-100 text-stone-600 hover:border-blood-500 dark:border-white/15 dark:bg-white/10 dark:text-stone-300"} disabled:cursor-not-allowed disabled:opacity-60"><span class="relative h-5 w-9 rounded-full bg-black/20"><span class="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition ${prepared ? "left-[18px]" : "left-0.5"}"></span></span>${status}</button></div>`;
 }
 function togglePreparedSpell(id) {
   const spell = (character.spells || []).find((item) => item.id === id);
@@ -840,7 +821,7 @@ function loadNotes() {
   container.innerHTML = notes
     .map(
       (note, index) =>
-        `<div class="${ui.card}"><div class="${ui.cardHeader}"><strong>${escapeHTML(note.title)}</strong><div class="inline-flex"><button type="button" class="inline-flex items-center justify-center rounded-l-xl border border-sky-500 px-3 py-1.5 text-xs font-bold text-sky-600 transition hover:bg-sky-500 hover:text-white" onclick="editNote(${index})"><i class="bi bi-pencil"></i></button><button type="button" class="inline-flex items-center justify-center rounded-r-xl border border-blood-500 px-3 py-1.5 text-xs font-bold text-blood-500 transition hover:bg-blood-500 hover:text-white" onclick="deleteNote(${index})"><i class="bi bi-trash"></i></button></div></div><div class="${ui.cardBody}">${escapeHTML(note.body)}</div></div>`,
+        `<div class="${ui.card}"><div class="${ui.cardHeader}"><strong>${escapeHTML(note.title)}</strong><div class="inline-flex"><button type="button" class="inline-flex items-center justify-center rounded-l-xl border border-sky-500 px-3 py-1.5 text-xs font-bold text-sky-600 transition hover:bg-sky-500 hover:text-white" data-tracker-action="edit-note" data-index="${index}"><i class="bi bi-pencil"></i></button><button type="button" class="inline-flex items-center justify-center rounded-r-xl border border-blood-500 px-3 py-1.5 text-xs font-bold text-blood-500 transition hover:bg-blood-500 hover:text-white" data-tracker-action="delete-note" data-index="${index}"><i class="bi bi-trash"></i></button></div></div><div class="${ui.cardBody}">${escapeHTML(note.body)}</div></div>`,
     )
     .join("");
 }
@@ -874,10 +855,10 @@ function deleteNote(index) {
   loadNotes();
 }
 function saveNotes() {
-  localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
+  writeJSON(NOTES_KEY, notes);
 }
 function loadNotesFromStorage() {
-  notes = readStorage(NOTES_KEY, []);
+  notes = readJSON(NOTES_KEY, []);
 }
 function clearNoteInputs() {
   document.getElementById("note-title").value = "";
@@ -902,10 +883,10 @@ function saveState() {
       prepared: Boolean(spell.prepared),
     })),
   };
-  localStorage.setItem(STATE_KEY, JSON.stringify(state));
+  writeJSON(STATE_KEY, state);
 }
 function loadState() {
-  const state = readStorage(STATE_KEY, null);
+  const state = readJSON(STATE_KEY, null);
   if (!state) return;
   if (state.hp) {
     character.hp.current = Math.max(
@@ -942,6 +923,17 @@ function loadState() {
   enforcePreparedLimits();
 }
 function setupEvents() {
+  document.addEventListener("click", (event) => {
+    const target = event.target.closest("[data-tracker-action]");
+    if (!target) return;
+    const action = target.dataset.trackerAction;
+    if (action === "reset-filters") resetFilters(target.dataset.scope);
+    else if (action === "resource") changeResource(target.dataset.id, Number(target.dataset.delta));
+    else if (action === "spell-slot") changeSpellSlot(target.dataset.id, Number(target.dataset.delta));
+    else if (action === "prepared-spell") togglePreparedSpell(target.dataset.id);
+    else if (action === "edit-note") editNote(Number(target.dataset.index));
+    else if (action === "delete-note") deleteNote(Number(target.dataset.index));
+  });
   on("damage-btn", "click", () => {
     damageHP(getHPAmount());
     clearHPInputs();
@@ -961,7 +953,6 @@ function setupEvents() {
   on("shortRest-btn", "click", shortRest);
   on("longRest-btn", "click", longRest);
   on("save-note-btn", "click", saveNote);
-  on("theme-toggle", "click", toggleTheme);
   document.querySelectorAll("[data-collapse-target]").forEach((button) => {
     button.addEventListener("click", () => {
       const panel = document.getElementById(button.dataset.collapseTarget);
@@ -1102,101 +1093,6 @@ function findCharacterItem(id) {
 function findSpellSlot(id) {
   return getSpellSlots().find((slot) => slot.id === id);
 }
-function normalizeSpellcastingData(target) {
-  if (!target.spellcasting) {
-    target.spellcasting = { enabled: false, profiles: [], slots: [] };
-  }
-  const profiles = Array.isArray(target.spellcasting.profiles)
-    ? target.spellcasting.profiles
-    : [];
-  if (
-    profiles.length === 0 &&
-    ((target.spellcasting.slots || []).length > 0 ||
-      (target.spells || []).length > 0)
-  ) {
-    profiles.push({
-      id: "spellcasting",
-      name: "Spellcasting",
-      ability: target.spells?.[0]?.spellcasting || "",
-      saveDC: null,
-      attackBonus: null,
-      preparedLimit: 0,
-    });
-  }
-  const profileIds = new Set();
-  const remappedIds = new Map();
-  profiles.forEach((profile, index) => {
-    const oldId = String(profile.id || "");
-    const base =
-      slugifyIdentifier(oldId || profile.name || `spellcasting-${index + 1}`) ||
-      `spellcasting-${index + 1}`;
-    let id = base;
-    let suffix = 2;
-    while (profileIds.has(id)) id = `${base}-${suffix++}`;
-    profileIds.add(id);
-    if (oldId) remappedIds.set(oldId, id);
-    profile.id = id;
-    const migratedLimit =
-      target.id === "karma" && /\bcleric\b/i.test(profile.name || "")
-        ? 8
-        : target.id === "ally" && /\bartificer\b/i.test(profile.name || "")
-          ? 7
-          : 0;
-    profile.preparedLimit = Math.max(
-      0,
-      Object.prototype.hasOwnProperty.call(profile, "preparedLimit")
-        ? Number(profile.preparedLimit) || 0
-        : migratedLimit,
-    );
-  });
-  target.spellcasting.profiles = profiles;
-
-  const fallbackProfile = profiles[0];
-  const slots = Array.isArray(target.spellcasting.slots)
-    ? target.spellcasting.slots
-    : [];
-  const slotIds = new Set();
-  slots.forEach((slot, index) => {
-    const base =
-      slugifyIdentifier(slot.id || `slot-${index + 1}`) || `slot-${index + 1}`;
-    let id = base;
-    let suffix = 2;
-    while (slotIds.has(id)) id = `${base}-${suffix++}`;
-    slotIds.add(id);
-    slot.id = id;
-    slot.profileId =
-      remappedIds.get(slot.profileId) ||
-      (profileIds.has(slot.profileId)
-        ? slot.profileId
-        : fallbackProfile?.id || "");
-  });
-  target.spellcasting.slots = slots;
-
-  (target.spells || []).forEach((spell) => {
-    const matchingProfile = profiles.find(
-      (profile) =>
-        String(profile.ability || "").toUpperCase() ===
-        String(spell.spellcasting || "").toUpperCase(),
-    );
-    spell.source =
-      remappedIds.get(spell.source) ||
-      (profileIds.has(spell.source)
-        ? spell.source
-        : matchingProfile?.id || fallbackProfile?.id || "");
-    if (typeof spell.prepared !== "boolean") {
-      spell.prepared =
-        /\bprepared\b/i.test(spell.category || "") &&
-        !/\bunprepared\b/i.test(spell.category || "");
-    }
-  });
-}
-function slugifyIdentifier(value) {
-  return String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
 function getNumberInput(id) {
   return Math.max(0, Number(document.getElementById(id).value) || 0);
 }
@@ -1218,14 +1114,6 @@ function on(id, event, handler) {
   const element = document.getElementById(id);
   if (element) element.addEventListener(event, handler);
 }
-function readStorage(key, fallback) {
-  try {
-    const value = localStorage.getItem(key);
-    return value === null ? fallback : JSON.parse(value);
-  } catch {
-    return fallback;
-  }
-}
 function escapeHTML(value) {
   const characters = {
     "&": "&amp;",
@@ -1242,8 +1130,19 @@ function escapeHTML(value) {
 function escapeAttribute(value) {
   return String(value ?? "").replace(/[^a-zA-Z0-9_-]/g, "-");
 }
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initializeApp);
-} else {
+export {
+  character,
+  getPreparedCount,
+  getCombatItemRecords,
+  isAlwaysPreparedSpell,
+  isSpellAvailableInCombat,
+  normalizeSpellcastingData,
+  refreshUI,
+  renderAbilityCard,
+  saveState,
+  togglePreparedSpell,
+};
+
+export function initializeTracker() {
   initializeApp();
 }

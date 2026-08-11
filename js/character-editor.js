@@ -1,4 +1,7 @@
-(function () {
+import { readJSON, removeStored, writeJSON } from "./shared/storage.js";
+import { addCompendiumEntry, hasCompendiumEntry } from "./features/compendium/character-mapping.js";
+
+export function initializeCharacterEditor({ character, normalizeSpellcastingData, refreshUI }) {
   const STORAGE_KEY = "dnd-characters";
   const params = new URLSearchParams(location.search);
   let editing = false;
@@ -169,7 +172,7 @@
     document.getElementById("editor-fields").innerHTML = `
       <section class="rounded-2xl border border-sky-600/30 bg-sky-600/10 p-4">
         <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-          <div><h3 class="font-display text-lg font-bold"><i class="bi bi-journals mr-2 text-sky-600"></i>Add from the compendium</h3><p class="mt-1 text-sm text-stone-600 dark:text-stone-300">Search the whole library, add a summarized entry, and edit every copied field manually afterward.</p></div>
+          <div><h3 class="font-display text-lg font-bold"><i class="bi bi-journals mr-2 text-sky-600"></i>Add from the compendium</h3><p class="mt-1 text-sm text-stone-600 dark:text-stone-300">Pick an entry, then edit the copy on this sheet.</p></div>
           <button type="button" data-compendium-target="all" class="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-sky-800"><i class="bi bi-search"></i> Browse compendium</button>
         </div>
       </section>
@@ -194,7 +197,7 @@
             <img id="editor-portrait" src="${escapeAttributeValue(window.character.portrait || "bat.ico")}" class="h-16 w-16 rounded-xl border border-stone-300 object-cover group-hover:ring-4 group-hover:ring-blood-500 dark:border-white/15" alt="">
             <span class="absolute inset-0 flex items-center justify-center rounded-xl bg-black/50 text-white opacity-0 transition group-hover:opacity-100"><i class="bi bi-camera-fill"></i></span>
           </button>
-          <div><h2 class="font-display text-2xl font-bold">Edit character sheet</h2><p class="text-sm text-stone-500">Click the portrait to replace it. Every template field is available below.</p></div>
+          <div><h2 class="font-display text-2xl font-bold">Edit character sheet</h2><p class="text-sm text-stone-500">Click the portrait to change it.</p></div>
         </div>
         <button id="editor-close" type="button" class="rounded-xl p-3 hover:bg-stone-200 dark:hover:bg-white/10" aria-label="Close editor"><i class="bi bi-x-lg"></i></button>
       </header>
@@ -306,13 +309,9 @@
 
   function loadCompendium() {
     if (compendiumLoadPromise) return compendiumLoadPromise;
-    compendiumLoadPromise = fetch("data/compendium/index.json").then(
-      async (indexResponse) => {
-        if (!indexResponse.ok)
-          throw new Error("The compendium data could not be loaded.");
-        compendiumEntries = (await indexResponse.json()).entries;
-      },
-    );
+    compendiumLoadPromise = import("./features/compendium/repository.js")
+      .then(({ loadCompendiumCatalog }) => loadCompendiumCatalog())
+      .then((catalog) => { compendiumEntries = catalog.entries; });
     return compendiumLoadPromise;
   }
 
@@ -325,7 +324,7 @@
     const modal = document.getElementById("editor-compendium");
     modal.classList.remove("hidden");
     document.getElementById("editor-compendium-context").textContent =
-      `Choose ${context.label}. Copied values remain completely editable.`;
+      `Choose ${context.label}. You can edit the copy afterward.`;
     document.getElementById("editor-compendium-results").innerHTML =
       '<div class="py-16 text-center md:col-span-2 lg:col-span-3"><div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-sky-600 border-r-transparent"></div><p class="mt-3 text-sm text-stone-500">Loading compendium…</p></div>';
     try {
@@ -423,36 +422,13 @@
     if (!button || button.disabled) return;
     const entry = compendiumEntries.find(item => item.id === button.dataset.compendiumAdd);
     if (!entry?.add) return;
-    const target = entry.add.target;
-    if (["class", "subclass", "race", "background"].includes(target)) {
-      draft[target] = entry.add.value;
-    } else {
-      if (!Array.isArray(draft[target])) draft[target] = [];
-      const existing = draft[target].find(item =>
-        item._compendiumId === entry.id || item.compendiumId === entry.id || item.id === entry.id
-      );
-      if (existing) {
-        if (target === "inventory")
-          existing.quantity = Number(existing.quantity || 0) + 1;
-      } else {
-        const value = clone(entry.add.value);
-        if (target === "spells" && !value.source)
-          value.source = draft.spellcasting?.profiles?.[0]?.id || "";
-        draft[target].push(value);
-      }
-    }
+    addCompendiumEntry(draft, entry);
     renderEditorFields();
     renderCompendiumResults();
   }
 
   function isCompendiumEntryAdded(entry) {
-    const target = entry.add?.target;
-    if (!target) return false;
-    if (["class", "subclass", "race", "background"].includes(target))
-      return draft[target] === entry.add.value;
-    return Array.isArray(draft[target]) && draft[target].some(item =>
-      item._compendiumId === entry.id || item.compendiumId === entry.id || item.id === entry.id
-    );
+    return hasCompendiumEntry(draft, entry);
   }
 
   function normalizeSearch(value) {
@@ -469,11 +445,11 @@
     window.character = clone(draft);
     Object.keys(character).forEach(key => delete character[key]);
     Object.assign(character, window.character);
-    const characters = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+    const characters = readJSON(STORAGE_KEY, {});
     if (oldId !== character.id) delete characters[oldId];
     characters[character.id] = clone(character);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(characters));
-    localStorage.removeItem(`dnd-${oldId}-state`);
+    writeJSON(STORAGE_KEY, characters);
+    removeStored(`dnd-${oldId}-state`);
     close();
     refreshUI();
   }
@@ -507,4 +483,4 @@
 
   buildUI();
   if (params.get("edit") === "1") open();
-})();
+}

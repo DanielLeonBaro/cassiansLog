@@ -1,7 +1,9 @@
-(function () {
-  const THEME_KEY = "dnd-theme";
+import { loadCompendiumCatalog, loadCompendiumCategory } from "./features/compendium/repository.js";
+import { filterCompendiumEntries } from "./features/compendium/search.js";
+import { escapeAttribute, escapeHTML, normalizeText as normalize } from "./shared/text.js";
+
+export function initializeCompendium() {
   const PAGE_SIZE = 60;
-  const categoryCache = new Map();
   let manifest = null;
   let entries = [];
   let filtered = [];
@@ -23,46 +25,8 @@
     detailGoogle: document.getElementById("compendium-detail-google"),
   };
 
-  function escapeHTML(value) {
-    return String(value ?? "").replace(
-      /[&<>"']/g,
-      (character) =>
-        ({
-          "&": "&amp;",
-          "<": "&lt;",
-          ">": "&gt;",
-          '"': "&quot;",
-          "'": "&#039;",
-        })[character],
-    );
-  }
-
-  function escapeAttribute(value) {
-    return escapeHTML(value).replace(/`/g, "&#096;");
-  }
-
-  function normalize(value) {
-    return String(value || "")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase();
-  }
-
   function googleURL(name) {
     return `https://www.google.com/search?q=${encodeURIComponent(`${name} D&D 5e`)}`;
-  }
-
-  function applyTheme(theme) {
-    document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem(THEME_KEY, theme);
-    const dark = theme === "dark";
-    const icon = document.getElementById("theme-icon");
-    const button = document.getElementById("theme-toggle");
-    if (icon) icon.className = dark ? "bi bi-sun-fill" : "bi bi-moon-stars-fill";
-    button?.setAttribute(
-      "aria-label",
-      dark ? "Switch to light theme" : "Switch to dark theme",
-    );
   }
 
   function option(value, label) {
@@ -70,16 +34,10 @@
   }
 
   async function initialize() {
-    applyTheme(localStorage.getItem(THEME_KEY) || "dark");
     try {
-      const [manifestResponse, indexResponse] = await Promise.all([
-        fetch("data/compendium/manifest.json"),
-        fetch("data/compendium/index.json"),
-      ]);
-      if (!manifestResponse.ok || !indexResponse.ok)
-        throw new Error("The compendium files could not be loaded.");
-      manifest = await manifestResponse.json();
-      entries = (await indexResponse.json()).entries;
+      const catalog = await loadCompendiumCatalog();
+      manifest = catalog.manifest;
+      entries = catalog.entries;
       elements.category.insertAdjacentHTML(
         "beforeend",
         manifest.categories
@@ -111,31 +69,7 @@
     const query = normalize(elements.search.value.trim());
     const category = elements.category.value;
     const publication = elements.publication.value;
-    filtered = entries.filter((entry) => {
-      if (category && entry.category !== category) return false;
-      if (publication && entry.publication !== publication) return false;
-      if (!query) return true;
-      return normalize(
-        [
-          entry.name,
-          entry.type,
-          entry.publication,
-          entry.summary,
-          entry.supports,
-          entry.prerequisite,
-        ].join(" "),
-      ).includes(query);
-    });
-    filtered.sort((left, right) => {
-      if (query) {
-        const leftName = normalize(left.name);
-        const rightName = normalize(right.name);
-        const leftExact = leftName === query ? 0 : leftName.startsWith(query) ? 1 : 2;
-        const rightExact = rightName === query ? 0 : rightName.startsWith(query) ? 1 : 2;
-        if (leftExact !== rightExact) return leftExact - rightExact;
-      }
-      return left.name.localeCompare(right.name) || left.publication.localeCompare(right.publication);
-    });
+    filtered = filterCompendiumEntries(entries, { query, category, publication });
     visibleCount = PAGE_SIZE;
     updateURL();
     renderResults();
@@ -177,15 +111,7 @@
   }
 
   async function loadCategory(category) {
-    if (categoryCache.has(category)) return categoryCache.get(category);
-    const definition = manifest.categories.find((item) => item.id === category);
-    if (!definition) throw new Error(`Unknown compendium category: ${category}`);
-    const promise = fetch(`data/compendium/${definition.file}`).then((response) => {
-      if (!response.ok) throw new Error(`Could not load ${definition.label}.`);
-      return response.json();
-    });
-    categoryCache.set(category, promise);
-    return promise;
+    return { entries: await loadCompendiumCategory(category, manifest) };
   }
 
   async function openDetail(id, updateHash = true) {
@@ -305,10 +231,5 @@
     if (event.key === "Escape" && !elements.detail.classList.contains("hidden"))
       closeDetail();
   });
-  document.getElementById("theme-toggle").addEventListener("click", () => {
-    const current = document.documentElement.getAttribute("data-theme") || "dark";
-    applyTheme(current === "dark" ? "light" : "dark");
-  });
-
   initialize();
-})();
+}

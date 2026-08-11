@@ -47,9 +47,10 @@ for (const page of pages) {
 }
 
 const wikiScript = fs.readFileSync(path.join(__dirname, "..", "js", "wiki.js"), "utf8");
+const wikiRouting = fs.readFileSync(path.join(__dirname, "..", "js", "features", "wiki", "routing.js"), "utf8");
 const wikiHTML = fs.readFileSync(path.join(__dirname, "..", "wiki", "index.html"), "utf8");
 assert.ok(!wikiScript.includes('href="#page='), "Wiki links must remain under the wiki base path");
-assert.match(wikiScript, /wiki\/#page=/, "Wiki links should include the wiki path before the hash");
+assert.match(wikiRouting, /wiki\/#page=/, "Wiki links should include the wiki path before the hash");
 assert.match(wikiHTML, /Formatting guide/, "The page editor should include its formatting guide");
 
 console.log(`Wiki seed tests passed (${pages.length} pages).`);

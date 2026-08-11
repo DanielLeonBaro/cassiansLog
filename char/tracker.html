@@ -12,51 +12,7 @@
 </head>
 
 <body class="min-h-screen bg-parchment font-sans text-stone-900 antialiased transition-colors dark:bg-ink dark:text-stone-100" id="bodyStart">
-    <nav class="sticky top-0 z-30 border-b border-stone-300/70 bg-parchment/90 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-ink/90" aria-label="Character tools">
-        <div class="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:px-8">
-            <div class="flex items-center gap-2">
-                <a class="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-stone-400 bg-white/70 px-3 text-sm font-bold text-stone-700 shadow-sm transition hover:border-blood-500 hover:text-blood-500 dark:border-white/20 dark:bg-white/5 dark:text-stone-200" href="./" aria-label="All characters">
-                    <i class="bi bi-people-fill"></i><span class="hidden sm:inline">Characters</span>
-                </a>
-                <a class="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-stone-400 bg-white/70 px-3 text-sm font-bold text-stone-700 shadow-sm transition hover:border-blood-500 hover:text-blood-500 dark:border-white/20 dark:bg-white/5 dark:text-stone-200" href="compendium/" aria-label="Open compendium">
-                    <i class="bi bi-journals"></i><span class="hidden lg:inline">Compendium</span>
-                </a>
-                <a class="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-stone-400 bg-white/70 px-3 text-sm font-bold text-stone-700 shadow-sm transition hover:border-blood-500 hover:text-blood-500 dark:border-white/20 dark:bg-white/5 dark:text-stone-200" href="wiki/" aria-label="Open campaign wiki">
-                    <i class="bi bi-book-half"></i><span class="hidden xl:inline">Wiki</span>
-                </a>
-                <button type="button" class="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-stone-400 bg-white/70 px-3 text-sm font-bold text-stone-700 shadow-sm transition hover:border-blood-500 hover:text-blood-500 dark:border-white/20 dark:bg-white/5 dark:text-stone-200" id="shortRest-btn" aria-label="Take a short rest">
-                    <i class="bi bi-moon-fill"></i><span class="hidden md:inline">Short rest</span>
-                </button>
-                <button type="button" class="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-emerald-700/50 bg-emerald-700 px-3 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800" id="longRest-btn" aria-label="Take a long rest">
-                    <i class="bi bi-moon-stars-fill"></i><span class="hidden md:inline">Long rest</span>
-                </button>
-            </div>
-            <div class="flex items-center gap-2">
-                <div id="editor-toggle-slot"></div>
-                <div class="relative" role="group">
-                    <button id="navigation-menu-button" type="button" class="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-blood-500 bg-blood-500 px-3 text-sm font-bold text-white shadow-sm transition hover:bg-blood-600"
-                        aria-expanded="false" aria-controls="navigation-menu">
-                        <i class="bi bi-compass-fill"></i><span class="hidden sm:inline">Jump to</span>
-                    </button>
-                    <div id="navigation-menu" class="absolute right-0 mt-2 hidden min-w-56 rounded-2xl border border-stone-200 bg-white p-2 shadow-2xl dark:border-white/10 dark:bg-stone-900" aria-labelledby="navigation-menu-button">
-                        <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="bodyStart"><i class="bi bi-person-fill"></i> Character</button>
-                        <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="quickStats"><i class="bi bi-bar-chart-fill"></i> Stats</button>
-                        <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="hpManager"><i class="bi bi-heart-fill"></i> HP</button>
-                        <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="combatResources"><i class="bi bi-hourglass-split"></i> Combat</button>
-                        <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="spellcastingSection"><i class="bi bi-magic"></i> Spellcasting</button>
-                        <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="preparedSpellsSection"><i class="bi bi-journal-check"></i> Prepared Spells</button>
-                        <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="allPossibilities"><i class="bi bi-stars"></i> All Possibilities</button>
-                        <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="inventoryAccordion"><i class="bi bi-backpack-fill"></i> Inventory</button>
-                        <button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="notesSection"><i class="bi bi-pen-fill"></i> Notes</button>
-                    </div>
-                </div>
-                <button id="theme-toggle" type="button" class="inline-flex h-10 items-center justify-center rounded-xl border border-stone-400 bg-white/70 px-3 text-sm font-bold text-stone-700 shadow-sm transition hover:border-blood-500 hover:text-blood-500 dark:border-white/20 dark:bg-white/5 dark:text-stone-200"
-                    aria-label="Switch theme">
-                    <i id="theme-icon" class="bi bi-sun-fill"></i>
-                </button>
-            </div>
-        </div>
-    </nav>
+    <nav data-site-header></nav>
     <main class="relative mx-auto w-full max-w-7xl px-4 pb-16 pt-6 sm:px-6 sm:pt-8 lg:px-8">
         <section id="combat-page">
             <div class="mb-4 overflow-hidden rounded-2xl border border-stone-300/80 bg-white/75 shadow-card backdrop-blur-sm dark:border-white/10 dark:bg-white/[.055]" id="characterDescription">
@@ -276,28 +232,7 @@
             </div>
         </section>
     </main>
-    <script>
-        (function () {
-            const params = new URLSearchParams(window.location.search);
-            const requested = params.get("character") || "cassian";
-            const characterName = /^[a-z0-9-]+$/i.test(requested) ? requested : "cassian";
-            const characterScript = document.createElement("script");
-            characterScript.src = `./data/characters/${characterName}.js`;
-            characterScript.onload = function () {
-                if (!window.character) {
-                    document.body.innerHTML = '<main class="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:px-8"><div class="rounded-2xl border border-blood-500/30 bg-blood-500/10 p-4 text-blood-600 dark:text-red-300">The character file loaded, but window.character was not found.</div></main>';
-                    return;
-                }
-                const appScript = document.createElement("script");
-                appScript.src = "./js/script.js";
-                document.body.appendChild(appScript);
-            };
-            characterScript.onerror = function () {
-                document.body.innerHTML = `<main class="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:px-8"><div class="rounded-2xl border border-blood-500/30 bg-blood-500/10 p-4 text-blood-600 dark:text-red-300">Could not load data/characters/${characterName}.js</div></main>`;
-            };
-            document.body.appendChild(characterScript);
-        })();
-    </script>
+    <script type="module" src="js/entries/tracker-standalone.js"></script>
 </body>
 
 </html>

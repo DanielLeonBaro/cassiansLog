@@ -6,35 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="An editable campaign wiki for the world of Breugaire.">
     <base href="../">
-    <title>Wiki — Cassian's Log</title>
+    <title>Wiki | Cassian's Log</title>
     <link rel="stylesheet" href="bootstrap/bootstrap-icons.css">
     <link rel="stylesheet" href="dist/tailwind.css">
     <link rel="icon" href="bat.ico">
 </head>
 
 <body class="flex min-h-screen flex-col bg-parchment font-sans text-stone-900 antialiased transition-colors dark:bg-ink dark:text-stone-100">
-    <nav class="sticky top-0 z-30 border-b border-stone-300/70 bg-parchment/90 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-ink/90" aria-label="Site navigation">
-        <div class="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:px-8">
-            <a class="flex h-10 items-center gap-2 font-display text-lg font-semibold hover:text-blood-500" href="./">
-                <i class="bi bi-journal-bookmark-fill text-blood-500"></i>
-                Cassian's Log
-            </a>
-            <div class="flex items-center gap-2">
-                <a class="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-stone-400 bg-white/70 px-3 text-sm font-bold text-stone-700 shadow-sm transition hover:border-blood-500 hover:text-blood-500 dark:border-white/20 dark:bg-white/5 dark:text-stone-200" href="./">
-                    <i class="bi bi-people-fill"></i><span class="hidden md:inline">Characters</span>
-                </a>
-                <a class="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-stone-400 bg-white/70 px-3 text-sm font-bold text-stone-700 shadow-sm transition hover:border-blood-500 hover:text-blood-500 dark:border-white/20 dark:bg-white/5 dark:text-stone-200" href="compendium/">
-                    <i class="bi bi-journals"></i><span class="hidden md:inline">Compendium</span>
-                </a>
-                <a class="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-blood-500 bg-blood-500 px-3 text-sm font-bold text-white shadow-sm" href="wiki/" aria-current="page">
-                    <i class="bi bi-book-half"></i><span class="hidden sm:inline">Wiki</span>
-                </a>
-                <button id="theme-toggle" type="button" class="inline-flex h-10 items-center justify-center rounded-xl border border-stone-400 bg-white/70 px-3 text-sm font-bold text-stone-700 shadow-sm transition hover:border-blood-500 hover:text-blood-500 dark:border-white/20 dark:bg-white/5 dark:text-stone-200" aria-label="Switch color theme">
-                    <i id="theme-icon" class="bi bi-sun-fill"></i>
-                </button>
-            </div>
-        </div>
-    </nav>
+    <nav data-site-header></nav>
 
     <main class="mx-auto flex w-full max-w-[96rem] grow gap-6 px-4 py-6 sm:px-6 lg:px-8">
         <aside class="hidden w-72 shrink-0 xl:block" aria-label="Wiki pages">
@@ -117,7 +96,7 @@
                             <div><dt class="font-bold">Bulleted and numbered lists</dt><dd class="mt-1 text-stone-500 dark:text-stone-400"><code>- First item</code><br><code>1. First step</code></dd></div>
                             <div><dt class="font-bold">Quoted text</dt><dd class="mt-1 text-stone-500 dark:text-stone-400"><code>&gt; A remembered prophecy</code></dd></div>
                             <div><dt class="font-bold">Mention another page</dt><dd class="mt-1 text-stone-500 dark:text-stone-400"><code>[[Breugaire]]</code><br>Creates a link with a hover preview.</dd></div>
-                            <div><dt class="font-bold">Mention with custom wording</dt><dd class="mt-1 text-stone-500 dark:text-stone-400"><code>[[Breugaire|the continent]]</code><br>Links to Breugaire but displays “the continent.”</dd></div>
+                            <div><dt class="font-bold">Mention with custom wording</dt><dd class="mt-1 text-stone-500 dark:text-stone-400"><code>[[Breugaire|the continent]]</code><br>Links to Breugaire but displays "the continent."</dd></div>
                             <div><dt class="font-bold">External link</dt><dd class="mt-1 text-stone-500 dark:text-stone-400"><code>[Link label](https://example.com)</code></dd></div>
                             <div><dt class="font-bold">Image inside the page</dt><dd class="mt-1 text-stone-500 dark:text-stone-400"><code>![Image description](https://example.com/image.jpg)</code></dd></div>
                             <div><dt class="font-bold">Divider</dt><dd class="mt-1 text-stone-500 dark:text-stone-400"><code>---</code></dd></div>
@@ -142,7 +121,7 @@
     <div id="wiki-toast" class="pointer-events-none fixed bottom-5 left-1/2 z-[80] hidden -translate-x-1/2 rounded-xl bg-stone-900 px-4 py-3 text-sm font-bold text-white shadow-xl" role="status" aria-live="polite"></div>
 
     <script src="data/wiki-pages.js"></script>
-    <script src="js/wiki.js"></script>
+    <script type="module" src="js/entries/wiki.js"></script>
 </body>
 
 </html>

@@ -3,7 +3,7 @@
     "build:css": "tailwindcss -i ./src/tailwind.css -o ./dist/tailwind.css --minify",
     "build:compendium": "node scripts/build-compendium.cjs",
     "import:wiki": "node scripts/import-wiki.cjs",
-    "test": "node tests/spellcasting.test.cjs && node tests/compendium.test.cjs && node tests/wiki.test.cjs && npm run build:css"
+    "test": "node tests/spellcasting.test.cjs && node tests/compendium.test.cjs && node tests/wiki.test.cjs && node tests/modules.test.cjs && npm run build:css"
   },
   "devDependencies": {
     "fast-xml-parser": "^5.7.0",

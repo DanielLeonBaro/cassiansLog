@@ -1,5 +1,7 @@
-(function () {
-  const loaderScript = document.currentScript;
+import { readJSON, removeStored, writeJSON } from "../../shared/storage.js";
+
+export function initializeCharacterPage() {
+  const loaderScript = document.querySelector("script[data-character]");
   const bundledCharacter = loaderScript?.dataset.character;
   const params = new URLSearchParams(window.location.search);
   const requestedCharacter = params.get("character") || bundledCharacter;
@@ -78,8 +80,10 @@
       document.body.className = trackerDocument.body.className;
       document.body.id = trackerDocument.body.id;
       document.body.innerHTML = trackerDocument.body.innerHTML;
+      const { initializeTrackerHeader } = await import("../tracker/header.js");
+      initializeTrackerHeader();
 
-      const savedCharacters = JSON.parse(localStorage.getItem(storageKey) || "{}");
+      const savedCharacters = readJSON(storageKey, {});
       const savedCharacter = savedCharacters[characterName];
       const sourceCharacter =
         savedCharacter && bundledCharacter === "template"
@@ -90,21 +94,20 @@
       if (savedCharacter) {
         if (applyBundledUpdates(savedCharacter, window.character)) {
           savedCharacters[characterName] = savedCharacter;
-          localStorage.setItem(storageKey, JSON.stringify(savedCharacters));
+          writeJSON(storageKey, savedCharacters);
         }
         window.character = savedCharacter;
       } else if (params.get("new") === "1") {
-        const pending = JSON.parse(localStorage.getItem("dnd-new-character") || "{}");
+        const pending = readJSON("dnd-new-character", {});
         window.character = JSON.parse(JSON.stringify(window.character));
         window.character.id = characterName;
         window.character.name = pending.name || "New Character";
         window.character.portrait = "bat.ico";
         savedCharacters[characterName] = window.character;
-        localStorage.setItem(storageKey, JSON.stringify(savedCharacters));
-        localStorage.removeItem("dnd-new-character");
+        writeJSON(storageKey, savedCharacters);
+        removeStored("dnd-new-character");
       }
-      await loadScript("js/script.js");
-      await loadScript("js/character-editor.js");
+      await import("../../entries/tracker.js");
     } catch (error) {
       console.error("Could not load character page:", error);
       showError(error.message);
@@ -112,4 +115,5 @@
   }
 
   loadCharacterPage();
-})();
+}
+

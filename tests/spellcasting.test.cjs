@@ -2,7 +2,17 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
 
-const appCode = fs.readFileSync("js/script.js", "utf8");
+const modelCode = fs.readFileSync("js/features/tracker/spellcasting-model.js", "utf8")
+  .replace(/export /g, "");
+const storageCode = fs.readFileSync("js/shared/storage.js", "utf8")
+  .replace(/export /g, "");
+const hitPointCode = fs.readFileSync("js/features/tracker/hit-points.js", "utf8")
+  .replace(/export /g, "");
+const filterCode = fs.readFileSync("js/features/tracker/filter-utilities.js", "utf8")
+  .replace(/export /g, "");
+const appCode = fs.readFileSync("js/script.js", "utf8")
+  .replace(/^import .*\n/gm, "")
+  .replace(/export \{[\s\S]*?\};\s*export function initializeTracker/, "function initializeTracker");
 
 function loadCharacter(source) {
   const storage = new Map();
@@ -36,7 +46,7 @@ function loadCharacter(source) {
   context.window = context;
   vm.createContext(context);
   vm.runInContext(
-    `${source}\n${appCode}\nglobalThis.testAPI = { character, getPreparedCount, togglePreparedSpell, isAlwaysPreparedSpell, isSpellAvailableInCombat, getCombatItemRecords, renderAbilityCard, saveState };`,
+    `${source}\n${modelCode}\n${storageCode}\n${hitPointCode}\n${filterCode}\n${appCode}\nglobalThis.testAPI = { character, getPreparedCount, togglePreparedSpell, isAlwaysPreparedSpell, isSpellAvailableInCombat, getCombatItemRecords, renderAbilityCard, saveState };`,
     context,
   );
   return { ...context.testAPI, storage };

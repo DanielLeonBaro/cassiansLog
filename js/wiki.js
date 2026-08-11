@@ -1,6 +1,9 @@
-(function () {
-  const THEME_KEY = "dnd-theme";
-  const STORAGE_KEY = "dnd-wiki-pages-v1";
+import { clone, escapeAttribute, escapeHTML, normalizeText as normalize } from "./shared/text.js";
+import { loadWikiPages, saveWikiPages } from "./features/wiki/repository.js";
+import { wikiPageURL } from "./features/wiki/routing.js";
+import { renderWikiMarkdown } from "./features/wiki/markdown.js";
+
+export function initializeWiki() {
   const seed = Array.isArray(window.WIKI_SEED) ? window.WIKI_SEED : [];
   let pages = loadPages();
   let currentPageId = null;
@@ -31,16 +34,9 @@
     toast: document.getElementById("wiki-toast"),
   };
 
-  function clone(value) {
-    return typeof structuredClone === "function"
-      ? structuredClone(value)
-      : JSON.parse(JSON.stringify(value));
-  }
-
   function loadPages() {
     try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-      if (Array.isArray(saved) && saved.length) return saved;
+      return loadWikiPages(seed);
     } catch (error) {
       console.warn("Could not read saved wiki pages:", error);
     }
@@ -49,7 +45,7 @@
 
   function savePages(message) {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(pages));
+      saveWikiPages(pages);
       if (message) showToast(message);
       return true;
     } catch (error) {
@@ -57,28 +53,6 @@
       showToast("The browser could not save this change. Large uploads may exceed its storage limit.");
       return false;
     }
-  }
-
-  function escapeHTML(value) {
-    return String(value ?? "").replace(
-      /[&<>"']/g,
-      (character) =>
-        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[
-          character
-        ],
-    );
-  }
-
-  function escapeAttribute(value) {
-    return escapeHTML(value).replace(/`/g, "&#096;");
-  }
-
-  function normalize(value) {
-    return String(value || "")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .trim();
   }
 
   function sortedPages() {
@@ -99,7 +73,7 @@
   }
 
   function pageURL(id) {
-    return `wiki/#page=${encodeURIComponent(id)}`;
+    return wikiPageURL(id);
   }
 
   function iconForType(type) {
@@ -114,18 +88,6 @@
     if (value.includes("map")) return "bi-map-fill";
     if (value.includes("family")) return "bi-diagram-3-fill";
     return "bi-bookmark-star-fill";
-  }
-
-  function applyTheme(theme) {
-    document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem(THEME_KEY, theme);
-    const dark = theme === "dark";
-    document.getElementById("theme-icon").className = dark
-      ? "bi bi-sun-fill"
-      : "bi bi-moon-stars-fill";
-    document
-      .getElementById("theme-toggle")
-      .setAttribute("aria-label", dark ? "Switch to light theme" : "Switch to dark theme");
   }
 
   function showToast(message) {
@@ -170,9 +132,9 @@
         ${breugaire?.banner ? `<img src="${escapeAttribute(breugaire.banner)}" alt="" class="absolute inset-0 h-full w-full object-cover opacity-45">` : ""}
         <div class="absolute inset-0 bg-gradient-to-r from-ink via-ink/90 to-ink/30"></div>
         <div class="relative max-w-3xl px-6 py-12 text-white sm:px-10 sm:py-16">
-          <span class="mb-4 inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-bold backdrop-blur-sm"><i class="bi bi-stars mr-1.5 text-gold"></i> The world of Breugaire</span>
+          <span class="mb-4 inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-bold backdrop-blur-sm"><i class="bi bi-stars mr-1.5 text-gold"></i> Breugaire campaign notes</span>
           <h1 id="wiki-title" class="font-display text-4xl font-bold sm:text-6xl">Campaign Wiki</h1>
-          <p class="mt-4 max-w-2xl text-lg leading-relaxed text-stone-200">Explore the DM's published lore, follow connections between people and places, or add discoveries from the table.</p>
+          <p class="mt-4 max-w-2xl text-lg leading-relaxed text-stone-200">Read the DM's campaign notes or add your own.</p>
           <div class="mt-7 flex flex-wrap gap-3">
             <button type="button" data-action="new" class="inline-flex items-center gap-2 rounded-xl bg-blood-500 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-blood-600"><i class="bi bi-file-earmark-plus-fill"></i> New page</button>
             ${breugaire ? `<a href="${pageURL(breugaire.id)}" class="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-5 py-2.5 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/20">Enter Breugaire <i class="bi bi-arrow-right"></i></a>` : ""}
@@ -183,7 +145,7 @@
       <section class="mb-6 rounded-2xl border border-stone-300/80 bg-white/75 p-4 shadow-card backdrop-blur-sm dark:border-white/10 dark:bg-white/[.055]" aria-label="Wiki tools">
         <div class="grid grid-cols-1 gap-3 md:grid-cols-12">
           <label class="md:col-span-7">
-            <span class="mb-1 block text-xs font-bold uppercase tracking-wide text-stone-500 dark:text-stone-400">Search the archive</span>
+            <span class="mb-1 block text-xs font-bold uppercase tracking-wide text-stone-500 dark:text-stone-400">Search pages</span>
             <span class="relative block"><i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-stone-400"></i><input id="wiki-search" type="search" value="${escapeAttribute(filters.search)}" autocomplete="off" class="w-full rounded-xl border border-stone-300 bg-white/80 py-2.5 pl-10 pr-3 text-stone-900 dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="City, faction, person, phrase…"></span>
           </label>
           <label class="md:col-span-3">
@@ -199,7 +161,7 @@
       </section>
 
       <section aria-labelledby="archive-title">
-        <div class="mb-4 flex items-end justify-between gap-4"><div><p class="text-xs font-bold uppercase tracking-[.18em] text-blood-500">The archive</p><h2 id="archive-title" class="mt-1 font-display text-3xl font-bold">Pages</h2></div></div>
+        <div class="mb-4 flex items-end justify-between gap-4"><div><p class="text-xs font-bold uppercase tracking-[.18em] text-blood-500">Campaign notes</p><h2 id="archive-title" class="mt-1 font-display text-3xl font-bold">Pages</h2></div></div>
         <div id="wiki-grid" class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3"></div>
       </section>`;
     renderHomeResults();
@@ -232,101 +194,11 @@
         <div class="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent"></div>
         <span class="absolute bottom-3 left-3 rounded-full bg-blood-500 px-2.5 py-1 text-xs font-bold text-white">${escapeHTML(page.type || "Lore")}</span>
       </a>
-      <div class="flex grow flex-col p-5"><h3 class="font-display text-2xl font-bold"><a href="${pageURL(page.id)}" class="transition hover:text-blood-500">${escapeHTML(page.name)}</a></h3><p class="mt-2 grow text-sm leading-relaxed text-stone-500 dark:text-stone-400">${escapeHTML(page.summary || "Open this page to read its campaign notes.")}</p><a href="${pageURL(page.id)}" class="mt-4 inline-flex items-center gap-2 text-sm font-bold text-blood-500">Read page <i class="bi bi-arrow-right transition group-hover:translate-x-1"></i></a></div>
+      <div class="flex grow flex-col p-5"><h3 class="font-display text-2xl font-bold"><a href="${pageURL(page.id)}" class="transition hover:text-blood-500">${escapeHTML(page.name)}</a></h3><p class="mt-2 grow text-sm leading-relaxed text-stone-500 dark:text-stone-400">${escapeHTML(page.summary || "No summary yet.")}</p><a href="${pageURL(page.id)}" class="mt-4 inline-flex items-center gap-2 text-sm font-bold text-blood-500">Read page <i class="bi bi-arrow-right transition group-hover:translate-x-1"></i></a></div>
     </article>`;
   }
 
-  function renderInline(text) {
-    const expression = /!\[([^\]]*)\]\(((?:https?:\/\/|data:image\/)[^)]+)\)|\[\[([^\]|]+)(?:\|([^\]]+))?\]\]|\[([^\]]+)\]\((https?:\/\/[^)]+)\)|\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`/g;
-    let output = "";
-    let lastIndex = 0;
-    let match;
-    while ((match = expression.exec(text))) {
-      output += escapeHTML(text.slice(lastIndex, match.index));
-      if (match[1] !== undefined) {
-        output += `<img src="${escapeAttribute(match[2])}" alt="${escapeAttribute(match[1])}" loading="lazy">`;
-      } else if (match[3] !== undefined) {
-        const page = pageByName(match[3].trim());
-        const label = (match[4] || match[3]).trim();
-        output += page
-          ? `<a href="${pageURL(page.id)}" class="wiki-mention" data-page-id="${escapeAttribute(page.id)}">${escapeHTML(label)}</a>`
-          : `<span class="wiki-mention wiki-mention-missing" title="Page not found: ${escapeAttribute(match[3])}">${escapeHTML(label)}</span>`;
-      } else if (match[5] !== undefined) {
-        output += `<a href="${escapeAttribute(match[6])}" target="_blank" rel="noopener noreferrer">${escapeHTML(match[5])}</a>`;
-      } else if (match[7] !== undefined) {
-        output += `<strong>${escapeHTML(match[7])}</strong>`;
-      } else if (match[8] !== undefined) {
-        output += `<em>${escapeHTML(match[8])}</em>`;
-      } else {
-        output += `<code class="rounded bg-stone-200 px-1.5 py-0.5 text-sm dark:bg-white/10">${escapeHTML(match[9])}</code>`;
-      }
-      lastIndex = expression.lastIndex;
-    }
-    return output + escapeHTML(text.slice(lastIndex));
-  }
-
-  function renderMarkdown(markdown) {
-    const lines = String(markdown || "").replace(/\r\n?/g, "\n").split("\n");
-    const output = [];
-    let index = 0;
-    const special = (line) =>
-      /^#{2,4}\s+/.test(line) || /^>\s?/.test(line) || /^[-*]\s+/.test(line) || /^\d+\.\s+/.test(line) || /^---+$/.test(line);
-
-    while (index < lines.length) {
-      const line = lines[index].trim();
-      if (!line) {
-        index += 1;
-        continue;
-      }
-      const heading = line.match(/^(#{2,4})\s+(.+)$/);
-      if (heading) {
-        const level = heading[1].length;
-        output.push(`<h${level}>${renderInline(heading[2])}</h${level}>`);
-        index += 1;
-        continue;
-      }
-      if (/^---+$/.test(line)) {
-        output.push('<hr class="my-8 border-stone-300 dark:border-white/10">');
-        index += 1;
-        continue;
-      }
-      if (/^>\s?/.test(line)) {
-        const quote = [];
-        while (index < lines.length && /^>\s?/.test(lines[index].trim())) {
-          quote.push(lines[index].trim().replace(/^>\s?/, ""));
-          index += 1;
-        }
-        output.push(`<blockquote>${quote.map(renderInline).join("<br>")}</blockquote>`);
-        continue;
-      }
-      if (/^[-*]\s+/.test(line)) {
-        const items = [];
-        while (index < lines.length && /^[-*]\s+/.test(lines[index].trim())) {
-          items.push(lines[index].trim().replace(/^[-*]\s+/, ""));
-          index += 1;
-        }
-        output.push(`<ul>${items.map((item) => `<li>${renderInline(item)}</li>`).join("")}</ul>`);
-        continue;
-      }
-      if (/^\d+\.\s+/.test(line)) {
-        const items = [];
-        while (index < lines.length && /^\d+\.\s+/.test(lines[index].trim())) {
-          items.push(lines[index].trim().replace(/^\d+\.\s+/, ""));
-          index += 1;
-        }
-        output.push(`<ol>${items.map((item) => `<li>${renderInline(item)}</li>`).join("")}</ol>`);
-        continue;
-      }
-      const paragraph = [line];
-      index += 1;
-      while (index < lines.length && lines[index].trim() && !special(lines[index].trim())) {
-        paragraph.push(lines[index].trim());
-        index += 1;
-      }
-      output.push(`<p>${renderInline(paragraph.join(" "))}</p>`);
-    }
-    return output.join("");
-  }
+  const renderMarkdown = (markdown) => renderWikiMarkdown(markdown, { pageByName, pageURL });
 
   function mentionedPages(body) {
     const result = [];
@@ -356,7 +228,7 @@
 
   function renderPage(page) {
     currentPageId = page.id;
-    document.title = `${page.name} — Campaign Wiki`;
+    document.title = `${page.name} | Campaign Wiki`;
     const related = relatedPages(page);
     elements.page.innerHTML = `
       <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -371,7 +243,7 @@
       <div class="mx-auto max-w-5xl py-8 sm:py-12">
         ${page.summary ? `<p class="mb-8 border-l-4 border-blood-500 pl-5 font-display text-xl leading-relaxed text-stone-600 dark:text-stone-300 sm:text-2xl">${escapeHTML(page.summary)}</p>` : ""}
         <div class="wiki-rich">${page.body ? renderMarkdown(page.body) : '<div class="rounded-2xl border border-dashed border-stone-300 p-8 text-center text-stone-500 dark:border-white/15 dark:text-stone-400"><i class="bi bi-feather mb-2 block text-3xl text-blood-500"></i>This page has no written lore yet. Edit it to begin.</div>'}</div>
-        ${related.length ? `<section class="mt-12 border-t border-stone-300 pt-8 dark:border-white/10"><p class="text-xs font-bold uppercase tracking-[.18em] text-blood-500">Follow the threads</p><h2 class="mt-1 font-display text-2xl font-bold">Related pages</h2><div class="mt-4 flex flex-wrap gap-2">${related.map((item) => `<a href="${pageURL(item.id)}" class="inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-white/60 px-3 py-2 text-sm font-bold transition hover:border-blood-500 hover:text-blood-500 dark:border-white/15 dark:bg-white/5"><i class="bi ${iconForType(item.type)}"></i>${escapeHTML(item.name)}</a>`).join("")}</div></section>` : ""}
+        ${related.length ? `<section class="mt-12 border-t border-stone-300 pt-8 dark:border-white/10"><p class="text-xs font-bold uppercase tracking-[.18em] text-blood-500">More from the wiki</p><h2 class="mt-1 font-display text-2xl font-bold">Related pages</h2><div class="mt-4 flex flex-wrap gap-2">${related.map((item) => `<a href="${pageURL(item.id)}" class="inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-white/60 px-3 py-2 text-sm font-bold transition hover:border-blood-500 hover:text-blood-500 dark:border-white/15 dark:bg-white/5"><i class="bi ${iconForType(item.type)}"></i>${escapeHTML(item.name)}</a>`).join("")}</div></section>` : ""}
         ${page.source ? `<p class="mt-10 text-xs text-stone-400">Originally imported from the <a class="font-bold text-blood-500 hover:underline" href="${escapeAttribute(page.source)}" target="_blank" rel="noopener noreferrer">DM's published campaign site <i class="bi bi-box-arrow-up-right"></i></a>.</p>` : ""}
       </div>`;
     elements.home.classList.add("hidden");
@@ -389,7 +261,7 @@
       return;
     }
     currentPageId = null;
-    document.title = "Wiki — Cassian's Log";
+    document.title = "Wiki | Cassian's Log";
     elements.page.classList.add("hidden");
     elements.home.classList.remove("hidden");
     renderHomeShell();
@@ -594,10 +466,6 @@
   }
 
   function setupEvents() {
-    document.getElementById("theme-toggle").addEventListener("click", () => {
-      const current = document.documentElement.getAttribute("data-theme");
-      applyTheme(current === "dark" ? "light" : "dark");
-    });
     document.getElementById("sidebar-home").addEventListener("click", navigateHome);
     document.addEventListener("click", handleClick);
     document.addEventListener("input", (event) => {
@@ -650,7 +518,6 @@
     });
   }
 
-  applyTheme(localStorage.getItem(THEME_KEY) || "dark");
   setupEvents();
   renderRoute();
-})();
+}

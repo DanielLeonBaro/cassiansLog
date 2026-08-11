@@ -2,6 +2,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const { XMLParser } = require("fast-xml-parser");
+const { writeJSON } = require("./shared/output.cjs");
 
 const projectRoot = path.resolve(__dirname, "..");
 const inputRoot = path.join(projectRoot, "stuffToParse");
@@ -689,19 +690,12 @@ for (const [category, definition] of Object.entries(categoryDefinitions)) {
   categoryCounts[category] = entries.length;
   const fileName = `${category}.json`;
   outputFiles.add(fileName);
-  fs.writeFileSync(
-    path.join(outputRoot, fileName),
-    JSON.stringify(
-      {
-        category,
-        label: definition.label,
-        generatedAt: new Date().toISOString(),
-        entries,
-      },
-      null,
-      0,
-    ),
-  );
+  writeJSON(path.join(outputRoot, fileName), {
+    category,
+    label: definition.label,
+    generatedAt: new Date().toISOString(),
+    entries,
+  });
 }
 
 const indexEntries = canonicalEntries.map((entry) => ({
@@ -721,17 +715,12 @@ const publications = [...new Set(canonicalEntries.map((entry) => entry.publicati
   (left, right) => left.localeCompare(right),
 );
 
-fs.writeFileSync(
-  path.join(outputRoot, "index.json"),
-  JSON.stringify({
+writeJSON(path.join(outputRoot, "index.json"), {
     generatedAt: new Date().toISOString(),
     entries: indexEntries,
-  }),
-);
+});
 
-fs.writeFileSync(
-  path.join(outputRoot, "manifest.json"),
-  JSON.stringify({
+writeJSON(path.join(outputRoot, "manifest.json"), {
     generatedAt: new Date().toISOString(),
     inputFiles: xmlFiles.length,
     rawEntries: rawEntries.length,
@@ -743,8 +732,7 @@ fs.writeFileSync(
       count: categoryCounts[id],
     })),
     publications,
-  }),
-);
+});
 
 for (const fileName of fs.readdirSync(outputRoot)) {
   if (fileName.endsWith(".json") && !outputFiles.has(fileName))
