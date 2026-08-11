@@ -1,2 +1,4 @@
 node_modules/
 stuffToParse/
+.agents
+skills-lock.json
