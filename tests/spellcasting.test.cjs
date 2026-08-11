@@ -10,6 +10,10 @@ const hitPointCode = fs.readFileSync("js/features/tracker/hit-points.js", "utf8"
   .replace(/export /g, "");
 const filterCode = fs.readFileSync("js/features/tracker/filter-utilities.js", "utf8")
   .replace(/export /g, "");
+const deathSaveCode = fs.readFileSync("js/features/tracker/death-saves.js", "utf8")
+  .replace(/export /g, "");
+const restCode = fs.readFileSync("js/features/tracker/rest.js", "utf8")
+  .replace(/export /g, "");
 const appCode = fs.readFileSync("js/script.js", "utf8")
   .replace(/^import .*\n/gm, "")
   .replace(/export \{[\s\S]*?\};\s*export function initializeTracker/, "function initializeTracker");
@@ -46,7 +50,7 @@ function loadCharacter(source) {
   context.window = context;
   vm.createContext(context);
   vm.runInContext(
-    `${source}\n${modelCode}\n${storageCode}\n${hitPointCode}\n${filterCode}\n${appCode}\nglobalThis.testAPI = { character, getPreparedCount, togglePreparedSpell, isAlwaysPreparedSpell, isSpellAvailableInCombat, getCombatItemRecords, renderAbilityCard, saveState };`,
+    `${source}\n${modelCode}\n${storageCode}\n${hitPointCode}\n${filterCode}\n${deathSaveCode}\n${restCode}\n${appCode}\nglobalThis.testAPI = { character, getPreparedCount, togglePreparedSpell, toggleCharacterFlag, isAlwaysPreparedSpell, isSpellAvailableInCombat, getCombatItemRecords, renderAbilityCard, saveState, loadState, applyDamage, applyTemporaryHitPoints, toggleDeathSave, toggleStable, healHP, shortRest, longRest, getRestDetails };`,
     context,
   );
   return { ...context.testAPI, storage };
@@ -54,6 +58,98 @@ function loadCharacter(source) {
 
 const karmaSource = fs.readFileSync("data/characters/karma.js", "utf8");
 const karma = loadCharacter(karmaSource);
+const shortRestDetails = karma.getRestDetails(
+  karma.character,
+  [
+    { name: "Second Wind", uses: { reset: "short" } },
+    { name: "Daily Feature", uses: { reset: "long" } },
+  ],
+  [
+    { reset: "short" },
+    { reset: "long" },
+  ],
+  "short",
+);
+assert.equal(shortRestDetails.duration, "At least 1 hour");
+assert.match(shortRestDetails.effects.join(" "), /Second Wind/);
+assert.doesNotMatch(shortRestDetails.effects.join(" "), /Daily Feature/);
+assert.match(shortRestDetails.toast, /1 resource and 1 spell-slot group/);
+const longRestDetails = karma.getRestDetails(
+  karma.character,
+  [
+    { name: "Second Wind", uses: { reset: "short" } },
+    { name: "Daily Feature", uses: { reset: "long" } },
+  ],
+  [{ reset: "short" }, { reset: "long" }],
+  "long",
+);
+assert.equal(longRestDetails.duration, "At least 8 hours");
+assert.match(longRestDetails.effects.join(" "), /Current HP returns/);
+assert.match(longRestDetails.toast, /2 resources and 2 spell-slot groups/);
+assert.equal(karma.character.inspiration, 0);
+assert.equal(karma.character.cinematic, 0);
+assert.equal(karma.toggleCharacterFlag("inspiration"), true);
+assert.equal(karma.toggleCharacterFlag("cinematic"), true);
+assert.equal(karma.character.inspiration, 1);
+assert.equal(karma.character.cinematic, 1);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(karma.character.deathSaves)),
+  { failures: 0, successes: 0, stable: 0 },
+);
+karma.character.hp.current = 0;
+karma.toggleDeathSave(karma.character.deathSaves, "failures", 1);
+karma.toggleDeathSave(karma.character.deathSaves, "successes", 2);
+karma.toggleStable(karma.character.deathSaves);
+karma.saveState();
+let savedDeathSaves = JSON.parse(karma.storage.get("dnd-karma-state")).deathSaves;
+assert.deepEqual(savedDeathSaves, { failures: 2, successes: 3, stable: 1 });
+karma.character.deathSaves = { failures: 0, successes: 0, stable: 0 };
+karma.loadState();
+assert.deepEqual(
+  JSON.parse(JSON.stringify(karma.character.deathSaves)),
+  { failures: 2, successes: 3, stable: 1 },
+);
+let savedFlags = JSON.parse(karma.storage.get("dnd-karma-state"));
+assert.equal(savedFlags.inspiration, 1);
+assert.equal(savedFlags.cinematic, 1);
+karma.character.inspiration = 0;
+karma.character.cinematic = 0;
+karma.loadState();
+assert.equal(karma.character.inspiration, 1);
+assert.equal(karma.character.cinematic, 1);
+karma.applyDamage(
+  karma.character,
+  karma.character.hp.current + karma.character.hp.temp + 5,
+);
+assert.equal(karma.character.hp.current, -5);
+karma.saveState();
+karma.character.hp.current = karma.character.hp.max;
+karma.loadState();
+assert.equal(karma.character.hp.current, -5);
+karma.applyTemporaryHitPoints(karma.character, 3);
+assert.equal(karma.character.hp.current, -2);
+assert.equal(karma.character.hp.temp, 0);
+karma.applyTemporaryHitPoints(karma.character, 5);
+assert.equal(karma.character.hp.current, 0);
+assert.equal(karma.character.hp.temp, 3);
+karma.healHP(1);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(karma.character.deathSaves)),
+  { failures: 0, successes: 0, stable: 0 },
+);
+karma.character.deathSaves = { failures: 1, successes: 2, stable: 1 };
+karma.shortRest();
+assert.deepEqual(
+  JSON.parse(JSON.stringify(karma.character.deathSaves)),
+  { failures: 0, successes: 0, stable: 0 },
+);
+karma.character.deathSaves = { failures: 3, successes: 1, stable: 1 };
+karma.longRest();
+assert.deepEqual(
+  JSON.parse(JSON.stringify(karma.character.deathSaves)),
+  { failures: 0, successes: 0, stable: 0 },
+);
+
 const cleric = karma.character.spellcasting.profiles.find(
   (profile) => profile.id === "cleric",
 );

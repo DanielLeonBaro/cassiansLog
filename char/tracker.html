@@ -17,7 +17,7 @@
         <section id="combat-page">
             <div class="mb-4 overflow-hidden rounded-2xl border border-stone-300/80 bg-white/75 shadow-card backdrop-blur-sm dark:border-white/10 dark:bg-white/[.055]" id="characterDescription">
                 <div class="p-5">
-                    <div class="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+                    <div class="flex flex-col items-center gap-4 sm:flex-row sm:items-stretch">
                         <img id="character-portrait" src="bat.ico" class="aspect-square w-[180px] shrink-0 rounded-2xl border border-stone-300 object-cover p-1 shadow-lg dark:border-white/15"
                             alt="Character portrait">
                         <div class="grow text-center sm:text-left">
@@ -28,6 +28,14 @@
                             <p class="mb-1 text-stone-500 dark:text-stone-400"><span id="character-background"></span> •
                                 <span id="character-gender"></span></p>
                             <p class="text-stone-500 dark:text-stone-400"><span id="character-alignment"></span></p>
+                        </div>
+                        <div class="flex shrink-0 justify-end gap-3 self-stretch sm:flex-col sm:justify-between" aria-label="Character status">
+                            <button id="inspiration-toggle" type="button" role="switch" aria-checked="false" aria-label="Inspiration: No" title="Inspiration" data-tracker-action="character-flag" data-field="inspiration" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-stone-300 bg-stone-100 text-stone-600 shadow-sm transition hover:border-yellow-300 hover:text-yellow-500 aria-checked:border-yellow-200 aria-checked:bg-yellow-200 aria-checked:text-yellow-950 dark:border-white/15 dark:bg-white/10 dark:text-stone-300">
+                                <i class="bi bi-lightbulb-fill" aria-hidden="true"></i>
+                            </button>
+                            <button id="cinematic-toggle" type="button" role="switch" aria-checked="false" aria-label="Cinematic: No" title="Cinematic" data-tracker-action="character-flag" data-field="cinematic" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-stone-300 bg-stone-100 text-stone-600 shadow-sm transition hover:border-violet-300 hover:text-violet-400 aria-checked:border-violet-300 aria-checked:bg-violet-300 aria-checked:text-violet-950 dark:border-white/15 dark:bg-white/10 dark:text-stone-300">
+                                <i class="bi bi-camera-reels-fill" aria-hidden="true"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -119,6 +127,33 @@
                         <button id="temp-increase-btn" type="button" class="inline-flex w-10 items-center justify-center border-y border-stone-300 bg-stone-100 font-bold text-stone-700 transition hover:bg-stone-200 dark:border-white/15 dark:bg-white/10 dark:text-stone-100 dark:hover:bg-white/15" aria-label="Increase temporary hit points">+</button>
                         <button id="temp-btn" type="button" class="rounded-r-xl border border-amber-400 bg-amber-400 px-4 py-2 text-sm font-bold text-stone-950 shadow-sm transition hover:bg-amber-500">Set</button>
                     </div>
+                </div>
+            </div>
+            <div id="death-saves-section" class="mb-4 hidden overflow-hidden rounded-2xl border border-stone-300/80 bg-white/75 shadow-card backdrop-blur-sm dark:border-white/10 dark:bg-white/[.055]">
+                <div class="flex items-center border-b border-stone-200/80 bg-stone-100/70 px-5 py-4 font-bold leading-none tracking-wide dark:border-white/10 dark:bg-white/[.045]">Death Saving Throws</div>
+                <div class="flex flex-wrap items-end gap-6 p-5">
+                    <fieldset>
+                        <legend class="mb-2 text-sm font-bold text-stone-500 dark:text-stone-400">Failed</legend>
+                        <div class="flex gap-2">
+                            <button type="button" role="switch" aria-checked="false" aria-label="Failed saving throw 1" title="Failed saving throw 1" data-tracker-action="death-save" data-kind="failures" data-death-save="failures" data-index="0" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-stone-300 bg-stone-100 text-stone-500 shadow-sm transition hover:border-violet-300 hover:text-violet-400 aria-checked:border-violet-300 aria-checked:bg-violet-300 aria-checked:text-violet-950 dark:border-white/15 dark:bg-white/10 dark:text-stone-300"><i class="bi bi-x-circle-fill" aria-hidden="true"></i></button>
+                            <button type="button" role="switch" aria-checked="false" aria-label="Failed saving throw 2" title="Failed saving throw 2" data-tracker-action="death-save" data-kind="failures" data-death-save="failures" data-index="1" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-stone-300 bg-stone-100 text-stone-500 shadow-sm transition hover:border-violet-300 hover:text-violet-400 aria-checked:border-violet-300 aria-checked:bg-violet-300 aria-checked:text-violet-950 dark:border-white/15 dark:bg-white/10 dark:text-stone-300"><i class="bi bi-x-circle-fill" aria-hidden="true"></i></button>
+                            <button type="button" role="switch" aria-checked="false" aria-label="Failed saving throw 3" title="Failed saving throw 3" data-tracker-action="death-save" data-kind="failures" data-death-save="failures" data-index="2" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-stone-300 bg-stone-100 text-stone-500 shadow-sm transition hover:border-violet-300 hover:text-violet-400 aria-checked:border-violet-300 aria-checked:bg-violet-300 aria-checked:text-violet-950 dark:border-white/15 dark:bg-white/10 dark:text-stone-300"><i class="bi bi-x-circle-fill" aria-hidden="true"></i></button>
+                        </div>
+                    </fieldset>
+                    <fieldset>
+                        <legend class="mb-2 text-sm font-bold text-stone-500 dark:text-stone-400">Succeeded</legend>
+                        <div class="flex gap-2">
+                            <button type="button" role="switch" aria-checked="false" aria-label="Successful saving throw 1" title="Successful saving throw 1" data-tracker-action="death-save" data-kind="successes" data-death-save="successes" data-index="0" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-stone-300 bg-stone-100 text-stone-500 shadow-sm transition hover:border-yellow-300 aria-checked:border-yellow-200 aria-checked:bg-yellow-200 aria-checked:text-yellow-950 dark:border-white/15 dark:bg-white/10 dark:text-stone-300"><i class="bi bi-check-circle-fill" aria-hidden="true"></i></button>
+                            <button type="button" role="switch" aria-checked="false" aria-label="Successful saving throw 2" title="Successful saving throw 2" data-tracker-action="death-save" data-kind="successes" data-death-save="successes" data-index="1" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-stone-300 bg-stone-100 text-stone-500 shadow-sm transition hover:border-yellow-300 aria-checked:border-yellow-200 aria-checked:bg-yellow-200 aria-checked:text-yellow-950 dark:border-white/15 dark:bg-white/10 dark:text-stone-300"><i class="bi bi-check-circle-fill" aria-hidden="true"></i></button>
+                            <button type="button" role="switch" aria-checked="false" aria-label="Successful saving throw 3" title="Successful saving throw 3" data-tracker-action="death-save" data-kind="successes" data-death-save="successes" data-index="2" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-stone-300 bg-stone-100 text-stone-500 shadow-sm transition hover:border-yellow-300 aria-checked:border-yellow-200 aria-checked:bg-yellow-200 aria-checked:text-yellow-950 dark:border-white/15 dark:bg-white/10 dark:text-stone-300"><i class="bi bi-check-circle-fill" aria-hidden="true"></i></button>
+                        </div>
+                    </fieldset>
+                    <fieldset>
+                        <legend class="mb-2 text-sm font-bold text-stone-500 dark:text-stone-400">Stable</legend>
+                        <button id="stable-toggle" type="button" role="switch" aria-checked="false" aria-label="Stable: No" title="Stable" data-tracker-action="stable" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-stone-300 bg-stone-100 text-stone-500 shadow-sm transition hover:border-emerald-400 hover:text-emerald-500 aria-checked:border-emerald-400 aria-checked:bg-emerald-400 aria-checked:text-stone-950 dark:border-white/15 dark:bg-white/10 dark:text-stone-300">
+                            <i class="bi bi-hospital-fill" aria-hidden="true"></i>
+                        </button>
+                    </fieldset>
                 </div>
             </div>
             <div class="mb-4 overflow-hidden rounded-2xl border border-stone-300/80 bg-white/75 shadow-card backdrop-blur-sm dark:border-white/10 dark:bg-white/[.055]" id="combatResources">
@@ -232,6 +267,28 @@
             </div>
         </section>
     </main>
+    <div id="rest-dialog" class="fixed inset-0 z-[70] hidden items-center justify-center bg-ink/80 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="rest-dialog-title">
+        <div class="w-full max-w-xl overflow-hidden rounded-2xl border border-stone-300 bg-parchment shadow-2xl dark:border-white/15 dark:bg-stone-900">
+            <div class="flex items-center justify-between border-b border-stone-300 px-5 py-4 dark:border-white/10">
+                <h2 id="rest-dialog-title" class="font-display text-xl font-bold">Confirm rest</h2>
+                <button id="close-rest-dialog" type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-stone-300 transition hover:border-blood-500 hover:text-blood-500 dark:border-white/15" aria-label="Close rest confirmation"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="p-5">
+                <div class="mb-4 rounded-xl border border-stone-300 bg-white/60 p-4 dark:border-white/10 dark:bg-white/5">
+                    <p class="text-xs font-bold uppercase tracking-wide text-stone-500 dark:text-stone-400">Duration</p>
+                    <p id="rest-dialog-duration" class="mt-1 font-bold"></p>
+                </div>
+                <p id="rest-dialog-description" class="text-stone-600 dark:text-stone-300"></p>
+                <h3 class="mt-5 text-sm font-bold">This will reset</h3>
+                <ul id="rest-dialog-effects" class="mt-2 list-disc space-y-2 pl-5 text-sm text-stone-600 dark:text-stone-300"></ul>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button id="cancel-rest" type="button" class="rounded-xl border border-stone-300 bg-white/70 px-4 py-2 text-sm font-bold transition hover:border-blood-500 hover:text-blood-500 dark:border-white/15 dark:bg-white/5">Cancel</button>
+                    <button id="confirm-rest" type="button" class="rounded-xl border border-blood-500 bg-blood-500 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-blood-600">Confirm rest</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="rest-toast" class="fixed bottom-4 right-4 z-[80] hidden max-w-sm rounded-2xl border border-emerald-500/40 bg-stone-900 px-4 py-3 text-sm font-semibold text-white shadow-2xl" role="status" aria-live="polite"></div>
     <script type="module" src="js/entries/tracker-standalone.js"></script>
 </body>
 

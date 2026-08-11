@@ -2,8 +2,13 @@ import { normalizeSpellcastingData } from "./features/tracker/spellcasting-model
 import { readJSON, writeJSON } from "./shared/storage.js";
 import { applyDamage, applyHealing, applyTemporaryHitPoints, totalHitPoints } from "./features/tracker/hit-points.js";
 import { hasActiveFilters, normalizeFilterText, uniqueValues } from "./features/tracker/filter-utilities.js";
+import { normalizeDeathSaves, resetDeathSaves, toggleDeathSave, toggleStable } from "./features/tracker/death-saves.js";
+import { getRestDetails } from "./features/tracker/rest.js";
 
 const character = window.character;
+character.inspiration = normalizeCharacterFlag(character.inspiration);
+character.cinematic = normalizeCharacterFlag(character.cinematic);
+character.deathSaves = normalizeDeathSaves(character.deathSaves);
 normalizeSpellcastingData(character);
 enforcePreparedLimits();
 const CHARACTER_ID = character.id || "character";
@@ -69,6 +74,8 @@ const filterState = {
 };
 let notes = [];
 let editingNote = null;
+let pendingRest = null;
+let restToastTimer = null;
 function initializeApp() {
   loadTheme();
   loadNotesFromStorage();
@@ -80,7 +87,9 @@ function initializeApp() {
 }
 function refreshUI() {
   loadHeader();
+  loadCharacterFlags();
   loadHP();
+  loadDeathSaves();
   loadTrackers();
   loadResources();
   loadSpellcasting();
@@ -88,6 +97,27 @@ function refreshUI() {
   loadAbilities();
   loadInventory();
   loadNotes();
+}
+function normalizeCharacterFlag(value) {
+  return value === true || Number(value) === 1 ? 1 : 0;
+}
+function loadCharacterFlags() {
+  ["inspiration", "cinematic"].forEach((field) => {
+    const active = character[field] === 1;
+    const button = document.getElementById(`${field}-toggle`);
+    button?.setAttribute("aria-checked", String(active));
+    button?.setAttribute(
+      "aria-label",
+      `${field[0].toUpperCase()}${field.slice(1)}: ${active ? "Yes" : "No"}`,
+    );
+  });
+}
+function toggleCharacterFlag(field) {
+  if (field !== "inspiration" && field !== "cinematic") return false;
+  character[field] = character[field] === 1 ? 0 : 1;
+  saveState();
+  loadCharacterFlags();
+  return true;
 }
 function loadHeader() {
   const className = [character.class, character.subclass]
@@ -129,6 +159,30 @@ function loadHP() {
   setText("temp-hp", character.hp.temp);
   setText("max-hp", character.hp.max);
 }
+function loadDeathSaves() {
+  const section = document.getElementById("death-saves-section");
+  section?.classList.toggle("hidden", character.hp.current > 0);
+  ["failures", "successes"].forEach((kind) => {
+    document.querySelectorAll(`[data-death-save="${kind}"]`).forEach((button) => {
+      const active = Number(button.dataset.index) < character.deathSaves[kind];
+      button.setAttribute("aria-checked", String(active));
+    });
+  });
+  const stableButton = document.getElementById("stable-toggle");
+  const stable = character.deathSaves.stable === 1;
+  stableButton?.setAttribute("aria-checked", String(stable));
+  stableButton?.setAttribute("aria-label", `Stable: ${stable ? "Yes" : "No"}`);
+}
+function changeDeathSave(kind, index) {
+  if (!toggleDeathSave(character.deathSaves, kind, index)) return;
+  saveState();
+  loadDeathSaves();
+}
+function changeStable() {
+  toggleStable(character.deathSaves);
+  saveState();
+  loadDeathSaves();
+}
 function damageHP(amount) {
   if (!applyDamage(character, amount)) return;
   saveState();
@@ -136,6 +190,7 @@ function damageHP(amount) {
 }
 function healHP(amount) {
   if (!applyHealing(character, amount)) return;
+  if (character.hp.current > 0) resetDeathSaves(character.deathSaves);
   saveState();
   refreshUI();
 }
@@ -802,6 +857,7 @@ function shortRest() {
     .filter((slot) => (slot.reset || "long") === "short")
     .forEach((slot) => (slot.current = slot.max));
   character.hp.temp = 0;
+  resetDeathSaves(character.deathSaves);
   saveState();
   refreshUI();
 }
@@ -812,8 +868,57 @@ function longRest() {
   getSpellSlots().forEach((slot) => (slot.current = slot.max));
   character.hp.current = character.hp.max;
   character.hp.temp = 0;
+  resetDeathSaves(character.deathSaves);
   saveState();
   refreshUI();
+}
+function requestRest(kind) {
+  pendingRest = getRestDetails(
+    character,
+    getAllCharacterItems(),
+    getSpellSlots(),
+    kind,
+  );
+  setText("rest-dialog-title", `Confirm ${pendingRest.title.toLowerCase()}`);
+  setText("rest-dialog-duration", pendingRest.duration);
+  setText("rest-dialog-description", pendingRest.description);
+  const effects = document.getElementById("rest-dialog-effects");
+  effects?.replaceChildren(
+    ...pendingRest.effects.map((effect) => {
+      const item = document.createElement("li");
+      item.textContent = effect;
+      return item;
+    }),
+  );
+  const dialog = document.getElementById("rest-dialog");
+  dialog?.classList.remove("hidden");
+  dialog?.classList.add("flex");
+  document.body.classList.add("overflow-hidden");
+  document.getElementById("confirm-rest")?.focus();
+}
+function closeRestDialog() {
+  const dialog = document.getElementById("rest-dialog");
+  if (!dialog || dialog.classList.contains("hidden")) return;
+  dialog?.classList.add("hidden");
+  dialog?.classList.remove("flex");
+  document.body.classList.remove("overflow-hidden");
+  pendingRest = null;
+}
+function showRestToast(message) {
+  const toast = document.getElementById("rest-toast");
+  if (!toast) return;
+  toast.textContent = message;
+  toast.classList.remove("hidden");
+  clearTimeout(restToastTimer);
+  restToastTimer = setTimeout(() => toast.classList.add("hidden"), 5000);
+}
+function confirmRest() {
+  if (!pendingRest) return;
+  const rest = pendingRest;
+  if (rest.kind === "short") shortRest();
+  else longRest();
+  closeRestDialog();
+  showRestToast(rest.toast);
 }
 function loadNotes() {
   const container = document.getElementById("notes-container");
@@ -867,6 +972,9 @@ function clearNoteInputs() {
 function saveState() {
   const state = {
     hp: { current: character.hp.current, temp: character.hp.temp },
+    inspiration: character.inspiration,
+    cinematic: character.cinematic,
+    deathSaves: { ...character.deathSaves },
     trackers: (character.trackers || []).map((tracker) => ({
       id: tracker.id,
       active: tracker.active,
@@ -888,10 +996,16 @@ function saveState() {
 function loadState() {
   const state = readJSON(STATE_KEY, null);
   if (!state) return;
+  if (Object.prototype.hasOwnProperty.call(state, "inspiration"))
+    character.inspiration = normalizeCharacterFlag(state.inspiration);
+  if (Object.prototype.hasOwnProperty.call(state, "cinematic"))
+    character.cinematic = normalizeCharacterFlag(state.cinematic);
+  if (state.deathSaves)
+    character.deathSaves = normalizeDeathSaves(state.deathSaves);
   if (state.hp) {
-    character.hp.current = Math.max(
-      0,
-      Math.min(character.hp.max, Number(state.hp.current)),
+    character.hp.current = Math.min(
+      character.hp.max,
+      Number(state.hp.current),
     );
     character.hp.temp = Math.max(0, Number(state.hp.temp) || 0);
   }
@@ -920,6 +1034,7 @@ function loadState() {
     );
     if (spell) spell.prepared = Boolean(saved.prepared);
   });
+  if (character.hp.current > 0) resetDeathSaves(character.deathSaves);
   enforcePreparedLimits();
 }
 function setupEvents() {
@@ -931,6 +1046,9 @@ function setupEvents() {
     else if (action === "resource") changeResource(target.dataset.id, Number(target.dataset.delta));
     else if (action === "spell-slot") changeSpellSlot(target.dataset.id, Number(target.dataset.delta));
     else if (action === "prepared-spell") togglePreparedSpell(target.dataset.id);
+    else if (action === "character-flag") toggleCharacterFlag(target.dataset.field);
+    else if (action === "death-save") changeDeathSave(target.dataset.kind, Number(target.dataset.index));
+    else if (action === "stable") changeStable();
     else if (action === "edit-note") editNote(Number(target.dataset.index));
     else if (action === "delete-note") deleteNote(Number(target.dataset.index));
   });
@@ -950,8 +1068,14 @@ function setupEvents() {
   on("hp-increase-btn", "click", () => stepInput("hp-amount", 1));
   on("temp-decrease-btn", "click", () => stepInput("temp-input", -1));
   on("temp-increase-btn", "click", () => stepInput("temp-input", 1));
-  on("shortRest-btn", "click", shortRest);
-  on("longRest-btn", "click", longRest);
+  on("shortRest-btn", "click", () => requestRest("short"));
+  on("longRest-btn", "click", () => requestRest("long"));
+  on("confirm-rest", "click", confirmRest);
+  on("cancel-rest", "click", closeRestDialog);
+  on("close-rest-dialog", "click", closeRestDialog);
+  document.getElementById("rest-dialog")?.addEventListener("click", (event) => {
+    if (event.target.id === "rest-dialog") closeRestDialog();
+  });
   on("save-note-btn", "click", saveNote);
   document.querySelectorAll("[data-collapse-target]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -991,6 +1115,7 @@ function setupEvents() {
   });
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
+    closeRestDialog();
     navigationButton?.setAttribute("aria-expanded", "false");
     navigationMenu?.classList.add("hidden");
     navigationButton?.focus();

@@ -1,5 +1,6 @@
 import { mountSiteHeader } from "../../shared/site-header.js";
 import { initializeTheme } from "../../shared/theme.js";
+import { initializeDiceRoller } from "../dice/index.js";
 
 const button = "inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-bold text-white shadow-sm transition";
 const jumpItems = [
@@ -27,4 +28,5 @@ function trackerActions() {
 export function initializeTrackerHeader() {
   mountSiteHeader({ tracker: true, actions: trackerActions() });
   initializeTheme();
+  initializeDiceRoller();
 }

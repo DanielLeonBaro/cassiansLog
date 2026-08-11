@@ -4,10 +4,12 @@ import { initializeTheme } from "../../shared/theme.js";
 import { mountSiteHeader } from "../../shared/site-header.js";
 import { createCharacterCard } from "./cards.js";
 import { createCharacterId, listCharacters, PENDING_KEY, removeCharacter } from "./repository.js";
+import { initializeDiceRoller } from "../dice/index.js";
 
 export function initializeCharacterArchive() {
   mountSiteHeader({ activePage: "characters" });
   initializeTheme();
+  initializeDiceRoller();
   const container = document.getElementById("characters");
   const dialog = document.getElementById("character-dialog");
   const form = document.getElementById("character-form");

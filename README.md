@@ -1,6 +1,6 @@
 # Cassian's Log
 
-Cassian's Log is a static D&D 5e character tracker. It has editable character sheets, combat tracking, a campaign wiki, and a searchable compendium.
+Cassian's Log is a static D&D 5e character tracker. It has editable character sheets, combat tracking, a dice roller, a campaign wiki, and a searchable compendium.
 
 The app does not build characters for you. Ability scores, armor class, spell save DCs, prepared-spell limits, and similar values stay under your control.
 
@@ -95,7 +95,7 @@ cassiansLog/
 │   └── portraits/            # Character portraits
 ├── js/
 │   ├── entries/              # Browser entrypoints
-│   ├── features/             # Character, tracker, compendium, and wiki code
+│   ├── features/             # Character, tracker, dice, compendium, and wiki code
 │   └── shared/               # Navigation, theme, storage, and text helpers
 ├── scripts/                  # Data import and build scripts
 ├── src/                      # Tailwind source CSS

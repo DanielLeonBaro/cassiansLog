@@ -6,7 +6,7 @@ export function applyDamage(character, amount) {
   if (amount <= 0) return false;
   const absorbed = Math.min(character.hp.temp, amount);
   character.hp.temp -= absorbed;
-  character.hp.current = Math.max(0, character.hp.current - (amount - absorbed));
+  character.hp.current -= amount - absorbed;
   return true;
 }
 
@@ -17,5 +17,9 @@ export function applyHealing(character, amount) {
 }
 
 export function applyTemporaryHitPoints(character, amount) {
-  character.hp.temp = Math.max(0, amount);
+  const temporary = Math.max(0, amount);
+  const negativeHitPoints = Math.max(0, -character.hp.current);
+  const recovered = Math.min(temporary, negativeHitPoints);
+  character.hp.current += recovered;
+  character.hp.temp = temporary - recovered;
 }
