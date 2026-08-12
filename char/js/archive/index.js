@@ -20,10 +20,15 @@ export function initializeCharacterArchive() {
     try {
       const characters = await listCharacters();
       container.replaceChildren(...characters.map((character) => createCharacterCard(character, {
-        onRemove(item) {
-          if (!confirm(`Remove ${item.name}? This only affects this browser.`)) return;
-          removeCharacter(item);
-          load();
+        async onRemove(item) {
+          if (!confirm(`Remove ${item.name}? The character will be hidden from the shared cloud list.`)) return;
+          try {
+            await removeCharacter(item);
+            load();
+          } catch (error) {
+            console.error("Could not remove character:", error);
+            alert("The character remains available because the cloud update failed.");
+          }
         },
       })));
     } catch (error) {

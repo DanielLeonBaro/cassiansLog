@@ -2,10 +2,21 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "cassianslog",
   "compatibility_date": "2026-08-12",
+  "main": "./cloudflare/worker.js",
   "observability": {
     "enabled": true
   },
   "assets": {
-    "directory": "./.cloudflare/public"
-  }
+    "directory": "./.cloudflare/public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "cassianslog-data",
+      "database_id": "c13163e7-6a08-4ab5-9246-d0923aa1721f",
+      "migrations_dir": "cloudflare/migrations"
+    }
+  ]
 }

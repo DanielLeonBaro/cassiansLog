@@ -1,4 +1,5 @@
 import { clone } from "../../shared/js/text.js";
+import { readCloudJSON, writeCloudJSON } from "../../shared/js/cloud-store.js";
 import {
   addCombatRound,
   addCustomTracker,
@@ -27,6 +28,7 @@ import {
   overwritePreset,
   parsePresetUpload,
   saveDraft,
+  savePresetCollection,
   setPresetActive,
 } from "./repository.js";
 import { renderWorkspace } from "./view.js";
@@ -167,7 +169,7 @@ export function initializeCombatLoot() {
     toastTimer = setTimeout(() => elements.toast.classList.add("hidden"), 4000);
   }
 
-  function persistDraft() {
+  function persistDraft({ cloud = true } = {}) {
     const result = saveDraft({
       activePresetId,
       baselineDocument,
@@ -178,7 +180,16 @@ export function initializeCombatLoot() {
       console.error("Could not save Combat & Loot draft:", result.error);
       showToast("The browser could not save this draft. Your current work remains open.");
     }
-    if (result.ok) draftFailureShown = false;
+    if (result.ok) {
+      draftFailureShown = false;
+      if (cloud) {
+        writeCloudJSON("api/combat-loot/draft", result.draft)
+          .catch((error) => {
+            console.error("Could not save Combat & Loot draft to D1:", error);
+            showToast("Draft remains in this browser, but the cloud save failed.");
+          });
+      }
+    }
     return result.ok;
   }
 
@@ -411,6 +422,11 @@ export function initializeCombatLoot() {
     }
 
     presets = result.presets;
+    writeCloudJSON(`api/combat-loot/presets/${encodeURIComponent(result.preset.id)}`, result.preset)
+      .catch((error) => {
+        console.error("Could not update preset in D1:", error);
+        showToast("Preset remains in this browser, but the cloud update failed.");
+      });
     let draftSaved = true;
     if (wasCurrentPreset) {
       activePresetId = null;
@@ -444,6 +460,11 @@ export function initializeCombatLoot() {
       return;
     }
     presets = result.presets;
+    writeCloudJSON(`api/combat-loot/presets/${encodeURIComponent(result.preset.id)}`, result.preset)
+      .catch((error) => {
+        console.error("Could not save preset to D1:", error);
+        showToast("Preset remains in this browser, but the cloud save failed.");
+      });
     activePresetId = result.preset.id;
     baselineDocument = clone(workspace);
     const draftSaved = persistDraft();
@@ -813,9 +834,45 @@ export function initializeCombatLoot() {
     event.returnValue = "";
   });
 
+  async function restoreCloudWorkspace() {
+    const cloud = await readCloudJSON("api/combat-loot", { fallback: null });
+    if (!cloud) return;
+    const cloudPresets = Array.isArray(cloud.presets) ? cloud.presets : [];
+    if (!cloudPresets.length && !cloud.draft) {
+      if ((presets.length || recoveredDraft) && confirm("Local Combat & Loot data was found. Upload it to the shared cloud database?")) {
+        for (const preset of presets) {
+          await writeCloudJSON(`api/combat-loot/presets/${encodeURIComponent(preset.id)}`, preset);
+        }
+        if (recoveredDraft) await writeCloudJSON("api/combat-loot/draft", recoveredDraft);
+        showToast("Local Combat & Loot data copied to D1.");
+      }
+      return;
+    }
+
+    presets = cloudPresets;
+    savePresetCollection(presets);
+    if (cloud.draft?.currentDocument?.tables) {
+      workspace = prepareWorkspaceDocument(cloud.draft.currentDocument);
+      activePresetId = presets.some((preset) => preset.active && preset.id === cloud.draft.activePresetId)
+        ? cloud.draft.activePresetId
+        : null;
+      baselineDocument = cloud.draft.baselineDocument?.tables
+        ? prepareWorkspaceDocument(cloud.draft.baselineDocument)
+        : null;
+      saveDraft({ activePresetId, baselineDocument, currentDocument: workspace });
+    }
+    renderPresetOptions(activePresetId || "");
+    render();
+    showToast("Combat & Loot data restored from D1.");
+  }
+
   renderPresetOptions(activePresetId || "");
   render();
-  persistDraft();
+  persistDraft({ cloud: false });
+  restoreCloudWorkspace().catch((error) => {
+    console.error("Could not restore Combat & Loot data from D1:", error);
+    showToast("Using this browser's Combat & Loot data because cloud restore failed.");
+  });
 }
 
 function escapeOptionText(value) {

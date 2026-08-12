@@ -1,4 +1,5 @@
 import { readJSON, writeJSON } from "../../../shared/js/storage.js";
+import { readCloudJSON, writeCloudJSON } from "../../../shared/js/cloud-store.js";
 
 export const CHARACTERS_KEY = "dnd-characters";
 export const DELETED_KEY = "dnd-deleted-characters";
@@ -50,9 +51,13 @@ async function getJSON(url) {
 
 export async function listCharacters() {
   const catalog = await getJSON(new URL("../../catalog.json", import.meta.url));
-  const bundled = await Promise.all(catalog.characters.map((id) =>
+  const staticBundled = await Promise.all(catalog.characters.map((id) =>
     getJSON(new URL(`../../${encodeURIComponent(id)}/character.json`, import.meta.url)),
   ));
+  const cloud = await readCloudJSON("api/characters", { fallback: null });
+  const bundled = Array.isArray(cloud?.characters) && cloud.characters.length
+    ? cloud.characters.map(({ document, source }) => ({ ...document, custom: source !== "bundled" }))
+    : staticBundled;
   const saved = storedCharacters();
   const deleted = new Set(readJSON(DELETED_KEY, []));
   const bundledIds = new Set(bundled.map((character) => character.id));
@@ -75,7 +80,8 @@ export async function listCharacters() {
   return characters;
 }
 
-export function removeCharacter(character) {
+export async function removeCharacter(character) {
+  await writeCloudJSON(`api/characters/${encodeURIComponent(character.id)}`, undefined, { method: "DELETE" });
   const stored = storedCharacters();
   delete stored[character.id];
   writeJSON(CHARACTERS_KEY, stored);

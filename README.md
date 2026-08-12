@@ -1,8 +1,8 @@
 # Cassian's Log
 
-Cassian's Log is a static D&D 5e toolkit with editable character sheets, combat and loot trackers, a dice roller, a campaign Wiki, and a searchable Compendium.
+Cassian's Log is a D&D 5e toolkit with editable character sheets, combat and loot trackers, a dice roller, a campaign Wiki, and a searchable Compendium.
 
-The app leaves ability scores, armor class, spell save DCs, prepared-spell limits, and other character-building decisions under the player's control. Browser-created characters and edits are stored locally in the current browser.
+The app leaves ability scores, armor class, spell save DCs, prepared-spell limits, and other character-building decisions under the player's control. The Cloudflare deployment stores shared characters, runtime state, notes, Combat & Loot presets, drafts, and Compendium data in D1. Browser storage and bundled JSON remain available as offline and rollback fallbacks.
 
 ## Run locally
 
@@ -23,7 +23,13 @@ If PowerShell blocks `npm.ps1`, use `npm.cmd`.
 | Command | Purpose |
 |---|---|
 | `npm run build:css` | Build the shared Tailwind stylesheet |
+| `npm run build:site` | Build the static assets used by Cloudflare Workers |
 | `npm run build:compendium` | Convert Compendium XML sources into feature-local JSON |
+| `npm run d1:seed` | Generate the ignored, deterministic D1 seed SQL |
+| `npm run d1:migrate:local` | Apply schema migrations to local D1 |
+| `npm run d1:seed:local` | Import Compendium and bundled characters into local D1 |
+| `npm run d1:migrate:remote` | Apply pending migrations to production D1 |
+| `npm run d1:seed:remote` | Refresh production Compendium and bundled characters |
 | `npm run import:wiki` | Refresh the bundled Wiki JSON seed |
 | `npm test` | Run feature, integration, architecture, route, and CSS tests |
 | `npm audit` | Check dependencies for known vulnerabilities |
@@ -40,6 +46,7 @@ cassiansLog/
 |-- wiki/                      # Page, seed data, runtime, importer, and tests
 |-- integrations/
 |   `-- character-compendium/ # Optional picker adapter
+|-- cloudflare/                # Worker API, D1 migrations, seed builder, and tests
 |-- shared/                    # Neutral UI, storage, dice, assets, styles, and config
 `-- index.html                 # Redirect to /char/
 ```
@@ -65,12 +72,14 @@ npm test
 
 To refresh the Wiki seed from the configured published campaign source, run `npm run import:wiki` and then `npm test`.
 
-## Saved data and deployment
+## D1 data and deployment
 
-Characters, notes, combat state, Combat & Loot presets, Wiki edits, and settings use browser storage. There is no account or server-side database. Existing storage keys remain stable across the feature-folder migration.
+Cloudflare Workers serves the static site and handles `/api/*`. D1 uses the `DB` binding and database `cassianslog-data`. Write requests require the `WRITE_TOKEN` Worker secret. Never put that value in Git, `wrangler.jsonc`, or a build variable. The browser keeps the entered token in `sessionStorage`, so closing the tab ends that editing session.
 
-Combat & Loot lives at `/combat-loot/`. It keeps named presets under `dnd-combat-loot-presets-v1` and a recoverable working draft under `dnd-combat-loot-draft-v1`. These are `localStorage` records in the current browser profile, not files in the repository. Removed presets remain in the named collection with `active: false`; they are hidden from the picker rather than erased. Preset downloads include the same versioned tracker document, including current unsaved edits, and do not mark the working draft as saved. Uploading one of those JSON files opens it as an unsaved draft so it can be reviewed before saving locally.
+The Compendium and bundled characters are generated from the same checked-in JSON used by the static fallback. `npm run d1:seed` writes `.cloudflare/d1-seed.sql`; the file is ignored because it is generated and about 59 MiB. Applying the seed inserts or updates Compendium entries by ID and inserts missing bundled characters. It does not remove unrelated Compendium rows, overwrite edited or inactive character records, or delete custom characters, runtime state, notes, presets, or drafts.
 
-Because GitHub Pages is a static host, the browser cannot write JSON into a Git-tracked `combat-loot/data/` directory. Sharing a preset currently means downloading the JSON and sending it to another user, who can upload it. Team-wide automatic saves require an authenticated storage service; a Git-tracked preset library would instead require adding downloaded files to the repository and committing and deploying them.
+Existing `localStorage` keys remain stable. This preserves older browser data and lets the `localstorage-version` Git branch run locally or on GitHub Pages without D1. The D1-enabled `main` branch tries cloud reads first where shared data exists and falls back to local or static data when the API is unavailable.
 
-GitHub Actions deploys `main` to GitHub Pages. Before pushing generated-data changes, run the relevant generator followed by `npm test` and inspect `git status`.
+Combat & Loot keeps its named presets under `dnd-combat-loot-presets-v1` and its recoverable draft under `dnd-combat-loot-draft-v1` as local fallbacks while synchronizing the same records to D1. Removed presets use `active: false`; records remain recoverable. Downloads still export the visible document without changing saved state.
+
+Cloudflare Workers Builds deploys `main`. To publish the static fallback, open GitHub Actions, run **Deploy static content to Pages** manually, and select `localstorage-version`; automatic GitHub Pages runs still follow `main`. Before pushing generated-data changes, run the relevant generator, local D1 seed verification, and `npm test`.

@@ -1,4 +1,5 @@
 import { readJSON, removeStored, writeJSON } from "../../../shared/js/storage.js";
+import { writeCloudJSON } from "../../../shared/js/cloud-store.js";
 import { subscribeCharacterEditorExtensions } from "./extensions.js";
 
 export function initializeCharacterEditor({ character, normalizeSpellcastingData, refreshUI }) {
@@ -231,7 +232,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     renderEditorFields();
   }
 
-  function save() {
+  async function save() {
     const oldId = window.character.id;
     if (typeof normalizeSpellcastingData === "function")
       normalizeSpellcastingData(draft);
@@ -245,6 +246,19 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     removeStored(`dnd-${oldId}-state`);
     close();
     refreshUI();
+    try {
+      const bundledId = document.querySelector("script[data-character]")?.dataset.character;
+      await writeCloudJSON(`api/characters/${encodeURIComponent(character.id)}`, {
+        document: clone(character),
+        source: bundledId && bundledId !== "template" ? "bundled" : "custom",
+      });
+      if (oldId !== character.id) {
+        await writeCloudJSON(`api/characters/${encodeURIComponent(oldId)}`, undefined, { method: "DELETE" });
+      }
+    } catch (error) {
+      console.error("Could not save character to D1:", error);
+      alert("Changes remain saved in this browser, but could not be saved to the shared cloud database.");
+    }
   }
 
   function uploadPortrait(file) {

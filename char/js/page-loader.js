@@ -1,4 +1,5 @@
 import { readJSON, removeStored, writeJSON } from "../../shared/js/storage.js";
+import { readCloudJSON } from "../../shared/js/cloud-store.js";
 import { migrateLegacyPortrait } from "./archive/repository.js";
 
 export function initializeCharacterPage() {
@@ -76,12 +77,16 @@ export function initializeCharacterPage() {
 
       const savedCharacters = readJSON(storageKey, {});
       const savedCharacter = savedCharacters[characterName];
+      const cloudCharacter = await readCloudJSON(
+        `api/characters/${encodeURIComponent(characterName)}`,
+        { fallback: null },
+      );
       const characterResponse = await fetch(new URL("character.json", window.location.href));
       if (!characterResponse.ok) {
         throw new Error(`Could not load the character data (${characterResponse.status}).`);
       }
       const bundledData = await characterResponse.json();
-      window.character = bundledData;
+      window.character = cloudCharacter?.document || bundledData;
       if (savedCharacter) {
         const migrated = migrateLegacyPortrait(savedCharacter);
         if (applyBundledUpdates(savedCharacter, bundledData) || migrated) {
@@ -108,4 +113,3 @@ export function initializeCharacterPage() {
 
   loadCharacterPage();
 }
-

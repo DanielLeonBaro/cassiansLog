@@ -80,6 +80,11 @@ function initializeApp() {
   initializeFilters();
   refreshUI();
   setupEvents();
+  Promise.all([notesController.loadCloud(), trackerState.loadCloud()])
+    .then(([notesLoaded, stateLoaded]) => {
+      if (notesLoaded || stateLoaded) refreshUI();
+    })
+    .catch((error) => console.error("Could not restore character data from D1:", error));
 }
 function refreshUI() {
   loadHeader();

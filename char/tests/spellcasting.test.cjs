@@ -30,6 +30,8 @@ function loadCharacter(source) {
   const storage = new Map();
   const context = {
     console,
+    readCloudJSON: async () => null,
+    writeCloudJSON: async () => ({ ok: true }),
     localStorage: {
       getItem: (key) => storage.get(key) ?? null,
       setItem: (key, value) => storage.set(key, value),

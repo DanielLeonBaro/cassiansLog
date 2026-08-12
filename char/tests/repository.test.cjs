@@ -14,6 +14,8 @@ const values = new Map([
   })],
 ]);
 const context = {
+  readCloudJSON: async () => null,
+  writeCloudJSON: async () => ({ ok: true }),
   localStorage: {
     getItem: (key) => values.get(key) ?? null,
     setItem: (key, value) => values.set(key, value),

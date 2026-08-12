@@ -1,4 +1,5 @@
 import { readJSON, writeJSON } from "../../../shared/js/storage.js";
+import { readCloudJSON, writeCloudJSON } from "../../../shared/js/cloud-store.js";
 
 export function createNotesController({ characterId, cardClasses, escapeHTML }) {
   const storageKey = `dnd-${characterId || "character"}-notes`;
@@ -12,6 +13,8 @@ export function createNotesController({ characterId, cardClasses, escapeHTML }) 
 
   function persist() {
     writeJSON(storageKey, notes);
+    writeCloudJSON(`api/characters/${encodeURIComponent(characterId)}/notes`, { value: notes })
+      .catch((error) => console.error("Could not save notes to D1:", error));
   }
 
   function render() {
@@ -28,6 +31,13 @@ export function createNotesController({ characterId, cardClasses, escapeHTML }) 
   return {
     load() {
       notes = readJSON(storageKey, []);
+    },
+    async loadCloud() {
+      const result = await readCloudJSON(`api/characters/${encodeURIComponent(characterId)}/notes`, { fallback: null });
+      if (!Array.isArray(result?.value)) return false;
+      notes = result.value;
+      writeJSON(storageKey, notes);
+      return true;
     },
     render,
     saveFromInputs() {
