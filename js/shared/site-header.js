@@ -1,3 +1,5 @@
+import { applySectionVisibility } from "./sections.js";
+
 const linkClass = "inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-bold shadow-sm transition";
 const idleClass = "border-stone-400 bg-white/70 text-stone-700 hover:border-blood-500 hover:text-blood-500 dark:border-white/20 dark:bg-white/5 dark:text-stone-200";
 const activeClass = "border-blood-500 bg-blood-500 text-white";
@@ -10,7 +12,7 @@ const pages = [
 
 function pageLink(page, activePage) {
   const active = page.id === activePage;
-  return `<a class="${linkClass} ${active ? activeClass : idleClass}" href="${page.href}"${active ? ' aria-current="page"' : ""}>
+  return `<a class="${linkClass} ${active ? activeClass : idleClass}" href="${page.href}" data-section-link="${page.id}"${active ? ' aria-current="page"' : ""}>
     <i class="bi ${page.icon}"></i><span class="hidden sm:inline">${page.label}</span>
   </a>`;
 }
@@ -37,4 +39,5 @@ export function mountSiteHeader({ activePage, actions = "", tracker = false } = 
     <div class="flex items-center gap-2">${home}${links}${startActions}</div>
     <div class="flex items-center gap-2">${endActions}<div id="page-header-actions"></div><button id="theme-toggle" type="button" class="${linkClass} ${idleClass}" aria-label="Switch theme"><i id="theme-icon" class="bi bi-sun-fill"></i></button></div>
   </div>`;
+  applySectionVisibility(mount);
 }

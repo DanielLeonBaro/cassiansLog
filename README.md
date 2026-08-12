@@ -55,6 +55,24 @@ python -m http.server 8000
 
 Open `http://localhost:8000`. Do not open `index.html` through a `file://` URL; layouts and data files are loaded with `fetch()`.
 
+## Navigation section toggles
+
+Edit `config/sections.json` to choose which destinations appear in navigation. Set a section to `false` to hide its control, or `true` to show it:
+
+```json
+{
+  "sections": {
+    "characters": true,
+    "compendium": true,
+    "wiki": false
+  }
+}
+```
+
+The same file controls the Character Tracker's Jump-to buttons for the overview, stats, hit points, combat, spellcasting, prepared spells, all possibilities, inventory, and notes.
+
+These settings only hide navigation controls. They do not remove or protect pages, so a hidden destination remains available through its direct URL. Only the literal JSON value `false` hides a control; omitted settings remain visible.
+
 If PowerShell blocks `npm.ps1`, use `npm.cmd`:
 
 ```powershell

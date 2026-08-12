@@ -4,20 +4,20 @@ import { initializeDiceRoller } from "../dice/index.js";
 
 const button = "inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-bold text-white shadow-sm transition";
 const jumpItems = [
-  ["bodyStart", "bi-person-fill", "Character"],
-  ["quickStats", "bi-bar-chart-fill", "Stats"],
-  ["hpManager", "bi-heart-fill", "HP"],
-  ["combatResources", "bi-hourglass-split", "Combat"],
-  ["spellcastingSection", "bi-magic", "Spellcasting"],
-  ["preparedSpellsSection", "bi-journal-check", "Prepared Spells"],
-  ["allPossibilities", "bi-stars", "All Possibilities"],
-  ["inventoryAccordion", "bi-backpack-fill", "Inventory"],
-  ["notesSection", "bi-pen-fill", "Notes"],
+  ["character-overview", "bodyStart", "bi-person-fill", "Character"],
+  ["character-stats", "quickStats", "bi-bar-chart-fill", "Stats"],
+  ["hit-points", "hpManager", "bi-heart-fill", "HP"],
+  ["combat", "combatResources", "bi-hourglass-split", "Combat"],
+  ["spellcasting", "spellcastingSection", "bi-magic", "Spellcasting"],
+  ["prepared-spells", "preparedSpellsSection", "bi-journal-check", "Prepared Spells"],
+  ["all-possibilities", "allPossibilities", "bi-stars", "All Possibilities"],
+  ["inventory", "inventoryAccordion", "bi-backpack-fill", "Inventory"],
+  ["notes", "notesSection", "bi-pen-fill", "Notes"],
 ];
 
 function trackerActions() {
-  const jumps = jumpItems.map(([target, icon, label]) =>
-    `<button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="${target}"><i class="bi ${icon}"></i>${label}</button>`,
+  const jumps = jumpItems.map(([section, target, icon, label]) =>
+    `<button class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10" type="button" data-scroll-to="${target}" data-section-link="${section}"><i class="bi ${icon}"></i>${label}</button>`,
   ).join("");
   return {
     start: `<button id="shortRest-btn" type="button" class="${button} border-stone-600 bg-stone-600 hover:bg-stone-700" aria-label="Take a short rest"><i class="bi bi-moon-fill"></i><span class="hidden md:inline">Short rest</span></button><button id="longRest-btn" type="button" class="${button} border-emerald-700 bg-emerald-700 hover:bg-emerald-800" aria-label="Take a long rest"><i class="bi bi-moon-stars-fill"></i><span class="hidden md:inline">Long rest</span></button>`,

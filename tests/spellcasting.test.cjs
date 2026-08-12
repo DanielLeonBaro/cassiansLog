@@ -15,7 +15,7 @@ const deathSaveCode = fs.readFileSync("js/features/tracker/death-saves.js", "utf
 const restCode = fs.readFileSync("js/features/tracker/rest.js", "utf8")
   .replace(/export /g, "");
 const appCode = fs.readFileSync("js/script.js", "utf8")
-  .replace(/^import .*\n/gm, "")
+  .replace(/^import[\s\S]*?;\r?\n/gm, "")
   .replace(/export \{[\s\S]*?\};\s*export function initializeTracker/, "function initializeTracker");
 
 function loadCharacter(source) {

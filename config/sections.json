@@ -1,0 +1,16 @@
+{
+  "sections": {
+    "characters": true,
+    "compendium": true,
+    "wiki": false,
+    "character-overview": true,
+    "character-stats": true,
+    "hit-points": true,
+    "combat": true,
+    "spellcasting": true,
+    "prepared-spells": true,
+    "all-possibilities": true,
+    "inventory": true,
+    "notes": true
+  }
+}

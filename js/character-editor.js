@@ -1,4 +1,5 @@
 import { readJSON, removeStored, writeJSON } from "./shared/storage.js";
+import { applySectionVisibility } from "./shared/sections.js";
 import { addCompendiumEntry, hasCompendiumEntry } from "./features/compendium/character-mapping.js";
 
 export function initializeCharacterEditor({ character, normalizeSpellcastingData, refreshUI }) {
@@ -139,7 +140,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
       ? `<textarea id="${id}" data-path="${path.join(".")}" class="${classes.field}" rows="3">${escapeHTML(value)}</textarea>`
       : `<input id="${id}" data-path="${path.join(".")}" type="${type}" value="${escapeAttributeValue(value)}" class="${classes.field}">`}</label>`;
     if (path.length === 1 && compendiumTargets[key]) {
-      return `<div class="space-y-2">${field}<button type="button" data-compendium-target="${escapeAttributeValue(key)}" class="inline-flex items-center gap-2 rounded-lg border border-sky-600 px-3 py-1.5 text-xs font-bold text-sky-600 transition hover:bg-sky-600 hover:text-white"><i class="bi bi-journals"></i> Choose ${escapeHTML(compendiumTargets[key].label)} from compendium</button></div>`;
+      return `<div class="space-y-2">${field}<button type="button" data-compendium-target="${escapeAttributeValue(key)}" data-section-link="compendium" class="inline-flex items-center gap-2 rounded-lg border border-sky-600 px-3 py-1.5 text-xs font-bold text-sky-600 transition hover:bg-sky-600 hover:text-white"><i class="bi bi-journals"></i> Choose ${escapeHTML(compendiumTargets[key].label)} from compendium</button></div>`;
     }
     return field;
   }
@@ -148,7 +149,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     if (Array.isArray(value)) {
       const target = path.length === 1 ? path[0] : "";
       const compendiumButton = compendiumTargets[target]
-        ? `<button type="button" data-compendium-target="${escapeAttributeValue(target)}" class="inline-flex items-center justify-center gap-2 rounded-xl border border-sky-600 px-4 py-2 text-sm font-bold text-sky-600 shadow-sm transition hover:bg-sky-600 hover:text-white"><i class="bi bi-journals"></i> Add from compendium</button>`
+        ? `<button type="button" data-compendium-target="${escapeAttributeValue(target)}" data-section-link="compendium" class="inline-flex items-center justify-center gap-2 rounded-xl border border-sky-600 px-4 py-2 text-sm font-bold text-sky-600 shadow-sm transition hover:bg-sky-600 hover:text-white"><i class="bi bi-journals"></i> Add from compendium</button>`
         : "";
       return `<section class="space-y-3" data-array="${path.join(".")}">
         <div class="flex flex-wrap items-center justify-between gap-2"><h3 class="font-display text-lg font-bold">${title(key)}</h3>
@@ -169,14 +170,16 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
   }
 
   function renderEditorFields() {
-    document.getElementById("editor-fields").innerHTML = `
-      <section class="rounded-2xl border border-sky-600/30 bg-sky-600/10 p-4">
+    const fields = document.getElementById("editor-fields");
+    fields.innerHTML = `
+      <section class="rounded-2xl border border-sky-600/30 bg-sky-600/10 p-4" data-section-link="compendium">
         <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div><h3 class="font-display text-lg font-bold"><i class="bi bi-journals mr-2 text-sky-600"></i>Add from the compendium</h3><p class="mt-1 text-sm text-stone-600 dark:text-stone-300">Pick an entry, then edit the copy on this sheet.</p></div>
           <button type="button" data-compendium-target="all" class="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-sky-800"><i class="bi bi-search"></i> Browse compendium</button>
         </div>
       </section>
       ${renderNode(draft)}`;
+    applySectionVisibility(fields);
   }
 
   function buildUI() {
@@ -225,12 +228,13 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
           <label class="md:col-span-3"><span class="mb-1 block text-xs font-bold uppercase tracking-wide text-stone-500">Category</span><select id="editor-compendium-category" class="${classes.field}"></select></label>
           <label class="md:col-span-4"><span class="mb-1 block text-xs font-bold uppercase tracking-wide text-stone-500">Publication</span><select id="editor-compendium-publication" class="${classes.field}"></select></label>
         </div>
-        <div class="mt-3 flex flex-wrap items-center justify-between gap-3"><p id="editor-compendium-summary" class="text-sm text-stone-500" aria-live="polite"></p><a href="compendium/" target="_blank" class="text-sm font-bold text-sky-600 hover:underline"><i class="bi bi-box-arrow-up-right mr-1"></i>Open full compendium</a></div>
+        <div class="mt-3 flex flex-wrap items-center justify-between gap-3"><p id="editor-compendium-summary" class="text-sm text-stone-500" aria-live="polite"></p><a href="compendium/" target="_blank" class="text-sm font-bold text-sky-600 hover:underline" data-section-link="compendium"><i class="bi bi-box-arrow-up-right mr-1"></i>Open full compendium</a></div>
       </div>
       <div id="editor-compendium-results" class="grid grow grid-cols-1 content-start gap-4 overflow-y-auto p-4 md:grid-cols-2 lg:grid-cols-3"></div>
       <footer class="flex justify-center border-t border-stone-300 p-3 dark:border-white/10"><button id="editor-compendium-more" type="button" class="hidden rounded-xl border border-sky-600 px-5 py-2 text-sm font-bold text-sky-600 hover:bg-sky-600 hover:text-white">Show more</button></footer>
     </div>`;
     document.body.appendChild(compendium);
+    applySectionVisibility(compendium);
 
     toggle.addEventListener("click", open);
     document.getElementById("editor-close").addEventListener("click", close);
