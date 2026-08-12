@@ -1,150 +1,71 @@
 # Cassian's Log
 
-Cassian's Log is a static D&D 5e character tracker. It has editable character sheets, combat tracking, a dice roller, a campaign wiki, and a searchable compendium.
+Cassian's Log is a static D&D 5e character tracker with editable character sheets, combat tracking, a dice roller, a campaign Wiki, and a searchable Compendium.
 
-The app does not build characters for you. Ability scores, armor class, spell save DCs, prepared-spell limits, and similar values stay under your control.
+The app leaves ability scores, armor class, spell save DCs, prepared-spell limits, and other character-building decisions under the player's control. Browser-created characters and edits are stored locally in the current browser.
 
-## What it does
+## Run locally
 
-Character sheets keep hit points, resources, spell slots, inventory, notes, and custom trackers in one place. You can edit bundled characters, make new ones from the blank template, and upload portraits. Changes are saved in the current browser.
-
-The spell tracker supports more than one spellcasting profile. Spells and slots can belong to a profile, and prepared-spell limits are set by hand. Cantrips and always-prepared spells remain available.
-
-The campaign wiki contains the bundled Breugaire lore. Local pages can be created, edited, linked with `[[Page Name]]`, exported, and imported.
-
-The compendium contains 16,153 records built from 1,951 XML files:
-
-| Category | Entries |
-|---|---:|
-| Classes | 44 |
-| Subclasses | 552 |
-| Races and lineages | 341 |
-| Backgrounds | 177 |
-| Feats | 601 |
-| Spells | 2,052 |
-| Items | 3,142 |
-| Features and traits | 7,865 |
-| Companions | 617 |
-| Languages | 92 |
-| Deities | 305 |
-| Proficiencies | 242 |
-| Rules and options | 123 |
-
-Compendium records can be copied into a character and edited afterward. The copy does not automatically bring in related features, proficiencies, spells, or stat changes.
-
-## Run it locally
-
-Requirements:
-
-- Node.js 20 or newer
-- npm
-- A local HTTP server
-
-Install dependencies and build the CSS:
+Requirements: Node.js 20 or newer, npm, and a local HTTP server.
 
 ```bash
 npm install
 npm run build:css
-```
-
-Start a local server:
-
-```bash
 python -m http.server 8000
 ```
 
-Open `http://localhost:8000`. Do not open `index.html` through a `file://` URL; layouts and data files are loaded with `fetch()`.
+Open `http://localhost:8000`. The root redirects to the Character archive at `/char/`. Do not open pages through a `file://` URL because feature data is loaded with `fetch()`.
 
-## Navigation section toggles
-
-Edit `config/sections.json` to choose which destinations appear in navigation. Set a section to `false` to hide its control, or `true` to show it:
-
-```json
-{
-  "sections": {
-    "characters": true,
-    "compendium": true,
-    "wiki": false
-  }
-}
-```
-
-The same file controls the Character Tracker's Jump-to buttons for the overview, stats, hit points, combat, spellcasting, prepared spells, all possibilities, inventory, and notes.
-
-These settings only hide navigation controls. They do not remove or protect pages, so a hidden destination remains available through its direct URL. Only the literal JSON value `false` hides a control; omitted settings remain visible.
-
-If PowerShell blocks `npm.ps1`, use `npm.cmd`:
-
-```powershell
-npm.cmd install
-npm.cmd test
-```
+If PowerShell blocks `npm.ps1`, use `npm.cmd`.
 
 ## Commands
 
 | Command | Purpose |
 |---|---|
-| `npm run build:css` | Build and minify the Tailwind CSS |
-| `npm run build:compendium` | Convert the XML library to compendium JSON |
-| `npm run import:wiki` | Refresh the bundled wiki seed |
-| `npm test` | Run tests and rebuild the CSS |
+| `npm run build:css` | Build the shared Tailwind stylesheet |
+| `npm run build:compendium` | Convert Compendium XML sources into feature-local JSON |
+| `npm run import:wiki` | Refresh the bundled Wiki JSON seed |
+| `npm test` | Run feature, integration, architecture, route, and CSS tests |
 | `npm audit` | Check dependencies for known vulnerabilities |
 
-## Updating the compendium
-
-Put the XML library in `stuffToParse/`, then run:
-
-```bash
-npm run build:compendium
-npm test
-```
-
-The generated files are written to `data/compendium/`. The XML input folder is ignored by Git, so commit the generated JSON when it changes.
-
-## Project layout
+## Independent feature layout
 
 ```text
 cassiansLog/
-├── char/                     # Character routes and tracker layout
-├── compendium/               # Compendium page
-├── data/
-│   ├── characters/           # Bundled character data
-│   ├── compendium/           # Generated compendium JSON
-│   └── portraits/            # Character portraits
-├── js/
-│   ├── entries/              # Browser entrypoints
-│   ├── features/             # Character, tracker, dice, compendium, and wiki code
-│   └── shared/               # Navigation, theme, storage, and text helpers
-├── scripts/                  # Data import and build scripts
-├── src/                      # Tailwind source CSS
-├── dist/                     # Built CSS
-├── tests/                    # Tests
-└── index.html                # Character list
+|-- char/                      # Character pages, data, runtime, and tests
+|   |-- <character>/           # Route, character.json, and portrait
+|   `-- js/
+|-- compendium/                # Page, generated data, runtime, builder, and tests
+|-- wiki/                      # Page, seed data, runtime, importer, and tests
+|-- integrations/
+|   `-- character-compendium/ # Optional picker adapter
+|-- shared/                    # Neutral UI, storage, dice, assets, styles, and config
+`-- index.html                 # Redirect to /char/
 ```
 
-HTML files contain page markup and load one entrypoint from `js/entries/`. Feature code may import shared code, but shared code does not import features.
+Character, Compendium, and Wiki code may import neutral code from `shared/`, but they never import one another. Cross-feature behavior belongs in `integrations/`. The Character–Compendium picker is enabled by a separate module script on Character routes; removing that script removes the picker without affecting the Character editor.
 
-The navbar is in `js/shared/site-header.js`. Compendium loading is in `js/features/compendium/repository.js`, which is used by both the compendium page and character editor. Files in `data/compendium/` are generated; edit the builder instead of editing those files by hand.
+Bundled character data and portraits live beside their routes under `char/<id>/`. The Wiki seed lives at `wiki/data/pages.json`. Generated Compendium files live in `compendium/data/`; edit the builder rather than generated JSON by hand.
 
-## Saved data
+## Navigation toggles
 
-Characters, notes, combat state, wiki edits, and settings are stored in browser storage. There is no account or server-side database. Clearing browser storage removes local changes.
+Edit `shared/config/sections.json` to choose which destinations and Character Tracker Jump-to controls appear. Only the literal JSON value `false` hides a control; omitted settings remain visible.
 
-## Deployment
+These settings hide navigation only. They do not remove or protect the corresponding pages.
 
-GitHub Actions deploys `main` to GitHub Pages. Before pushing a compendium update, run:
+## Updating data
+
+Put Compendium XML sources in the ignored `compendium/source/` directory, then run:
 
 ```bash
-npm install
 npm run build:compendium
 npm test
-git status
 ```
 
-## Common problems
+To refresh the Wiki seed from the configured published campaign source, run `npm run import:wiki` and then `npm test`.
 
-If the character list or compendium does not load, make sure the site is running through HTTP rather than `file://`.
+## Saved data and deployment
 
-If compendium data is missing, check that `stuffToParse/` contains the XML files and run `npm run build:compendium`.
+Characters, notes, combat state, Wiki edits, and settings use browser storage. There is no account or server-side database. Existing storage keys remain stable across the feature-folder migration.
 
-Character edits only exist in the browser where they were made. They may disappear after clearing storage, using private browsing, or switching browser profiles.
+GitHub Actions deploys `main` to GitHub Pages. Before pushing generated-data changes, run the relevant generator followed by `npm test` and inspect `git status`.

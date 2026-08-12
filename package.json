@@ -1,9 +1,9 @@
 {
   "scripts": {
-    "build:css": "tailwindcss -i ./src/tailwind.css -o ./dist/tailwind.css --minify",
-    "build:compendium": "node scripts/build-compendium.cjs",
-    "import:wiki": "node scripts/import-wiki.cjs",
-    "test": "node tests/spellcasting.test.cjs && node tests/dice.test.cjs && node tests/compendium.test.cjs && node tests/wiki.test.cjs && node tests/modules.test.cjs && node tests/sections.test.cjs && npm run build:css"
+    "build:css": "tailwindcss -c ./shared/styles/tailwind.config.cjs -i ./shared/styles/tailwind.css -o ./shared/assets/tailwind.css --minify",
+    "build:compendium": "node compendium/scripts/build.cjs",
+    "import:wiki": "node wiki/scripts/import.cjs",
+    "test": "node char/tests/spellcasting.test.cjs && node char/tests/repository.test.cjs && node shared/tests/dice.test.cjs && node compendium/tests/compendium.test.cjs && node wiki/tests/wiki.test.cjs && node integrations/character-compendium/integration.test.cjs && node shared/tests/sections.test.cjs && node shared/tests/architecture.test.cjs && node shared/tests/routes.test.cjs && npm run build:css"
   },
   "devDependencies": {
     "fast-xml-parser": "^5.7.0",

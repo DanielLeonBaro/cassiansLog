@@ -1,0 +1,746 @@
+{
+  "id": "karma",
+  "portrait": "char/karma/portrait.jpg",
+  "name": "Karma Noragon",
+  "class": "Cleric",
+  "subclass": "Grave Domain",
+  "race": "Tiefling",
+  "level": 4,
+  "experience": 3700,
+  "background": "Wayfinder",
+  "alignment": "True Neutral",
+  "gender": "Female",
+  "ac": 16,
+  "hp": {
+    "max": 31,
+    "current": 30,
+    "temp": 5
+  },
+  "initiative": 2,
+  "proficiency": 2,
+  "walk": 30,
+  "fly": 0,
+  "passivePerception": 16,
+  "darkvision": 60,
+  "trackers": [
+    {
+      "id": "concentration",
+      "name": "Concentrating",
+      "active": false
+    },
+    {
+      "id": "invisible",
+      "name": "Invisible",
+      "active": false
+    }
+  ],
+  "spellcasting": {
+    "enabled": true,
+    "profiles": [
+      {
+        "id": "cleric",
+        "name": "Cleric · Grave Domain",
+        "ability": "WIS",
+        "saveDC": 14,
+        "attackBonus": 6,
+        "preparedLimit": 8
+      },
+      {
+        "id": "wayfinder",
+        "name": "Wayfinder",
+        "ability": "WIS",
+        "saveDC": 14,
+        "attackBonus": 6,
+        "preparedLimit": 0
+      },
+      {
+        "id": "tiefling",
+        "name": "Tiefling Legacy",
+        "ability": "CHA",
+        "saveDC": 12,
+        "attackBonus": 4,
+        "preparedLimit": 0
+      }
+    ],
+    "slots": [
+      {
+        "id": "slot-1",
+        "profileId": "cleric",
+        "level": 1,
+        "current": 1,
+        "max": 4,
+        "reset": "long"
+      },
+      {
+        "id": "slot-2",
+        "profileId": "cleric",
+        "level": 2,
+        "current": 3,
+        "max": 3,
+        "reset": "long"
+      }
+    ]
+  },
+  "stats": {
+    "str": {
+      "score": 12,
+      "modifier": 1,
+      "save": 1,
+      "skills": [
+        {
+          "name": "Athletics",
+          "modifier": 1,
+          "proficiency": false
+        }
+      ]
+    },
+    "dex": {
+      "score": 15,
+      "modifier": 2,
+      "save": 2,
+      "skills": [
+        {
+          "name": "Acrobatics",
+          "modifier": 2,
+          "proficiency": false
+        },
+        {
+          "name": "Sleight of Hand",
+          "modifier": 2,
+          "proficiency": false
+        },
+        {
+          "name": "Stealth",
+          "modifier": 2,
+          "proficiency": false
+        }
+      ]
+    },
+    "con": {
+      "score": 16,
+      "modifier": 3,
+      "save": 3,
+      "skills": []
+    },
+    "int": {
+      "score": 16,
+      "modifier": 3,
+      "save": 3,
+      "skills": [
+        {
+          "name": "Arcana",
+          "modifier": 3,
+          "proficiency": false
+        },
+        {
+          "name": "History",
+          "modifier": 5,
+          "proficiency": true
+        },
+        {
+          "name": "Investigation",
+          "modifier": 3,
+          "proficiency": false
+        },
+        {
+          "name": "Nature",
+          "modifier": 3,
+          "proficiency": false
+        },
+        {
+          "name": "Religion",
+          "modifier": 3,
+          "proficiency": false
+        }
+      ]
+    },
+    "wis": {
+      "score": 19,
+      "modifier": 4,
+      "save": 6,
+      "skills": [
+        {
+          "name": "Animal Handling",
+          "modifier": 4,
+          "proficiency": false
+        },
+        {
+          "name": "Insight",
+          "modifier": 4,
+          "proficiency": false
+        },
+        {
+          "name": "Medicine",
+          "modifier": 4,
+          "proficiency": false
+        },
+        {
+          "name": "Perception",
+          "modifier": 6,
+          "proficiency": true
+        },
+        {
+          "name": "Survival",
+          "modifier": 6,
+          "proficiency": true
+        }
+      ]
+    },
+    "cha": {
+      "score": 14,
+      "modifier": 2,
+      "save": 4,
+      "skills": [
+        {
+          "name": "Deception",
+          "modifier": 2,
+          "proficiency": false
+        },
+        {
+          "name": "Intimidation",
+          "modifier": 2,
+          "proficiency": false
+        },
+        {
+          "name": "Performance",
+          "modifier": 2,
+          "proficiency": false
+        },
+        {
+          "name": "Persuasion",
+          "modifier": 4,
+          "proficiency": true
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "id": "staff-attack",
+      "name": "Staff / Spear",
+      "category": "Weapon",
+      "action": "Action",
+      "range": "5 ft",
+      "attack": "+3 vs AC",
+      "damage": "1d6 + 1 bludgeoning or piercing",
+      "description": "A melee attack with Karma's staff or spear."
+    },
+    {
+      "id": "dagger-attack",
+      "name": "Dagger",
+      "category": "Weapon",
+      "action": "Action",
+      "range": "5 ft or 20/60 ft",
+      "attack": "+4 vs AC",
+      "damage": "1d4 + 2 piercing",
+      "description": "A finesse melee attack or thrown ranged attack."
+    },
+    {
+      "id": "path-to-the-grave",
+      "name": "Path to the Grave",
+      "category": "Channel Divinity",
+      "action": "Action",
+      "range": "30 ft",
+      "description": "Curse one visible creature until the end of your next turn. The next attack that hits it deals damage to which it has vulnerability, then the curse ends."
+    },
+    {
+      "id": "turn-undead",
+      "name": "Turn Undead",
+      "category": "Channel Divinity",
+      "action": "Action",
+      "range": "30 ft",
+      "description": "Undead that can see or hear your holy symbol must make a Wisdom save or be turned for 1 minute or until damaged."
+    },
+    {
+      "id": "harness-divine-power",
+      "name": "Harness Divine Power",
+      "category": "Channel Divinity",
+      "action": "Bonus Action",
+      "uses": {
+        "current": 1,
+        "max": 1,
+        "reset": "long"
+      },
+      "description": "Regain one expended spell slot of a level no higher than half your proficiency bonus, rounded up."
+    }
+  ],
+  "spells": [
+    {
+      "id": "spare-the-dying",
+      "name": "Spare the Dying",
+      "category": "Grave Cantrip",
+      "action": "Bonus Action",
+      "level": 0,
+      "school": "Necromancy",
+      "spellcasting": "WIS",
+      "range": "30 ft",
+      "duration": "Instantaneous",
+      "components": "V, S",
+      "description": "Stabilize one dying creature."
+    },
+    {
+      "id": "toll-the-dead",
+      "name": "Toll the Dead",
+      "category": "Cantrip",
+      "action": "Action",
+      "level": 0,
+      "school": "Necromancy",
+      "spellcasting": "WIS",
+      "range": "60 ft",
+      "duration": "Instantaneous",
+      "components": "V, S",
+      "damage": "1d8 or 1d12 necrotic",
+      "description": "A failed Wisdom save deals necrotic damage; use d12 if the target is missing hit points."
+    },
+    {
+      "id": "sacred-flame",
+      "name": "Sacred Flame",
+      "category": "Cantrip",
+      "action": "Action",
+      "level": 0,
+      "school": "Evocation",
+      "spellcasting": "WIS",
+      "range": "60 ft",
+      "duration": "Instantaneous",
+      "components": "V, S",
+      "damage": "1d8 radiant",
+      "description": "A target that fails a Dexterity save takes radiant damage."
+    },
+    {
+      "id": "guidance",
+      "name": "Guidance",
+      "category": "Cantrip",
+      "action": "Action",
+      "level": 0,
+      "school": "Divination",
+      "spellcasting": "WIS",
+      "range": "Touch",
+      "duration": "Concentration, up to 1 minute",
+      "components": "V, S",
+      "concentration": true,
+      "description": "The target adds 1d4 to one ability check."
+    },
+    {
+      "id": "resistance",
+      "name": "Resistance",
+      "category": "Cantrip",
+      "action": "Action",
+      "level": 0,
+      "school": "Abjuration",
+      "spellcasting": "WIS",
+      "range": "Touch",
+      "duration": "Concentration, up to 1 minute",
+      "components": "V, S, M",
+      "concentration": true,
+      "description": "The target adds 1d4 to one saving throw."
+    },
+    {
+      "id": "thaumaturgy",
+      "name": "Thaumaturgy",
+      "category": "Cantrip",
+      "action": "Action",
+      "level": 0,
+      "school": "Transmutation",
+      "spellcasting": "WIS",
+      "range": "30 ft",
+      "duration": "Up to 1 minute",
+      "components": "V",
+      "description": "Manifest a minor supernatural wonder."
+    },
+    {
+      "id": "wayfinder-invisibility",
+      "name": "Wayfinder Invisibility",
+      "category": "Wayfinder",
+      "action": "Action or Reaction",
+      "level": 0,
+      "school": "Illusion",
+      "spellcasting": "WIS",
+      "source": "wayfinder",
+      "range": "Self",
+      "duration": "Until the start of your next turn",
+      "uses": {
+        "current": 2,
+        "max": 2,
+        "reset": "long"
+      },
+      "description": "Become invisible. In combat, react before learning whether an incoming attack hits; that attack has disadvantage."
+    },
+    {
+      "id": "cause-fear",
+      "name": "Cause Fear",
+      "category": "Wayfinder",
+      "action": "Action",
+      "level": 1,
+      "school": "Necromancy",
+      "spellcasting": "WIS",
+      "source": "wayfinder",
+      "range": "60 ft",
+      "duration": "Concentration, up to 1 minute",
+      "components": "V",
+      "concentration": true,
+      "uses": {
+        "current": 1,
+        "max": 1,
+        "reset": "long"
+      },
+      "description": "A non-construct, non-undead target that fails a Wisdom save is frightened and can repeat the save each turn."
+    },
+    {
+      "id": "bane",
+      "name": "Bane",
+      "category": "Prepared Cleric Spell",
+      "action": "Action",
+      "level": 1,
+      "school": "Enchantment",
+      "spellcasting": "WIS",
+      "range": "30 ft",
+      "duration": "Concentration, up to 1 minute",
+      "components": "V, S, M",
+      "slotLevel": 1,
+      "concentration": true,
+      "description": "Up to three creatures subtract 1d4 from attack rolls and saving throws after failed Charisma saves."
+    },
+    {
+      "id": "false-life",
+      "name": "False Life",
+      "category": "Grave Domain Spell",
+      "action": "Action",
+      "level": 1,
+      "school": "Necromancy",
+      "spellcasting": "WIS",
+      "range": "Self",
+      "duration": "1 hour",
+      "components": "V, S, M",
+      "slotLevel": 1,
+      "description": "Gain 2d4 + 4 temporary hit points."
+    },
+    {
+      "id": "cure-wounds",
+      "name": "Cure Wounds",
+      "category": "Prepared Cleric Spell",
+      "action": "Action",
+      "level": 1,
+      "school": "Evocation",
+      "spellcasting": "WIS",
+      "range": "Touch",
+      "duration": "Instantaneous",
+      "components": "V, S",
+      "slotLevel": 1,
+      "description": "Restore 1d8 + 4 hit points, maximized by Circle of Mortality when the target is at 0 HP."
+    },
+    {
+      "id": "detect-poison-disease",
+      "name": "Detect Poison and Disease",
+      "category": "Prepared Cleric Spell",
+      "action": "Action",
+      "level": 1,
+      "school": "Divination",
+      "spellcasting": "WIS",
+      "range": "Self (30 ft)",
+      "duration": "Concentration, up to 10 minutes",
+      "components": "V, S, M",
+      "slotLevel": 1,
+      "concentration": true,
+      "description": "Sense and identify poisons, poisonous creatures, and diseases nearby."
+    },
+    {
+      "id": "guiding-bolt",
+      "name": "Guiding Bolt",
+      "category": "Prepared Cleric Spell",
+      "action": "Action",
+      "level": 1,
+      "school": "Evocation",
+      "spellcasting": "WIS",
+      "range": "120 ft",
+      "attack": "+6 spell attack",
+      "damage": "4d6 radiant",
+      "duration": "1 round",
+      "components": "V, S",
+      "slotLevel": 1,
+      "description": "The next attack against the target has advantage."
+    },
+    {
+      "id": "shield-of-faith",
+      "name": "Shield of Faith",
+      "category": "Prepared Cleric Spell",
+      "action": "Bonus Action",
+      "level": 1,
+      "school": "Abjuration",
+      "spellcasting": "WIS",
+      "range": "60 ft",
+      "duration": "Concentration, up to 10 minutes",
+      "components": "V, S, M",
+      "slotLevel": 1,
+      "concentration": true,
+      "description": "One creature gains +2 AC."
+    },
+    {
+      "id": "inflict-wounds",
+      "name": "Inflict Wounds",
+      "category": "Prepared Cleric Spell",
+      "action": "Action",
+      "level": 1,
+      "school": "Necromancy",
+      "spellcasting": "WIS",
+      "range": "Touch",
+      "attack": "+6 spell attack",
+      "damage": "3d10 necrotic",
+      "duration": "Instantaneous",
+      "components": "V, S",
+      "slotLevel": 1,
+      "description": "Make a melee spell attack that deals necrotic damage."
+    },
+    {
+      "id": "sanctuary",
+      "name": "Sanctuary",
+      "category": "Prepared Cleric Spell",
+      "action": "Bonus Action",
+      "level": 1,
+      "school": "Abjuration",
+      "spellcasting": "WIS",
+      "range": "30 ft",
+      "duration": "1 minute",
+      "components": "V, S, M",
+      "slotLevel": 1,
+      "description": "Attackers must pass a Wisdom save to target the warded creature."
+    },
+    {
+      "id": "healing-word",
+      "name": "Healing Word",
+      "category": "Cleric Spell · Unprepared",
+      "action": "Bonus Action",
+      "level": 1,
+      "school": "Evocation",
+      "spellcasting": "WIS",
+      "range": "60 ft",
+      "duration": "Instantaneous",
+      "components": "V",
+      "slotLevel": 1,
+      "description": "A visible creature regains 1d4 + 4 hit points."
+    },
+    {
+      "id": "command",
+      "name": "Command",
+      "category": "Cleric Spell · Unprepared",
+      "action": "Action",
+      "level": 1,
+      "school": "Enchantment",
+      "spellcasting": "WIS",
+      "range": "60 ft",
+      "duration": "1 round",
+      "components": "V",
+      "slotLevel": 1,
+      "description": "Speak a one-word command that a target follows after failing a Wisdom save."
+    },
+    {
+      "id": "purify-food-drink",
+      "name": "Purify Food and Drink",
+      "category": "Cleric Spell · Unprepared",
+      "action": "Action",
+      "level": 1,
+      "school": "Transmutation",
+      "spellcasting": "WIS",
+      "range": "10 ft",
+      "duration": "Instantaneous",
+      "components": "V, S",
+      "slotLevel": 1,
+      "description": "Purify nonmagical food and drink in a 5-foot-radius sphere."
+    },
+    {
+      "id": "gentle-repose",
+      "name": "Gentle Repose",
+      "category": "Grave Domain Spell",
+      "action": "Action",
+      "level": 2,
+      "school": "Necromancy",
+      "spellcasting": "WIS",
+      "range": "Touch",
+      "duration": "10 days",
+      "components": "V, S, M",
+      "slotLevel": 2,
+      "description": "Protect remains from decay and extend the time limit for resurrection."
+    },
+    {
+      "id": "ray-of-enfeeblement",
+      "name": "Ray of Enfeeblement",
+      "category": "Grave Domain Spell",
+      "action": "Action",
+      "level": 2,
+      "school": "Necromancy",
+      "spellcasting": "WIS",
+      "range": "60 ft",
+      "attack": "+6 spell attack",
+      "duration": "Concentration, up to 1 minute",
+      "components": "V, S",
+      "slotLevel": 2,
+      "concentration": true,
+      "description": "The target deals half damage with Strength-based weapon attacks."
+    },
+    {
+      "id": "hellish-rebuke",
+      "name": "Hellish Rebuke",
+      "category": "Tiefling",
+      "action": "Reaction",
+      "level": 2,
+      "school": "Evocation",
+      "spellcasting": "CHA",
+      "source": "tiefling",
+      "range": "60 ft",
+      "damage": "3d10 fire",
+      "duration": "Instantaneous",
+      "components": "V, S",
+      "uses": {
+        "current": 1,
+        "max": 1,
+        "reset": "long"
+      },
+      "description": "A creature that damaged you makes a Dexterity save, taking full fire damage on a failure or half on a success."
+    },
+    {
+      "id": "prayer-of-healing",
+      "name": "Prayer of Healing",
+      "category": "Prepared Cleric Spell",
+      "action": "10 minutes",
+      "level": 2,
+      "school": "Evocation",
+      "spellcasting": "WIS",
+      "range": "30 ft",
+      "duration": "Instantaneous",
+      "components": "V",
+      "slotLevel": 2,
+      "description": "Up to six creatures regain 2d8 + 4 hit points."
+    },
+    {
+      "id": "hold-person",
+      "name": "Hold Person",
+      "category": "Cleric Spell · Unprepared",
+      "action": "Action",
+      "level": 2,
+      "school": "Enchantment",
+      "spellcasting": "WIS",
+      "range": "60 ft",
+      "duration": "Concentration, up to 1 minute",
+      "components": "V, S, M",
+      "slotLevel": 2,
+      "concentration": true,
+      "description": "Paralyze a humanoid that fails a Wisdom save; it repeats the save at the end of each turn."
+    }
+  ],
+  "resources": [
+    {
+      "id": "eyes-of-the-grave",
+      "name": "Eyes of the Grave",
+      "category": "Grave Domain",
+      "action": "Action",
+      "uses": {
+        "current": 4,
+        "max": 4,
+        "reset": "long"
+      },
+      "description": "Until the end of your next turn, detect unprotected undead within 60 feet that are not behind total cover."
+    },
+    {
+      "id": "channel-divinity",
+      "name": "Channel Divinity",
+      "category": "Cleric",
+      "action": "Other",
+      "uses": {
+        "current": 1,
+        "max": 1,
+        "reset": "short"
+      },
+      "description": "Spend to use Path to the Grave, Turn Undead, or another Channel Divinity option."
+    }
+  ],
+  "features": [
+    {
+      "id": "circle-of-mortality",
+      "name": "Circle of Mortality",
+      "category": "Grave Domain",
+      "description": "Healing spells restore the maximum possible amount to creatures at 0 HP. Spare the Dying has a 30-foot range and can be cast as a bonus action."
+    },
+    {
+      "id": "eye-for-the-pulse",
+      "name": "Eye for the Pulse",
+      "category": "Wayfinder",
+      "description": "In natural or underground environments, identify clean water, tracks less than 24 hours old, and overgrown hidden passages. Your instincts warn the group of unstable terrain and environmental anomalies."
+    },
+    {
+      "id": "observant",
+      "name": "Observant",
+      "category": "Wayfinder",
+      "description": "Read lips in a language you understand. While using Darkvision, gain +3 to passive Wisdom (Perception) and Intelligence (Investigation)."
+    },
+    {
+      "id": "hellish-resistance",
+      "name": "Hellish Resistance",
+      "category": "Tiefling",
+      "description": "Resistance to fire damage."
+    },
+    {
+      "id": "darkvision",
+      "name": "Darkvision",
+      "category": "Tiefling",
+      "description": "See in darkness within 60 feet as though it were dim light."
+    }
+  ],
+  "currency": {
+    "cp": 0,
+    "sp": 0,
+    "ep": 0,
+    "gp": 150,
+    "pp": 0
+  },
+  "inventory": [
+    {
+      "name": "Holy Symbol",
+      "quantity": 1,
+      "description": "Cleric spellcasting focus."
+    },
+    {
+      "name": "Staff / Spear",
+      "quantity": 1,
+      "description": "Karma's primary weapon."
+    },
+    {
+      "name": "Breastplate",
+      "quantity": 1,
+      "description": "Medium armor."
+    },
+    {
+      "name": "Explorer's Pack",
+      "quantity": 1,
+      "description": "Standard adventuring equipment."
+    },
+    {
+      "name": "Navigator's Tools",
+      "quantity": 1,
+      "description": "Wayfinder tool proficiency."
+    },
+    {
+      "name": "Lost Frontier Map",
+      "quantity": 1,
+      "description": "A map of a frontier region erased from official records."
+    },
+    {
+      "name": "Strange Brass Compass",
+      "quantity": 1,
+      "description": "Sometimes points in unusual directions."
+    },
+    {
+      "name": "Hunting Knife",
+      "quantity": 1,
+      "description": "Wayfinder background equipment."
+    },
+    {
+      "name": "Travel Clothes",
+      "quantity": 1,
+      "description": "A durable set of traveling clothes."
+    },
+    {
+      "name": "Pre-plague Bark Amulet",
+      "quantity": 1,
+      "description": "An amulet made from the bark of a pre-plague tree."
+    }
+  ]
+}

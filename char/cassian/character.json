@@ -1,0 +1,511 @@
+{
+  "id": "cassian",
+  "portrait": "char/cassian/portrait.jpg",
+  "name": "Cassian Aurelius von Bloodington III",
+  "class": "Fighter",
+  "subclass": "Echo Knight",
+  "race": "Noctir",
+  "level": 5,
+  "experience": 6500,
+  "background": "Noble",
+  "alignment": "Neutral Good",
+  "gender": "Male",
+  "ac": 16,
+  "hp": {
+    "max": 50,
+    "current": 50,
+    "temp": 0
+  },
+  "initiative": 5,
+  "proficiency": 3,
+  "walk": 30,
+  "fly": 30,
+  "passivePerception": 12,
+  "darkvision": 60,
+  "trackers": [
+    {
+      "id": "echo-1",
+      "name": "Echo 1",
+      "active": false
+    },
+    {
+      "id": "echo-2",
+      "name": "Echo 2",
+      "active": false
+    },
+    {
+      "id": "concentration",
+      "name": "Concentrating",
+      "active": false
+    }
+  ],
+  "spellcasting": {
+    "enabled": true,
+    "profiles": [
+      {
+        "id": "bloodbound-whisper",
+        "name": "Bloodbound Whisper",
+        "ability": "CHA",
+        "saveDC": 15,
+        "attackBonus": 7,
+        "preparedLimit": 0
+      },
+      {
+        "id": "vampiric-heritage",
+        "name": "Vampiric Heritage",
+        "ability": "DEX",
+        "saveDC": 16,
+        "attackBonus": 8,
+        "preparedLimit": 0
+      }
+    ],
+    "slots": []
+  },
+  "stats": {
+    "str": {
+      "score": 16,
+      "modifier": 3,
+      "save": 6,
+      "skills": [
+        {
+          "name": "Athletics",
+          "modifier": 3,
+          "proficiency": false
+        }
+      ]
+    },
+    "dex": {
+      "score": 20,
+      "modifier": 5,
+      "save": 5,
+      "skills": [
+        {
+          "name": "Acrobatics",
+          "modifier": 8,
+          "proficiency": true
+        },
+        {
+          "name": "Sleight of Hand",
+          "modifier": 5,
+          "proficiency": false
+        },
+        {
+          "name": "Stealth",
+          "modifier": 5,
+          "proficiency": false
+        }
+      ]
+    },
+    "con": {
+      "score": 16,
+      "modifier": 3,
+      "save": 6,
+      "skills": []
+    },
+    "int": {
+      "score": 14,
+      "modifier": 2,
+      "save": 2,
+      "skills": [
+        {
+          "name": "Arcana",
+          "modifier": 2,
+          "proficiency": false
+        },
+        {
+          "name": "History",
+          "modifier": 5,
+          "proficiency": true
+        },
+        {
+          "name": "Investigation",
+          "modifier": 2,
+          "proficiency": false
+        },
+        {
+          "name": "Nature",
+          "modifier": 2,
+          "proficiency": false
+        },
+        {
+          "name": "Religion",
+          "modifier": 2,
+          "proficiency": false
+        }
+      ]
+    },
+    "wis": {
+      "score": 15,
+      "modifier": 2,
+      "save": 2,
+      "skills": [
+        {
+          "name": "Animal Handling",
+          "modifier": 2,
+          "proficiency": false
+        },
+        {
+          "name": "Insight",
+          "modifier": 5,
+          "proficiency": true
+        },
+        {
+          "name": "Medicine",
+          "modifier": 2,
+          "proficiency": false
+        },
+        {
+          "name": "Perception",
+          "modifier": 2,
+          "proficiency": false
+        },
+        {
+          "name": "Survival",
+          "modifier": 2,
+          "proficiency": false
+        }
+      ]
+    },
+    "cha": {
+      "score": 19,
+      "modifier": 4,
+      "save": 4,
+      "skills": [
+        {
+          "name": "Deception",
+          "modifier": 4,
+          "proficiency": false
+        },
+        {
+          "name": "Intimidation",
+          "modifier": 4,
+          "proficiency": false
+        },
+        {
+          "name": "Performance",
+          "modifier": 4,
+          "proficiency": false
+        },
+        {
+          "name": "Persuasion",
+          "modifier": 7,
+          "proficiency": true
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "id": "shortsword-action",
+      "name": "Shortsword",
+      "category": "Weapon",
+      "action": "Action",
+      "range": "5 ft",
+      "attack": "+8 vs AC",
+      "damage": "1d6+5 piercing",
+      "description": "Make two shortsword attacks with the Attack action."
+    },
+    {
+      "id": "shortsword-offhand",
+      "name": "Offhand Shortsword",
+      "category": "Weapon",
+      "action": "Bonus Action",
+      "range": "5 ft",
+      "attack": "+8 vs AC",
+      "damage": "1d6+5 piercing",
+      "description": "Make one offhand attack using Two-Weapon Fighting."
+    },
+    {
+      "id": "action-surge",
+      "name": "Action Surge",
+      "category": "Class Feature",
+      "action": "Free Action",
+      "uses": {
+        "current": 1,
+        "max": 1,
+        "reset": "short"
+      },
+      "description": "Take one additional action on your turn."
+    },
+    {
+      "id": "second-wind",
+      "name": "Second Wind",
+      "category": "Class Feature",
+      "action": "Bonus Action",
+      "uses": {
+        "current": 1,
+        "max": 1,
+        "reset": "short"
+      },
+      "description": "Regain 1d10+5 hit points."
+    },
+    {
+      "id": "manifest-echo",
+      "name": "Manifest Echo",
+      "category": "Echo Knight",
+      "action": "Bonus Action",
+      "range": "15 ft",
+      "uses": {
+        "current": 2,
+        "max": 2,
+        "reset": "short"
+      },
+      "description": "Create an echo that can move and attack from its space."
+    },
+    {
+      "id": "echo-teleport",
+      "name": "Swap with Echo",
+      "category": "Echo Knight",
+      "action": "Bonus Action",
+      "description": "Spend 15 ft of movement to swap places with your echo."
+    },
+    {
+      "id": "unleash-incarnation",
+      "name": "Unleash Incarnation",
+      "category": "Echo Knight",
+      "action": "Free Action",
+      "uses": {
+        "current": 3,
+        "max": 3,
+        "reset": "long"
+      },
+      "description": "Make one extra melee attack from your echo after attacking."
+    },
+    {
+      "id": "vestige-night",
+      "name": "Vestige of the Night",
+      "category": "Feat",
+      "action": "Action",
+      "duration": "10 min; 1 hour at night",
+      "uses": {
+        "current": 1,
+        "max": 1,
+        "reset": "long"
+      },
+      "description": "Become a Tiny bat, fly 30 ft, and ignore sunlight damage."
+    },
+    {
+      "id": "opportunity-attack",
+      "name": "Opportunity Attack",
+      "category": "Reaction",
+      "action": "Reaction",
+      "range": "Melee reach",
+      "description": "Attack a visible foe that leaves your reach."
+    }
+  ],
+  "spells": [
+    {
+      "id": "vampiric-touch",
+      "name": "Vampiric Touch",
+      "category": "Necromancy",
+      "action": "Action",
+      "level": 3,
+      "school": "Necromancy",
+      "spellcasting": "DEX",
+      "range": "Self",
+      "duration": "Up to 1 minute",
+      "components": "V, S",
+      "concentration": true,
+      "uses": {
+        "current": 1,
+        "max": 1,
+        "reset": "long"
+      },
+      "description": "Deal 3d6 necrotic damage and heal half the damage dealt."
+    },
+    {
+      "id": "friends",
+      "name": "Friends",
+      "category": "Cantrip",
+      "action": "Action",
+      "level": 0,
+      "school": "Enchantment",
+      "spellcasting": "CHA",
+      "range": "Self",
+      "duration": "Up to 1 minute",
+      "components": "S, M",
+      "concentration": true,
+      "description": "Gain advantage on CHA checks against one nonhostile creature."
+    },
+    {
+      "id": "message",
+      "name": "Message",
+      "category": "Cantrip",
+      "action": "Action",
+      "level": 0,
+      "school": "Transmutation",
+      "spellcasting": "CHA",
+      "range": "120 ft",
+      "duration": "1 round",
+      "components": "V, S, M",
+      "description": "Whisper to one creature and allow a quiet reply."
+    },
+    {
+      "id": "thaumaturgy",
+      "name": "Thaumaturgy",
+      "category": "Cantrip",
+      "action": "Action",
+      "level": 0,
+      "school": "Transmutation",
+      "spellcasting": "CHA",
+      "range": "30 ft",
+      "duration": "Up to 1 minute",
+      "components": "V",
+      "description": "Create a minor supernatural sound, tremor, sign, or effect."
+    },
+    {
+      "id": "charm-person",
+      "name": "Charm Person",
+      "category": "Spell",
+      "action": "Action",
+      "level": 1,
+      "school": "Enchantment",
+      "spellcasting": "CHA",
+      "range": "30 ft",
+      "duration": "1 hour",
+      "components": "V, S",
+      "uses": {
+        "current": 1,
+        "max": 1,
+        "reset": "long"
+      },
+      "description": "Charm a humanoid that fails its Wisdom save."
+    },
+    {
+      "id": "disguise-self",
+      "name": "Disguise Self",
+      "category": "Spell",
+      "action": "Action",
+      "level": 1,
+      "school": "Illusion",
+      "spellcasting": "CHA",
+      "range": "Self",
+      "duration": "1 hour",
+      "components": "V, S",
+      "uses": {
+        "current": 1,
+        "max": 1,
+        "reset": "long"
+      },
+      "description": "Create an illusory appearance that cannot survive touch."
+    },
+    {
+      "id": "suggestion",
+      "name": "Suggestion",
+      "category": "Spell",
+      "action": "Action",
+      "level": 2,
+      "school": "Enchantment",
+      "spellcasting": "CHA",
+      "range": "30 ft",
+      "duration": "Up to 8 hours",
+      "components": "V, M",
+      "concentration": true,
+      "uses": {
+        "current": 1,
+        "max": 1,
+        "reset": "long"
+      },
+      "description": "Influence a target to follow one reasonable course of action."
+    }
+  ],
+  "resources": [],
+  "features": [
+    {
+      "id": "darkvision",
+      "name": "Darkvision",
+      "category": "Racial Trait",
+      "description": "See in darkness within 60 ft as though it were dim light."
+    },
+    {
+      "id": "two-weapon-fighting",
+      "name": "Two-Weapon Fighting",
+      "category": "Fighting Style",
+      "description": "Add your ability modifier to offhand weapon damage."
+    },
+    {
+      "id": "extra-attack",
+      "name": "Extra Attack",
+      "category": "Class Feature",
+      "description": "Make two attacks whenever you take the Attack action."
+    },
+    {
+      "id": "echo-rules",
+      "name": "Echo Rules",
+      "category": "Echo Knight",
+      "description": "Your echo has AC 17, 1 HP, and immunity to conditions."
+    },
+    {
+      "id": "vampiric-heritage",
+      "name": "Vampiric Heritage",
+      "category": "Racial Trait",
+      "description": "Cast Vampiric Touch once per long rest using Dexterity."
+    },
+    {
+      "id": "bloodbound-whisper",
+      "name": "Bloodbound Whisper",
+      "category": "Racial Trait",
+      "description": "Cast your granted enchantment magic using Charisma."
+    },
+    {
+      "id": "sunlight-weakness",
+      "name": "Sunlight Weakness",
+      "category": "Racial Trait",
+      "description": "Sunlight hinders sight and attacks and deals 3 radiant damage."
+    },
+    {
+      "id": "radiant-vulnerability",
+      "name": "Radiant Vulnerability",
+      "category": "Racial Trait",
+      "description": "Radiant damage dealt to you is doubled."
+    },
+    {
+      "id": "invitation-bound",
+      "name": "Invitation Bound",
+      "category": "Racial Trait",
+      "description": "You cannot enter a private residence without an invitation."
+    },
+    {
+      "id": "mirrorless",
+      "name": "Mirrorless",
+      "category": "Racial Trait",
+      "description": "Your image does not appear in ordinary reflections."
+    },
+    {
+      "id": "undead-physiology",
+      "name": "Undead Physiology",
+      "category": "Racial Trait",
+      "description": "You have no heartbeat and remain unnaturally cold."
+    },
+    {
+      "id": "position-privilege",
+      "name": "Position of Privilege",
+      "category": "Background",
+      "description": "Your noble status grants recognition and social access."
+    }
+  ],
+  "currency": {
+    "cp": 0,
+    "sp": 0,
+    "ep": 0,
+    "gp": 150,
+    "pp": 0
+  },
+  "inventory": [
+    {
+      "name": "Shortsword",
+      "quantity": 2,
+      "description": "1d6 piercing; finesse and light."
+    },
+    {
+      "name": "Potion of Healing",
+      "quantity": 3,
+      "description": "Regain 2d4+2 hit points."
+    },
+    {
+      "name": "Bag of Holding",
+      "quantity": 1,
+      "description": "Stores far more than its outside size suggests."
+    }
+  ]
+}

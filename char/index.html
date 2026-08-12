@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <base href="../">
+    <meta name="description" content="Choose a character and open their tracker.">
+    <title>Characters | Cassian's Log</title>
+    <link rel="stylesheet" href="shared/assets/icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="shared/assets/tailwind.css">
+    <link rel="icon" href="shared/assets/bat.ico">
+</head>
+
+<body class="flex min-h-screen flex-col bg-parchment font-sans text-stone-900 antialiased transition-colors dark:bg-ink dark:text-stone-100">
+    <nav data-site-header></nav>
+
+    <main class="relative mx-auto w-full max-w-7xl grow px-4 py-12 sm:px-6 lg:px-8">
+        <header class="mx-auto mb-10 max-w-2xl text-center">
+            <span class="mb-4 inline-flex items-center rounded-full bg-blood-500 px-3 py-1 text-xs font-bold text-white">
+                <i class="bi bi-dice-20-fill mr-1"></i> Character archive
+            </span>
+            <h1 class="font-display text-4xl font-bold sm:text-5xl">Choose your character</h1>
+            <p class="mt-4 text-lg leading-relaxed text-stone-500 dark:text-stone-400">
+                Pick a sheet or make a new character.
+            </p>
+            <button id="add-character" type="button" class="mt-6 inline-flex items-center justify-center gap-2 rounded-xl border border-blood-500 bg-blood-500 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blood-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">
+                <i class="bi bi-person-plus-fill"></i> Create character
+            </button>
+        </header>
+
+        <section aria-labelledby="characters-heading">
+            <h2 id="characters-heading" class="sr-only">Available characters</h2>
+            <div id="characters" class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3"
+                aria-live="polite">
+                <div class="py-12 text-center md:col-span-2 xl:col-span-3">
+                    <div class="inline-block h-9 w-9 animate-spin rounded-full border-4 border-blood-500 border-r-transparent" role="status">
+                        <span class="sr-only">Loading characters...</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="relative mx-auto w-full max-w-7xl px-4 py-4 text-center text-sm text-stone-500 dark:text-stone-400 sm:px-6 lg:px-8">
+        Choose a character.
+    </footer>
+
+    <div id="character-dialog" class="fixed inset-0 z-50 hidden items-center justify-center bg-ink/80 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+        <form id="character-form" class="w-full max-w-md rounded-2xl border border-stone-300 bg-parchment p-6 shadow-2xl dark:border-white/15 dark:bg-ink">
+            <div class="mb-5 flex items-start justify-between gap-3">
+                <div>
+                    <h2 id="dialog-title" class="font-display text-2xl font-bold">Create a character</h2>
+                    <p class="mt-1 text-sm text-stone-500 dark:text-stone-400">This creates a blank character sheet.</p>
+                </div>
+                <button id="close-dialog" type="button" class="rounded-xl p-2 hover:bg-stone-200 dark:hover:bg-white/10" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <label class="block">
+                <span class="mb-1 block text-sm font-bold">Character name</span>
+                <input id="new-character-name" required maxlength="80" autocomplete="off" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="New adventurer">
+            </label>
+            <div class="mt-5 flex justify-end gap-3">
+                <button id="cancel-dialog" type="button" class="rounded-xl border border-stone-400 px-4 py-2 text-sm font-bold">Cancel</button>
+                <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-white hover:bg-blood-600"><i class="bi bi-arrow-right"></i> Create & edit</button>
+            </div>
+        </form>
+    </div>
+
+    <script type="module" src="char/js/entries/characters.js"></script>
+</body>
+
+</html>

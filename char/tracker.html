@@ -6,9 +6,9 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <base href="../">
     <title>Character Tracker</title>
-    <link rel="stylesheet" href="bootstrap/bootstrap-icons.css">
-    <link rel="stylesheet" href="dist/tailwind.css">
-    <link rel="icon" href="bat.ico">
+    <link rel="stylesheet" href="shared/assets/icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="shared/assets/tailwind.css">
+    <link rel="icon" href="shared/assets/bat.ico">
 </head>
 
 <body class="min-h-screen bg-parchment font-sans text-stone-900 antialiased transition-colors dark:bg-ink dark:text-stone-100" id="bodyStart">
@@ -18,7 +18,7 @@
             <div class="mb-4 overflow-hidden rounded-2xl border border-stone-300/80 bg-white/75 shadow-card backdrop-blur-sm dark:border-white/10 dark:bg-white/[.055]" id="characterDescription">
                 <div class="p-5">
                     <div class="flex flex-col items-center gap-4 sm:flex-row sm:items-stretch">
-                        <img id="character-portrait" src="bat.ico" class="aspect-square w-[180px] shrink-0 rounded-2xl border border-stone-300 object-cover p-1 shadow-lg dark:border-white/15"
+                        <img id="character-portrait" src="shared/assets/bat.ico" class="aspect-square w-[180px] shrink-0 rounded-2xl border border-stone-300 object-cover p-1 shadow-lg dark:border-white/15"
                             alt="Character portrait">
                         <div class="grow text-center sm:text-left">
                             <h3 class="mb-2 font-display text-2xl font-bold"><span id="character-name"></span></h3>
@@ -289,7 +289,8 @@
         </div>
     </div>
     <div id="rest-toast" class="fixed bottom-4 right-4 z-[80] hidden max-w-sm rounded-2xl border border-emerald-500/40 bg-stone-900 px-4 py-3 text-sm font-semibold text-white shadow-2xl" role="status" aria-live="polite"></div>
-    <script type="module" src="js/entries/tracker-standalone.js"></script>
+    <script type="module" src="integrations/character-compendium/index.js"></script>
+    <script type="module" src="char/js/entries/tracker-standalone.js"></script>
 </body>
 
 </html>
