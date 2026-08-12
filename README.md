@@ -1,6 +1,6 @@
 # Cassian's Log
 
-Cassian's Log is a static D&D 5e character tracker with editable character sheets, combat tracking, a dice roller, a campaign Wiki, and a searchable Compendium.
+Cassian's Log is a static D&D 5e toolkit with editable character sheets, combat and loot trackers, a dice roller, a campaign Wiki, and a searchable Compendium.
 
 The app leaves ability scores, armor class, spell save DCs, prepared-spell limits, and other character-building decisions under the player's control. Browser-created characters and edits are stored locally in the current browser.
 
@@ -35,6 +35,7 @@ cassiansLog/
 |-- char/                      # Character pages, data, runtime, and tests
 |   |-- <character>/           # Route, character.json, and portrait
 |   `-- js/
+|-- combat-loot/               # Initiative, combat, loot, and custom trackers
 |-- compendium/                # Page, generated data, runtime, builder, and tests
 |-- wiki/                      # Page, seed data, runtime, importer, and tests
 |-- integrations/
@@ -43,7 +44,7 @@ cassiansLog/
 `-- index.html                 # Redirect to /char/
 ```
 
-Character, Compendium, and Wiki code may import neutral code from `shared/`, but they never import one another. Cross-feature behavior belongs in `integrations/`. The Character–Compendium picker is enabled by a separate module script on Character routes; removing that script removes the picker without affecting the Character editor.
+Character, Combat & Loot, Compendium, and Wiki code may import neutral code from `shared/`, but they never import one another. Cross-feature behavior belongs in `integrations/`. The Character–Compendium picker is enabled by a separate module script on Character routes; removing that script removes the picker without affecting the Character editor.
 
 Bundled character data and portraits live beside their routes under `char/<id>/`. The Wiki seed lives at `wiki/data/pages.json`. Generated Compendium files live in `compendium/data/`; edit the builder rather than generated JSON by hand.
 
@@ -66,6 +67,8 @@ To refresh the Wiki seed from the configured published campaign source, run `npm
 
 ## Saved data and deployment
 
-Characters, notes, combat state, Wiki edits, and settings use browser storage. There is no account or server-side database. Existing storage keys remain stable across the feature-folder migration.
+Characters, notes, combat state, Combat & Loot presets, Wiki edits, and settings use browser storage. There is no account or server-side database. Existing storage keys remain stable across the feature-folder migration.
+
+Combat & Loot lives at `/combat-loot/`. It keeps named presets under `dnd-combat-loot-presets-v1` and a recoverable working draft under `dnd-combat-loot-draft-v1`. Preset downloads include the same versioned tracker document, including current unsaved edits, and do not mark the working draft as saved.
 
 GitHub Actions deploys `main` to GitHub Pages. Before pushing generated-data changes, run the relevant generator followed by `npm test` and inspect `git status`.

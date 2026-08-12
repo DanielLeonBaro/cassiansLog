@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Track initiative, combat rounds, and loot in reusable local presets.">
+    <base href="../">
+    <title>Combat &amp; Loot | Cassian's Log</title>
+    <link rel="stylesheet" href="shared/assets/icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="shared/assets/tailwind.css">
+    <link rel="icon" href="shared/assets/bat.ico">
+</head>
+
+<body class="flex min-h-screen flex-col bg-parchment font-sans text-stone-900 antialiased transition-colors dark:bg-ink dark:text-stone-100">
+    <nav data-site-header></nav>
+
+    <main class="mx-auto w-full max-w-[96rem] grow px-4 py-8 sm:px-6 lg:px-8">
+        <header class="mb-8">
+            <span class="mb-3 inline-flex items-center rounded-full bg-blood-500 px-3 py-1 text-xs font-bold text-white"><i class="bi bi-shield-shaded mr-1"></i> Encounter workspace</span>
+            <h1 class="font-display text-4xl font-bold sm:text-5xl">Combat &amp; Loot</h1>
+            <p class="mt-3 max-w-3xl text-stone-500 dark:text-stone-400">Arrange initiative, record each round, and keep a flexible loot or campaign table beside the encounter.</p>
+        </header>
+
+        <section class="sticky top-[4.5rem] z-20 mb-6 rounded-2xl border border-stone-300/80 bg-parchment/95 p-4 shadow-card backdrop-blur-xl dark:border-white/10 dark:bg-ink/95" aria-label="Preset tools">
+            <div class="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+                <div class="min-w-0 grow">
+                    <div class="mb-2 flex flex-wrap items-center gap-2">
+                        <strong id="workspace-name" class="truncate">New preset</strong>
+                        <span id="workspace-status" class="rounded-full bg-amber-200 px-2.5 py-1 text-xs font-bold text-amber-950" role="status">Draft</span>
+                    </div>
+                    <div class="flex flex-col gap-2 sm:flex-row">
+                        <label class="min-w-0 grow sm:max-w-md">
+                            <span class="sr-only">Saved preset</span>
+                            <select id="preset-select" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 dark:border-white/15 dark:bg-stone-900 dark:text-white">
+                                <option value="">Choose a saved preset</option>
+                            </select>
+                        </label>
+                        <button id="load-preset" type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-stone-400 bg-white/70 px-4 py-2.5 text-sm font-bold transition hover:border-blood-500 hover:text-blood-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/20 dark:bg-white/5"><i class="bi bi-folder2-open"></i>Load preset</button>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button id="new-preset" type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-stone-400 bg-white/70 px-3 py-2.5 text-sm font-bold transition hover:border-blood-500 hover:text-blood-500 dark:border-white/20 dark:bg-white/5"><i class="bi bi-file-earmark-plus"></i>New preset</button>
+                    <button id="save-preset" type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-blood-500 bg-blood-500 px-3 py-2.5 text-sm font-bold text-white transition hover:bg-blood-600"><i class="bi bi-floppy-fill"></i>Save preset</button>
+                    <button id="download-preset" type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-stone-400 bg-white/70 px-3 py-2.5 text-sm font-bold transition hover:border-blood-500 hover:text-blood-500 dark:border-white/20 dark:bg-white/5"><i class="bi bi-download"></i>Download preset</button>
+                    <button id="new-tracker" type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-700 bg-emerald-700 px-3 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800"><i class="bi bi-table"></i>New tracker</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="tracker-list" class="space-y-6" aria-label="Trackers"></section>
+    </main>
+
+    <div id="editor-dialog" class="fixed inset-0 z-[70] hidden items-center justify-center bg-ink/80 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="editor-dialog-title">
+        <form id="editor-form" class="w-full max-w-xl overflow-hidden rounded-2xl border border-stone-300 bg-parchment shadow-2xl dark:border-white/15 dark:bg-stone-900">
+            <div class="flex items-start justify-between gap-3 border-b border-stone-300 px-5 py-4 dark:border-white/10">
+                <div class="min-w-0">
+                    <p id="editor-dialog-context" class="truncate text-xs font-bold uppercase tracking-wide text-blood-500"></p>
+                    <h2 id="editor-dialog-title" class="font-display text-xl font-bold">Edit value</h2>
+                </div>
+                <button type="button" data-close-dialog="editor-dialog" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-stone-300 transition hover:border-blood-500 hover:text-blood-500 dark:border-white/15" aria-label="Close editor"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="p-5">
+                <label class="block">
+                    <span id="editor-field-label" class="mb-2 block text-sm font-bold">Text</span>
+                    <textarea id="editor-value" rows="7" class="w-full resize-y rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 outline-none transition focus:border-blood-500 dark:border-white/15 dark:bg-white/5 dark:text-white"></textarea>
+                </label>
+                <div class="mt-5 flex justify-end gap-2">
+                    <button type="button" data-close-dialog="editor-dialog" class="rounded-xl border border-stone-400 px-4 py-2 text-sm font-bold">Cancel</button>
+                    <button type="submit" class="rounded-xl border border-blood-500 bg-blood-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-blood-600">Save</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div id="name-dialog" class="fixed inset-0 z-[70] hidden items-center justify-center bg-ink/80 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="name-dialog-title">
+        <form id="name-form" class="w-full max-w-md rounded-2xl border border-stone-300 bg-parchment p-6 shadow-2xl dark:border-white/15 dark:bg-stone-900">
+            <div class="mb-5 flex items-start justify-between gap-3">
+                <div><h2 id="name-dialog-title" class="font-display text-2xl font-bold">Save preset</h2><p class="mt-1 text-sm text-stone-500 dark:text-stone-400">The creation date and time will be added to this name.</p></div>
+                <button type="button" data-close-dialog="name-dialog" class="rounded-xl p-2 hover:bg-stone-200 dark:hover:bg-white/10" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <label class="block"><span class="mb-1 block text-sm font-bold">Preset name</span><input id="preset-name" required maxlength="100" autocomplete="off" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 outline-none focus:border-blood-500 dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="Goblin Combat"></label>
+            <div class="mt-5 flex justify-end gap-2"><button type="button" data-close-dialog="name-dialog" class="rounded-xl border border-stone-400 px-4 py-2 text-sm font-bold">Cancel</button><button type="submit" class="rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-white hover:bg-blood-600">Save preset</button></div>
+        </form>
+    </div>
+
+    <div id="confirm-dialog" class="fixed inset-0 z-[75] hidden items-center justify-center bg-ink/80 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title">
+        <div class="w-full max-w-md rounded-2xl border border-stone-300 bg-parchment p-6 shadow-2xl dark:border-white/15 dark:bg-stone-900">
+            <h2 id="confirm-dialog-title" class="font-display text-2xl font-bold">Confirm action</h2>
+            <p id="confirm-dialog-message" class="mt-3 text-stone-600 dark:text-stone-300"></p>
+            <div class="mt-6 flex justify-end gap-2"><button id="cancel-confirm" type="button" class="rounded-xl border border-stone-400 px-4 py-2 text-sm font-bold">Cancel</button><button id="accept-confirm" type="button" class="rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-white hover:bg-blood-600">Accept</button></div>
+        </div>
+    </div>
+
+    <div id="combat-loot-toast" class="pointer-events-none fixed bottom-4 right-4 z-[80] hidden max-w-sm rounded-2xl bg-stone-900 px-4 py-3 text-sm font-bold text-white shadow-2xl" role="status" aria-live="polite"></div>
+
+    <script type="module" src="combat-loot/js/entry.js"></script>
+</body>
+
+</html>

@@ -5,6 +5,7 @@ module.exports = {
   content: [
     "./index.html",
     "./char/**/*.{html,js}",
+    "./combat-loot/**/*.{html,js}",
     "./compendium/**/*.{html,js}",
     "./wiki/**/*.{html,js}",
     "./integrations/**/*.js",

@@ -12,15 +12,24 @@ sectionNames.forEach((name) => {
     `${name} should be configured with true or false.`,
   );
 });
+assert.equal(config.sections["combat-loot"], true, "Combat & Loot navigation should be enabled.");
+assert.equal(config.sections.combat, true, "Character combat controls should keep their independent setting.");
+assert.equal(config.sections.wiki, false, "The existing Wiki navigation setting should remain disabled.");
 
 const siteHeader = fs.readFileSync("shared/js/site-header.js", "utf8");
-for (const name of ["characters", "compendium", "wiki"]) {
+const siteSections = ["characters", "combat-loot", "compendium", "wiki"];
+for (const name of siteSections) {
   assert.ok(siteHeader.includes(`id: "${name}"`), `${name} should be defined in the shared site header.`);
 }
+assert.match(
+  siteHeader,
+  /id: "combat-loot", href: "combat-loot\/", icon: "bi-shield-shaded", label: "Combat & Loot"/,
+  "Combat & Loot should use its configured route, Bootstrap icon, and label.",
+);
 assert.match(siteHeader, /data-section-link="\$\{page\.id\}"/, "Site links should expose their section IDs.");
 
 const trackerHeader = fs.readFileSync("char/js/tracker/header.js", "utf8");
-for (const name of sectionNames.filter((name) => !["characters", "compendium", "wiki"].includes(name))) {
+for (const name of sectionNames.filter((name) => !siteSections.includes(name))) {
   assert.ok(trackerHeader.includes(`"${name}"`), `${name} should be defined in the tracker navigation.`);
 }
 assert.match(trackerHeader, /data-section-link="\$\{section\}"/, "Jump links should expose their section IDs.");

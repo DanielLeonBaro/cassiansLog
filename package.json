@@ -3,7 +3,7 @@
     "build:css": "tailwindcss -c ./shared/styles/tailwind.config.cjs -i ./shared/styles/tailwind.css -o ./shared/assets/tailwind.css --minify",
     "build:compendium": "node compendium/scripts/build.cjs",
     "import:wiki": "node wiki/scripts/import.cjs",
-    "test": "node char/tests/spellcasting.test.cjs && node char/tests/repository.test.cjs && node shared/tests/dice.test.cjs && node compendium/tests/compendium.test.cjs && node wiki/tests/wiki.test.cjs && node integrations/character-compendium/integration.test.cjs && node shared/tests/sections.test.cjs && node shared/tests/architecture.test.cjs && node shared/tests/routes.test.cjs && npm run build:css"
+    "test": "node char/tests/spellcasting.test.cjs && node char/tests/repository.test.cjs && node shared/tests/dice.test.cjs && node combat-loot/tests/model.test.cjs && node combat-loot/tests/repository.test.cjs && node compendium/tests/compendium.test.cjs && node wiki/tests/wiki.test.cjs && node integrations/character-compendium/integration.test.cjs && node shared/tests/sections.test.cjs && node shared/tests/architecture.test.cjs && node shared/tests/routes.test.cjs && npm run build:css"
   },
   "devDependencies": {
     "fast-xml-parser": "^5.7.0",
