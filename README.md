@@ -69,6 +69,8 @@ To refresh the Wiki seed from the configured published campaign source, run `npm
 
 Characters, notes, combat state, Combat & Loot presets, Wiki edits, and settings use browser storage. There is no account or server-side database. Existing storage keys remain stable across the feature-folder migration.
 
-Combat & Loot lives at `/combat-loot/`. It keeps named presets under `dnd-combat-loot-presets-v1` and a recoverable working draft under `dnd-combat-loot-draft-v1`. Preset downloads include the same versioned tracker document, including current unsaved edits, and do not mark the working draft as saved.
+Combat & Loot lives at `/combat-loot/`. It keeps named presets under `dnd-combat-loot-presets-v1` and a recoverable working draft under `dnd-combat-loot-draft-v1`. These are `localStorage` records in the current browser profile, not files in the repository. Removed presets remain in the named collection with `active: false`; they are hidden from the picker rather than erased. Preset downloads include the same versioned tracker document, including current unsaved edits, and do not mark the working draft as saved. Uploading one of those JSON files opens it as an unsaved draft so it can be reviewed before saving locally.
+
+Because GitHub Pages is a static host, the browser cannot write JSON into a Git-tracked `combat-loot/data/` directory. Sharing a preset currently means downloading the JSON and sending it to another user, who can upload it. Team-wide automatic saves require an authenticated storage service; a Git-tracked preset library would instead require adding downloaded files to the repository and committing and deploying them.
 
 GitHub Actions deploys `main` to GitHub Pages. Before pushing generated-data changes, run the relevant generator followed by `npm test` and inspect `git status`.

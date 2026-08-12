@@ -2,10 +2,12 @@ import { clone } from "../../shared/js/text.js";
 import {
   addCombatRound,
   addCustomTracker,
+  calculateCurrentHP,
   createCombatLootDocument,
   deleteCustomTracker,
   deleteTrackerColumn,
   deleteTrackerRow,
+  initializeCombatHealthColumns,
   insertTrackerColumn,
   insertTrackerRow,
   mergeInitiativeIntoCombat,
@@ -23,9 +25,58 @@ import {
   loadDraft,
   loadPresetCollection,
   overwritePreset,
+  parsePresetUpload,
   saveDraft,
+  setPresetActive,
 } from "./repository.js";
 import { renderWorkspace } from "./view.js";
+
+const MAX_PRESET_UPLOAD_BYTES = 5 * 1024 * 1024;
+const VALID_HEALTH_INPUT_CLASSES = [
+  "border-transparent",
+  "hover:border-stone-300",
+  "focus:border-blood-500",
+  "dark:hover:border-white/15",
+];
+const INVALID_HEALTH_INPUT_CLASSES = [
+  "border-red-500/80",
+  "hover:border-red-500",
+  "focus:border-red-500",
+  "dark:border-red-400/80",
+];
+
+function healthColumnIdFactory(document) {
+  const usedIds = new Set([document.id]);
+  document.tables.forEach((table) => {
+    usedIds.add(table.id);
+    table.columns.forEach((column) => usedIds.add(column.id));
+    table.rows.forEach((row) => usedIds.add(row.id));
+  });
+  let sequence = 0;
+  return (kind) => {
+    let id;
+    do {
+      sequence += 1;
+      id = `${kind}-${document.id}-combat-health-${sequence}`;
+    } while (usedIds.has(id));
+    usedIds.add(id);
+    return id;
+  };
+}
+
+function prepareWorkspaceDocument(document) {
+  const prepared = initializeCombatHealthColumns(document, {
+    idFactory: healthColumnIdFactory(document),
+  });
+  const combat = prepared.tables.find((table) => table.type === "combat");
+  const derivedColumns = combat?.columns.filter((column) => column.role === "currentHp") || [];
+  combat?.rows.forEach((row) => {
+    derivedColumns.forEach((column) => {
+      row.cells[column.id] = "";
+    });
+  });
+  return prepared;
+}
 
 export function initializeCombatLoot() {
   const elements = {
@@ -34,6 +85,9 @@ export function initializeCombatLoot() {
     workspaceStatus: document.getElementById("workspace-status"),
     presetSelect: document.getElementById("preset-select"),
     loadPreset: document.getElementById("load-preset"),
+    removePreset: document.getElementById("remove-preset"),
+    uploadPreset: document.getElementById("upload-preset"),
+    uploadPresetFile: document.getElementById("upload-preset-file"),
     editorDialog: document.getElementById("editor-dialog"),
     editorForm: document.getElementById("editor-form"),
     editorTitle: document.getElementById("editor-dialog-title"),
@@ -52,15 +106,26 @@ export function initializeCombatLoot() {
 
   let presets = loadPresetCollection();
   const recoveredDraft = loadDraft();
-  let workspace = recoveredDraft?.currentDocument?.tables
-    ? clone(recoveredDraft.currentDocument)
-    : createCombatLootDocument();
-  let activePresetId = presets.some((preset) => preset.id === recoveredDraft?.activePresetId)
+  const recoveredWasDirty = recoveredDraft
+    ? isDocumentDirty(recoveredDraft.currentDocument, recoveredDraft.baselineDocument)
+    : false;
+  let workspace = prepareWorkspaceDocument(
+    recoveredDraft?.currentDocument?.tables
+      ? recoveredDraft.currentDocument
+      : createCombatLootDocument(),
+  );
+  let activePresetId = presets.some(
+    (preset) => preset.active && preset.id === recoveredDraft?.activePresetId,
+  )
     ? recoveredDraft.activePresetId
     : null;
-  let baselineDocument = recoveredDraft?.baselineDocument?.tables
-    ? clone(recoveredDraft.baselineDocument)
-    : clone(activePreset()?.document || workspace);
+  let baselineDocument = recoveredDraft
+    ? recoveredDraft.baselineDocument?.tables
+      ? recoveredWasDirty
+        ? prepareWorkspaceDocument(recoveredDraft.baselineDocument)
+        : clone(workspace)
+      : null
+    : clone(workspace);
   let editorTarget = null;
   let confirmationAction = null;
   let draggedRow = null;
@@ -70,7 +135,13 @@ export function initializeCombatLoot() {
   const previouslyInert = new Map();
 
   function activePreset() {
-    return presets.find((preset) => preset.id === activePresetId) || null;
+    return presets.find((preset) => preset.active && preset.id === activePresetId) || null;
+  }
+
+  function selectedPreset() {
+    return presets.find(
+      (preset) => preset.active && preset.id === elements.presetSelect.value,
+    ) || null;
   }
 
   function tableById(tableId) {
@@ -113,13 +184,16 @@ export function initializeCombatLoot() {
 
   function renderPresetOptions(selectedId = activePresetId || "") {
     elements.presetSelect.innerHTML = `<option value="">Choose a saved preset</option>${presets
+      .filter((preset) => preset.active)
       .map(
         (preset) =>
           `<option value="${escapeOptionValue(preset.id)}">${escapeOptionText(preset.label)}</option>`,
       )
       .join("")}`;
     elements.presetSelect.value = selectedId || "";
-    elements.loadPreset.disabled = !elements.presetSelect.value;
+    const hasSelection = Boolean(selectedPreset());
+    elements.loadPreset.disabled = !hasSelection;
+    elements.removePreset.disabled = !hasSelection;
   }
 
   function updateChrome() {
@@ -138,7 +212,9 @@ export function initializeCombatLoot() {
           ? "bg-emerald-200 text-emerald-950"
           : "bg-stone-200 text-stone-700 dark:bg-white/10 dark:text-stone-200"
     }`;
-    elements.loadPreset.disabled = !elements.presetSelect.value;
+    const hasSelection = Boolean(selectedPreset());
+    elements.loadPreset.disabled = !hasSelection;
+    elements.removePreset.disabled = !hasSelection;
   }
 
   function render() {
@@ -165,10 +241,67 @@ export function initializeCombatLoot() {
       workspace = createNext(workspace);
       persistDraft();
       updateChrome();
+      return true;
     } catch (error) {
       console.error("Could not update text:", error);
       showToast(error.message || "That text could not be saved.");
+      return false;
     }
+  }
+
+  function setHealthInputValidity(input, valid) {
+    input.classList.remove(...(valid ? INVALID_HEALTH_INPUT_CLASSES : VALID_HEALTH_INPUT_CLASSES));
+    input.classList.add(...(valid ? VALID_HEALTH_INPUT_CLASSES : INVALID_HEALTH_INPUT_CLASSES));
+    if (valid) {
+      input.removeAttribute("aria-invalid");
+      input.removeAttribute("title");
+    } else {
+      input.setAttribute("aria-invalid", "true");
+      input.setAttribute("title", "Enter a number");
+    }
+  }
+
+  function updateCurrentHPOutput(container, health) {
+    container.dataset.valid = String(health.valid);
+    container.replaceChildren();
+    if (health.valid) {
+      const output = document.createElement("output");
+      output.className = "font-semibold tabular-nums";
+      output.setAttribute("aria-label", `Current HP: ${health.value}`);
+      output.textContent = String(health.value);
+      container.append(output);
+      return;
+    }
+
+    const unavailable = document.createElement("span");
+    unavailable.className = "inline-flex items-center gap-2 font-semibold text-red-600 dark:text-red-400";
+    unavailable.setAttribute("role", "img");
+    unavailable.setAttribute("aria-label", "Current HP unavailable. Enter numbers for HP and Damage.");
+    const icon = document.createElement("i");
+    icon.className = "bi bi-x-circle-fill text-lg";
+    icon.setAttribute("aria-hidden", "true");
+    unavailable.append(icon);
+    container.append(unavailable);
+  }
+
+  function refreshCombatHealthRow(rowElement, tableId, rowId) {
+    const table = tableById(tableId);
+    const row = rowById(table, rowId);
+    if (!rowElement || table?.type !== "combat" || !row) return;
+    const hpColumn = table.columns.find((column) => column.role === "hp");
+    const damageColumn = table.columns.find((column) => column.role === "damage");
+    const health = calculateCurrentHP(
+      hpColumn ? row.cells?.[hpColumn.id] : "",
+      damageColumn ? row.cells?.[damageColumn.id] : "",
+    );
+
+    rowElement.querySelectorAll("[data-inline-cell]").forEach((input) => {
+      const role = columnById(table, input.dataset.columnId)?.role;
+      if (role === "hp") setHealthInputValidity(input, health.hpValid);
+      if (role === "damage") setHealthInputValidity(input, health.damageValid);
+    });
+    const currentHP = rowElement.querySelector("[data-current-hp]");
+    if (currentHP) updateCurrentHPOutput(currentHP, health);
   }
 
   function openDialog(dialog, initialFocus) {
@@ -244,11 +377,11 @@ export function initializeCombatLoot() {
   }
 
   function loadSelectedPreset() {
-    const preset = presets.find((item) => item.id === elements.presetSelect.value);
+    const preset = selectedPreset();
     if (!preset) return showToast("Choose a saved preset first.");
-    workspace = clone(preset.document);
+    workspace = prepareWorkspaceDocument(preset.document);
     activePresetId = preset.id;
-    baselineDocument = clone(preset.document);
+    baselineDocument = clone(workspace);
     const draftSaved = persistDraft();
     renderPresetOptions(preset.id);
     render();
@@ -256,13 +389,51 @@ export function initializeCombatLoot() {
   }
 
   function requestLoadPreset() {
-    if (!elements.presetSelect.value) return showToast("Choose a saved preset first.");
+    if (!selectedPreset()) return showToast("Choose a saved preset first.");
     if (!dirty()) return loadSelectedPreset();
     askConfirmation({
       title: "Load another preset?",
       message: "Unsaved changes in the current workspace will be lost when the selected preset loads.",
       acceptLabel: "Load preset",
       action: loadSelectedPreset,
+    });
+  }
+
+  function removeSelectedPreset() {
+    const preset = selectedPreset();
+    if (!preset) return showToast("Choose a saved preset first.");
+    const wasCurrentPreset = preset.id === activePresetId;
+    const result = setPresetActive({ id: preset.id, active: false });
+    if (!result.ok) {
+      console.error("Could not remove preset:", result.error);
+      showToast("The browser could not remove this preset. It remains available.");
+      return;
+    }
+
+    presets = result.presets;
+    let draftSaved = true;
+    if (wasCurrentPreset) {
+      activePresetId = null;
+      baselineDocument = null;
+      draftSaved = persistDraft();
+    }
+    renderPresetOptions(wasCurrentPreset ? "" : activePresetId || "");
+    render();
+    if (draftSaved) {
+      showToast(wasCurrentPreset
+        ? `${preset.label} was removed from the list. Your open work is now an unsaved draft.`
+        : `${preset.label} was removed from the preset list.`);
+    }
+  }
+
+  function requestRemovePreset() {
+    const preset = selectedPreset();
+    if (!preset) return showToast("Choose a saved preset first.");
+    askConfirmation({
+      title: "Remove this preset?",
+      message: `${preset.label} will be hidden from this browser's preset list. Its saved record will remain inactive.`,
+      acceptLabel: "Remove preset",
+      action: removeSelectedPreset,
     });
   }
 
@@ -330,6 +501,48 @@ export function initializeCombatLoot() {
     } catch (error) {
       console.error("Could not download preset:", error);
       showToast("This browser could not download the preset.");
+    }
+  }
+
+  function loadUploadedPreset(upload) {
+    workspace = upload.document;
+    activePresetId = null;
+    baselineDocument = null;
+    elements.presetSelect.value = "";
+    const draftSaved = persistDraft();
+    renderPresetOptions("");
+    render();
+    if (draftSaved) {
+      showToast(`${upload.label} loaded as unsaved work. Use Save preset to keep it in this browser.`);
+    }
+  }
+
+  async function uploadPresetFile(file) {
+    if (!file) return;
+    try {
+      if (file.size > MAX_PRESET_UPLOAD_BYTES) {
+        throw new Error("Preset files must be 5 MiB or smaller.");
+      }
+      const parsed = parsePresetUpload(await file.text());
+      const upload = {
+        ...parsed,
+        document: prepareWorkspaceDocument(parsed.document),
+      };
+      if (!dirty()) {
+        loadUploadedPreset(upload);
+        return;
+      }
+      askConfirmation({
+        title: "Upload another preset?",
+        message: "Unsaved changes in the current workspace will be replaced by the uploaded preset.",
+        acceptLabel: "Upload preset",
+        action: () => loadUploadedPreset(upload),
+      });
+    } catch (error) {
+      console.error("Could not upload preset:", error);
+      showToast(error.message || "That file is not a valid Combat & Loot preset.");
+    } finally {
+      elements.uploadPresetFile.value = "";
     }
   }
 
@@ -420,13 +633,24 @@ export function initializeCombatLoot() {
   elements.trackers.addEventListener("input", (event) => {
     const input = event.target;
     if (input.matches("[data-inline-cell]")) {
-      applyTextMutation((current) => updateTrackerCell(
+      const role = columnById(
+        tableById(input.dataset.tableId),
+        input.dataset.columnId,
+      )?.role;
+      const updated = applyTextMutation((current) => updateTrackerCell(
         current,
         input.dataset.tableId,
         input.dataset.rowId,
         input.dataset.columnId,
         input.value,
       ));
+      if (updated && ["hp", "damage"].includes(role)) {
+        refreshCombatHealthRow(
+          input.closest("[data-table-row]"),
+          input.dataset.tableId,
+          input.dataset.rowId,
+        );
+      }
     } else if (input.matches("[data-column-title]")) {
       applyTextMutation((current) => renameTrackerColumn(
         current,
@@ -537,11 +761,15 @@ export function initializeCombatLoot() {
   document.getElementById("new-preset").addEventListener("click", requestNewPreset);
   document.getElementById("save-preset").addEventListener("click", requestSavePreset);
   document.getElementById("download-preset").addEventListener("click", downloadCurrentWorkspace);
+  elements.uploadPreset.addEventListener("click", () => elements.uploadPresetFile.click());
+  elements.uploadPresetFile.addEventListener("change", () =>
+    uploadPresetFile(elements.uploadPresetFile.files?.[0]));
   document.getElementById("new-tracker").addEventListener("click", () => {
     if (applyMutation(addCustomTracker, "A blank tracker was added."))
       elements.trackers.lastElementChild?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
   elements.loadPreset.addEventListener("click", requestLoadPreset);
+  elements.removePreset.addEventListener("click", requestRemovePreset);
   elements.presetSelect.addEventListener("change", updateChrome);
 
   document.addEventListener("keydown", (event) => {
@@ -587,7 +815,7 @@ export function initializeCombatLoot() {
 
   renderPresetOptions(activePresetId || "");
   render();
-  if (!recoveredDraft) persistDraft();
+  persistDraft();
 }
 
 function escapeOptionText(value) {

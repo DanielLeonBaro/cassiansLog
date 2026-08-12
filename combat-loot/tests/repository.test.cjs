@@ -50,12 +50,14 @@ vm.runInContext(`
     savePresetCollection,
     createPreset,
     overwritePreset,
+    setPresetActive,
     loadDraft,
     saveDraft,
     removeDraft,
     documentFingerprint,
     isDocumentDirty,
     createDownload,
+    parsePresetUpload,
   };
 `, context);
 
@@ -191,6 +193,13 @@ assert.equal(api.DRAFT_STORAGE_KEY, DRAFT_KEY);
     title: "Another Character",
     role: "character",
   });
+  const badHealthColumnsVersion = validDocument();
+  badHealthColumnsVersion.tables[1].healthColumnsVersion = 0;
+  const duplicateCombatHP = validDocument();
+  duplicateCombatHP.tables[1].columns.push(
+    { id: "first-hp", title: "HP", role: "hp" },
+    { id: "duplicate-hp", title: "Other HP", role: "hp" },
+  );
 
   for (const malformedDocument of [
     wrongVersion,
@@ -208,6 +217,8 @@ assert.equal(api.DRAFT_STORAGE_KEY, DRAFT_KEY);
     missingCombatCounter,
     nonPositiveCombatCounter,
     duplicateCombatCharacter,
+    duplicateCombatHP,
+    badHealthColumnsVersion,
   ]) {
     const storage = createStorage({
       [PRESETS_KEY]: JSON.stringify({ version: 1, presets: [storedPreset(malformedDocument)] }),
@@ -236,13 +247,18 @@ assert.equal(api.DRAFT_STORAGE_KEY, DRAFT_KEY);
   combat.columns = [
     { id: "round-column", title: "Bonus Round", role: "round" },
     combatCharacter,
+    { id: "damage-column", title: "Damage", role: "damage" },
+    { id: "current-hp-column", title: "Current HP", role: "currentHp" },
     { id: "combat-notes", title: "Notes", role: "custom" },
   ];
+  combat.healthColumnsVersion = 1;
   combat.rows = [{
     id: "combat-row",
     cells: {
       "round-column": "Attacked",
       [combatCharacter.id]: "Goblin",
+      "damage-column": "4",
+      "current-hp-column": "6",
       "combat-notes": "Fled",
     },
   }];
@@ -278,6 +294,7 @@ let createdPreset;
   assert.equal(result.preset.baseName, "Goblin Combat");
   assert.equal(result.preset.label, "Goblin Combat - Aug 12 2026 15:32");
   assert.equal(result.preset.createdAt, result.preset.updatedAt);
+  assert.equal(result.preset.active, true);
   assert.deepEqual(plain(result.preset.document), document);
 
   setFirstCell(document, "Mutated caller");
@@ -290,6 +307,7 @@ let createdPreset;
 
 // Overwriting updates only the mutable snapshot fields and keeps collection order.
 {
+  const inactiveCreatedPreset = { ...createdPreset, active: false };
   const second = {
     id: "preset-2",
     baseName: "Dragons",
@@ -299,7 +317,7 @@ let createdPreset;
     document: validDocument({ id: "document-2", value: "Dragon" }),
   };
   const storage = createStorage({
-    [PRESETS_KEY]: JSON.stringify({ version: 1, presets: [createdPreset, second] }),
+    [PRESETS_KEY]: JSON.stringify({ version: 1, presets: [inactiveCreatedPreset, second] }),
   });
   const overwrittenDocument = validDocument({ id: "document-1", value: "Orc" });
   const result = api.overwritePreset({
@@ -314,12 +332,61 @@ let createdPreset;
   assert.equal(result.preset.baseName, createdPreset.baseName);
   assert.equal(result.preset.createdAt, createdPreset.createdAt);
   assert.equal(result.preset.updatedAt, "2026-08-13T10:15:00.000Z");
+  assert.equal(result.preset.active, false);
   assert.deepEqual(plain(result.preset.document), overwrittenDocument);
   assert.deepEqual(plain(result.presets.map((preset) => preset.id)), ["preset-1", "preset-2"]);
 
   const missing = api.overwritePreset({ id: "missing", document: validDocument(), storage });
   assert.equal(missing.ok, false);
   assert.match(missing.error.message, /no longer exists/i);
+}
+
+// Older collections without an active flag remain visible and migrate on write.
+{
+  const legacy = storedPreset(validDocument());
+  const storage = createStorage({
+    [PRESETS_KEY]: JSON.stringify({ version: 1, presets: [legacy] }),
+  });
+  const loaded = api.loadPresetCollection(storage);
+  assert.equal(loaded[0].active, true);
+
+  const saved = api.savePresetCollection(loaded, storage);
+  assert.equal(saved.ok, true);
+  assert.equal(JSON.parse(storage.values.get(PRESETS_KEY)).presets[0].active, true);
+
+  legacy.active = "yes";
+  storage.values.set(PRESETS_KEY, JSON.stringify({ version: 1, presets: [legacy] }));
+  assert.deepEqual(plain(api.loadPresetCollection(storage)), []);
+}
+
+// Soft deletion retains the snapshot and supports later recovery.
+{
+  const original = { ...storedPreset(validDocument()), active: true };
+  const storage = createStorage({
+    [PRESETS_KEY]: JSON.stringify({ version: 1, presets: [original] }),
+  });
+  const deactivated = api.setPresetActive({ id: original.id, active: false, storage });
+  assert.equal(deactivated.ok, true);
+  assert.equal(deactivated.preset.active, false);
+  assert.deepEqual(plain(deactivated.preset.document), plain(original.document));
+  assert.equal(deactivated.preset.updatedAt, original.updatedAt);
+
+  const storedInactive = JSON.parse(storage.values.get(PRESETS_KEY)).presets[0];
+  assert.equal(storedInactive.active, false);
+  assert.deepEqual(storedInactive.document, original.document);
+
+  const reactivated = api.setPresetActive({ id: original.id, active: true, storage });
+  assert.equal(reactivated.ok, true);
+  assert.equal(api.loadPresetCollection(storage)[0].active, true);
+
+  assert.equal(api.setPresetActive({ id: "missing", active: false, storage }).ok, false);
+  assert.equal(api.setPresetActive({ id: original.id, active: "false", storage }).ok, false);
+
+  storage.failWrites = true;
+  const failed = api.setPresetActive({ id: original.id, active: false, storage });
+  assert.equal(failed.ok, false);
+  assert.match(failed.error.message, /storage full/i);
+  assert.equal(api.loadPresetCollection(storage)[0].active, true);
 }
 
 // Failed writes are explicit and never mutate the caller's working document.
@@ -415,6 +482,42 @@ let createdPreset;
   assert.equal(firstCell(download.envelope.document), "new");
   assert.deepEqual([...storage.values.entries()], before);
   assert.equal(storage.writes, 0);
+}
+
+// Uploaded downloads and raw documents are validated and cloned before use.
+{
+  const document = validDocument({ value: "Uploaded Goblin" });
+  const download = api.createDownload({
+    document,
+    label: "  Goblin\nNight\u0000  ",
+    now: () => "2026-08-14T01:02:03Z",
+  });
+  const envelopeUpload = api.parsePresetUpload(download.json);
+  assert.equal(envelopeUpload.label, "Goblin Night");
+  assert.deepEqual(plain(envelopeUpload.document), plain(document));
+  setFirstCell(envelopeUpload.document, "mutated result");
+  assert.equal(firstCell(document), "Uploaded Goblin");
+
+  const rawUpload = api.parsePresetUpload(JSON.stringify(document));
+  assert.equal(rawUpload.label, "Uploaded Preset");
+  assert.deepEqual(plain(rawUpload.document), plain(document));
+
+  const objectUpload = api.parsePresetUpload({
+    version: 1,
+    label: " ",
+    document,
+  });
+  assert.equal(objectUpload.label, "Uploaded Preset");
+
+  for (const malformed of [
+    "not json",
+    "null",
+    JSON.stringify({ version: 2, label: "Old", document }),
+    JSON.stringify({ version: 1, label: "Broken", document: {} }),
+    JSON.stringify({ ...document, version: 99 }),
+  ]) {
+    assert.throws(() => api.parsePresetUpload(malformed), /not valid JSON|incompatible|malformed/i);
+  }
 }
 
 console.log("Combat and Loot repository tests passed.");

@@ -10,7 +10,9 @@ const MONTHS = [
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 const TABLE_TYPES = new Set(["initiative", "combat", "custom"]);
-const COLUMN_ROLES = new Set(["character", "initiative", "hp", "ac", "condition", "round", "custom"]);
+const COLUMN_ROLES = new Set([
+  "character", "initiative", "damage", "hp", "currentHp", "ac", "condition", "round", "custom",
+]);
 
 function asError(error, fallbackMessage) {
   if (error instanceof Error) return error;
@@ -77,8 +79,12 @@ function isDocument(value) {
         || table.columns[1]?.role !== "initiative") return false;
     } else if (table.type === "combat") {
       combatCount += 1;
+      const uniqueRoles = ["character", "damage", "hp", "currentHp"];
       if (!isPositiveCounter(table.nextRoundNumber)
-        || table.columns.filter((column) => column?.role === "character").length > 1) return false;
+        || !isSaneCounter(table.healthColumnsVersion)
+        || uniqueRoles.some(
+          (role) => table.columns.filter((column) => column?.role === role).length > 1,
+        )) return false;
     }
 
     const columnIds = [];
@@ -127,13 +133,15 @@ function normalizePreset(value) {
   const label = requiredText(value.label);
   const createdAt = requiredText(value.createdAt);
   const updatedAt = requiredText(value.updatedAt);
-  if (!id || !baseName || !label || !createdAt || !updatedAt) return null;
+  if (!id || !baseName || !label || !createdAt || !updatedAt
+    || (value.active !== undefined && typeof value.active !== "boolean")) return null;
   return {
     id,
     baseName,
     label,
     createdAt,
     updatedAt,
+    active: value.active !== false,
     document: clone(value.document),
   };
 }
@@ -234,6 +242,7 @@ export function createPreset({
       label: formatPresetLabel(name, date),
       createdAt: timestamp,
       updatedAt: timestamp,
+      active: true,
       document: clone(document),
     };
     const result = savePresetCollection([...presets, preset], storage);
@@ -266,6 +275,27 @@ export function overwritePreset({ id, document, now = () => new Date(), storage 
     return { ok: true, preset: clone(preset), presets: result.presets };
   } catch (error) {
     return { ok: false, error: asError(error, "Could not overwrite the preset.") };
+  }
+}
+
+export function setPresetActive({ id, active, storage } = {}) {
+  try {
+    const presetId = requiredText(id);
+    if (!presetId) throw new TypeError("A preset ID is required.");
+    if (typeof active !== "boolean") throw new TypeError("Preset active state must be true or false.");
+
+    const presets = loadPresetCollection(storage);
+    const index = presets.findIndex((preset) => preset.id === presetId);
+    if (index < 0) throw new Error("The selected preset no longer exists.");
+
+    const preset = { ...presets[index], active };
+    const updatedPresets = presets.slice();
+    updatedPresets[index] = preset;
+    const result = savePresetCollection(updatedPresets, storage);
+    if (!result.ok) return result;
+    return { ok: true, preset: clone(preset), presets: result.presets };
+  } catch (error) {
+    return { ok: false, error: asError(error, "Could not update the preset.") };
   }
 }
 
@@ -343,6 +373,46 @@ function safeFilename(label) {
     .slice(0, 80)
     .replace(/-+$/g, "");
   return `${stem || "combat-and-loot"}.json`;
+}
+
+function safeUploadLabel(value) {
+  if (typeof value !== "string") return "Uploaded Preset";
+  const label = value
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 160)
+    .trim();
+  return label || "Uploaded Preset";
+}
+
+export function parsePresetUpload(source) {
+  let value = source;
+  if (typeof source === "string") {
+    try {
+      value = JSON.parse(source);
+    } catch {
+      throw new TypeError("The uploaded preset is not valid JSON.");
+    }
+  }
+
+  if (isDocument(value)) {
+    return {
+      document: clone(value),
+      label: "Uploaded Preset",
+    };
+  }
+
+  if (!isRecord(value)
+    || value.version !== STORAGE_VERSION
+    || !isDocument(value.document)) {
+    throw new TypeError("The uploaded preset is incompatible or malformed.");
+  }
+
+  return {
+    document: clone(value.document),
+    label: safeUploadLabel(value.label),
+  };
 }
 
 export function createDownload({

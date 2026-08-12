@@ -1,4 +1,5 @@
 node_modules/
+.cloudflare/
 compendium/source/
 .agents
 skills-lock.json

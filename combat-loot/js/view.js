@@ -1,4 +1,5 @@
 import { escapeAttribute, escapeHTML } from "../../shared/js/text.js";
+import { calculateCurrentHP } from "./model.js";
 
 const iconButton = "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-stone-300 bg-white/70 text-xs text-stone-600 transition hover:border-blood-500 hover:text-blood-500 disabled:cursor-not-allowed disabled:opacity-35 dark:border-white/15 dark:bg-white/5 dark:text-stone-300";
 const toolbarButton = "inline-flex items-center justify-center gap-2 rounded-xl border border-stone-300 bg-white/70 px-3 py-2 text-xs font-bold text-stone-700 transition hover:border-blood-500 hover:text-blood-500 dark:border-white/15 dark:bg-white/5 dark:text-stone-200";
@@ -41,9 +42,27 @@ function columnHeader(table, column, columnIndex) {
   </th>`;
 }
 
-function inlineCell(table, row, column) {
-  const numeric = column.role === "initiative";
-  return `<label class="block"><span class="sr-only">${escapeHTML(column.title)}</span><input type="text" ${numeric ? 'inputmode="numeric"' : ""} data-inline-cell data-table-id="${escapeAttribute(table.id)}" data-row-id="${escapeAttribute(row.id)}" data-column-id="${escapeAttribute(column.id)}" value="${escapeAttribute(row.cells?.[column.id] || "")}" class="w-full min-w-28 rounded-lg border border-transparent bg-transparent px-2 py-2 text-sm outline-none transition hover:border-stone-300 focus:border-blood-500 dark:hover:border-white/15"></label>`;
+function combatHealth(table, row) {
+  const hpColumn = table.columns.find((column) => column.role === "hp");
+  const damageColumn = table.columns.find((column) => column.role === "damage");
+  return calculateCurrentHP(
+    hpColumn ? row.cells?.[hpColumn.id] : "",
+    damageColumn ? row.cells?.[damageColumn.id] : "",
+  );
+}
+
+function inlineCell(table, row, column, health) {
+  const numeric = ["initiative", "damage", "hp"].includes(column.role);
+  const invalidHealthInput = table.type === "combat"
+    && ((column.role === "hp" && !health.hpValid)
+      || (column.role === "damage" && !health.damageValid));
+  const invalidAttributes = invalidHealthInput
+    ? 'aria-invalid="true" title="Enter a number"'
+    : "";
+  const borderClasses = invalidHealthInput
+    ? "border-red-500/80 hover:border-red-500 focus:border-red-500 dark:border-red-400/80"
+    : "border-transparent hover:border-stone-300 focus:border-blood-500 dark:hover:border-white/15";
+  return `<label class="block"><span class="sr-only">${escapeHTML(column.title)}</span><input type="text" ${numeric ? `inputmode="${column.role === "initiative" ? "numeric" : "decimal"}"` : ""} ${invalidAttributes} data-inline-cell data-table-id="${escapeAttribute(table.id)}" data-row-id="${escapeAttribute(row.id)}" data-column-id="${escapeAttribute(column.id)}" value="${escapeAttribute(row.cells?.[column.id] || "")}" class="w-full min-w-28 rounded-lg border bg-transparent px-2 py-2 text-sm outline-none transition ${borderClasses}"></label>`;
 }
 
 function modalCell(table, row, column) {
@@ -51,9 +70,23 @@ function modalCell(table, row, column) {
   return `<button type="button" data-action="open-cell-editor" data-table-id="${escapeAttribute(table.id)}" data-row-id="${escapeAttribute(row.id)}" data-column-id="${escapeAttribute(column.id)}" class="block min-h-12 w-full min-w-52 rounded-lg border border-transparent px-2 py-2 text-left text-sm transition hover:border-blood-500 hover:bg-blood-500/5"><span class="line-clamp-3 whitespace-pre-wrap ${value ? "" : "italic text-stone-400"}">${escapeHTML(value || "Add text…")}</span></button>`;
 }
 
+function currentHPCell(table, row, health) {
+  const content = health.valid
+    ? `<output class="font-semibold tabular-nums" aria-label="Current HP: ${escapeAttribute(health.value)}">${escapeHTML(health.value)}</output>`
+    : `<span class="inline-flex items-center gap-2 font-semibold text-red-600 dark:text-red-400" role="img" aria-label="Current HP unavailable. Enter numbers for HP and Damage."><i class="bi bi-x-circle-fill text-lg" aria-hidden="true"></i><span class="sr-only">Enter numbers for HP and Damage</span></span>`;
+  return `<div data-current-hp data-table-id="${escapeAttribute(table.id)}" data-row-id="${escapeAttribute(row.id)}" data-valid="${health.valid}" aria-live="polite">${content}</div>`;
+}
+
 function cell(table, row, column) {
-  const inline = table.type === "initiative" || (table.type === "combat" && ["character", "hp", "ac", "condition"].includes(column.role));
-  return `<td class="border-l border-t border-stone-200 p-1.5 align-top dark:border-white/10">${inline ? inlineCell(table, row, column) : modalCell(table, row, column)}</td>`;
+  const health = table.type === "combat" ? combatHealth(table, row) : null;
+  const inline = table.type === "initiative" || (table.type === "combat" && ["character", "damage", "hp", "ac", "condition"].includes(column.role));
+  let content;
+  if (table.type === "combat" && column.role === "currentHp") {
+    content = currentHPCell(table, row, health);
+  } else {
+    content = inline ? inlineCell(table, row, column, health) : modalCell(table, row, column);
+  }
+  return `<td class="border-l border-t border-stone-200 p-1.5 align-top dark:border-white/10">${content}</td>`;
 }
 
 function rowControls(table, row, index) {

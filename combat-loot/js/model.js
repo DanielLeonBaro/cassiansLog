@@ -1,4 +1,5 @@
 export const COMBAT_LOOT_DOCUMENT_VERSION = 1;
+export const COMBAT_HEALTH_COLUMNS_VERSION = 1;
 
 let fallbackIdSequence = 0;
 
@@ -122,6 +123,26 @@ function makeRow(id, columns) {
   return { id, cells: blankCells(columns) };
 }
 
+function healthNumber(value) {
+  const text = normalizeText(value).trim();
+  if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(text)) return null;
+  const number = Number(text);
+  return Number.isFinite(number) ? number : null;
+}
+
+export function calculateCurrentHP(hitPoints, damage) {
+  const hpNumber = healthNumber(hitPoints);
+  const damageNumber = healthNumber(damage);
+  const hpValid = hpNumber !== null;
+  const damageValid = damageNumber !== null;
+  return {
+    valid: hpValid && damageValid,
+    hpValid,
+    damageValid,
+    value: hpValid && damageValid ? hpNumber - damageNumber : null,
+  };
+}
+
 export function createCombatLootDocument(options = {}) {
   const allocateId = createIdAllocator(resolveIdFactory(options));
 
@@ -131,7 +152,9 @@ export function createCombatLootDocument(options = {}) {
   ];
   const combatColumns = [
     makeColumn(allocateId("column"), "Character", "character"),
+    makeColumn(allocateId("column"), "Damage", "damage"),
     makeColumn(allocateId("column"), "HP", "hp"),
+    makeColumn(allocateId("column"), "Current HP", "currentHp"),
     makeColumn(allocateId("column"), "AC", "ac"),
     makeColumn(allocateId("column"), "Condition", "condition"),
     makeColumn(allocateId("column"), "Round 1", "round"),
@@ -157,6 +180,7 @@ export function createCombatLootDocument(options = {}) {
         type: "combat",
         title: "Combat",
         nextRoundNumber: 2,
+        healthColumnsVersion: COMBAT_HEALTH_COLUMNS_VERSION,
         columns: combatColumns,
         rows: [makeRow(allocateId("row"), combatColumns)],
       },
@@ -169,6 +193,40 @@ export function createCombatLootDocument(options = {}) {
       },
     ],
   };
+}
+
+export function initializeCombatHealthColumns(document, options = {}) {
+  const copy = cloneDocument(document);
+  const combat = findTrackerByType(copy, "combat");
+  if (combat.healthColumnsVersion >= COMBAT_HEALTH_COLUMNS_VERSION) return copy;
+
+  const allocateId = createIdAllocator(resolveIdFactory(options), copy);
+  let damageColumn = combat.columns.find((column) => column.role === "damage");
+  if (!damageColumn) {
+    damageColumn = makeColumn(allocateId("column"), "Damage", "damage");
+    const hpIndex = combat.columns.findIndex((column) => column.role === "hp");
+    const characterIndex = combat.columns.findIndex((column) => column.role === "character");
+    const insertionIndex = hpIndex >= 0 ? hpIndex : characterIndex >= 0 ? characterIndex + 1 : 0;
+    combat.columns.splice(insertionIndex, 0, damageColumn);
+    combat.rows.forEach((row) => {
+      row.cells[damageColumn.id] = "";
+    });
+  }
+
+  let currentHPColumn = combat.columns.find((column) => column.role === "currentHp");
+  if (!currentHPColumn) {
+    currentHPColumn = makeColumn(allocateId("column"), "Current HP", "currentHp");
+    const hpIndex = combat.columns.findIndex((column) => column.role === "hp");
+    const damageIndex = combat.columns.indexOf(damageColumn);
+    const insertionIndex = hpIndex >= 0 ? hpIndex + 1 : damageIndex >= 0 ? damageIndex + 1 : 0;
+    combat.columns.splice(insertionIndex, 0, currentHPColumn);
+    combat.rows.forEach((row) => {
+      row.cells[currentHPColumn.id] = "";
+    });
+  }
+
+  combat.healthColumnsVersion = COMBAT_HEALTH_COLUMNS_VERSION;
+  return copy;
 }
 
 export function addCustomTracker(document, options = {}) {

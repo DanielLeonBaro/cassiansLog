@@ -8,7 +8,10 @@ vm.createContext(context);
 vm.runInContext(`${source}
 globalThis.model = {
   COMBAT_LOOT_DOCUMENT_VERSION,
+  COMBAT_HEALTH_COLUMNS_VERSION,
+  calculateCurrentHP,
   createCombatLootDocument,
+  initializeCombatHealthColumns,
   addCustomTracker,
   renameTracker,
   deleteCustomTracker,
@@ -72,10 +75,13 @@ function setCell(document, tableType, rowId, role, value) {
   assert.equal(Object.prototype.hasOwnProperty.call(initiative.rows[0], "number"), false);
 
   const combat = tracker(document, "combat");
-  assert.deepEqual(roleNames(combat), ["character", "hp", "ac", "condition", "round"]);
-  assert.deepEqual(Array.from(combat.columns, (item) => item.title), [
-    "Character", "HP", "AC", "Condition", "Round 1",
+  assert.deepEqual(roleNames(combat), [
+    "character", "damage", "hp", "currentHp", "ac", "condition", "round",
   ]);
+  assert.deepEqual(Array.from(combat.columns, (item) => item.title), [
+    "Character", "Damage", "HP", "Current HP", "AC", "Condition", "Round 1",
+  ]);
+  assert.equal(combat.healthColumnsVersion, 1);
   assert.equal(combat.nextRoundNumber, 2);
   assert.equal(combat.rows.length, 1);
 
@@ -91,6 +97,65 @@ function setCell(document, tableType, rowId, role, value) {
     ids.push(table.id, ...table.columns.map((item) => item.id), ...table.rows.map((item) => item.id));
   });
   assert.equal(new Set(ids).size, ids.length);
+}
+
+{
+  let result = model.calculateCurrentHP("50", "55");
+  assert.equal(result.valid, true);
+  assert.equal(result.hpValid, true);
+  assert.equal(result.damageValid, true);
+  assert.equal(result.value, -5, "current HP may be negative");
+
+  result = model.calculateCurrentHP(" 20.5 ", "+2.5");
+  assert.equal(result.valid, true);
+  assert.equal(result.value, 18);
+
+  result = model.calculateCurrentHP("50 HP", "3");
+  assert.equal(result.valid, false);
+  assert.equal(result.hpValid, false);
+  assert.equal(result.damageValid, true);
+  assert.equal(result.value, null);
+
+  result = model.calculateCurrentHP("50", "");
+  assert.equal(result.valid, false);
+  assert.equal(result.hpValid, true);
+  assert.equal(result.damageValid, false);
+  assert.equal(result.value, null);
+
+  assert.equal(model.calculateCurrentHP("Infinity", "1").valid, false);
+  assert.equal(model.calculateCurrentHP("0x10", "1").valid, false);
+}
+
+{
+  const { document: current, idFactory } = makeDocument();
+  const older = JSON.parse(JSON.stringify(current));
+  const olderCombat = tracker(older, "combat");
+  delete olderCombat.healthColumnsVersion;
+  const removedColumnIds = olderCombat.columns
+    .filter((item) => ["damage", "currentHp"].includes(item.role))
+    .map((item) => item.id);
+  olderCombat.columns = olderCombat.columns.filter(
+    (item) => !["damage", "currentHp"].includes(item.role),
+  );
+  olderCombat.rows.forEach((row) => removedColumnIds.forEach((id) => delete row.cells[id]));
+
+  let migrated = model.initializeCombatHealthColumns(older, { idFactory });
+  const migratedCombat = tracker(migrated, "combat");
+  assert.deepEqual(roleNames(migratedCombat), [
+    "character", "damage", "hp", "currentHp", "ac", "condition", "round",
+  ]);
+  assert.equal(migratedCombat.healthColumnsVersion, 1);
+  assert.equal(cellValues(migratedCombat, "damage")[0], "");
+  assert.equal(cellValues(migratedCombat, "currentHp")[0], "");
+  assert.equal(olderCombat.healthColumnsVersion, undefined, "migration must not mutate input");
+
+  const damageId = column(migratedCombat, "damage").id;
+  const currentHPId = column(migratedCombat, "currentHp").id;
+  migrated = model.deleteTrackerColumn(migrated, migratedCombat.id, damageId);
+  migrated = model.deleteTrackerColumn(migrated, migratedCombat.id, currentHPId);
+  migrated = model.initializeCombatHealthColumns(migrated, { idFactory });
+  assert.equal(column(tracker(migrated, "combat"), "damage"), undefined);
+  assert.equal(column(tracker(migrated, "combat"), "currentHp"), undefined);
 }
 
 {
@@ -183,6 +248,13 @@ function setCell(document, tableType, rowId, role, value) {
   combat = tracker(document, "combat");
   assert.equal(column(combat, "character").title, "Actor");
   assert.equal(combat.columns[2].role, "character");
+
+  const damageId = column(combat, "damage").id;
+  document = model.renameTrackerColumn(document, combatId, damageId, "Wounds");
+  document = model.moveTrackerColumn(document, combatId, damageId, combat.columns.length - 1);
+  combat = tracker(document, "combat");
+  assert.equal(column(combat, "damage").title, "Wounds");
+  assert.equal(combat.columns.at(-1).role, "damage");
 
   document = model.deleteTrackerColumn(document, combatId, notes.id);
   combat = tracker(document, "combat");
