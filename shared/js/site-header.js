@@ -9,9 +9,10 @@ const pages = [
   { id: "wiki", href: "wiki/", icon: "bi-book-half", label: "Wiki" },
   { id: "compendium", href: "compendium/", icon: "bi-journals", label: "Compendium" },
   { id: "combat-loot", href: "combat-loot/", icon: "bi-shield-shaded", label: "Combat & Loot" },
+  { id: "music", href: "music/", icon: "bi-music-note-beamed", label: "Music" },
 ];
 
-const trackerPageOrder = ["characters", "compendium", "wiki", "combat-loot"];
+const trackerPageOrder = ["characters", "compendium", "wiki", "combat-loot", "music"];
 
 function pageLink(page, activePage) {
   const active = page.id === activePage;

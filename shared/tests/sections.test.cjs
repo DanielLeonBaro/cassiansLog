@@ -17,7 +17,7 @@ assert.equal(config.sections.combat, true, "Character combat controls should kee
 assert.equal(config.sections.wiki, false, "The existing Wiki navigation setting should remain disabled.");
 
 const siteHeader = fs.readFileSync("shared/js/site-header.js", "utf8");
-const siteSections = ["characters", "combat-loot", "compendium", "wiki"];
+const siteSections = ["characters", "combat-loot", "compendium", "music", "wiki"];
 for (const name of siteSections) {
   assert.ok(siteHeader.includes(`id: "${name}"`), `${name} should be defined in the shared site header.`);
 }
@@ -25,6 +25,11 @@ assert.match(
   siteHeader,
   /id: "combat-loot", href: "combat-loot\/", icon: "bi-shield-shaded", label: "Combat & Loot"/,
   "Combat & Loot should use its configured route, Bootstrap icon, and label.",
+);
+assert.match(
+  siteHeader,
+  /id: "music", href: "music\/", icon: "bi-music-note-beamed", label: "Music"/,
+  "Music should use its configured route, Bootstrap icon, and label.",
 );
 assert.match(siteHeader, /data-section-link="\$\{page\.id\}"/, "Site links should expose their section IDs.");
 

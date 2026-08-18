@@ -6,7 +6,7 @@ const JSON_HEADERS = {
 const MAX_JSON_BYTES = 1_800_000;
 const ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,127}$/i;
 const DEFAULT_SECTIONS = {
-  characters: true, "combat-loot": true, compendium: true, wiki: false,
+  characters: true, "combat-loot": true, compendium: true, music: true, wiki: false,
   "character-overview": true, "character-stats": true, "hit-points": true,
   combat: true, spellcasting: true, "prepared-spells": true,
   "all-possibilities": true, inventory: true, notes: true,

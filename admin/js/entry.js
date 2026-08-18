@@ -5,6 +5,7 @@ const sectionLabels = {
   characters: "Characters navigation",
   "combat-loot": "Combat & Loot navigation",
   compendium: "Compendium navigation",
+  music: "Music navigation",
   wiki: "Wiki navigation",
   "character-overview": "Character overview",
   "character-stats": "Character stats",

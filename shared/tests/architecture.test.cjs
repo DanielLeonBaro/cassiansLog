@@ -3,7 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = process.cwd();
-const features = new Set(["char", "combat-loot", "compendium", "wiki"]);
+const features = new Set(["char", "combat-loot", "compendium", "music", "wiki"]);
 const removedRoots = ["data", "js", "scripts", "tests", "config", "bootstrap", "src", "dist", "stuffToParse"];
 
 for (const directory of removedRoots) {
@@ -74,6 +74,7 @@ const pageShells = new Map([
   ["char/tracker.html", "char/js/entries/tracker-standalone.js"],
   ["combat-loot/index.html", "combat-loot/js/entry.js"],
   ["compendium/index.html", "compendium/js/entry.js"],
+  ["music/index.html", "music/js/entry.js"],
   ["wiki/index.html", "wiki/js/entry.js"],
 ]);
 for (const [file, entrypoint] of pageShells) {
@@ -103,6 +104,7 @@ for (const file of [
   "wiki/js/entry.js",
   "compendium/js/entry.js",
   "combat-loot/js/entry.js",
+  "music/js/entry.js",
   "char/js/archive/index.js",
   "char/js/tracker/header.js",
 ]) {
