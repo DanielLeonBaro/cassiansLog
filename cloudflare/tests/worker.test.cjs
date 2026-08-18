@@ -41,6 +41,16 @@ const { pathToFileURL } = require("node:url");
   }), { ...env, OPEN_WRITES: "true" });
   assert.equal(openInvalidWrite.status, 405, "Open-write mode should bypass token authorization.");
 
+  const missingSettingsTable = await handleRequest(new Request("https://example.test/api/combat-loot/not-a-route", {
+    method: "PUT",
+    body: "{}",
+  }), {
+    ...env,
+    OPEN_WRITES: "true",
+    DB: { prepare: () => ({ first: async () => { throw new Error("no such table: app_settings"); } }) },
+  });
+  assert.equal(missingSettingsTable.status, 405, "A pending settings migration must not block ordinary D1 writes.");
+
   const deniedAdmin = await handleRequest(new Request("https://example.test/api/admin"), env);
   assert.equal(deniedAdmin.status, 401, "Open writes must never expose admin settings.");
 

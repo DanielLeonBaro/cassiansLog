@@ -45,9 +45,14 @@ function tokenAuthorized(request, token) {
 }
 
 async function loadSettings(env) {
-  const row = await env.DB.prepare(
-    "SELECT settings_json, updated_at FROM app_settings WHERE id = 'default'",
-  ).first();
+  let row = null;
+  try {
+    row = await env.DB.prepare(
+      "SELECT settings_json, updated_at FROM app_settings WHERE id = 'default'",
+    ).first();
+  } catch (caught) {
+    console.warn("D1 runtime settings are unavailable; using deployment defaults.", caught);
+  }
   const stored = parseStored(row?.settings_json, {});
   return {
     sections: { ...DEFAULT_SECTIONS, ...(stored.sections || {}) },
