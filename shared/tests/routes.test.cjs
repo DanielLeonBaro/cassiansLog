@@ -19,7 +19,7 @@ const server = http.createServer((request, response) => {
 (async () => {
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
-  for (const route of ["/", "/char/", "/char/tracker.html", "/combat-loot/", "/compendium/", "/wiki/"]) {
+  for (const route of ["/", "/admin/", "/char/", "/char/tracker.html", "/combat-loot/", "/compendium/", "/wiki/"]) {
     const response = await fetch(`${base}${route}`);
     assert.equal(response.status, 200, `${route} should load over HTTP.`);
   }

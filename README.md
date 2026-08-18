@@ -80,6 +80,8 @@ The Compendium, bundled characters, and Wiki are generated from the same checked
 
 Existing `localStorage` keys remain stable. This preserves older browser data and lets the `localstorage-version` Git branch run locally or on GitHub Pages without D1. The D1-enabled `main` branch tries cloud reads first where shared data exists and falls back to local or static data when the API is unavailable.
 
+The unlinked `/admin/` route manages D1-backed runtime configuration: public write protection, navigation and character-sheet section visibility, and character-list availability. It always requires `ADMIN_TOKEN`, falling back to `WRITE_TOKEN` when a separate admin secret is not configured; public-write mode never bypasses admin authentication. Apply D1 migration `0003_app_settings.sql` before deploying this route. To use a separate password, run `npx wrangler secret put ADMIN_TOKEN`.
+
 Combat & Loot keeps its named presets under `dnd-combat-loot-presets-v1` and its recoverable draft under `dnd-combat-loot-draft-v1` as local fallbacks while synchronizing the same records to D1. Removed presets use `active: false`; records remain recoverable. Downloads still export the visible document without changing saved state.
 
 Cloudflare Workers Builds deploys `main`. To publish the static fallback, open GitHub Actions, run **Deploy static content to Pages** manually, and select `localstorage-version`; automatic GitHub Pages runs still follow `main`. Before pushing generated-data changes, run the relevant generator, local D1 seed verification, and `npm test`.

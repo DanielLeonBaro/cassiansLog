@@ -9,8 +9,9 @@ const { pathToFileURL } = require("node:url");
     ASSETS: { fetch: async () => new Response("asset") },
     DB: {
       prepare(sql) {
-        assert.equal(sql, "SELECT 1");
-        return { first: async () => ({ 1: 1 }) };
+        if (sql === "SELECT 1") return { first: async () => ({ 1: 1 }) };
+        if (sql.includes("FROM app_settings")) return { first: async () => null };
+        throw new Error(`Unexpected SQL in routing test: ${sql}`);
       },
     },
   };
@@ -39,6 +40,48 @@ const { pathToFileURL } = require("node:url");
     body: "{}",
   }), { ...env, OPEN_WRITES: "true" });
   assert.equal(openInvalidWrite.status, 405, "Open-write mode should bypass token authorization.");
+
+  const deniedAdmin = await handleRequest(new Request("https://example.test/api/admin"), env);
+  assert.equal(deniedAdmin.status, 401, "Open writes must never expose admin settings.");
+
+  const settings = await handleRequest(new Request("https://example.test/api/settings"), env);
+  assert.equal(settings.status, 200);
+  assert.equal((await settings.json()).writeProtectionEnabled, true);
+
+  const adminEnv = {
+    ...env,
+    DB: {
+      prepare(sql) {
+        if (sql.includes("FROM app_settings")) {
+          return { first: async () => ({
+            settings_json: JSON.stringify({
+              sections: { characters: false },
+              openWrites: false,
+            }),
+            updated_at: "2026-08-18T00:00:00.000Z",
+          }) };
+        }
+        if (sql.includes("FROM characters ORDER BY id")) {
+          return { all: async () => ({ results: [{
+            id: "cassian",
+            document_json: JSON.stringify({ name: "Cassian" }),
+            source: "bundled",
+            active: 1,
+            updated_at: "2026-08-18T00:00:00.000Z",
+          }] }) };
+        }
+        throw new Error(`Unexpected SQL in admin test: ${sql}`);
+      },
+    },
+  };
+  const admin = await handleRequest(new Request("https://example.test/api/admin", {
+    headers: { authorization: "Bearer correct horse battery staple" },
+  }), adminEnv);
+  assert.equal(admin.status, 200);
+  const adminBody = await admin.json();
+  assert.equal(adminBody.settings.openWrites, false);
+  assert.equal(adminBody.settings.sections.characters, false);
+  assert.equal(adminBody.characters[0].name, "Cassian");
 
   const missingBinding = await handleRequest(new Request("https://example.test/api/health"), {
     ASSETS: env.ASSETS,

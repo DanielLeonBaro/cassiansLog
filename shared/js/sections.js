@@ -16,11 +16,9 @@ export function applySectionVisibility(root = document) {
   });
 }
 
-export const sectionConfigReady = fetch(new URL("../config/sections.json", import.meta.url))
+export const sectionConfigReady = fetch("api/settings", { headers: { accept: "application/json" } })
   .then((response) => {
-    if (!response.ok) {
-      throw new Error(`Could not load section configuration (${response.status}).`);
-    }
+    if (!response.ok) throw new Error(`Could not load dynamic settings (${response.status}).`);
     return response.json();
   })
   .then((config) => {
@@ -31,7 +29,17 @@ export const sectionConfigReady = fetch(new URL("../config/sections.json", impor
     return sections;
   })
   .catch((error) => {
-    console.warn("Section configuration is unavailable; showing all links.", error);
-    applySectionVisibility();
-    return sections;
+    console.warn("Dynamic settings are unavailable; loading bundled section settings.", error);
+    return fetch(new URL("../config/sections.json", import.meta.url))
+      .then((response) => response.ok ? response.json() : {})
+      .then((config) => {
+        sections = config?.sections && typeof config.sections === "object" ? config.sections : {};
+        applySectionVisibility();
+        return sections;
+      })
+      .catch((fallbackError) => {
+        console.warn("Bundled section settings are also unavailable; showing all links.", fallbackError);
+        applySectionVisibility();
+        return sections;
+      });
   });

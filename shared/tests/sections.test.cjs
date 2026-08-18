@@ -68,7 +68,7 @@ global.document = {
   querySelectorAll: () => elements,
 };
 global.fetch = async (url) => {
-  assert.equal(url.href, "https://example.test/cassiansLog/shared/config/sections.json");
+  assert.equal(url, "api/settings");
   return { ok: true, json: async () => ({ sections: { wiki: false, compendium: true } }) };
 };
 

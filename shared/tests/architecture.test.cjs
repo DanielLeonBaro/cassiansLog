@@ -66,6 +66,8 @@ for (const file of javascriptFiles("integrations")) {
 
 const rootHTML = fs.readFileSync("index.html", "utf8");
 assert.match(rootHTML, /url=char\//, "The root page must redirect to /char/.");
+assert.ok(fs.existsSync("admin/index.html"), "The unlinked admin route must exist.");
+assert.ok(!fs.readFileSync("shared/js/site-header.js", "utf8").includes("admin/"), "Admin must not appear in public navigation.");
 
 const pageShells = new Map([
   ["char/index.html", "char/js/entries/characters.js"],

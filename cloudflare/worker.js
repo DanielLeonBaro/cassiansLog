@@ -5,6 +5,12 @@ const JSON_HEADERS = {
 };
 const MAX_JSON_BYTES = 1_800_000;
 const ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,127}$/i;
+const DEFAULT_SECTIONS = {
+  characters: true, "combat-loot": true, compendium: true, wiki: false,
+  "character-overview": true, "character-stats": true, "hit-points": true,
+  combat: true, spellcasting: true, "prepared-spells": true,
+  "all-possibilities": true, inventory: true, notes: true,
+};
 
 function json(value, status = 200, headers = {}) {
   return new Response(JSON.stringify(value), {
@@ -32,11 +38,31 @@ function secureEqual(left, right) {
   return mismatch === 0;
 }
 
-function authorized(request, env) {
-  if (env.OPEN_WRITES === "true") return true;
-  if (!env.WRITE_TOKEN) return false;
+function tokenAuthorized(request, token) {
+  if (!token) return false;
   const header = request.headers.get("authorization") || "";
-  return header.startsWith("Bearer ") && secureEqual(header.slice(7), env.WRITE_TOKEN);
+  return header.startsWith("Bearer ") && secureEqual(header.slice(7), token);
+}
+
+async function loadSettings(env) {
+  const row = await env.DB.prepare(
+    "SELECT settings_json, updated_at FROM app_settings WHERE id = 'default'",
+  ).first();
+  const stored = parseStored(row?.settings_json, {});
+  return {
+    sections: { ...DEFAULT_SECTIONS, ...(stored.sections || {}) },
+    openWrites: typeof stored.openWrites === "boolean" ? stored.openWrites : env.OPEN_WRITES === "true",
+    updatedAt: row?.updated_at || null,
+  };
+}
+
+async function authorized(request, env) {
+  if ((await loadSettings(env)).openWrites) return true;
+  return tokenAuthorized(request, env.WRITE_TOKEN);
+}
+
+function adminAuthorized(request, env) {
+  return tokenAuthorized(request, env.ADMIN_TOKEN || env.WRITE_TOKEN);
 }
 
 async function bodyJSON(request) {
@@ -99,7 +125,7 @@ async function characterRoute(request, env, id, tail) {
     if (!row || !row.active) return error("Character not found.", 404);
     return json({ id, source: row.source, updatedAt: row.updated_at, document: parseStored(row.document_json, {}) });
   }
-  if (request.method !== "GET" && !authorized(request, env)) return error("Edit password required.", 401);
+  if (request.method !== "GET" && !await authorized(request, env)) return error("Edit password required.", 401);
 
   if (!tail && request.method === "PUT") {
     const body = await bodyJSON(request);
@@ -108,7 +134,7 @@ async function characterRoute(request, env, id, tail) {
     }
     const now = new Date().toISOString();
     await env.DB.prepare(
-      "INSERT INTO characters (id, document_json, source, active, created_at, updated_at) VALUES (?, ?, ?, 1, ?, ?) ON CONFLICT(id) DO UPDATE SET document_json = excluded.document_json, source = excluded.source, active = 1, updated_at = excluded.updated_at",
+      "INSERT INTO characters (id, document_json, source, active, created_at, updated_at) VALUES (?, ?, ?, 1, ?, ?) ON CONFLICT(id) DO UPDATE SET document_json = excluded.document_json, source = excluded.source, updated_at = excluded.updated_at",
     ).bind(id, JSON.stringify(body.document), body.source === "bundled" ? "bundled" : "custom", now, now).run();
     return json({ ok: true, updatedAt: now });
   }
@@ -156,7 +182,7 @@ async function combatSnapshot(env) {
 
 async function combatRoute(request, env, parts) {
   if (request.method === "GET" && parts.length === 0) return combatSnapshot(env);
-  if (!authorized(request, env)) return error("Edit password required.", 401);
+  if (!await authorized(request, env)) return error("Edit password required.", 401);
   if (parts[0] === "presets" && safeId(parts[1]) && request.method === "PUT") {
     const preset = await bodyJSON(request);
     if (preset?.id !== parts[1] || !preset.document || !preset.baseName || !preset.label) {
@@ -186,7 +212,7 @@ async function wikiRoute(request, env) {
     if (!row) return error("The Wiki has not been seeded.", 404);
     return json({ pages: parseStored(row.pages_json, []), updatedAt: row.updated_at });
   }
-  if (!authorized(request, env)) return error("Edit password required.", 401);
+  if (!await authorized(request, env)) return error("Edit password required.", 401);
   if (request.method === "PUT") {
     const body = await bodyJSON(request);
     if (!Array.isArray(body?.pages) || !body.pages.every((page) => page?.id && page?.name)) {
@@ -201,6 +227,67 @@ async function wikiRoute(request, env) {
   return error("Method not allowed.", 405);
 }
 
+async function publicSettings(env) {
+  const settings = await loadSettings(env);
+  return json({
+    sections: settings.sections,
+    writeProtectionEnabled: !settings.openWrites,
+    updatedAt: settings.updatedAt,
+  });
+}
+
+function normalizeSettings(body) {
+  if (!body || typeof body !== "object" || typeof body.openWrites !== "boolean") return null;
+  if (!body.sections || typeof body.sections !== "object" || Array.isArray(body.sections)) return null;
+  const sections = {};
+  for (const key of Object.keys(DEFAULT_SECTIONS)) {
+    if (typeof body.sections[key] !== "boolean") return null;
+    sections[key] = body.sections[key];
+  }
+  return { sections, openWrites: body.openWrites };
+}
+
+async function adminRoute(request, env, parts) {
+  if (!adminAuthorized(request, env)) return error("Admin password required.", 401);
+  if (request.method === "GET" && parts.length === 0) {
+    const [settings, characters] = await Promise.all([
+      loadSettings(env),
+      env.DB.prepare(
+        "SELECT id, document_json, source, active, updated_at FROM characters ORDER BY id",
+      ).all(),
+    ]);
+    return json({
+      settings,
+      characters: characters.results.map((row) => ({
+        id: row.id,
+        name: parseStored(row.document_json, {})?.name || row.id,
+        source: row.source,
+        active: Boolean(row.active),
+        updatedAt: row.updated_at,
+      })),
+    });
+  }
+  if (request.method === "PUT" && parts[0] === "settings" && parts.length === 1) {
+    const settings = normalizeSettings(await bodyJSON(request));
+    if (!settings) return error("Invalid application settings.");
+    const now = new Date().toISOString();
+    await env.DB.prepare(
+      "INSERT INTO app_settings (id, settings_json, updated_at) VALUES ('default', ?, ?) ON CONFLICT(id) DO UPDATE SET settings_json = excluded.settings_json, updated_at = excluded.updated_at",
+    ).bind(JSON.stringify(settings), now).run();
+    return json({ ok: true, settings: { ...settings, updatedAt: now } });
+  }
+  if (request.method === "PUT" && parts[0] === "characters" && safeId(parts[1]) && parts.length === 2) {
+    const body = await bodyJSON(request);
+    if (typeof body?.active !== "boolean") return error("Character availability must be true or false.");
+    const result = await env.DB.prepare(
+      "UPDATE characters SET active = ?, updated_at = ? WHERE id = ?",
+    ).bind(body.active ? 1 : 0, new Date().toISOString(), parts[1]).run();
+    if (!result.meta?.changes) return error("Character not found.", 404);
+    return json({ ok: true });
+  }
+  return error("Method not allowed.", 405);
+}
+
 export async function handleRequest(request, env) {
   const url = new URL(request.url);
   if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
@@ -209,6 +296,11 @@ export async function handleRequest(request, env) {
     if (url.pathname === "/api/health" && request.method === "GET") {
       await env.DB.prepare("SELECT 1").first();
       return json({ ok: true });
+    }
+    if (url.pathname === "/api/settings" && request.method === "GET") return publicSettings(env);
+    if (url.pathname === "/api/admin" || url.pathname.startsWith("/api/admin/")) {
+      const parts = url.pathname.slice("/api/admin".length).split("/").filter(Boolean).map(decodeURIComponent);
+      return adminRoute(request, env, parts);
     }
     if (url.pathname === "/api/compendium/catalog" && request.method === "GET") {
       return compendiumCatalog(env);

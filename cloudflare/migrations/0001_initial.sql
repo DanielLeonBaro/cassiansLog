@@ -56,3 +56,9 @@ CREATE TABLE IF NOT EXISTS wiki_documents (
   pages_json TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS app_settings (
+  id TEXT PRIMARY KEY,
+  settings_json TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
