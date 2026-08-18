@@ -43,10 +43,14 @@ for (const category of manifest.categories) {
 }
 
 const catalog = readJSON(path.join(root, "char", "catalog.json"));
-for (const id of catalog.characters) {
+const characterSeeds = [
+  ...catalog.characters.map((id) => ({ id, active: 1 })),
+  { id: "template", active: 0 },
+];
+for (const { id, active } of characterSeeds) {
   const document = readJSON(path.join(root, "char", id, "character.json"));
   const timestamp = generatedAt;
-  statements.push(`INSERT INTO characters (id, document_json, source, active, created_at, updated_at) VALUES (${sql(id)}, ${sql(JSON.stringify(document))}, 'bundled', 1, ${sql(timestamp)}, ${sql(timestamp)}) ON CONFLICT(id) DO NOTHING;`);
+  statements.push(`INSERT INTO characters (id, document_json, source, active, created_at, updated_at) VALUES (${sql(id)}, ${sql(JSON.stringify(document))}, 'bundled', ${active}, ${sql(timestamp)}, ${sql(timestamp)}) ON CONFLICT(id) DO NOTHING;`);
 }
 
 const wikiPages = readJSON(path.join(root, "wiki", "data", "pages.json"));
@@ -54,4 +58,4 @@ statements.push(`INSERT INTO wiki_documents (id, pages_json, updated_at) VALUES 
 
 fs.mkdirSync(path.dirname(output), { recursive: true });
 fs.writeFileSync(output, `${statements.join("\n")}\n`);
-console.log(`Created ${output} with ${entryCount} compendium entries, ${catalog.characters.length} characters, and ${wikiPages.length} Wiki pages.`);
+console.log(`Created ${output} with ${entryCount} compendium entries, ${characterSeeds.length} characters, and ${wikiPages.length} Wiki pages.`);
