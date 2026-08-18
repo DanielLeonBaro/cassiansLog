@@ -36,6 +36,12 @@ const { pathToFileURL } = require("node:url");
   }), env);
   assert.equal(deniedWiki.status, 401);
 
+  const deniedMusic = await handleRequest(new Request("https://example.test/api/music", {
+    method: "PUT",
+    body: JSON.stringify({ version: 1, tracks: [], settings: { fadeIn: 3, fadeOut: 2 } }),
+  }), env);
+  assert.equal(deniedMusic.status, 401);
+
   const openInvalidWrite = await handleRequest(new Request("https://example.test/api/combat-loot/not-a-route", {
     method: "PUT",
     body: "{}",
@@ -180,12 +186,65 @@ const { pathToFileURL } = require("node:url");
     assert.equal(listed, active, `Template list visibility should follow active=${active}`);
   }
 
+  let musicLibrary = null;
+  let musicUpdatedAt = null;
+  const musicEnv = {
+    ...env,
+    OPEN_WRITES: "true",
+    DB: {
+      prepare(sql) {
+        if (sql.includes("FROM app_settings")) return { first: async () => null };
+        if (sql.startsWith("SELECT library_json")) {
+          return { first: async () => musicLibrary ? { library_json: JSON.stringify(musicLibrary), updated_at: musicUpdatedAt } : null };
+        }
+        if (sql.startsWith("INSERT INTO music_library")) {
+          return { bind(libraryJSON, updatedAt) {
+            return { run: async () => {
+              musicLibrary = JSON.parse(libraryJSON);
+              musicUpdatedAt = updatedAt;
+              return { meta: { changes: 1 } };
+            } };
+          } };
+        }
+        throw new Error(`Unexpected SQL in Music test: ${sql}`);
+      },
+    },
+  };
+  const emptyMusic = await handleRequest(new Request("https://example.test/api/music"), musicEnv);
+  assert.deepEqual(await emptyMusic.json(), { library: null, updatedAt: null });
+  const expectedMusic = {
+    version: 1,
+    tracks: [{
+      id: "track-1",
+      title: "The Abyss",
+      url: "https://youtu.be/dQw4w9WgXcQ",
+      tags: ["ambience", "suspense"],
+      provider: "youtube",
+      addedAt: "2026-08-18T00:00:00.000Z",
+    }],
+    settings: { fadeIn: 3, fadeOut: 2 },
+  };
+  const saveMusic = await handleRequest(new Request("https://example.test/api/music", {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(expectedMusic),
+  }), musicEnv);
+  assert.equal(saveMusic.status, 200);
+  assert.deepEqual(musicLibrary, expectedMusic);
+  const restoredMusic = await handleRequest(new Request("https://example.test/api/music"), musicEnv);
+  assert.deepEqual((await restoredMusic.json()).library, expectedMusic);
+
   const adminSource = fs.readFileSync("admin/js/entry.js", "utf8");
   sectionKeys.forEach((key) => assert.ok(adminSource.includes(`${key}:`) || adminSource.includes(`"${key}":`), `${key} needs an admin toggle`));
   assert.match(
     fs.readFileSync("cloudflare/scripts/build-seed.cjs", "utf8"),
     /\{ id: "template", active: 0 \}/,
     "The template must be seeded into D1 as unavailable.",
+  );
+  assert.match(
+    fs.readFileSync("cloudflare/migrations/0004_music_library.sql", "utf8"),
+    /CREATE TABLE IF NOT EXISTS music_library/,
+    "Music D1 storage must have an additive migration.",
   );
 
   const missingBinding = await handleRequest(new Request("https://example.test/api/health"), {

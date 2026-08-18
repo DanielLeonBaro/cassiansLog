@@ -1,5 +1,13 @@
 import { createTrack, formatTag, normalizeTags } from "./model.js";
-import { loadSettings, loadTracks, saveSettings, saveTracks } from "./repository.js";
+import {
+  createMusicLibrary,
+  loadCloudMusicLibrary,
+  loadSettings,
+  loadTracks,
+  saveCloudMusicLibrary,
+  saveSettings,
+  saveTracks,
+} from "./repository.js";
 import { createMusicPlayer } from "./player.js";
 
 const escapeHTML = (value) => String(value).replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
@@ -20,6 +28,8 @@ export function initializeMusic() {
   let settings = loadSettings();
   let activeTag = "";
   let pendingTags = [];
+  let cloudWrite = Promise.resolve();
+  let cloudReady = false;
 
   settingsForm.elements.fadeIn.value = settings.fadeIn;
   settingsForm.elements.fadeOut.value = settings.fadeOut;
@@ -27,6 +37,51 @@ export function initializeMusic() {
   function showNotice(message, error = false) {
     notice.textContent = message;
     notice.className = `mt-3 text-sm font-bold ${error ? "text-red-600 dark:text-red-300" : "text-emerald-700 dark:text-emerald-300"}`;
+  }
+
+  function cacheLibrary() {
+    saveTracks(tracks);
+    saveSettings(settings);
+  }
+
+  function setEditingDisabled(disabled) {
+    [...form.elements, ...settingsForm.elements].forEach((element) => {
+      element.disabled = disabled;
+    });
+  }
+
+  function persistLibrary(successMessage) {
+    const snapshot = createMusicLibrary(tracks, settings);
+    showNotice("Saving to D1…");
+    const operation = cloudWrite
+      .catch(() => undefined)
+      .then(() => saveCloudMusicLibrary(snapshot));
+    cloudWrite = operation;
+    operation
+      .then(() => showNotice(successMessage))
+      .catch((error) => {
+        console.error("Could not save Music data to D1:", error);
+        showNotice("Saved in this browser, but the D1 update failed.", true);
+      });
+  }
+
+  async function restoreCloudLibrary() {
+    const cloud = await loadCloudMusicLibrary();
+    if (cloud === undefined) throw new Error("The Music cloud library is unavailable.");
+    if (cloud === null) {
+      await saveCloudMusicLibrary(createMusicLibrary(tracks, settings));
+      showNotice("Existing Music data copied to D1.");
+      return;
+    }
+    if (!Array.isArray(cloud.tracks) || !cloud.settings) throw new Error("The Music cloud library is invalid.");
+    tracks = cloud.tracks;
+    settings = cloud.settings;
+    cacheLibrary();
+    settingsForm.elements.fadeIn.value = settings.fadeIn;
+    settingsForm.elements.fadeOut.value = settings.fadeOut;
+    render();
+    renderTagEntry();
+    showNotice("Music library loaded from D1.");
   }
 
   function allTags() {
@@ -57,7 +112,7 @@ export function initializeMusic() {
     const visible = tracks.filter((track) => (!activeTag || track.tags.includes(activeTag)) && (!query || `${track.title} ${track.tags.join(" ")}`.toLowerCase().includes(query)));
     empty.classList.toggle("hidden", visible.length > 0);
     list.innerHTML = visible.map((track) => `<article class="group rounded-2xl border border-stone-300/80 bg-white/60 p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
-      <div class="flex items-start justify-between gap-3"><div class="min-w-0"><p class="text-xs font-bold uppercase tracking-wide text-blood-500">${track.provider}</p><h3 class="truncate font-display text-xl font-bold">${escapeHTML(track.title)}</h3></div><button type="button" data-remove="${track.id}" class="rounded-lg p-2 text-stone-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-950" aria-label="Remove ${escapeHTML(track.title)}"><i class="bi bi-trash-fill"></i></button></div>
+      <div class="flex items-start justify-between gap-3"><div class="min-w-0"><p class="text-xs font-bold uppercase tracking-wide text-blood-500">${track.provider}</p><h3 class="truncate font-display text-xl font-bold">${escapeHTML(track.title)}</h3></div><button type="button" data-remove="${track.id}" ${cloudReady ? "" : "disabled"} class="rounded-lg p-2 text-stone-400 hover:bg-red-100 hover:text-red-600 disabled:cursor-wait disabled:opacity-40 dark:hover:bg-red-950" aria-label="Remove ${escapeHTML(track.title)}"><i class="bi bi-trash-fill"></i></button></div>
       <div class="mb-5 mt-3 flex flex-wrap gap-1.5">${track.tags.map((tag) => `<span class="rounded-full bg-stone-200 px-2 py-1 text-xs font-bold dark:bg-white/10">${escapeHTML(formatTag(tag))}</span>`).join("") || '<span class="text-xs text-stone-400">No tags</span>'}</div>
       <button type="button" data-play="${track.id}" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blood-500 px-4 py-2.5 font-bold text-white hover:bg-blood-600"><i class="bi bi-play-fill"></i>Play here</button>
     </article>`).join("");
@@ -69,12 +124,12 @@ export function initializeMusic() {
       if (tagInput.value.trim()) commitTag();
       const data = new FormData(form);
       tracks.unshift(createTrack({ title: data.get("title"), url: data.get("url"), tags: pendingTags }));
-      saveTracks(tracks);
+      cacheLibrary();
       form.reset();
       pendingTags = [];
       renderTagEntry();
-      showNotice("Track saved in this browser.");
       render();
+      persistLibrary("Track saved to D1.");
     } catch (error) {
       showNotice(error.message, true);
     }
@@ -114,8 +169,8 @@ export function initializeMusic() {
   settingsForm.addEventListener("submit", (event) => {
     event.preventDefault();
     settings = { fadeIn: Math.min(30, Math.max(0, Number(settingsForm.elements.fadeIn.value))), fadeOut: Math.min(30, Math.max(0, Number(settingsForm.elements.fadeOut.value))) };
-    saveSettings(settings);
-    showNotice("Fade settings saved.");
+    cacheLibrary();
+    persistLibrary("Fade settings saved to D1.");
   });
   search.addEventListener("input", render);
   tagFilters.addEventListener("click", (event) => {
@@ -130,10 +185,21 @@ export function initializeMusic() {
     if (playButton) player.play(tracks.find((track) => track.id === playButton.dataset.play), settings);
     if (removeButton && confirm("Remove this track from your library?")) {
       tracks = tracks.filter((track) => track.id !== removeButton.dataset.remove);
-      saveTracks(tracks);
+      cacheLibrary();
       render();
+      persistLibrary("Track removed from D1.");
     }
   });
   render();
   renderTagEntry();
+  setEditingDisabled(true);
+  showNotice("Loading Music library from D1…");
+  restoreCloudLibrary().catch((error) => {
+    console.error("Could not restore Music data from D1:", error);
+    showNotice("Using this browser's Music data because D1 could not be reached.", true);
+  }).finally(() => {
+    cloudReady = true;
+    setEditingDisabled(false);
+    render();
+  });
 }
