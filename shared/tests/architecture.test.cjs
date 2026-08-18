@@ -69,6 +69,11 @@ assert.match(rootHTML, /url=char\//, "The root page must redirect to /char/.");
 assert.ok(fs.existsSync("admin/index.html"), "The unlinked admin route must exist.");
 assert.ok(!fs.readFileSync("shared/js/site-header.js", "utf8").includes("admin/"), "Admin must not appear in public navigation.");
 
+const siteBuild = fs.readFileSync("shared/build/site.cjs", "utf8");
+for (const feature of features) {
+  assert.ok(siteBuild.includes(`"${feature}"`), `${feature} must be included in the Cloudflare static site build.`);
+}
+
 const pageShells = new Map([
   ["char/index.html", "char/js/entries/characters.js"],
   ["char/tracker.html", "char/js/entries/tracker-standalone.js"],
