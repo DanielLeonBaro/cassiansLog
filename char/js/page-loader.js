@@ -87,13 +87,16 @@ export function initializeCharacterPage() {
       }
       const bundledData = await characterResponse.json();
       window.character = cloudCharacter?.document || bundledData;
-      if (savedCharacter) {
+      if (!cloudCharacter?.document && savedCharacter) {
         const migrated = migrateLegacyPortrait(savedCharacter);
         if (applyBundledUpdates(savedCharacter, bundledData) || migrated) {
           savedCharacters[characterName] = savedCharacter;
           writeJSON(storageKey, savedCharacters);
         }
         window.character = savedCharacter;
+      } else if (cloudCharacter?.document) {
+        savedCharacters[characterName] = JSON.parse(JSON.stringify(cloudCharacter.document));
+        writeJSON(storageKey, savedCharacters);
       } else if (params.get("new") === "1") {
         const pending = readJSON("dnd-new-character", {});
         window.character = JSON.parse(JSON.stringify(window.character));

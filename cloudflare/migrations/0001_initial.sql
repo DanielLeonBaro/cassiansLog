@@ -50,3 +50,9 @@ CREATE TABLE IF NOT EXISTS combat_drafts (
   draft_json TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS wiki_documents (
+  id TEXT PRIMARY KEY,
+  pages_json TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);

@@ -42,14 +42,14 @@ export async function initializeWiki() {
     return [];
   }
 
-  function savePages(message) {
+  async function savePages(message) {
     try {
-      saveWikiPages(pages);
+      await saveWikiPages(pages);
       if (message) showToast(message);
       return true;
     } catch (error) {
       console.error("Could not save wiki pages:", error);
-      showToast("The browser could not save this change. Large uploads may exceed its storage limit.");
+      showToast("Saved in this browser, but the shared database save failed.");
       return false;
     }
   }
@@ -310,7 +310,7 @@ export async function initializeWiki() {
     return crypto.randomUUID ? crypto.randomUUID() : `wiki-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   }
 
-  function saveEditor(event) {
+  async function saveEditor(event) {
     event.preventDefault();
     const id = elements.id.value || uniqueId();
     const name = elements.name.value.trim();
@@ -336,17 +336,17 @@ export async function initializeWiki() {
     };
     if (existingIndex >= 0) pages.splice(existingIndex, 1, updated);
     else pages.push(updated);
-    if (!savePages("Wiki page saved.")) return;
+    if (!await savePages("Wiki page saved.")) return;
     closeEditor();
     location.hash = `page=${encodeURIComponent(id)}`;
     renderRoute();
   }
 
-  function deleteCurrentEditorPage() {
+  async function deleteCurrentEditorPage() {
     const page = pageById(elements.id.value);
     if (!page || !confirm(`Delete ${page.name}? This removes the page from this browser.`)) return;
     pages = pages.filter((item) => item.id !== page.id);
-    if (!savePages(`${page.name} was deleted.`)) return;
+    if (!await savePages(`${page.name} was deleted.`)) return;
     closeEditor();
     navigateHome();
   }
@@ -399,7 +399,7 @@ export async function initializeWiki() {
   function importWiki(file) {
     if (!file) return;
     const reader = new FileReader();
-    reader.addEventListener("load", () => {
+    reader.addEventListener("load", async () => {
       try {
         const value = JSON.parse(String(reader.result || ""));
         const importedPages = Array.isArray(value) ? value : value.pages;
@@ -408,7 +408,7 @@ export async function initializeWiki() {
         }
         if (!confirm(`Replace this browser's wiki with ${importedPages.length} pages from the backup?`)) return;
         pages = importedPages;
-        if (savePages("Wiki backup imported.")) navigateHome();
+        if (await savePages("Wiki backup imported.")) navigateHome();
       } catch (error) {
         console.error("Could not import wiki:", error);
         showToast("That file is not a valid wiki backup.");

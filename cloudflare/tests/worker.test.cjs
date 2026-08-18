@@ -28,6 +28,12 @@ const { pathToFileURL } = require("node:url");
   }), env);
   assert.equal(denied.status, 401);
 
+  const deniedWiki = await handleRequest(new Request("https://example.test/api/wiki", {
+    method: "PUT",
+    body: JSON.stringify({ pages: [] }),
+  }), env);
+  assert.equal(deniedWiki.status, 401);
+
   const missingBinding = await handleRequest(new Request("https://example.test/api/health"), {
     ASSETS: env.ASSETS,
   });

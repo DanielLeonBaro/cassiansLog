@@ -49,6 +49,9 @@ for (const id of catalog.characters) {
   statements.push(`INSERT INTO characters (id, document_json, source, active, created_at, updated_at) VALUES (${sql(id)}, ${sql(JSON.stringify(document))}, 'bundled', 1, ${sql(timestamp)}, ${sql(timestamp)}) ON CONFLICT(id) DO NOTHING;`);
 }
 
+const wikiPages = readJSON(path.join(root, "wiki", "data", "pages.json"));
+statements.push(`INSERT INTO wiki_documents (id, pages_json, updated_at) VALUES ('default', ${sql(JSON.stringify(wikiPages))}, ${sql(generatedAt)}) ON CONFLICT(id) DO NOTHING;`);
+
 fs.mkdirSync(path.dirname(output), { recursive: true });
 fs.writeFileSync(output, `${statements.join("\n")}\n`);
-console.log(`Created ${output} with ${entryCount} compendium entries and ${catalog.characters.length} characters.`);
+console.log(`Created ${output} with ${entryCount} compendium entries, ${catalog.characters.length} characters, and ${wikiPages.length} Wiki pages.`);

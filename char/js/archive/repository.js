@@ -59,12 +59,13 @@ export async function listCharacters() {
     ? cloud.characters.map(({ document, source }) => ({ ...document, custom: source !== "bundled" }))
     : staticBundled;
   const saved = storedCharacters();
+  const cloudIsAuthoritative = Array.isArray(cloud?.characters) && cloud.characters.length;
   const deleted = new Set(readJSON(DELETED_KEY, []));
   const bundledIds = new Set(bundled.map((character) => character.id));
   const characters = bundled
     .filter((character) => !deleted.has(character.id))
     .map((character) => {
-      const override = saved[character.id];
+      const override = cloudIsAuthoritative ? null : saved[character.id];
       return override ? {
         ...character,
         name: override.name,
@@ -73,6 +74,7 @@ export async function listCharacters() {
       } : { ...character, description: characterDescription(character) };
     });
   Object.values(saved).forEach((character) => {
+    if (cloudIsAuthoritative) return;
     if (!bundledIds.has(character.id)) {
       characters.push({ ...character, custom: true, description: characterDescription(character) });
     }

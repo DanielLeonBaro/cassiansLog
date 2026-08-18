@@ -177,6 +177,29 @@ async function combatRoute(request, env, parts) {
   return error("Method not allowed.", 405);
 }
 
+async function wikiRoute(request, env) {
+  if (request.method === "GET") {
+    const row = await env.DB.prepare(
+      "SELECT pages_json, updated_at FROM wiki_documents WHERE id = 'default'",
+    ).first();
+    if (!row) return error("The Wiki has not been seeded.", 404);
+    return json({ pages: parseStored(row.pages_json, []), updatedAt: row.updated_at });
+  }
+  if (!authorized(request, env)) return error("Edit password required.", 401);
+  if (request.method === "PUT") {
+    const body = await bodyJSON(request);
+    if (!Array.isArray(body?.pages) || !body.pages.every((page) => page?.id && page?.name)) {
+      return error("Invalid Wiki document.");
+    }
+    const now = new Date().toISOString();
+    await env.DB.prepare(
+      "INSERT INTO wiki_documents (id, pages_json, updated_at) VALUES ('default', ?, ?) ON CONFLICT(id) DO UPDATE SET pages_json = excluded.pages_json, updated_at = excluded.updated_at",
+    ).bind(JSON.stringify(body.pages), now).run();
+    return json({ ok: true, updatedAt: now });
+  }
+  return error("Method not allowed.", 405);
+}
+
 export async function handleRequest(request, env) {
   const url = new URL(request.url);
   if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
@@ -202,6 +225,7 @@ export async function handleRequest(request, env) {
       const parts = url.pathname.slice("/api/combat-loot".length).split("/").filter(Boolean).map(decodeURIComponent);
       return combatRoute(request, env, parts);
     }
+    if (url.pathname === "/api/wiki") return wikiRoute(request, env);
     return error("API route not found.", 404);
   } catch (caught) {
     console.error("API request failed", caught);

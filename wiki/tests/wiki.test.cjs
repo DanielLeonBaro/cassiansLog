@@ -44,10 +44,13 @@ for (const page of pages) {
 }
 
 const wikiScript = fs.readFileSync("wiki/js/page.js", "utf8");
+const wikiRepository = fs.readFileSync("wiki/js/repository.js", "utf8");
 const wikiRouting = fs.readFileSync("wiki/js/routing.js", "utf8");
 const wikiHTML = fs.readFileSync("wiki/index.html", "utf8");
 assert.ok(!wikiScript.includes('href="#page='), "Wiki links must remain under the wiki base path");
 assert.match(wikiRouting, /wiki\/#page=/, "Wiki links should include the wiki path before the hash");
 assert.match(wikiHTML, /Formatting guide/, "The page editor should include its formatting guide");
+assert.match(wikiRepository, /readCloudJSON\("api\/wiki"/, "Wiki loads shared D1 data first");
+assert.match(wikiRepository, /writeCloudJSON\("api\/wiki"/, "Wiki saves edits to D1");
 
 console.log(`Wiki seed tests passed (${pages.length} pages).`);
