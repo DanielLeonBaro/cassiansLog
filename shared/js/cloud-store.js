@@ -44,17 +44,17 @@ export function clearCloudEditToken() {
 }
 
 export async function writeCloudJSON(path, value, { method = "PUT" } = {}) {
-  let token = editToken() || requestEditToken();
-  if (!token) throw new CloudStoreError("Cloud save cancelled.", { status: 401 });
+  let token = editToken();
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
+    const headers = {
+      accept: "application/json",
+      "content-type": "application/json",
+    };
+    if (token) headers.authorization = `Bearer ${token}`;
     const response = await fetch(path, {
       method,
-      headers: {
-        accept: "application/json",
-        authorization: `Bearer ${token}`,
-        "content-type": "application/json",
-      },
+      headers,
       body: value === undefined ? undefined : JSON.stringify(value),
     });
     if (response.status === 401 && attempt === 0) {

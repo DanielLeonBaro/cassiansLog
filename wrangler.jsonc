@@ -6,6 +6,9 @@
   "observability": {
     "enabled": true
   },
+  "vars": {
+    "OPEN_WRITES": "true"
+  },
   "assets": {
     "directory": "./.cloudflare/public",
     "binding": "ASSETS",

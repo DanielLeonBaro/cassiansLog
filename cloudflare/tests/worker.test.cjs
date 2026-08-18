@@ -34,6 +34,12 @@ const { pathToFileURL } = require("node:url");
   }), env);
   assert.equal(deniedWiki.status, 401);
 
+  const openInvalidWrite = await handleRequest(new Request("https://example.test/api/combat-loot/not-a-route", {
+    method: "PUT",
+    body: "{}",
+  }), { ...env, OPEN_WRITES: "true" });
+  assert.equal(openInvalidWrite.status, 405, "Open-write mode should bypass token authorization.");
+
   const missingBinding = await handleRequest(new Request("https://example.test/api/health"), {
     ASSETS: env.ASSETS,
   });

@@ -74,7 +74,7 @@ To refresh the Wiki seed from the configured published campaign source, run `npm
 
 ## D1 data and deployment
 
-Cloudflare Workers serves the static site and handles `/api/*`. D1 uses the `DB` binding and database `cassianslog-data`. Write requests require the `WRITE_TOKEN` Worker secret. Never put that value in Git, `wrangler.jsonc`, or a build variable. The browser keeps the entered token in `sessionStorage`, so closing the tab ends that editing session.
+Cloudflare Workers serves the static site and handles `/api/*`. D1 uses the `DB` binding and database `cassianslog-data`. Writes are temporarily public while `OPEN_WRITES` is `"true"` in `wrangler.jsonc`. Remove that variable or set it to `"false"` to restore `WRITE_TOKEN` protection; never put the token itself in Git, `wrangler.jsonc`, or a build variable. When protection is enabled, the browser keeps the entered token in `sessionStorage`, so closing the tab ends that editing session.
 
 The Compendium, bundled characters, and Wiki are generated from the same checked-in JSON used by the static fallback. `npm run d1:seed` writes `.cloudflare/d1-seed.sql`; the file is ignored because it is generated and about 59 MiB. Applying the seed inserts or updates Compendium entries by ID and inserts missing bundled characters and the initial Wiki. It does not remove unrelated Compendium rows, overwrite edited or inactive character or Wiki records, or delete custom characters, runtime state, notes, presets, or drafts.
 

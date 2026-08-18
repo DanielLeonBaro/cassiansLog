@@ -33,6 +33,7 @@ function secureEqual(left, right) {
 }
 
 function authorized(request, env) {
+  if (env.OPEN_WRITES === "true") return true;
   if (!env.WRITE_TOKEN) return false;
   const header = request.headers.get("authorization") || "";
   return header.startsWith("Bearer ") && secureEqual(header.slice(7), env.WRITE_TOKEN);
