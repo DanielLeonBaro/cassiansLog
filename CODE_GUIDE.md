@@ -284,6 +284,7 @@ Implementation status as of 2026-08-19:
 - Phase 0 is complete: compatibility contracts, direct pure-module tests, browser smoke automation, and explicit ESM package configuration are in place.
 - Phase 1 is complete: shared escaping, JSON cloning, localhost detection, Character storage-key ownership, identifier naming, and text-safe Character loader errors are standardized.
 - Phase 2 is complete for the planned first extraction boundaries: Character tracker filters, views, and rest behavior; Character editor field schema and rendering; Combat & Loot actions, cloud synchronization, and dialogs; Wiki view data, backup parsing, and image dialogs; and Music library/tag rendering now have focused owners and direct tests.
+- Phase 3 is complete: the Worker entry point owns visible route dispatch and static fallback while neutral HTTP, settings, and authentication helpers plus Admin, Character, Combat & Loot, Compendium, Music, and Wiki route modules own their validation and D1 statements.
 
 No production code is safe to delete solely from this audit. Deletion should follow the proof in section 10.
 

@@ -52,6 +52,7 @@ for (const [file, keys] of storageContracts) {
 }
 
 const worker = source("cloudflare/worker.js");
+const workerAuthentication = source("cloudflare/auth.js");
 for (const route of [
   "/api/health",
   "/api/settings",
@@ -65,8 +66,8 @@ for (const route of [
 ]) {
   assert.ok(worker.includes(route), `The Worker must preserve ${route}.`);
 }
-assert.match(worker, /env\.ADMIN_TOKEN \|\| env\.WRITE_TOKEN/, "Admin authentication must remain separate from public writes.");
-assert.match(worker, /if \(\(await loadSettings\(env\)\)\.openWrites\) return true;/, "Open writes may bypass only ordinary write authentication.");
+assert.match(workerAuthentication, /env\.ADMIN_TOKEN \|\| env\.WRITE_TOKEN/, "Admin authentication must remain separate from public writes.");
+assert.match(workerAuthentication, /if \(\(await loadSettings\(env\)\)\.openWrites\) return true;/, "Open writes may bypass only ordinary write authentication.");
 
 const seed = source("cloudflare/scripts/build-seed.cjs");
 assert.match(seed, /INSERT INTO characters[\s\S]*ON CONFLICT\(id\) DO NOTHING;/, "Seeds must not overwrite existing Character documents.");

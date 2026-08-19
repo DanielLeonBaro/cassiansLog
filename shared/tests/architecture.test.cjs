@@ -4,6 +4,8 @@ const path = require("node:path");
 
 const root = process.cwd();
 const features = new Set(["char", "combat-loot", "compendium", "music", "public-initiative", "wiki"]);
+const workerRouteFiles = ["admin", "characters", "combat-loot", "compendium", "music", "wiki"]
+  .map((name) => `cloudflare/routes/${name}.js`);
 const removedRoots = ["data", "js", "scripts", "tests", "config", "bootstrap", "src", "dist", "stuffToParse"];
 
 for (const directory of removedRoots) {
@@ -46,6 +48,11 @@ for (const file of javascriptFiles("shared")) {
     const dependency = targetRoot(file, specifier);
     assert.ok(dependency === "shared" || dependency === "external", `${file} must remain feature-neutral: ${specifier}`);
   }
+}
+
+for (const file of workerRouteFiles) {
+  assert.ok(fs.existsSync(file), `${file} must own its Worker route family.`);
+  assert.ok(fs.readFileSync("cloudflare/worker.js", "utf8").includes(`./routes/${path.basename(file)}`));
 }
 
 const allowedIntegrationEntrypoints = new Set([
