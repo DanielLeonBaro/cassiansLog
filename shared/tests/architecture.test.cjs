@@ -68,6 +68,13 @@ const rootHTML = fs.readFileSync("index.html", "utf8");
 assert.match(rootHTML, /url=char\//, "The root page must redirect to /char/.");
 assert.ok(fs.existsSync("admin/index.html"), "The unlinked admin route must exist.");
 assert.ok(!fs.readFileSync("shared/js/site-header.js", "utf8").includes("admin/"), "Admin must not appear in public navigation.");
+assert.match(fs.readFileSync("admin/index.html", "utf8"), /name="character-sheet-style" value="v1"/);
+assert.match(fs.readFileSync("admin/index.html", "utf8"), /name="character-sheet-style" value="v2"/);
+assert.match(fs.readFileSync("admin/index.html", "utf8"), /id="character-style-settings"/);
+const adminEntrypoint = fs.readFileSync("admin/js/entry.js", "utf8");
+assert.ok(adminEntrypoint.includes("isLocalRuntimeHost"), "Admin should detect its localhost storage mode.");
+assert.ok(adminEntrypoint.includes("persistLocalRuntimeSettings"), "Local Admin settings should persist without D1.");
+assert.ok(adminEntrypoint.includes("characterSheetStyleOverrides"), "Admin should save per-character style choices.");
 
 const siteBuild = fs.readFileSync("shared/build/site.cjs", "utf8");
 for (const feature of features) {
@@ -100,6 +107,8 @@ for (const character of [...catalog.characters, "template"]) {
 
 const characterLoader = fs.readFileSync("char/js/page-loader.js", "utf8");
 for (const key of ["dnd-characters", "dnd-new-character"]) assert.ok(characterLoader.includes(key));
+assert.ok(characterLoader.includes("applyCharacterSheetLayout"), "Every routed character should apply the configured sheet layout.");
+assert.ok(characterLoader.includes("applyCharacterSheetLayout(settings, characterName)"), "Character routes should resolve style overrides by ID.");
 const trackerState = fs.readFileSync("char/js/tracker/state.js", "utf8");
 const trackerNotes = fs.readFileSync("char/js/tracker/notes.js", "utf8");
 assert.ok(trackerState.includes('dnd-${character.id || "character"}-state'));

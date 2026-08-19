@@ -6,6 +6,7 @@ import { getRestDetails } from "./rest.js";
 import { createNotesController } from "./notes.js";
 import { createTrackerState, normalizeCharacterFlag } from "./state.js";
 import { escapeAttribute, escapeHTML, setText, trackerUI as ui } from "./rendering.js";
+import { refreshCharacterSheetTabs } from "./layout.js";
 
 const character = window.character;
 character.inspiration = normalizeCharacterFlag(character.inspiration);
@@ -98,6 +99,7 @@ function refreshUI() {
   loadAbilities();
   loadInventory();
   notesController.render();
+  refreshCharacterSheetTabs();
 }
 function loadCharacterFlags() {
   ["inspiration", "cinematic"].forEach((field) => {
@@ -218,9 +220,39 @@ function stepInput(id, delta) {
 function loadStats() {
   const container = document.getElementById("skills-container");
   if (!container) return;
+  if (document.documentElement.dataset.characterSheetStyle === "v2") {
+    renderV2Stats(container);
+    return;
+  }
   container.innerHTML = Object.entries(character.stats || {})
     .map(([key, stat]) => renderStatCard(statNames[key] || key, stat))
     .join("");
+}
+function renderV2Stats(container) {
+  const stats = Object.entries(character.stats || {});
+  const abilities = stats.map(([key, stat]) => `
+    <div class="v2-ability-card">
+      <div><span class="v2-ability-key">${escapeHTML(key.toUpperCase())}</span><strong>${escapeHTML(statNames[key] || key)}</strong></div>
+      <div class="v2-ability-values"><span title="Ability score">${stat.score}</span><strong title="Ability modifier">${formatModifier(stat.modifier)}</strong></div>
+      <div class="v2-save-row"><span><i class="bi bi-shield-check" aria-hidden="true"></i> Save</span><strong>${formatModifier(stat.save)}</strong></div>
+    </div>`).join("");
+  const skills = stats.flatMap(([key, stat]) => (stat.skills || []).map((skill) => ({
+    ...skill,
+    ability: key.toUpperCase(),
+  }))).map((skill) => `
+    <li class="v2-skill-row">
+      <span>${skill.proficiency ? '<i class="bi bi-star-fill" aria-label="Proficient"></i>' : '<i class="bi bi-circle" aria-hidden="true"></i>'}<small>${escapeHTML(skill.ability)}</small>${escapeHTML(skill.name)}</span>
+      <strong>${formatModifier(skill.modifier)}</strong>
+    </li>`).join("");
+  container.innerHTML = `
+    <section class="v2-stat-column" aria-labelledby="v2-abilities-heading">
+      <h2 id="v2-abilities-heading" class="v2-rail-heading"><i class="bi bi-dice-6-fill" aria-hidden="true"></i> Abilities &amp; Saves</h2>
+      <div class="v2-ability-list">${abilities}</div>
+    </section>
+    <section class="v2-stat-column" aria-labelledby="v2-skills-heading">
+      <h2 id="v2-skills-heading" class="v2-rail-heading"><i class="bi bi-list-check" aria-hidden="true"></i> Skills</h2>
+      <ul class="v2-skill-list">${skills}</ul>
+    </section>`;
 }
 function renderStatCard(name, stat) {
   const skills = (stat.skills || [])

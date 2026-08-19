@@ -150,4 +150,320 @@
   #inventoryAccordion {
     scroll-margin-top: 5.5rem;
   }
+
+  [data-character-sheet-style="v2"] body {
+    background-image:
+      linear-gradient(rgb(24 24 27 / 0.76), rgb(24 24 27 / 0.9)),
+      radial-gradient(circle at 50% 0, rgb(184 59 53 / 0.24), transparent 48%),
+      linear-gradient(rgb(161 161 170 / 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(161 161 170 / 0.04) 1px, transparent 1px);
+    background-size: auto, auto, 24px 24px, 24px 24px;
+    background-attachment: fixed;
+  }
+
+  [data-character-sheet-style="v2"] main {
+    max-width: 96rem;
+  }
+
+  [data-character-sheet-style="v2"] #characterDescription {
+    @apply overflow-visible border-blood-500/40 bg-stone-900 text-white shadow-2xl;
+    background-image:
+      linear-gradient(105deg, rgb(24 24 27 / 0.98), rgb(39 39 42 / 0.9)),
+      radial-gradient(circle at right, rgb(184 59 53 / 0.38), transparent 55%);
+  }
+
+  [data-character-sheet-style="v2"] #characterDescription > .p-5 > div {
+    @apply items-center text-left;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+  }
+
+  [data-character-sheet-style="v2"] #characterDescription #character-portrait {
+    @apply aspect-square w-28 rounded-xl border-4 border-blood-500/70 bg-stone-950 p-1 shadow-2xl;
+  }
+
+  [data-character-sheet-style="v2"] #characterDescription h3 {
+    @apply mb-1 text-3xl text-white;
+  }
+
+  [data-character-sheet-style="v2"] #characterDescription p,
+  [data-character-sheet-style="v2"] #characterDescription strong {
+    @apply text-stone-200;
+  }
+
+  [data-character-sheet-style="v2"] #characterDescription [aria-label="Character status"] {
+    @apply flex-row self-auto;
+  }
+
+  .v2-character-actions {
+    @apply flex flex-wrap items-center justify-end gap-2;
+  }
+
+  .v2-character-actions:empty {
+    display: none;
+  }
+
+  .v2-character-actions #editor-toggle-slot {
+    @apply contents;
+  }
+
+  [data-character-sheet-style="v2"] #quickStatsCard {
+    @apply border-stone-700 bg-stone-900/95 shadow-2xl;
+  }
+
+  [data-character-sheet-style="v2"] #quickStats {
+    @apply sr-only;
+  }
+
+  [data-character-sheet-style="v2"] #quickStatsCard > .p-5 {
+    @apply p-3;
+  }
+
+  [data-character-sheet-style="v2"] #quick-stats-grid {
+    @apply grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8;
+  }
+
+  [data-character-sheet-style="v2"] #quick-stats-grid > div {
+    @apply rounded-lg border-stone-700 border-t-blood-500 bg-stone-950/80 px-2 py-2 text-white;
+  }
+
+  [data-character-sheet-style="v2"] #quick-stats-grid i {
+    @apply mb-0 text-blood-500;
+  }
+
+  [data-character-sheet-style="v2"] #quick-stats-grid .text-stone-500,
+  [data-character-sheet-style="v2"] #quick-stats-grid .dark\:text-stone-400 {
+    @apply text-stone-400;
+  }
+
+  .v2-sheet-tabs {
+    @apply mb-4 flex w-full gap-1 overflow-x-auto rounded-xl border border-stone-300 bg-parchment/95 p-1 shadow-card backdrop-blur-xl dark:border-white/10 dark:bg-stone-900/95;
+    scrollbar-width: thin;
+  }
+
+  .v2-sheet-tab {
+    @apply inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-transparent px-4 py-2 text-sm font-bold text-stone-600 transition hover:bg-blood-500/10 hover:text-blood-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blood-500 dark:text-stone-300;
+  }
+
+  .v2-sheet-tab[aria-selected="true"] {
+    @apply border-blood-500 bg-blood-500 text-white shadow-sm;
+  }
+
+  .v2-sheet-tab[hidden] {
+    display: none !important;
+  }
+
+  .v2-sheet-layout {
+    @apply grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)];
+  }
+
+  .v2-sheet-workspace,
+  .v2-sheet-panel {
+    min-width: 0;
+  }
+
+  .v2-sheet-panel:focus-visible {
+    @apply rounded-2xl outline-none ring-2 ring-blood-500;
+  }
+
+  [data-character-sheet-style="v2"] #combatAccordion {
+    @apply mb-0;
+  }
+
+  [data-character-sheet-style="v2"] #combatAccordion > div {
+    @apply overflow-visible border-0 bg-transparent shadow-none;
+  }
+
+  [data-character-sheet-style="v2"] #combatAccordion > div > h2 {
+    display: none;
+  }
+
+  [data-character-sheet-style="v2"] #skillsCollapse {
+    display: block !important;
+  }
+
+  [data-character-sheet-style="v2"] #skillsCollapse > div {
+    @apply border-0 p-0;
+  }
+
+  [data-character-sheet-style="v2"] #skills-container {
+    @apply grid grid-cols-1 gap-4 sm:grid-cols-2;
+  }
+
+  .v2-stat-column {
+    @apply min-w-0 overflow-hidden rounded-2xl border border-stone-300/80 bg-white/90 shadow-card dark:border-white/10 dark:bg-stone-900/95;
+  }
+
+  .v2-rail-heading {
+    @apply flex items-center gap-2 border-b border-stone-200 bg-stone-100/90 px-4 py-3 font-display font-bold dark:border-white/10 dark:bg-white/[.055];
+  }
+
+  .v2-rail-heading i,
+  .v2-skill-row i {
+    @apply text-blood-500;
+  }
+
+  .v2-ability-list {
+    @apply grid grid-cols-1 gap-2 p-3;
+  }
+
+  .v2-ability-card {
+    @apply grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 rounded-xl border border-stone-300 bg-parchment/70 px-3 py-2 dark:border-white/10 dark:bg-white/[.035];
+  }
+
+  .v2-ability-card > div:first-child {
+    @apply flex min-w-0 items-center gap-2;
+  }
+
+  .v2-ability-key {
+    @apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blood-500 text-[.68rem] font-black text-white;
+  }
+
+  .v2-ability-card > div:first-child strong {
+    @apply truncate text-sm;
+  }
+
+  .v2-ability-values {
+    @apply flex items-center gap-2;
+  }
+
+  .v2-ability-values span {
+    @apply text-sm text-stone-500 dark:text-stone-400;
+  }
+
+  .v2-ability-values strong {
+    @apply inline-flex h-9 min-w-9 items-center justify-center rounded-lg border border-blood-500 bg-stone-900 px-2 text-white;
+  }
+
+  .v2-save-row {
+    @apply col-span-2 mt-2 flex items-center justify-between border-t border-stone-200 pt-2 text-xs dark:border-white/10;
+  }
+
+  .v2-skill-list {
+    @apply divide-y divide-stone-200 px-3 dark:divide-white/10;
+  }
+
+  .v2-skill-row {
+    @apply flex min-h-10 items-center justify-between gap-3 py-2 text-sm;
+  }
+
+  .v2-skill-row > span {
+    @apply flex min-w-0 items-center gap-2;
+  }
+
+  .v2-skill-row small {
+    @apply inline-flex min-w-8 justify-center rounded bg-stone-200 px-1 py-0.5 text-[.65rem] font-bold text-stone-600 dark:bg-white/10 dark:text-stone-300;
+  }
+
+  [data-character-sheet-style="v2"] .v2-sheet-workspace > .v2-sheet-panel > [id],
+  [data-character-sheet-style="v2"] .v2-sheet-workspace > .v2-sheet-panel > section {
+    @apply mb-4;
+  }
+
+  [data-character-sheet-style="v2"] #hpManager,
+  [data-character-sheet-style="v2"] #death-saves-section,
+  [data-character-sheet-style="v2"] #combatResources,
+  [data-character-sheet-style="v2"] #spellcastingSection,
+  [data-character-sheet-style="v2"] #preparedSpellsSection,
+  [data-character-sheet-style="v2"] #allPossibilities,
+  [data-character-sheet-style="v2"] #inventoryAccordion > div,
+  [data-character-sheet-style="v2"] #notesSection {
+    @apply border-stone-300/80 bg-white/90 shadow-card dark:border-white/10 dark:bg-stone-900/95;
+  }
+
+  [data-character-sheet-style="v2"] #hpManager > div:first-child,
+  [data-character-sheet-style="v2"] #death-saves-section > div:first-child,
+  [data-character-sheet-style="v2"] #combatResources > div:first-child,
+  [data-character-sheet-style="v2"] #spellcastingSection > div:first-child,
+  [data-character-sheet-style="v2"] #allPossibilities > div:first-child,
+  [data-character-sheet-style="v2"] #notesSection > div:first-child {
+    @apply border-blood-500/30 bg-stone-900 text-white;
+  }
+
+  [data-character-sheet-style="v2"] .wiki-rich blockquote {
+    @apply border-blood-500 bg-blood-500/10;
+  }
+
+  [data-character-sheet-style="v2"] #inspiration-toggle:hover,
+  [data-character-sheet-style="v2"] [data-death-save="successes"]:hover,
+  [data-character-sheet-style="v2"] #stable-toggle:hover {
+    @apply border-blood-500 text-blood-500;
+  }
+
+  [data-character-sheet-style="v2"] #inspiration-toggle[aria-checked="true"],
+  [data-character-sheet-style="v2"] [data-death-save="successes"][aria-checked="true"],
+  [data-character-sheet-style="v2"] #stable-toggle[aria-checked="true"] {
+    @apply border-blood-500 bg-blood-500 text-white;
+  }
+
+  [data-character-sheet-style="v2"] #heal-btn,
+  [data-character-sheet-style="v2"] #temp-btn,
+  [data-character-sheet-style="v2"] #longRest-btn {
+    @apply border-blood-500 bg-blood-500 text-white hover:bg-blood-600;
+  }
+
+  [data-character-sheet-style="v2"] #rest-toast {
+    @apply border-blood-500/40;
+  }
+
+  [data-character-sheet-style="v2"] .bg-amber-300,
+  [data-character-sheet-style="v2"] .bg-sky-700,
+  [data-character-sheet-style="v2"] .bg-cyan-300 {
+    @apply bg-stone-700 text-white;
+  }
+
+  [data-character-sheet-style="v2"] .bg-emerald-600,
+  [data-character-sheet-style="v2"] .bg-emerald-700 {
+    @apply bg-blood-500 text-white;
+  }
+
+  [data-character-sheet-style="v2"] .border-emerald-600,
+  [data-character-sheet-style="v2"] .border-emerald-700,
+  [data-character-sheet-style="v2"] .border-sky-600 {
+    @apply border-blood-500;
+  }
+
+  [data-character-sheet-style="v2"] .text-sky-600 {
+    @apply text-blood-500 hover:bg-blood-500 hover:text-white;
+  }
+
+  @media (max-width: 639px) {
+    [data-character-sheet-style="v2"] main {
+      @apply px-2 pt-3;
+    }
+
+    [data-character-sheet-style="v2"] #characterDescription > .p-5 {
+      @apply p-4;
+    }
+
+    [data-character-sheet-style="v2"] #characterDescription > .p-5 > div {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      @apply gap-3;
+    }
+
+    [data-character-sheet-style="v2"] #characterDescription #character-portrait {
+      @apply w-[4.5rem];
+    }
+
+    [data-character-sheet-style="v2"] #characterDescription h3 {
+      @apply text-xl;
+    }
+
+    [data-character-sheet-style="v2"] #characterDescription p {
+      @apply text-xs;
+    }
+
+    .v2-character-actions {
+      @apply col-span-3 justify-start border-t border-white/10 pt-3;
+    }
+
+    .v2-character-actions > button,
+    .v2-character-actions #editor-toggle-slot > button {
+      @apply grow;
+    }
+
+    .v2-sheet-tab {
+      @apply px-3;
+    }
+  }
 }

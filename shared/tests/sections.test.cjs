@@ -1,5 +1,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 
 const config = JSON.parse(fs.readFileSync("shared/config/sections.json", "utf8"));
 const sectionNames = Object.keys(config.sections);
@@ -78,9 +80,7 @@ global.fetch = async (url) => {
 };
 
 (async () => {
-  const source = fs.readFileSync("shared/js/sections.js", "utf8")
-    .replace(/import\.meta\.url/g, '"https://example.test/cassiansLog/shared/js/sections.js"');
-  const moduleURL = `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`;
+  const moduleURL = `${pathToFileURL(path.resolve("shared/js/sections.js"))}?test=${Date.now()}`;
   const { sectionConfigReady } = await import(moduleURL);
   await sectionConfigReady;
 

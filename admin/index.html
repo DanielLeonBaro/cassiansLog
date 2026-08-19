@@ -16,7 +16,7 @@
       <div>
         <p class="text-xs font-bold uppercase tracking-[.18em] text-blood-500">Private control surface</p>
         <h1 class="mt-1 font-display text-4xl font-bold">Administration</h1>
-        <p class="mt-2 text-stone-500 dark:text-stone-400">Runtime settings are saved directly to D1 and apply without redeploying.</p>
+        <p id="admin-description" class="mt-2 text-stone-500 dark:text-stone-400">Runtime settings are saved directly to D1 and apply without redeploying.</p>
       </div>
       <div class="flex gap-2">
         <a href="char/" class="rounded-xl border border-stone-400 px-4 py-2 text-sm font-bold hover:border-blood-500 hover:text-blood-500 dark:border-white/20">Back to site</a>
@@ -37,6 +37,31 @@
             <input id="open-writes" type="checkbox" class="h-5 w-5 accent-red-700">
             <span><strong class="block">Allow public writes</strong><small class="text-stone-500 dark:text-stone-400">No edit password prompt</small></span>
           </label>
+        </div>
+      </section>
+
+      <section class="rounded-2xl border border-stone-300 bg-white/70 p-5 shadow-card dark:border-white/10 dark:bg-white/[.05]">
+        <h2 class="font-display text-2xl font-bold">Character sheet style</h2>
+        <p class="mt-1 text-sm text-stone-500 dark:text-stone-400">Choose the default layout for all characters, then optionally override individual sheets.</p>
+        <fieldset class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <legend class="mb-3 font-bold sm:col-span-2">Default for all characters</legend>
+          <label class="cursor-pointer rounded-xl border border-stone-300 p-4 transition has-[:checked]:border-blood-500 has-[:checked]:bg-blood-500/10 dark:border-white/15">
+            <span class="flex items-start gap-3">
+              <input id="character-style-v1" name="character-sheet-style" value="v1" type="radio" class="mt-1 h-5 w-5 accent-red-700">
+              <span><strong class="block">Style v1</strong><small class="text-stone-500 dark:text-stone-400">Current character tracker layout</small></span>
+            </span>
+          </label>
+          <label class="cursor-pointer rounded-xl border border-stone-300 p-4 transition has-[:checked]:border-blood-500 has-[:checked]:bg-blood-500/10 dark:border-white/15">
+            <span class="flex items-start gap-3">
+              <input id="character-style-v2" name="character-sheet-style" value="v2" type="radio" class="mt-1 h-5 w-5 accent-red-700">
+              <span><strong class="block">Style v2</strong><small class="text-stone-500 dark:text-stone-400">D&amp;D Beyond-inspired responsive sheet</small></span>
+            </span>
+          </label>
+        </fieldset>
+        <div class="mt-6 border-t border-stone-300 pt-5 dark:border-white/10">
+          <h3 class="font-display text-lg font-bold">Per-character overrides</h3>
+          <p class="mt-1 text-sm text-stone-500 dark:text-stone-400">“Use default” follows the selection above.</p>
+          <div id="character-style-settings" class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2"></div>
         </div>
       </section>
 

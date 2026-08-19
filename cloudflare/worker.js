@@ -5,6 +5,7 @@ const JSON_HEADERS = {
 };
 const MAX_JSON_BYTES = 1_800_000;
 const ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,127}$/i;
+const CHARACTER_SHEET_STYLES = new Set(["v1", "v2"]);
 const DEFAULT_SECTIONS = {
   characters: true, "combat-loot": true, compendium: true, music: true, wiki: false,
   "character-overview": true, "character-stats": true, "hit-points": true,
@@ -44,6 +45,13 @@ function tokenAuthorized(request, token) {
   return header.startsWith("Bearer ") && secureEqual(header.slice(7), token);
 }
 
+function storedCharacterSheetStyleOverrides(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(Object.entries(value).filter(([id, style]) => (
+    safeId(id) && CHARACTER_SHEET_STYLES.has(style)
+  )));
+}
+
 async function loadSettings(env) {
   let row = null;
   try {
@@ -57,6 +65,12 @@ async function loadSettings(env) {
   return {
     sections: { ...DEFAULT_SECTIONS, ...(stored.sections || {}) },
     openWrites: typeof stored.openWrites === "boolean" ? stored.openWrites : env.OPEN_WRITES === "true",
+    characterSheetStyle: CHARACTER_SHEET_STYLES.has(stored.characterSheetStyle)
+      ? stored.characterSheetStyle
+      : "v1",
+    characterSheetStyleOverrides: storedCharacterSheetStyleOverrides(
+      stored.characterSheetStyleOverrides,
+    ),
     updatedAt: row?.updated_at || null,
   };
 }
@@ -282,6 +296,8 @@ async function publicSettings(env) {
   const settings = await loadSettings(env);
   return json({
     sections: settings.sections,
+    characterSheetStyle: settings.characterSheetStyle,
+    characterSheetStyleOverrides: settings.characterSheetStyleOverrides,
     writeProtectionEnabled: !settings.openWrites,
     updatedAt: settings.updatedAt,
   });
@@ -290,12 +306,23 @@ async function publicSettings(env) {
 function normalizeSettings(body) {
   if (!body || typeof body !== "object" || typeof body.openWrites !== "boolean") return null;
   if (!body.sections || typeof body.sections !== "object" || Array.isArray(body.sections)) return null;
+  if (!CHARACTER_SHEET_STYLES.has(body.characterSheetStyle)) return null;
+  const styleOverrides = body.characterSheetStyleOverrides ?? {};
+  if (!styleOverrides || typeof styleOverrides !== "object" || Array.isArray(styleOverrides)) return null;
+  if (!Object.entries(styleOverrides).every(([id, style]) => (
+    safeId(id) && CHARACTER_SHEET_STYLES.has(style)
+  ))) return null;
   const sections = {};
   for (const key of Object.keys(DEFAULT_SECTIONS)) {
     if (typeof body.sections[key] !== "boolean") return null;
     sections[key] = body.sections[key];
   }
-  return { sections, openWrites: body.openWrites };
+  return {
+    sections,
+    openWrites: body.openWrites,
+    characterSheetStyle: body.characterSheetStyle,
+    characterSheetStyleOverrides: { ...styleOverrides },
+  };
 }
 
 async function adminRoute(request, env, parts) {

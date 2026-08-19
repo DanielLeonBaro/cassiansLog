@@ -1,6 +1,8 @@
 import { readJSON, removeStored, writeJSON } from "../../shared/js/storage.js";
 import { readCloudJSON } from "../../shared/js/cloud-store.js";
+import { runtimeSettingsReady } from "../../shared/js/settings.js";
 import { migrateLegacyPortrait } from "./archive/repository.js";
+import { applyCharacterSheetLayout } from "./tracker/layout.js";
 
 export function initializeCharacterPage() {
   const loaderScript = document.querySelector("script[data-character]");
@@ -62,7 +64,10 @@ export function initializeCharacterPage() {
     }
 
     try {
-      const response = await fetch(trackerURL);
+      const [response, settings] = await Promise.all([
+        fetch(trackerURL),
+        runtimeSettingsReady,
+      ]);
       if (!response.ok) throw new Error(`Could not load the tracker layout (${response.status}).`);
 
       const markup = await response.text();
@@ -72,6 +77,7 @@ export function initializeCharacterPage() {
       document.body.className = trackerDocument.body.className;
       document.body.id = trackerDocument.body.id;
       document.body.innerHTML = trackerDocument.body.innerHTML;
+      applyCharacterSheetLayout(settings, characterName);
       const { initializeTrackerHeader } = await import("./tracker/header.js");
       initializeTrackerHeader();
 

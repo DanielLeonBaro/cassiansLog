@@ -1,3 +1,5 @@
+import { runtimeSettingsReady } from "./settings.js";
+
 let sections = {};
 
 export function isSectionVisible(section) {
@@ -16,30 +18,9 @@ export function applySectionVisibility(root = document) {
   });
 }
 
-export const sectionConfigReady = fetch("api/settings", { headers: { accept: "application/json" } })
-  .then((response) => {
-    if (!response.ok) throw new Error(`Could not load dynamic settings (${response.status}).`);
-    return response.json();
-  })
+export const sectionConfigReady = runtimeSettingsReady
   .then((config) => {
-    sections = config?.sections && typeof config.sections === "object"
-      ? config.sections
-      : {};
+    sections = config.sections;
     applySectionVisibility();
     return sections;
-  })
-  .catch((error) => {
-    console.warn("Dynamic settings are unavailable; loading bundled section settings.", error);
-    return fetch(new URL("../config/sections.json", import.meta.url))
-      .then((response) => response.ok ? response.json() : {})
-      .then((config) => {
-        sections = config?.sections && typeof config.sections === "object" ? config.sections : {};
-        applySectionVisibility();
-        return sections;
-      })
-      .catch((fallbackError) => {
-        console.warn("Bundled section settings are also unavailable; showing all links.", fallbackError);
-        applySectionVisibility();
-        return sections;
-      });
   });

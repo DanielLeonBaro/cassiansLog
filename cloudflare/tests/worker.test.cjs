@@ -63,7 +63,10 @@ const { pathToFileURL } = require("node:url");
 
   const settings = await handleRequest(new Request("https://example.test/api/settings"), env);
   assert.equal(settings.status, 200);
-  assert.equal((await settings.json()).writeProtectionEnabled, true);
+  const settingsBody = await settings.json();
+  assert.equal(settingsBody.writeProtectionEnabled, true);
+  assert.equal(settingsBody.characterSheetStyle, "v1", "Absent settings should default to Style v1.");
+  assert.deepEqual(settingsBody.characterSheetStyleOverrides, {});
 
   const adminEnv = {
     ...env,
@@ -98,12 +101,16 @@ const { pathToFileURL } = require("node:url");
   const adminBody = await admin.json();
   assert.equal(adminBody.settings.openWrites, false);
   assert.equal(adminBody.settings.sections.characters, false);
+  assert.equal(adminBody.settings.characterSheetStyle, "v1", "Legacy stored settings should load as Style v1.");
+  assert.deepEqual(adminBody.settings.characterSheetStyleOverrides, {});
   assert.equal(adminBody.characters[0].name, "Cassian");
 
   const sectionKeys = Object.keys(JSON.parse(fs.readFileSync("shared/config/sections.json", "utf8")).sections);
   let liveSettings = {
     sections: Object.fromEntries(sectionKeys.map((key) => [key, true])),
     openWrites: true,
+    characterSheetStyle: "v1",
+    characterSheetStyleOverrides: {},
   };
   let templateActive = false;
   const settingsEnv = {
@@ -172,6 +179,57 @@ const { pathToFileURL } = require("node:url");
     assert.equal(response.status, 200, `Public writes should save as ${openWrites}`);
     assert.equal(liveSettings.openWrites, openWrites);
   }
+
+  for (const characterSheetStyle of ["v1", "v2", "v1"]) {
+    const response = await handleRequest(new Request("https://example.test/api/admin/settings", {
+      method: "PUT",
+      headers: adminHeaders,
+      body: JSON.stringify({ ...liveSettings, characterSheetStyle }),
+    }), settingsEnv);
+    assert.equal(response.status, 200, `Character sheet style ${characterSheetStyle} should save.`);
+    assert.equal(liveSettings.characterSheetStyle, characterSheetStyle);
+    const publicResponse = await handleRequest(new Request("https://example.test/api/settings"), settingsEnv);
+    assert.equal((await publicResponse.json()).characterSheetStyle, characterSheetStyle);
+  }
+
+  const styleOverrideResponse = await handleRequest(new Request("https://example.test/api/admin/settings", {
+    method: "PUT",
+    headers: adminHeaders,
+    body: JSON.stringify({
+      ...liveSettings,
+      characterSheetStyle: "v1",
+      characterSheetStyleOverrides: { cassian: "v2", ally: "v1" },
+    }),
+  }), settingsEnv);
+  assert.equal(styleOverrideResponse.status, 200, "Per-character sheet styles should save.");
+  assert.deepEqual(liveSettings.characterSheetStyleOverrides, { cassian: "v2", ally: "v1" });
+  const publicOverrideResponse = await handleRequest(
+    new Request("https://example.test/api/settings"),
+    settingsEnv,
+  );
+  assert.deepEqual(
+    (await publicOverrideResponse.json()).characterSheetStyleOverrides,
+    { cassian: "v2", ally: "v1" },
+  );
+
+  const beforeInvalidStyle = JSON.stringify(liveSettings);
+  const invalidStyle = await handleRequest(new Request("https://example.test/api/admin/settings", {
+    method: "PUT",
+    headers: adminHeaders,
+    body: JSON.stringify({ ...liveSettings, characterSheetStyle: "future" }),
+  }), settingsEnv);
+  assert.equal(invalidStyle.status, 400, "Unknown character sheet styles must be rejected.");
+  assert.equal(JSON.stringify(liveSettings), beforeInvalidStyle);
+
+  const invalidOverride = await handleRequest(new Request("https://example.test/api/admin/settings", {
+    method: "PUT",
+    headers: adminHeaders,
+    body: JSON.stringify({
+      ...liveSettings,
+      characterSheetStyleOverrides: { cassian: "future" },
+    }),
+  }), settingsEnv);
+  assert.equal(invalidOverride.status, 400, "Unknown per-character sheet styles must be rejected.");
 
   for (const active of [true, false, true]) {
     const response = await handleRequest(new Request("https://example.test/api/admin/characters/template", {
