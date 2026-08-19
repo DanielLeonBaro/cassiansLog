@@ -1,13 +1,5 @@
-const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const vm = require("node:vm");
-
-const source = fs.readFileSync("public-initiative/js/model.js", "utf8").replace(/export /g, "");
-const context = {};
-vm.createContext(context);
-vm.runInContext(`${source}\nglobalThis.initiativeNamesFromSnapshot = initiativeNamesFromSnapshot;`, context);
-
-const namesFrom = context.initiativeNamesFromSnapshot;
+import assert from "node:assert/strict";
+import { initiativeNamesFromSnapshot as namesFrom } from "../js/model.js";
 
 const snapshot = {
   draft: {

@@ -1,34 +1,5 @@
-const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const vm = require("node:vm");
-
-const source = fs.readFileSync("combat-loot/js/model.js", "utf8").replace(/export /g, "");
-const context = {};
-vm.createContext(context);
-vm.runInContext(`${source}
-globalThis.model = {
-  COMBAT_LOOT_DOCUMENT_VERSION,
-  COMBAT_HEALTH_COLUMNS_VERSION,
-  calculateCurrentHP,
-  createCombatLootDocument,
-  initializeCombatHealthColumns,
-  addCustomTracker,
-  renameTracker,
-  deleteCustomTracker,
-  insertTrackerRow,
-  deleteTrackerRow,
-  moveTrackerRow,
-  insertTrackerColumn,
-  deleteTrackerColumn,
-  moveTrackerColumn,
-  renameTrackerColumn,
-  updateTrackerCell,
-  addCombatRound,
-  sortInitiativeRows,
-  mergeInitiativeIntoCombat,
-};`, context);
-
-const model = context.model;
+import assert from "node:assert/strict";
+import * as model from "../js/model.js";
 
 function sequentialIds() {
   let sequence = 0;

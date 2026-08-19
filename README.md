@@ -32,6 +32,7 @@ If PowerShell blocks `npm.ps1`, use `npm.cmd`.
 | `npm run d1:seed:remote` | Refresh production Compendium and bundled characters |
 | `npm run import:wiki` | Refresh the bundled Wiki JSON seed |
 | `npm test` | Run feature, integration, architecture, route, and CSS tests |
+| `npm run test:browser` | Run local fallback smoke tests in headless Firefox through GeckoDriver |
 | `npm audit` | Check dependencies for known vulnerabilities |
 
 ## Independent feature layout

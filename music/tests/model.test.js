@@ -1,14 +1,11 @@
-const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const vm = require("node:vm");
-
-let source = fs.readFileSync("music/js/model.js", "utf8")
-  .replace(/export const /g, "const ")
-  .replace(/export function /g, "function ");
-source += "\nthis.api = { parseMediaLink, normalizeTags, formatTag, clampSeconds, updateTrack };";
-const context = { URL };
-vm.runInNewContext(source, context);
-const { parseMediaLink, normalizeTags, formatTag, clampSeconds, updateTrack } = context.api;
+import assert from "node:assert/strict";
+import {
+  parseMediaLink,
+  normalizeTags,
+  formatTag,
+  clampSeconds,
+  updateTrack,
+} from "../js/model.js";
 
 assert.equal(parseMediaLink("https://youtu.be/dQw4w9WgXcQ").id, "dQw4w9WgXcQ");
 assert.equal(parseMediaLink("https://www.youtube.com/watch?v=dQw4w9WgXcQ").provider, "youtube");
