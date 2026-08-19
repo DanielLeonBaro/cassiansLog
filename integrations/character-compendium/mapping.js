@@ -1,4 +1,4 @@
-import { clone } from "../../shared/js/text.js";
+import { cloneJSON } from "../../shared/js/text.js";
 
 const primitiveTargets = new Set(["class", "subclass", "race", "background"]);
 
@@ -26,7 +26,7 @@ export function addCompendiumEntry(character, entry) {
     if (target === "inventory") existing.quantity = Number(existing.quantity || 0) + 1;
     return target === "inventory";
   }
-  const value = clone(entry.add.value);
+  const value = cloneJSON(entry.add.value);
   if (target === "spells" && !value.source) {
     value.source = character.spellcasting?.profiles?.[0]?.id || "";
   }

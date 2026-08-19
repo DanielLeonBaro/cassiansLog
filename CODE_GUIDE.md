@@ -106,6 +106,7 @@ Not every feature needs every file. Introduce a role only when there is a real b
 Project data is JSON-compatible, but cloning semantics are part of behavior.
 
 - Clone at persistence, editor-draft, integration, and public API boundaries when mutation must not leak.
+- Use `cloneJSON()` from `shared/js/text.js` for persisted documents. It intentionally omits `undefined`, converts dates to ISO strings, and returns independent nested data.
 - Do not silently swap JSON cloning and `structuredClone()` without tests proving identical behavior for the relevant documents.
 - Prefer model functions that return a new document for complex domain changes.
 - When controlled in-place mutation is simpler, keep it inside one controller and save through the owning repository.
@@ -115,6 +116,7 @@ Project data is JSON-compatible, but cloning semantics are part of behavior.
 - Prefer `textContent`, `replaceChildren()`, and DOM properties for user-controlled text and attributes.
 - Template strings are acceptable for substantial static markup, but every interpolated value must use the correct shared escaping function or a validated safe token.
 - HTML text escaping and identifier sanitization are different operations. Name them differently; do not use one helper as the other.
+- Use `escapeHTML()` and `escapeAttribute()` from `shared/js/text.js`; feature modules should not define equivalent local copies.
 - Never interpolate an error message directly into `innerHTML`. Create the shell and assign the message with `textContent`.
 - Use `data-*` actions and scoped event delegation for repeated or dynamic controls.
 - Use direct listeners for one-off stable controls when that is clearer.
@@ -142,6 +144,7 @@ Project data is JSON-compatible, but cloning semantics are part of behavior.
 - Route IDs must remain URL-safe and collision-safe.
 - Do not restore legacy `template/?character=` links.
 - The Worker and localhost service worker must preserve clean-route fallback to the shared Character template shell.
+- Use `isLocalRuntimeHost()` from `shared/js/runtime-host.js` for localhost checks. Detection code must not import the settings module merely to identify the host.
 - Direct access to a route must remain possible even when navigation visibility hides its link.
 
 ## 6. Data and persistence contracts
@@ -174,6 +177,7 @@ Do not claim live-tab synchronization unless a real-time transport is deliberate
 ### Compatibility rules
 
 - Never rename or repurpose an existing storage key in a refactor.
+- Character storage keys are owned by `char/js/storage-keys.js`; import its constants and key builders instead of repeating literals inside the Character feature.
 - When a stored shape changes, add versioning and a tested, idempotent migration while retaining a rollback path.
 - Preserve unknown character fields. The editor's Additional fields area is a compatibility boundary for homebrew and future data.
 - Technical IDs and metadata remain stable and read-only in normal editing flows.
@@ -271,12 +275,14 @@ The repository currently has strong foundations:
 The main standardization opportunities are:
 
 - several page coordinators mix too many responsibilities;
-- small HTML-escaping, JSON-cloning, local-host, and storage-key helpers are duplicated or inconsistently named;
 - some tests are coupled to source text or execute transformed source instead of importing public modules;
-- a few error views interpolate messages into HTML instead of assigning text safely;
 - the Worker contains several independent route families in one file;
-- the package does not declare its module type, so Node reparses imported `.js` files as ES modules and emits warnings;
 - browser interaction coverage remains less complete than model, route, and source-contract coverage.
+
+Implementation status as of 2026-08-19:
+
+- Phase 0 is complete: compatibility contracts, direct pure-module tests, browser smoke automation, and explicit ESM package configuration are in place.
+- Phase 1 is complete: shared escaping, JSON cloning, localhost detection, Character storage-key ownership, identifier naming, and text-safe Character loader errors are standardized.
 
 No production code is safe to delete solely from this audit. Deletion should follow the proof in section 10.
 

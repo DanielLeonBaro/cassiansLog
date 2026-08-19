@@ -30,7 +30,13 @@ for (const id of [...catalog.characters, "template"]) {
 }
 
 const storageContracts = new Map([
-  ["char/js/archive/repository.js", ["dnd-characters", "dnd-deleted-characters", "dnd-new-character"]],
+  ["char/js/storage-keys.js", [
+    "dnd-characters",
+    "dnd-deleted-characters",
+    "dnd-new-character",
+    'dnd-${characterId || "character"}-state',
+    'dnd-${characterId || "character"}-notes',
+  ]],
   ["combat-loot/js/repository.js", ["dnd-combat-loot-presets-v1", "dnd-combat-loot-draft-v1"]],
   ["music/js/repository.js", ["dnd-music-tracks", "dnd-music-settings"]],
   ["wiki/js/repository.js", ["dnd-wiki-pages-v1"]],
@@ -38,8 +44,6 @@ const storageContracts = new Map([
   ["shared/js/theme.js", ["dnd-theme"]],
   ["shared/js/cloud-store.js", ["cassianslog-write-token"]],
   ["admin/js/entry.js", ["cassianslog-admin-token"]],
-  ["char/js/tracker/state.js", ['dnd-${character.id || "character"}-state']],
-  ["char/js/tracker/notes.js", ['dnd-${characterId || "character"}-notes']],
 ]);
 
 for (const [file, keys] of storageContracts) {

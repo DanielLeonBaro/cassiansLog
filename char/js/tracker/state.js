@@ -1,6 +1,7 @@
 import { readJSON, writeJSON } from "../../../shared/js/storage.js";
 import { readCloudJSON, writeCloudJSON } from "../../../shared/js/cloud-store.js";
 import { normalizeDeathSaves, resetDeathSaves } from "./death-saves.js";
+import { characterStateStorageKey } from "../storage-keys.js";
 
 export function normalizeCharacterFlag(value) {
   return value === true || Number(value) === 1 ? 1 : 0;
@@ -14,7 +15,7 @@ export function createTrackerState({
   findSpellSlot,
   enforcePreparedLimits,
 }) {
-  const storageKey = `dnd-${character.id || "character"}-state`;
+  const storageKey = characterStateStorageKey(character.id);
 
   function apply(state) {
     if (!state) return;

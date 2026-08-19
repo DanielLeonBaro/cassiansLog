@@ -1,7 +1,9 @@
+import { cloneJSON } from "../../../shared/js/text.js";
+
 let generatedIdSequence = 0;
 
 export function clone(value) {
-  return JSON.parse(JSON.stringify(value));
+  return cloneJSON(value);
 }
 
 export function pathValue(root, path) {
@@ -14,7 +16,7 @@ export function uniqueItemId(prefix = "item") {
 }
 
 export function duplicateCollectionItem(item, collection) {
-  const duplicate = clone(item);
+  const duplicate = cloneJSON(item);
   if (duplicate && typeof duplicate === "object" && Object.prototype.hasOwnProperty.call(duplicate, "id")) {
     const prefix = String(duplicate.id || collection || "item").replace(/-[^-]+$/, "") || collection || "item";
     duplicate.id = uniqueItemId(prefix);
@@ -35,9 +37,9 @@ export function createBlankCollectionItem(path, items, draft) {
     features: { id: uniqueItemId("feature"), name: "", category: "Feature", description: "" },
     inventory: { name: "", quantity: 1, description: "" },
   };
-  if (defaults[collection]) return clone(defaults[collection]);
+  if (defaults[collection]) return cloneJSON(defaults[collection]);
   if (!items.length) return "";
-  const sample = clone(items[0]);
+  const sample = cloneJSON(items[0]);
   Object.keys(sample).forEach((key) => {
     if (key === "id") sample[key] = uniqueItemId(collection || "item");
     else if (typeof sample[key] === "string") sample[key] = "";

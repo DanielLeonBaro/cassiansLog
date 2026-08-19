@@ -1,4 +1,4 @@
-import { clone } from "../../shared/js/text.js";
+import { cloneJSON } from "../../shared/js/text.js";
 import { readJSON, writeJSON } from "../../shared/js/storage.js";
 import { readCloudJSON, writeCloudJSON } from "../../shared/js/cloud-store.js";
 import { normalizeWikiPages } from "./model.js";
@@ -10,7 +10,7 @@ export async function loadWikiPages() {
   if (Array.isArray(cloud?.pages)) {
     const pages = normalizeWikiPages(cloud.pages);
     writeJSON(WIKI_STORAGE_KEY, pages);
-    return clone(pages);
+    return cloneJSON(pages);
   }
   const saved = readJSON(WIKI_STORAGE_KEY, null);
   if (Array.isArray(saved) && saved.length) {
@@ -20,7 +20,7 @@ export async function loadWikiPages() {
   }
   const response = await fetch(new URL("../data/pages.json", import.meta.url));
   if (!response.ok) throw new Error(`Could not load the Wiki seed (${response.status}).`);
-  return clone(normalizeWikiPages(await response.json()));
+  return cloneJSON(normalizeWikiPages(await response.json()));
 }
 
 export async function saveWikiPages(pages) {

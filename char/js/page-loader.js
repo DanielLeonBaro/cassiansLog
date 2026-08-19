@@ -1,7 +1,13 @@
 import { readJSON, removeStored, writeJSON } from "../../shared/js/storage.js";
 import { readCloudJSON } from "../../shared/js/cloud-store.js";
 import { runtimeSettingsReady } from "../../shared/js/settings.js";
+import { cloneJSON } from "../../shared/js/text.js";
 import { migrateLegacyPortrait } from "./archive/repository.js";
+import { renderCharacterLoadError } from "./load-error.js";
+import {
+  CHARACTERS_STORAGE_KEY,
+  PENDING_CHARACTER_STORAGE_KEY,
+} from "./storage-keys.js";
 import { applyCharacterSheetLayout } from "./tracker/layout.js";
 
 export function initializeCharacterPage() {
@@ -19,7 +25,6 @@ export function initializeCharacterPage() {
     ? requestedCharacter
     : bundledCharacter;
   let characterShell = bundledCharacter;
-  const storageKey = "dnd-characters";
   const trackerURL = new URL("../tracker.html", window.location.href);
 
   async function useCanonicalCharacterRoute() {
@@ -38,14 +43,6 @@ export function initializeCharacterPage() {
     } catch (error) {
       console.warn("Could not resolve the character shell.", error);
     }
-  }
-
-  function showError(message) {
-    document.body.innerHTML = `
-      <main class="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-        <div class="mb-4 rounded-2xl border border-blood-500/30 bg-blood-500/10 p-4 text-blood-600 dark:text-red-300">${message}</div>
-        <a class="inline-flex items-center justify-center rounded-xl border border-stone-400 bg-white/60 px-4 py-2 text-sm font-bold text-stone-700 shadow-sm transition hover:border-blood-500 hover:text-blood-500 dark:border-white/20 dark:bg-white/5 dark:text-stone-200" href="char/">Back to characters</a>
-      </main>`;
   }
 
   function applyBundledUpdates(savedCharacter, bundledData) {
@@ -69,7 +66,7 @@ export function initializeCharacterPage() {
         const bundledEntry = bundledEntries.find((entry) => entry.id === id);
         if (!alreadyPresent && bundledEntry) {
           savedCharacter[collection].push(
-            JSON.parse(JSON.stringify(bundledEntry)),
+            cloneJSON(bundledEntry),
           );
         }
       });
@@ -84,7 +81,7 @@ export function initializeCharacterPage() {
 
   async function loadCharacterPage() {
     if (!characterName || !/^[a-z0-9-]+$/i.test(characterName)) {
-      showError("This character route is invalid.");
+      renderCharacterLoadError("This character route is invalid.", { showBackLink: true });
       return;
     }
 
@@ -108,7 +105,7 @@ export function initializeCharacterPage() {
       const { initializeTrackerHeader } = await import("./tracker/header.js");
       initializeTrackerHeader();
 
-      const savedCharacters = readJSON(storageKey, {});
+      const savedCharacters = readJSON(CHARACTERS_STORAGE_KEY, {});
       const savedCharacter = savedCharacters[characterName];
       const cloudCharacter = await readCloudJSON(
         `api/characters/${encodeURIComponent(characterName)}`,
@@ -127,26 +124,26 @@ export function initializeCharacterPage() {
         const migrated = migrateLegacyPortrait(savedCharacter);
         if (applyBundledUpdates(savedCharacter, bundledData) || migrated) {
           savedCharacters[characterName] = savedCharacter;
-          writeJSON(storageKey, savedCharacters);
+          writeJSON(CHARACTERS_STORAGE_KEY, savedCharacters);
         }
         window.character = savedCharacter;
       } else if (cloudCharacter?.document) {
-        savedCharacters[characterName] = JSON.parse(JSON.stringify(cloudCharacter.document));
-        writeJSON(storageKey, savedCharacters);
+        savedCharacters[characterName] = cloneJSON(cloudCharacter.document);
+        writeJSON(CHARACTERS_STORAGE_KEY, savedCharacters);
       } else if (params.get("new") === "1") {
-        const pending = readJSON("dnd-new-character", {});
-        window.character = JSON.parse(JSON.stringify(window.character));
+        const pending = readJSON(PENDING_CHARACTER_STORAGE_KEY, {});
+        window.character = cloneJSON(window.character);
         window.character.id = characterName;
         window.character.name = pending.name || "New Character";
         window.character.portrait = "shared/assets/bat.ico";
         savedCharacters[characterName] = window.character;
-        writeJSON(storageKey, savedCharacters);
-        removeStored("dnd-new-character");
+        writeJSON(CHARACTERS_STORAGE_KEY, savedCharacters);
+        removeStored(PENDING_CHARACTER_STORAGE_KEY);
       }
       await import("./entries/tracker.js");
     } catch (error) {
       console.error("Could not load character page:", error);
-      showError(error.message);
+      renderCharacterLoadError(error.message, { showBackLink: true });
     }
   }
 

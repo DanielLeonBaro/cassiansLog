@@ -1,4 +1,7 @@
 import { writeCloudJSON } from "./cloud-store.js";
+import { isLocalRuntimeHost } from "./runtime-host.js";
+
+export { isLocalRuntimeHost } from "./runtime-host.js";
 
 export const DEFAULT_CHARACTER_SHEET_STYLE = "v1";
 export const LOCAL_RUNTIME_SETTINGS_KEY = "cassianslog-runtime-settings";
@@ -20,10 +23,6 @@ export function resolveCharacterSheetStyle(settings = {}, characterId = "") {
     ? overrides[characterId]
     : null;
   return override || normalizeCharacterSheetStyle(settings.characterSheetStyle);
-}
-
-export function isLocalRuntimeHost(hostname = globalThis.location?.hostname || "") {
-  return ["localhost", "127.0.0.1", "::1", "[::1]"].includes(hostname.toLowerCase());
 }
 
 export function normalizeRuntimeSettings(config) {

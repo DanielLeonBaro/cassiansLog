@@ -20,8 +20,8 @@ export function normalizeText(value) {
     .trim();
 }
 
-export function clone(value) {
-  return typeof structuredClone === "function"
-    ? structuredClone(value)
-    : JSON.parse(JSON.stringify(value));
+export function cloneJSON(value) {
+  return JSON.parse(JSON.stringify(value));
 }
+
+export const clone = cloneJSON;

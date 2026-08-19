@@ -110,7 +110,7 @@ for (const character of [...catalog.characters, "template"]) {
 }
 
 const characterLoader = fs.readFileSync("char/js/page-loader.js", "utf8");
-for (const key of ["dnd-characters", "dnd-new-character"]) assert.ok(characterLoader.includes(key));
+for (const key of ["CHARACTERS_STORAGE_KEY", "PENDING_CHARACTER_STORAGE_KEY"]) assert.ok(characterLoader.includes(key));
 assert.ok(characterLoader.includes("applyCharacterSheetLayout"), "Every routed character should apply the configured sheet layout.");
 assert.ok(characterLoader.includes("applyCharacterSheetLayout(settings, characterName)"), "Character routes should resolve style overrides by ID.");
 assert.ok(characterLoader.includes("history.replaceState"), "Legacy template links should receive their canonical character URL.");
@@ -125,8 +125,8 @@ assert.ok(characterArchive.includes("char/${encodeURIComponent(id)}/?new=1&edit=
 assert.ok(fs.readFileSync("character-route-worker.js", "utf8").includes("/char/template/"), "Localhost should fall back to the shared template shell behind clean character URLs.");
 const trackerState = fs.readFileSync("char/js/tracker/state.js", "utf8");
 const trackerNotes = fs.readFileSync("char/js/tracker/notes.js", "utf8");
-assert.ok(trackerState.includes('dnd-${character.id || "character"}-state'));
-assert.ok(trackerNotes.includes('dnd-${characterId || "character"}-notes'));
+assert.ok(trackerState.includes("characterStateStorageKey(character.id)"));
+assert.ok(trackerNotes.includes("characterNotesStorageKey(characterId)"));
 
 for (const file of [
   "wiki/js/entry.js",

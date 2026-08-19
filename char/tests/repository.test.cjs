@@ -3,8 +3,10 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 
 const storageCode = fs.readFileSync("shared/js/storage.js", "utf8").replace(/export /g, "");
+const textCode = fs.readFileSync("shared/js/text.js", "utf8").replace(/export /g, "");
+const storageKeyCode = fs.readFileSync("char/js/storage-keys.js", "utf8").replace(/export /g, "");
 const repositoryCode = fs.readFileSync("char/js/archive/repository.js", "utf8")
-  .replace(/^import .*\r?\n/gm, "")
+  .replace(/^import[\s\S]*?;\r?\n/gm, "")
   .replace(/import\.meta\.url/g, '"https://example.test/cassiansLog/char/js/archive/repository.js"')
   .replace(/export /g, "");
 const values = new Map([
@@ -31,7 +33,7 @@ const context = {
   },
 };
 vm.createContext(context);
-vm.runInContext(`${storageCode}\n${repositoryCode}\nglobalThis.api = { storedCharacters, migrateLegacyPortrait, isBundledCharacter, applyNewCharacterSetup, createCharacter };`, context);
+vm.runInContext(`${storageCode}\n${textCode}\n${storageKeyCode}\n${repositoryCode}\nglobalThis.api = { storedCharacters, migrateLegacyPortrait, isBundledCharacter, applyNewCharacterSetup, createCharacter };`, context);
 
 const characters = context.api.storedCharacters();
 assert.equal(characters.cassian.portrait, "char/cassian/portrait.jpg");

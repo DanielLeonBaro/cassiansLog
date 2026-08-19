@@ -1,9 +1,15 @@
 import { readJSON, writeJSON } from "../../../shared/js/storage.js";
 import { readCloudJSON, writeCloudJSON } from "../../../shared/js/cloud-store.js";
+import { cloneJSON } from "../../../shared/js/text.js";
+import {
+  CHARACTERS_STORAGE_KEY,
+  DELETED_CHARACTERS_STORAGE_KEY,
+  PENDING_CHARACTER_STORAGE_KEY,
+} from "../storage-keys.js";
 
-export const CHARACTERS_KEY = "dnd-characters";
-export const DELETED_KEY = "dnd-deleted-characters";
-export const PENDING_KEY = "dnd-new-character";
+export const CHARACTERS_KEY = CHARACTERS_STORAGE_KEY;
+export const DELETED_KEY = DELETED_CHARACTERS_STORAGE_KEY;
+export const PENDING_KEY = PENDING_CHARACTER_STORAGE_KEY;
 
 const fallbackPortrait = "shared/assets/bat.ico";
 const legacyPortraits = new Map([
@@ -113,12 +119,8 @@ export function createCharacterId(name) {
   return id;
 }
 
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
-
 export function applyNewCharacterSetup(template, setup) {
-  const character = clone(template);
+  const character = cloneJSON(template);
   character.id = setup.id;
   character.name = String(setup.name || "").trim();
   character.portrait = setup.portrait || fallbackPortrait;
@@ -152,12 +154,12 @@ export async function createCharacter(setup) {
   const template = await getJSON(new URL("../../template/character.json", import.meta.url));
   const character = applyNewCharacterSetup(template, { ...setup, id });
   const stored = storedCharacters();
-  stored[id] = clone(character);
+  stored[id] = cloneJSON(character);
   writeJSON(CHARACTERS_KEY, stored);
 
   try {
     await writeCloudJSON(`api/characters/${encodeURIComponent(id)}`, {
-      document: clone(character),
+      document: cloneJSON(character),
       source: "custom",
     });
     return { character, cloudSaved: true, cloudError: null };

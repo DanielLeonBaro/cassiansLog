@@ -1,7 +1,7 @@
-const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
+import { isLocalRuntimeHost } from "../../../shared/js/runtime-host.js";
 
 export async function enableLocalCharacterRoutes() {
-  if (!("serviceWorker" in navigator) || !LOCAL_HOSTS.has(location.hostname)) return;
+  if (!("serviceWorker" in navigator) || !isLocalRuntimeHost(location.hostname)) return;
 
   try {
     await navigator.serviceWorker.register("character-route-worker.js", { scope: "/" });

@@ -1,4 +1,5 @@
 import { initializeTheme } from "../../shared/js/theme.js";
+import { escapeHTML } from "../../shared/js/text.js";
 import {
   isLocalRuntimeHost,
   persistLocalRuntimeSettings,
@@ -232,12 +233,6 @@ document.getElementById("admin-lock").addEventListener("click", () => {
 if (localMode) {
   document.getElementById("admin-lock").hidden = true;
   document.getElementById("admin-description").textContent = "Runtime settings are saved to this browser's localStorage on localhost; D1 is not required.";
-}
-
-function escapeHTML(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
-  })[character]);
 }
 
 unlock();

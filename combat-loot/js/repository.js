@@ -1,5 +1,5 @@
 import { readJSON, removeStored, writeJSON } from "../../shared/js/storage.js";
-import { clone, normalizeText } from "../../shared/js/text.js";
+import { cloneJSON, normalizeText } from "../../shared/js/text.js";
 
 export const STORAGE_VERSION = 1;
 export const PRESETS_STORAGE_KEY = "dnd-combat-loot-presets-v1";
@@ -142,7 +142,7 @@ function normalizePreset(value) {
     createdAt,
     updatedAt,
     active: value.active !== false,
-    document: clone(value.document),
+    document: cloneJSON(value.document),
   };
 }
 
@@ -203,14 +203,14 @@ export function formatPresetLabel(baseName, now = () => new Date()) {
 
 export function loadPresetCollection(storage) {
   const stored = readStoredJSON(PRESETS_STORAGE_KEY, null, storage);
-  return clone(normalizePresetCollection(stored));
+  return cloneJSON(normalizePresetCollection(stored));
 }
 
 export function savePresetCollection(presets, storage) {
   try {
     const normalized = validatedPresetList(presets);
     writeStoredJSON(PRESETS_STORAGE_KEY, { version: STORAGE_VERSION, presets: normalized }, storage);
-    return { ok: true, presets: clone(normalized) };
+    return { ok: true, presets: cloneJSON(normalized) };
   } catch (error) {
     return { ok: false, error: asError(error, "Could not save presets.") };
   }
@@ -243,11 +243,11 @@ export function createPreset({
       createdAt: timestamp,
       updatedAt: timestamp,
       active: true,
-      document: clone(document),
+      document: cloneJSON(document),
     };
     const result = savePresetCollection([...presets, preset], storage);
     if (!result.ok) return result;
-    return { ok: true, preset: clone(preset), presets: result.presets };
+    return { ok: true, preset: cloneJSON(preset), presets: result.presets };
   } catch (error) {
     return { ok: false, error: asError(error, "Could not create the preset.") };
   }
@@ -266,13 +266,13 @@ export function overwritePreset({ id, document, now = () => new Date(), storage 
     const preset = {
       ...presets[index],
       updatedAt: resolveDate(now).toISOString(),
-      document: clone(document),
+      document: cloneJSON(document),
     };
     const updatedPresets = presets.slice();
     updatedPresets[index] = preset;
     const result = savePresetCollection(updatedPresets, storage);
     if (!result.ok) return result;
-    return { ok: true, preset: clone(preset), presets: result.presets };
+    return { ok: true, preset: cloneJSON(preset), presets: result.presets };
   } catch (error) {
     return { ok: false, error: asError(error, "Could not overwrite the preset.") };
   }
@@ -293,7 +293,7 @@ export function setPresetActive({ id, active, storage } = {}) {
     updatedPresets[index] = preset;
     const result = savePresetCollection(updatedPresets, storage);
     if (!result.ok) return result;
-    return { ok: true, preset: clone(preset), presets: result.presets };
+    return { ok: true, preset: cloneJSON(preset), presets: result.presets };
   } catch (error) {
     return { ok: false, error: asError(error, "Could not update the preset.") };
   }
@@ -308,8 +308,8 @@ function normalizeDraft(value) {
   return {
     version: STORAGE_VERSION,
     activePresetId: value.activePresetId === null ? null : requiredText(value.activePresetId) || null,
-    baselineDocument: value.baselineDocument === null ? null : clone(value.baselineDocument),
-    currentDocument: clone(value.currentDocument),
+    baselineDocument: value.baselineDocument === null ? null : cloneJSON(value.baselineDocument),
+    currentDocument: cloneJSON(value.currentDocument),
     updatedAt,
   };
 }
@@ -317,7 +317,7 @@ function normalizeDraft(value) {
 export function loadDraft(storage) {
   const stored = readStoredJSON(DRAFT_STORAGE_KEY, null, storage);
   const draft = normalizeDraft(stored);
-  return draft ? clone(draft) : null;
+  return draft ? cloneJSON(draft) : null;
 }
 
 export function saveDraft({ activePresetId = null, baselineDocument = null, currentDocument, storage } = {}) {
@@ -332,12 +332,12 @@ export function saveDraft({ activePresetId = null, baselineDocument = null, curr
     const draft = {
       version: STORAGE_VERSION,
       activePresetId: activePresetId === null ? null : requiredText(activePresetId) || null,
-      baselineDocument: baselineDocument === null ? null : clone(baselineDocument),
-      currentDocument: clone(currentDocument),
+      baselineDocument: baselineDocument === null ? null : cloneJSON(baselineDocument),
+      currentDocument: cloneJSON(currentDocument),
       updatedAt: new Date().toISOString(),
     };
     writeStoredJSON(DRAFT_STORAGE_KEY, draft, storage);
-    return { ok: true, draft: clone(draft) };
+    return { ok: true, draft: cloneJSON(draft) };
   } catch (error) {
     return { ok: false, error: asError(error, "Could not save the working draft.") };
   }
@@ -353,7 +353,7 @@ export function removeDraft(storage) {
 }
 
 export function documentFingerprint(document) {
-  const persisted = JSON.parse(JSON.stringify(document));
+  const persisted = cloneJSON(document);
   return JSON.stringify(normalizeForFingerprint(persisted));
 }
 
@@ -398,7 +398,7 @@ export function parsePresetUpload(source) {
 
   if (isDocument(value)) {
     return {
-      document: clone(value),
+      document: cloneJSON(value),
       label: "Uploaded Preset",
     };
   }
@@ -410,7 +410,7 @@ export function parsePresetUpload(source) {
   }
 
   return {
-    document: clone(value.document),
+    document: cloneJSON(value.document),
     label: safeUploadLabel(value.label),
   };
 }
@@ -428,11 +428,11 @@ export function createDownload({
     exportedAt: resolveDate(now).toISOString(),
     activePresetId: activePresetId === null ? null : requiredText(activePresetId) || null,
     label: exportLabel,
-    document: clone(document),
+    document: cloneJSON(document),
   };
   return {
     filename: safeFilename(exportLabel),
     json: `${JSON.stringify(envelope, null, 2)}\n`,
-    envelope: clone(envelope),
+    envelope: cloneJSON(envelope),
   };
 }

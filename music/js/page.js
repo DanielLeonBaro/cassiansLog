@@ -9,8 +9,7 @@ import {
   saveTracks,
 } from "./repository.js";
 import { createMusicPlayer } from "./player.js";
-
-const escapeHTML = (value) => String(value).replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
+import { escapeHTML } from "../../shared/js/text.js";
 
 export function initializeMusic() {
   const form = document.getElementById("track-form");

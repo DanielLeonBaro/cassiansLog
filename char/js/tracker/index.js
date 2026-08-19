@@ -5,7 +5,7 @@ import { normalizeDeathSaves, resetDeathSaves, toggleDeathSave, toggleStable } f
 import { getRestDetails } from "./rest.js";
 import { createNotesController } from "./notes.js";
 import { createTrackerState, normalizeCharacterFlag } from "./state.js";
-import { escapeAttribute, escapeHTML, setText, trackerUI as ui } from "./rendering.js";
+import { escapeHTML, sanitizeIdentifier, setText, trackerUI as ui } from "./rendering.js";
 import { applyV1CharacterSheetOrder, refreshCharacterSheetTabs } from "./layout.js";
 
 const character = window.character;
@@ -273,7 +273,7 @@ function loadTrackers() {
   container.innerHTML = trackers
     .map(
       (tracker) =>
-        `<div class="flex items-center gap-3 py-1"><input class="character-tracker peer h-5 w-9 cursor-pointer appearance-none rounded-full bg-stone-300 after:block after:h-4 after:w-4 after:translate-x-0.5 after:translate-y-0.5 after:rounded-full after:bg-white after:transition checked:bg-blood-500 checked:after:translate-x-[1.125rem]" type="checkbox" id="tracker-${escapeAttribute(tracker.id)}" data-tracker-id="${escapeAttribute(tracker.id)}"${tracker.active ? " checked" : ""}><label for="tracker-${escapeAttribute(tracker.id)}">${escapeHTML(tracker.name)}</label></div>`,
+        `<div class="flex items-center gap-3 py-1"><input class="character-tracker peer h-5 w-9 cursor-pointer appearance-none rounded-full bg-stone-300 after:block after:h-4 after:w-4 after:translate-x-0.5 after:translate-y-0.5 after:rounded-full after:bg-white after:transition checked:bg-blood-500 checked:after:translate-x-[1.125rem]" type="checkbox" id="tracker-${sanitizeIdentifier(tracker.id)}" data-tracker-id="${sanitizeIdentifier(tracker.id)}"${tracker.active ? " checked" : ""}><label for="tracker-${sanitizeIdentifier(tracker.id)}">${escapeHTML(tracker.name)}</label></div>`,
     )
     .join("");
 }
@@ -520,7 +520,7 @@ function itemFilterText({ item, source }) {
 }
 function renderEmptyFilterState(scope) {
   const filtering = hasActiveFilters(filterState[scope]);
-  return `<div class="rounded-2xl border border-dashed border-stone-300 bg-stone-50/60 px-5 py-10 text-center text-stone-500 dark:border-white/15 dark:bg-white/[.025] dark:text-stone-400"><i class="bi ${filtering ? "bi-search" : "bi-journal-plus"} mb-2 block text-2xl text-blood-500"></i><strong class="block text-stone-700 dark:text-stone-200">${filtering ? "No matching options" : "No options added yet"}</strong><span class="mt-1 block text-sm">${filtering ? "Clear a filter or shorten the search." : "Add an action, spell, feature, or resource in the character editor."}</span>${filtering ? `<button type="button" class="mt-4 rounded-xl border border-stone-300 px-3 py-2 text-xs font-bold hover:border-blood-500 hover:text-blood-500 dark:border-white/15" data-tracker-action="reset-filters" data-scope="${escapeAttribute(scope)}">Clear filters</button>` : ""}</div>`;
+  return `<div class="rounded-2xl border border-dashed border-stone-300 bg-stone-50/60 px-5 py-10 text-center text-stone-500 dark:border-white/15 dark:bg-white/[.025] dark:text-stone-400"><i class="bi ${filtering ? "bi-search" : "bi-journal-plus"} mb-2 block text-2xl text-blood-500"></i><strong class="block text-stone-700 dark:text-stone-200">${filtering ? "No matching options" : "No options added yet"}</strong><span class="mt-1 block text-sm">${filtering ? "Clear a filter or shorten the search." : "Add an action, spell, feature, or resource in the character editor."}</span>${filtering ? `<button type="button" class="mt-4 rounded-xl border border-stone-300 px-3 py-2 text-xs font-bold hover:border-blood-500 hover:text-blood-500 dark:border-white/15" data-tracker-action="reset-filters" data-scope="${sanitizeIdentifier(scope)}">Clear filters</button>` : ""}</div>`;
 }
 function loadResources() {
   const container = document.getElementById("resources-container");
@@ -550,7 +550,7 @@ function loadResources() {
 function renderResourceCard(item) {
   let usage = "";
   if (item.uses) {
-    usage = `<div class="inline-flex gap-2" role="group"><button type="button" class="${ui.iconButton}" aria-label="Decrease ${escapeAttribute(item.name)}" data-tracker-action="resource" data-id="${escapeAttribute(item.id)}" data-delta="-1">−</button><button type="button" class="${ui.iconButton}" aria-label="Increase ${escapeAttribute(item.name)}" data-tracker-action="resource" data-id="${escapeAttribute(item.id)}" data-delta="1">+</button></div><div class="flex gap-2"><span class="${ui.badge} ${ui.badgeSuccess}">${item.uses.current}/${item.uses.max}</span><span class="${ui.badge} ${ui.badgeWarning}">${formatReset(item.uses.reset)}</span></div>`;
+    usage = `<div class="inline-flex gap-2" role="group"><button type="button" class="${ui.iconButton}" aria-label="Decrease ${sanitizeIdentifier(item.name)}" data-tracker-action="resource" data-id="${sanitizeIdentifier(item.id)}" data-delta="-1">−</button><button type="button" class="${ui.iconButton}" aria-label="Increase ${sanitizeIdentifier(item.name)}" data-tracker-action="resource" data-id="${sanitizeIdentifier(item.id)}" data-delta="1">+</button></div><div class="flex gap-2"><span class="${ui.badge} ${ui.badgeSuccess}">${item.uses.current}/${item.uses.max}</span><span class="${ui.badge} ${ui.badgeWarning}">${formatReset(item.uses.reset)}</span></div>`;
   } else if (item.slotLevel) {
     usage = `<span class="${ui.badge} ${ui.badgePrimary}">Uses level ${item.slotLevel} slot</span>`;
   } else {
@@ -596,7 +596,7 @@ function loadSpellcasting() {
 }
 function renderSpellSlot(slot, profile) {
   const profileName = profile?.name || "spellcasting";
-  return `<div class="rounded-xl border border-stone-200 bg-stone-50/70 dark:border-white/10 dark:bg-white/[.035]"><div class="flex items-center justify-between gap-3 border-b border-stone-200 px-4 py-3 dark:border-white/10"><strong>Level ${slot.level}</strong><span class="${ui.badge} ${ui.badgeDanger}">Max: ${slot.max}</span></div><div class="p-4"><div class="flex items-center justify-between gap-3"><div class="inline-flex gap-2"><button type="button" class="${ui.iconButton}" aria-label="Decrease ${escapeAttribute(profileName)} level ${slot.level} spell slots" data-tracker-action="spell-slot" data-id="${escapeAttribute(slot.id)}" data-delta="-1">−</button><button type="button" class="${ui.iconButton}" aria-label="Increase ${escapeAttribute(profileName)} level ${slot.level} spell slots" data-tracker-action="spell-slot" data-id="${escapeAttribute(slot.id)}" data-delta="1">+</button></div><span class="${ui.badge} ${ui.badgeWarning}">${slot.current}/${slot.max}</span><span class="${ui.badge} ${ui.badgeSecondary}">${formatReset(slot.reset || "long")}</span></div></div></div>`;
+  return `<div class="rounded-xl border border-stone-200 bg-stone-50/70 dark:border-white/10 dark:bg-white/[.035]"><div class="flex items-center justify-between gap-3 border-b border-stone-200 px-4 py-3 dark:border-white/10"><strong>Level ${slot.level}</strong><span class="${ui.badge} ${ui.badgeDanger}">Max: ${slot.max}</span></div><div class="p-4"><div class="flex items-center justify-between gap-3"><div class="inline-flex gap-2"><button type="button" class="${ui.iconButton}" aria-label="Decrease ${sanitizeIdentifier(profileName)} level ${slot.level} spell slots" data-tracker-action="spell-slot" data-id="${sanitizeIdentifier(slot.id)}" data-delta="-1">−</button><button type="button" class="${ui.iconButton}" aria-label="Increase ${sanitizeIdentifier(profileName)} level ${slot.level} spell slots" data-tracker-action="spell-slot" data-id="${sanitizeIdentifier(slot.id)}" data-delta="1">+</button></div><span class="${ui.badge} ${ui.badgeWarning}">${slot.current}/${slot.max}</span><span class="${ui.badge} ${ui.badgeSecondary}">${formatReset(slot.reset || "long")}</span></div></div></div>`;
 }
 function changeSpellSlot(id, delta) {
   const slot = findSpellSlot(id);
@@ -676,7 +676,7 @@ function renderPreparedSpell(spell, profile, atLimit) {
           : atLimit
             ? "Limit reached"
             : "Not prepared";
-  return `<div class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="font-bold">${escapeHTML(spell.name || "Unnamed spell")}</div><div class="mt-1 flex flex-wrap gap-2"><span class="${ui.badge} ${ui.badgeSecondary}">${formatSpellLevel(spell.level)}</span>${spell.category ? `<span class="text-xs text-stone-500 dark:text-stone-400">${escapeHTML(spell.category)}</span>` : ""}</div></div><button type="button" role="switch" aria-checked="${prepared}" ${disabled ? "disabled" : ""} data-tracker-action="prepared-spell" data-id="${escapeAttribute(spell.id)}" class="inline-flex shrink-0 items-center gap-2 self-start rounded-full border px-3 py-2 text-xs font-bold transition sm:self-auto ${prepared ? "border-emerald-600 bg-emerald-600 text-white" : "border-stone-300 bg-stone-100 text-stone-600 hover:border-blood-500 dark:border-white/15 dark:bg-white/10 dark:text-stone-300"} disabled:cursor-not-allowed disabled:opacity-60"><span class="relative h-5 w-9 rounded-full bg-black/20"><span class="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition ${prepared ? "left-[18px]" : "left-0.5"}"></span></span>${status}</button></div>`;
+  return `<div class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="font-bold">${escapeHTML(spell.name || "Unnamed spell")}</div><div class="mt-1 flex flex-wrap gap-2"><span class="${ui.badge} ${ui.badgeSecondary}">${formatSpellLevel(spell.level)}</span>${spell.category ? `<span class="text-xs text-stone-500 dark:text-stone-400">${escapeHTML(spell.category)}</span>` : ""}</div></div><button type="button" role="switch" aria-checked="${prepared}" ${disabled ? "disabled" : ""} data-tracker-action="prepared-spell" data-id="${sanitizeIdentifier(spell.id)}" class="inline-flex shrink-0 items-center gap-2 self-start rounded-full border px-3 py-2 text-xs font-bold transition sm:self-auto ${prepared ? "border-emerald-600 bg-emerald-600 text-white" : "border-stone-300 bg-stone-100 text-stone-600 hover:border-blood-500 dark:border-white/15 dark:bg-white/10 dark:text-stone-300"} disabled:cursor-not-allowed disabled:opacity-60"><span class="relative h-5 w-9 rounded-full bg-black/20"><span class="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition ${prepared ? "left-[18px]" : "left-0.5"}"></span></span>${status}</button></div>`;
 }
 function togglePreparedSpell(id) {
   const spell = (character.spells || []).find((item) => item.id === id);

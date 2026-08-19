@@ -1,4 +1,4 @@
-import { clone } from "../../shared/js/text.js";
+import { cloneJSON } from "../../shared/js/text.js";
 import { readCloudJSON, writeCloudJSON } from "../../shared/js/cloud-store.js";
 import {
   addCombatRound,
@@ -125,9 +125,9 @@ export function initializeCombatLoot() {
     ? recoveredDraft.baselineDocument?.tables
       ? recoveredWasDirty
         ? prepareWorkspaceDocument(recoveredDraft.baselineDocument)
-        : clone(workspace)
+        : cloneJSON(workspace)
       : null
-    : clone(workspace);
+    : cloneJSON(workspace);
   let editorTarget = null;
   let confirmationAction = null;
   let draggedRow = null;
@@ -370,7 +370,7 @@ export function initializeCombatLoot() {
   function startNewPreset() {
     workspace = createCombatLootDocument();
     activePresetId = null;
-    baselineDocument = clone(workspace);
+    baselineDocument = cloneJSON(workspace);
     elements.presetSelect.value = "";
     const draftSaved = persistDraft();
     render();
@@ -392,7 +392,7 @@ export function initializeCombatLoot() {
     if (!preset) return showToast("Choose a saved preset first.");
     workspace = prepareWorkspaceDocument(preset.document);
     activePresetId = preset.id;
-    baselineDocument = clone(workspace);
+    baselineDocument = cloneJSON(workspace);
     const draftSaved = persistDraft();
     renderPresetOptions(preset.id);
     render();
@@ -466,7 +466,7 @@ export function initializeCombatLoot() {
         showToast("Preset remains in this browser, but the cloud save failed.");
       });
     activePresetId = result.preset.id;
-    baselineDocument = clone(workspace);
+    baselineDocument = cloneJSON(workspace);
     const draftSaved = persistDraft();
     renderPresetOptions(activePresetId);
     render();

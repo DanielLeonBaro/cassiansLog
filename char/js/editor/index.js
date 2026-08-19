@@ -6,6 +6,10 @@ import {
   saveCharacterSheetStyleOverride,
 } from "../../../shared/js/settings.js";
 import { escapeAttribute, escapeHTML } from "../../../shared/js/text.js";
+import {
+  CHARACTERS_STORAGE_KEY,
+  characterStateStorageKey,
+} from "../storage-keys.js";
 import { subscribeCharacterEditorExtensions } from "./extensions.js";
 import {
   V1_SECTION_DEFINITIONS,
@@ -59,7 +63,6 @@ const collectionKnownFields = {
 };
 
 export function initializeCharacterEditor({ character, normalizeSpellcastingData, refreshUI }) {
-  const STORAGE_KEY = "dnd-characters";
   const params = new URLSearchParams(location.search);
   const mountedExtensions = new Map();
   const expandedItems = new Map();
@@ -577,11 +580,11 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     window.character = clone(draft);
     Object.keys(character).forEach((key) => delete character[key]);
     Object.assign(character, window.character);
-    const characters = readJSON(STORAGE_KEY, {});
+    const characters = readJSON(CHARACTERS_STORAGE_KEY, {});
     if (oldId !== character.id) delete characters[oldId];
     characters[character.id] = clone(character);
-    writeJSON(STORAGE_KEY, characters);
-    removeStored(`dnd-${oldId}-state`);
+    writeJSON(CHARACTERS_STORAGE_KEY, characters);
+    removeStored(characterStateStorageKey(oldId));
     baseline = clone(draft);
     controller.forceClose("save");
     refreshUI();
