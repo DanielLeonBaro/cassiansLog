@@ -9,7 +9,8 @@ const MAX_JSON_BYTES = 1_800_000;
 const ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,127}$/i;
 const CHARACTER_SHEET_STYLES = new Set(["v1", "v2"]);
 const DEFAULT_SECTIONS = {
-  characters: true, "combat-loot": true, compendium: true, music: true, wiki: false,
+  characters: true, "combat-loot": true, "public-initiative": true,
+  compendium: true, music: true, wiki: false,
   "character-overview": true, "character-stats": true, "hit-points": true,
   combat: true, spellcasting: true, "prepared-spells": true,
   "all-possibilities": true, inventory: true, notes: true,
@@ -345,8 +346,12 @@ function normalizeSettings(body) {
   ))) return null;
   const sections = {};
   for (const key of Object.keys(DEFAULT_SECTIONS)) {
-    if (typeof body.sections[key] !== "boolean") return null;
-    sections[key] = body.sections[key];
+    if (key === "public-initiative" && body.sections[key] === undefined) {
+      sections[key] = DEFAULT_SECTIONS[key];
+    } else {
+      if (typeof body.sections[key] !== "boolean") return null;
+      sections[key] = body.sections[key];
+    }
   }
   return {
     sections,

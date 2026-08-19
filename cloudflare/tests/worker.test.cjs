@@ -147,6 +147,7 @@ const { pathToFileURL } = require("node:url");
   const adminBody = await admin.json();
   assert.equal(adminBody.settings.openWrites, false);
   assert.equal(adminBody.settings.sections.characters, false);
+  assert.equal(adminBody.settings.sections["public-initiative"], true, "Legacy settings should enable the new navigation by default.");
   assert.equal(adminBody.settings.characterSheetStyle, "v1", "Legacy stored settings should load as Style v1.");
   assert.deepEqual(adminBody.settings.characterSheetStyleOverrides, {});
   assert.equal(adminBody.characters[0].name, "Cassian");
@@ -215,6 +216,16 @@ const { pathToFileURL } = require("node:url");
       assert.equal(liveSettings.sections[key], enabled, `${key} should persist as ${enabled}`);
     }
   }
+
+  const legacySections = { ...liveSettings.sections };
+  delete legacySections["public-initiative"];
+  const legacySettingsWrite = await handleRequest(new Request("https://example.test/api/admin/settings", {
+    method: "PUT",
+    headers: adminHeaders,
+    body: JSON.stringify({ ...liveSettings, sections: legacySections }),
+  }), settingsEnv);
+  assert.equal(legacySettingsWrite.status, 200, "The previous Admin client should remain compatible.");
+  assert.equal(liveSettings.sections["public-initiative"], true);
 
   for (const openWrites of [false, true]) {
     const response = await handleRequest(new Request("https://example.test/api/admin/settings", {
@@ -415,6 +426,11 @@ const { pathToFileURL } = require("node:url");
     fs.readFileSync("cloudflare/migrations/0004_music_library.sql", "utf8"),
     /CREATE TABLE IF NOT EXISTS music_library/,
     "Music D1 storage must have an additive migration.",
+  );
+  assert.match(
+    fs.readFileSync("cloudflare/migrations/0005_public_initiative_setting.sql", "utf8"),
+    /json_set[\s\S]*public-initiative[\s\S]*json\('true'\)/,
+    "Public Initiative must have an additive settings migration.",
   );
   assert.match(
     fs.readFileSync("wrangler.jsonc", "utf8"),

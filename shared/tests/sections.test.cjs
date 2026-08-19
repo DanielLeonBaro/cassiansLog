@@ -15,11 +15,12 @@ sectionNames.forEach((name) => {
   );
 });
 assert.equal(config.sections["combat-loot"], true, "Combat & Loot navigation should be enabled.");
+assert.equal(config.sections["public-initiative"], true, "Public Initiative navigation should be enabled.");
 assert.equal(config.sections.combat, true, "Character combat controls should keep their independent setting.");
 assert.equal(config.sections.wiki, false, "The existing Wiki navigation setting should remain disabled.");
 
 const siteHeader = fs.readFileSync("shared/js/site-header.js", "utf8");
-const siteSections = ["characters", "combat-loot", "compendium", "music", "wiki"];
+const siteSections = ["characters", "combat-loot", "compendium", "music", "public-initiative", "wiki"];
 for (const name of siteSections) {
   assert.ok(siteHeader.includes(`id: "${name}"`), `${name} should be defined in the shared site header.`);
 }
@@ -33,7 +34,21 @@ assert.match(
   /id: "music", href: "music\/", icon: "bi-music-note-beamed", label: "Music"/,
   "Music should use its configured route, Bootstrap icon, and label.",
 );
+assert.match(
+  siteHeader,
+  /id: "public-initiative", href: "public-initiative\/", icon: "bi-list-ol", label: "Public Initiative"/,
+  "Public Initiative should use its configured route, Bootstrap icon, and label.",
+);
 assert.match(siteHeader, /data-section-link="\$\{page\.id\}"/, "Site links should expose their section IDs.");
+assert.match(siteHeader, /id="site-pages-menu-button"/, "Site navigation should use a Pages dropdown.");
+assert.match(siteHeader, /sectionConfigReady\.then\(syncAvailability\)/, "The Pages dropdown should react to runtime section settings.");
+assert.doesNotMatch(
+  siteHeader,
+  /tracker && page\.id === "characters"/,
+  "Character sheets should keep the Characters index inside the Pages dropdown.",
+);
+assert.doesNotMatch(siteHeader, /const home = tracker/, "Every page should use the same Cassian's Log home link.");
+assert.match(siteHeader, /aria-label="Cassian's Log home"/, "Character sheets should show the Cassian's Log brand link.");
 
 const trackerHeader = fs.readFileSync("char/js/tracker/header.js", "utf8");
 for (const name of sectionNames.filter((name) => !siteSections.includes(name))) {

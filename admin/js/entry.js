@@ -10,6 +10,7 @@ const localMode = isLocalRuntimeHost();
 const sectionLabels = {
   characters: "Characters navigation",
   "combat-loot": "Combat & Loot navigation",
+  "public-initiative": "Public Initiative navigation",
   compendium: "Compendium navigation",
   music: "Music navigation",
   wiki: "Wiki navigation",
