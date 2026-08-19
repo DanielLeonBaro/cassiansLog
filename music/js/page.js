@@ -1,4 +1,4 @@
-import { createTrack, formatTag, normalizeTags } from "./model.js";
+import { createTrack, formatTag, normalizeTags, updateTrack } from "./model.js";
 import {
   createMusicLibrary,
   loadCloudMusicLibrary,
@@ -21,6 +21,9 @@ export function initializeMusic() {
   const tagInput = document.getElementById("tag-input");
   const tagBadges = document.getElementById("tag-entry-badges");
   const tagSuggestions = document.getElementById("tag-suggestions");
+  const formTitle = document.getElementById("track-form-title");
+  const formSubmit = document.getElementById("track-form-submit");
+  const formCancel = document.getElementById("track-form-cancel");
   const notice = document.getElementById("music-notice");
   const settingsForm = document.getElementById("fade-settings");
   const player = createMusicPlayer(document.getElementById("player-frame"), document.getElementById("player-status"));
@@ -28,6 +31,7 @@ export function initializeMusic() {
   let settings = loadSettings();
   let activeTag = "";
   let pendingTags = [];
+  let editingTrackId = "";
   let cloudWrite = Promise.resolve();
   let cloudReady = false;
 
@@ -105,6 +109,35 @@ export function initializeMusic() {
     renderTagEntry();
   }
 
+  function setTrackFormMode(track = null) {
+    editingTrackId = track?.id || "";
+    formTitle.textContent = track ? "Edit track" : "Add a new track";
+    formSubmit.innerHTML = track
+      ? '<i class="bi bi-check-lg"></i><span>Save changes</span>'
+      : '<i class="bi bi-plus-lg"></i><span>Save track</span>';
+    formCancel.classList.toggle("hidden", !track);
+  }
+
+  function resetTrackForm() {
+    form.reset();
+    pendingTags = [];
+    setTrackFormMode();
+    renderTagEntry();
+  }
+
+  function editTrack(trackId) {
+    const track = tracks.find((candidate) => candidate.id === trackId);
+    if (!track) return;
+    form.elements.title.value = track.title;
+    form.elements.url.value = track.url;
+    pendingTags = normalizeTags(track.tags);
+    tagInput.value = "";
+    setTrackFormMode(track);
+    renderTagEntry();
+    form.scrollIntoView({ behavior: "smooth", block: "start" });
+    form.elements.title.focus({ preventScroll: true });
+  }
+
   function render() {
     const query = search.value.trim().toLowerCase();
     const tags = allTags();
@@ -112,7 +145,7 @@ export function initializeMusic() {
     const visible = tracks.filter((track) => (!activeTag || track.tags.includes(activeTag)) && (!query || `${track.title} ${track.tags.join(" ")}`.toLowerCase().includes(query)));
     empty.classList.toggle("hidden", visible.length > 0);
     list.innerHTML = visible.map((track) => `<article class="group rounded-2xl border border-stone-300/80 bg-white/60 p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
-      <div class="flex items-start justify-between gap-3"><div class="min-w-0"><p class="text-xs font-bold uppercase tracking-wide text-blood-500">${track.provider}</p><h3 class="truncate font-display text-xl font-bold">${escapeHTML(track.title)}</h3></div><button type="button" data-remove="${track.id}" ${cloudReady ? "" : "disabled"} class="rounded-lg p-2 text-stone-400 hover:bg-red-100 hover:text-red-600 disabled:cursor-wait disabled:opacity-40 dark:hover:bg-red-950" aria-label="Remove ${escapeHTML(track.title)}"><i class="bi bi-trash-fill"></i></button></div>
+      <div class="flex items-start justify-between gap-3"><div class="min-w-0"><p class="text-xs font-bold uppercase tracking-wide text-blood-500">${track.provider}</p><h3 class="truncate font-display text-xl font-bold">${escapeHTML(track.title)}</h3></div><div class="flex shrink-0 gap-1"><button type="button" data-edit="${track.id}" ${cloudReady ? "" : "disabled"} class="rounded-lg p-2 text-stone-400 hover:bg-sky-100 hover:text-sky-600 disabled:cursor-wait disabled:opacity-40 dark:hover:bg-sky-950" aria-label="Edit ${escapeHTML(track.title)}"><i class="bi bi-pencil-fill"></i></button><button type="button" data-remove="${track.id}" ${cloudReady ? "" : "disabled"} class="rounded-lg p-2 text-stone-400 hover:bg-red-100 hover:text-red-600 disabled:cursor-wait disabled:opacity-40 dark:hover:bg-red-950" aria-label="Remove ${escapeHTML(track.title)}"><i class="bi bi-trash-fill"></i></button></div></div>
       <div class="mb-5 mt-3 flex flex-wrap gap-1.5">${track.tags.map((tag) => `<span class="rounded-full bg-stone-200 px-2 py-1 text-xs font-bold dark:bg-white/10">${escapeHTML(formatTag(tag))}</span>`).join("") || '<span class="text-xs text-stone-400">No tags</span>'}</div>
       <button type="button" data-play="${track.id}" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blood-500 px-4 py-2.5 font-bold text-white hover:bg-blood-600"><i class="bi bi-play-fill"></i>Play here</button>
     </article>`).join("");
@@ -123,13 +156,15 @@ export function initializeMusic() {
     try {
       if (tagInput.value.trim()) commitTag();
       const data = new FormData(form);
-      tracks.unshift(createTrack({ title: data.get("title"), url: data.get("url"), tags: pendingTags }));
+      const changes = { title: data.get("title"), url: data.get("url"), tags: pendingTags };
+      const editingIndex = tracks.findIndex((track) => track.id === editingTrackId);
+      if (editingIndex >= 0) tracks[editingIndex] = updateTrack(tracks[editingIndex], changes);
+      else tracks.unshift(createTrack(changes));
       cacheLibrary();
-      form.reset();
-      pendingTags = [];
-      renderTagEntry();
+      const successMessage = editingIndex >= 0 ? "Track updated in D1." : "Track saved to D1.";
+      resetTrackForm();
       render();
-      persistLibrary("Track saved to D1.");
+      persistLibrary(successMessage);
     } catch (error) {
       showNotice(error.message, true);
     }
@@ -166,6 +201,7 @@ export function initializeMusic() {
     commitTag(button.dataset.suggestTag);
     tagInput.focus();
   });
+  formCancel.addEventListener("click", resetTrackForm);
   settingsForm.addEventListener("submit", (event) => {
     event.preventDefault();
     settings = { fadeIn: Math.min(30, Math.max(0, Number(settingsForm.elements.fadeIn.value))), fadeOut: Math.min(30, Math.max(0, Number(settingsForm.elements.fadeOut.value))) };
@@ -181,9 +217,12 @@ export function initializeMusic() {
   });
   list.addEventListener("click", (event) => {
     const playButton = event.target.closest("[data-play]");
+    const editButton = event.target.closest("[data-edit]");
     const removeButton = event.target.closest("[data-remove]");
     if (playButton) player.play(tracks.find((track) => track.id === playButton.dataset.play), settings);
+    if (editButton) editTrack(editButton.dataset.edit);
     if (removeButton && confirm("Remove this track from your library?")) {
+      if (editingTrackId === removeButton.dataset.remove) resetTrackForm();
       tracks = tracks.filter((track) => track.id !== removeButton.dataset.remove);
       cacheLibrary();
       render();
@@ -192,6 +231,7 @@ export function initializeMusic() {
   });
   render();
   renderTagEntry();
+  setTrackFormMode();
   setEditingDisabled(true);
   showNotice("Loading Music library from D1…");
   restoreCloudLibrary().catch((error) => {

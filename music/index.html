@@ -44,7 +44,7 @@
       </section>
 
       <form id="track-form" class="rounded-2xl border border-stone-300/80 bg-white/60 p-5 shadow-card dark:border-white/10 dark:bg-white/5">
-        <h2 class="font-display text-2xl font-bold">Add a new track</h2>
+        <h2 id="track-form-title" class="font-display text-2xl font-bold">Add a new track</h2>
         <div class="mt-4 grid gap-4 lg:grid-cols-2">
           <label class="block"><span class="mb-1 block text-sm font-bold">Title</span><input name="title" required maxlength="120" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 outline-none focus:border-blood-500 dark:border-white/15 dark:bg-stone-900 dark:text-white" placeholder="The Ancient Ruins"></label>
           <label class="block"><span class="mb-1 block text-sm font-bold">YouTube or Spotify link</span><input name="url" type="url" required class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 outline-none focus:border-blood-500 dark:border-white/15 dark:bg-stone-900 dark:text-white" placeholder="https://..."></label>
@@ -58,7 +58,7 @@
           <div id="tag-suggestions" class="absolute z-20 mt-2 hidden w-full flex-wrap gap-2 rounded-xl border border-stone-300 bg-parchment p-3 shadow-xl dark:border-white/15 dark:bg-stone-900" aria-label="Existing tag suggestions"></div>
           <span class="mt-1 block text-xs text-stone-500 dark:text-stone-400">Type a comma or press Enter to create a tag. Select a badge below to reuse an existing tag.</span>
         </div>
-        <button class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blood-500 px-4 py-2.5 font-bold text-white hover:bg-blood-600 sm:w-auto"><i class="bi bi-plus-lg"></i>Save track</button>
+        <div class="mt-5 flex flex-col gap-2 sm:flex-row"><button id="track-form-submit" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blood-500 px-4 py-2.5 font-bold text-white hover:bg-blood-600 sm:w-auto"><i class="bi bi-plus-lg"></i><span>Save track</span></button><button id="track-form-cancel" type="button" class="hidden rounded-xl border border-stone-400 px-4 py-2.5 font-bold transition hover:border-blood-500 hover:text-blood-500 dark:border-white/20">Cancel edit</button></div>
       </form>
     </div>
   </main>

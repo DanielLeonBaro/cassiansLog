@@ -384,13 +384,11 @@
     @apply border-blood-500 bg-blood-500/10;
   }
 
-  [data-character-sheet-style="v2"] #inspiration-toggle:hover,
   [data-character-sheet-style="v2"] [data-death-save="successes"]:hover,
   [data-character-sheet-style="v2"] #stable-toggle:hover {
     @apply border-blood-500 text-blood-500;
   }
 
-  [data-character-sheet-style="v2"] #inspiration-toggle[aria-checked="true"],
   [data-character-sheet-style="v2"] [data-death-save="successes"][aria-checked="true"],
   [data-character-sheet-style="v2"] #stable-toggle[aria-checked="true"] {
     @apply border-blood-500 bg-blood-500 text-white;

@@ -6,7 +6,7 @@ import { getRestDetails } from "./rest.js";
 import { createNotesController } from "./notes.js";
 import { createTrackerState, normalizeCharacterFlag } from "./state.js";
 import { escapeAttribute, escapeHTML, setText, trackerUI as ui } from "./rendering.js";
-import { refreshCharacterSheetTabs } from "./layout.js";
+import { applyV1CharacterSheetOrder, refreshCharacterSheetTabs } from "./layout.js";
 
 const character = window.character;
 character.inspiration = normalizeCharacterFlag(character.inspiration);
@@ -99,6 +99,7 @@ function refreshUI() {
   loadAbilities();
   loadInventory();
   notesController.render();
+  applyV1CharacterSheetOrder(character);
   refreshCharacterSheetTabs();
 }
 function loadCharacterFlags() {

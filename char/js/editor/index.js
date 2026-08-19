@@ -1,8 +1,18 @@
 import { createDialogController } from "../../../shared/js/dialog.js";
 import { readJSON, removeStored, writeJSON } from "../../../shared/js/storage.js";
 import { writeCloudJSON } from "../../../shared/js/cloud-store.js";
+import {
+  isLocalRuntimeHost,
+  saveCharacterSheetStyleOverride,
+} from "../../../shared/js/settings.js";
 import { escapeAttribute, escapeHTML } from "../../../shared/js/text.js";
 import { subscribeCharacterEditorExtensions } from "./extensions.js";
+import {
+  V1_SECTION_DEFINITIONS,
+  moveV1SectionBefore,
+  moveV1SectionBy,
+  normalizeV1SectionOrder,
+} from "../tracker/section-order.js";
 import {
   clone,
   createBlankCollectionItem,
@@ -25,7 +35,7 @@ const sectionTopLevelKeys = new Set([
   "portrait", "name", "class", "subclass", "race", "level", "experience", "background", "alignment", "gender",
   "hp", "ac", "initiative", "proficiency", "walk", "fly", "passivePerception", "darkvision", "stats",
   "actions", "trackers", "spellcasting", "spells", "features", "resources", "inventory", "currency",
-  "id", "bundledUpdate", "bundledUpdateVersions",
+  "id", "bundledUpdate", "bundledUpdateVersions", "v1SectionOrder",
 ]);
 
 const labels = {
@@ -56,6 +66,9 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
   let editing = false;
   let draft = null;
   let baseline = null;
+  let baselineStyle = "v1";
+  let draftStyle = "v1";
+  let draggedV1Section = null;
   let activeSection = "basics";
   let controller;
 
@@ -202,11 +215,35 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     return `<div class="space-y-8">${renderNode(draft.inventory || [], ["inventory"], "inventory")}<section class="${classes.panel}"><h3 class="mb-4 font-display text-lg font-bold">Currency</h3>${renderNode(draft.currency || {}, ["currency"], "currency")}</section></div>`;
   }
 
+  function renderV1SectionOrder() {
+    if (draftStyle !== "v1") {
+      return '<div class="mt-4 rounded-xl border border-stone-300 bg-stone-100/70 p-4 text-sm text-stone-600 dark:border-white/15 dark:bg-white/5 dark:text-stone-300">Style v2 uses a fixed tabbed layout, so its sections cannot be rearranged.</div>';
+    }
+    const order = normalizeV1SectionOrder(draft.v1SectionOrder);
+    const definitions = new Map(V1_SECTION_DEFINITIONS.map((definition) => [definition.id, definition]));
+    return `<div class="mt-5">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div><h4 class="font-display font-bold">V1 section order</h4><p class="mt-1 text-sm text-stone-500 dark:text-stone-400">Drag sections into place or use the arrow buttons.</p></div>
+        <button type="button" data-v1-section-reset class="rounded-xl border border-stone-400 px-3 py-2 text-sm font-bold transition hover:border-blood-500 hover:text-blood-500 dark:border-white/20"><i class="bi bi-arrow-counterclockwise mr-1"></i>Reset</button>
+      </div>
+      <div class="mt-4 space-y-2" data-v1-section-list>${order.map((id, index) => {
+        const definition = definitions.get(id);
+        return `<div data-v1-section-row="${escapeAttribute(id)}" class="flex items-center gap-2 rounded-xl border border-stone-300 bg-white/70 p-2 transition dark:border-white/15 dark:bg-white/5">
+          <button type="button" draggable="true" data-v1-section-drag="${escapeAttribute(id)}" class="inline-flex h-10 w-10 shrink-0 cursor-grab items-center justify-center rounded-lg border border-stone-300 text-stone-500 active:cursor-grabbing dark:border-white/15" aria-label="Drag ${escapeAttribute(definition.label)}" title="Drag section"><i class="bi bi-grip-vertical"></i></button>
+          <strong class="min-w-0 grow">${escapeHTML(definition.label)}</strong>
+          <button type="button" data-v1-section-move="${escapeAttribute(id)}" data-delta="-1" ${index === 0 ? "disabled" : ""} class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-stone-300 text-stone-500 transition hover:border-blood-500 hover:text-blood-500 disabled:cursor-not-allowed disabled:opacity-35 dark:border-white/15" aria-label="Move ${escapeAttribute(definition.label)} up"><i class="bi bi-arrow-up"></i></button>
+          <button type="button" data-v1-section-move="${escapeAttribute(id)}" data-delta="1" ${index === order.length - 1 ? "disabled" : ""} class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-stone-300 text-stone-500 transition hover:border-blood-500 hover:text-blood-500 disabled:cursor-not-allowed disabled:opacity-35 dark:border-white/15" aria-label="Move ${escapeAttribute(definition.label)} down"><i class="bi bi-arrow-down"></i></button>
+        </div>`;
+      }).join("")}</div>
+    </div>`;
+  }
+
   function renderAdvanced() {
     const metadataKeys = ["bundledUpdate", "bundledUpdateVersions"].filter((key) => draft[key] !== undefined);
     const customKeys = Object.keys(draft).filter((key) => !sectionTopLevelKeys.has(key));
     return `<div class="space-y-6">
       <div class="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-stone-700 dark:text-stone-200"><strong class="block">Advanced character data</strong><span class="mt-1 block">Technical IDs are read-only. Custom fields remain editable so homebrew data is never discarded.</span></div>
+      <section class="${classes.panel}"><h3 class="font-display text-lg font-bold">Character tracker layout</h3><p class="mt-1 text-sm text-stone-500 dark:text-stone-400">This choice applies only to ${escapeHTML(draft.name || "this character")}.</p><label class="mt-4 block"><span class="mb-1 block text-xs font-bold text-stone-500 dark:text-stone-400">Style</span><select id="editor-character-sheet-style" class="${classes.field}"><option value="v1" ${draftStyle === "v1" ? "selected" : ""}>Style v1</option><option value="v2" ${draftStyle === "v2" ? "selected" : ""}>Style v2</option></select></label>${renderV1SectionOrder()}</section>
       <section class="${classes.panel}"><h3 class="mb-4 font-display text-lg font-bold">Character ID</h3>${renderPrimitive(draft.id, ["id"], "id")}</section>
       ${metadataKeys.length ? `<section class="${classes.panel}"><h3 class="mb-4 font-display text-lg font-bold">System metadata</h3><div class="space-y-4">${metadataKeys.map((key) => renderPrimitive(JSON.stringify(draft[key], null, 2), [key], key, { readOnly: true })).join("")}</div></section>` : ""}
       <section class="${classes.panel}"><h3 class="mb-1 font-display text-lg font-bold">Custom fields</h3><p class="mb-4 text-sm text-stone-500 dark:text-stone-400">Fields outside the standard character schema appear here.</p>${customKeys.length ? `<div class="space-y-4">${customKeys.map((key) => renderNode(draft[key], [key], key)).join("")}</div>` : '<p class="rounded-xl border border-dashed border-stone-300 px-4 py-6 text-center text-sm text-stone-500 dark:border-white/15">No custom fields on this character.</p>'}</section>
@@ -315,7 +352,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
         : document.getElementById("editor-mobile-section"),
       returnFocus: toggle,
       beforeClose() {
-        if (!draftsDiffer(baseline, draft)) return true;
+        if (!draftsDiffer(baseline, draft) && baselineStyle === draftStyle) return true;
         return confirm("Discard your unsaved character changes?");
       },
       onClose() {
@@ -324,6 +361,9 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
         document.getElementById("character-portrait")?.classList.remove("cursor-pointer", "ring-4", "ring-blood-500");
         draft = null;
         baseline = null;
+        baselineStyle = "v1";
+        draftStyle = "v1";
+        draggedV1Section = null;
       },
     });
 
@@ -335,8 +375,17 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     document.getElementById("editor-fields").addEventListener("click", handleEditorClick);
     document.getElementById("editor-fields").addEventListener("change", (event) => {
       if (event.target.id === "editor-mobile-section") activateSection(event.target.value);
+      if (event.target.id === "editor-character-sheet-style") {
+        draftStyle = event.target.value === "v2" ? "v2" : "v1";
+        renderEditorFields();
+      }
     });
     document.getElementById("editor-fields").addEventListener("keydown", handleSectionKeydown);
+    document.getElementById("editor-fields").addEventListener("dragstart", handleV1SectionDragStart);
+    document.getElementById("editor-fields").addEventListener("dragover", handleV1SectionDragOver);
+    document.getElementById("editor-fields").addEventListener("dragleave", handleV1SectionDragLeave);
+    document.getElementById("editor-fields").addEventListener("drop", handleV1SectionDrop);
+    document.getElementById("editor-fields").addEventListener("dragend", clearV1SectionDragState);
     subscribeCharacterEditorExtensions((extension) => {
       if (mountedExtensions.has(extension.id)) return;
       mountedExtensions.set(extension.id, extension);
@@ -355,6 +404,8 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     editing = true;
     baseline = clone(window.character);
     draft = clone(window.character);
+    baselineStyle = document.documentElement.dataset.characterSheetStyle === "v2" ? "v2" : "v1";
+    draftStyle = baselineStyle;
     activeSection = "basics";
     expandedItems.clear();
     document.getElementById("editor-title").textContent = params.get("new") === "1" ? "Finish character setup" : "Edit character sheet";
@@ -392,6 +443,21 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     }
     if (event.target.closest("[data-editor-portrait]")) {
       choosePortrait();
+      return;
+    }
+    const sectionMove = event.target.closest("[data-v1-section-move]");
+    if (sectionMove && draftStyle === "v1") {
+      draft.v1SectionOrder = moveV1SectionBy(
+        draft.v1SectionOrder,
+        sectionMove.dataset.v1SectionMove,
+        sectionMove.dataset.delta,
+      );
+      renderEditorFields();
+      return;
+    }
+    if (event.target.closest("[data-v1-section-reset]") && draftStyle === "v1") {
+      delete draft.v1SectionOrder;
+      renderEditorFields();
       return;
     }
     const add = event.target.closest("[data-add]");
@@ -432,6 +498,46 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     renderEditorFields();
   }
 
+  function clearV1SectionDragState() {
+    draggedV1Section = null;
+    document.querySelectorAll("[data-v1-section-row]").forEach((row) => {
+      row.classList.remove("outline", "outline-2", "outline-blood-500");
+    });
+  }
+
+  function handleV1SectionDragStart(event) {
+    const handle = event.target.closest("[data-v1-section-drag]");
+    if (!handle || draftStyle !== "v1") return;
+    draggedV1Section = handle.dataset.v1SectionDrag;
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", draggedV1Section);
+  }
+
+  function handleV1SectionDragOver(event) {
+    const row = event.target.closest("[data-v1-section-row]");
+    if (!row || !draggedV1Section || draftStyle !== "v1") return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    row.classList.add("outline", "outline-2", "outline-blood-500");
+  }
+
+  function handleV1SectionDragLeave(event) {
+    event.target.closest("[data-v1-section-row]")?.classList.remove("outline", "outline-2", "outline-blood-500");
+  }
+
+  function handleV1SectionDrop(event) {
+    const row = event.target.closest("[data-v1-section-row]");
+    if (!row || !draggedV1Section || draftStyle !== "v1") return;
+    event.preventDefault();
+    draft.v1SectionOrder = moveV1SectionBefore(
+      draft.v1SectionOrder,
+      draggedV1Section,
+      row.dataset.v1SectionRow,
+    );
+    clearV1SectionDragState();
+    renderEditorFields();
+  }
+
   function handleSectionKeydown(event) {
     const current = event.target.closest("[data-editor-section-button]");
     if (!current || !["ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
@@ -457,6 +563,8 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
   async function save() {
     if (!validateDraft()) return;
     const oldId = window.character.id;
+    const selectedStyle = draftStyle;
+    const styleChanged = baselineStyle !== selectedStyle;
     draft.name = draft.name.trim();
     if (typeof normalizeSpellcastingData === "function") normalizeSpellcastingData(draft);
     window.character = clone(draft);
@@ -481,7 +589,26 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
       }
     } catch (error) {
       console.error("Could not save character to D1:", error);
+      if (styleChanged && isLocalRuntimeHost()) {
+        try {
+          await saveCharacterSheetStyleOverride(character.id, selectedStyle);
+          window.location.reload();
+          return;
+        } catch (styleError) {
+          console.error("Could not save the local character sheet style:", styleError);
+        }
+      }
       alert("Changes remain saved in this browser, but could not be saved to the shared cloud database.");
+      return;
+    }
+    if (styleChanged) {
+      try {
+        await saveCharacterSheetStyleOverride(character.id, selectedStyle);
+        window.location.reload();
+      } catch (error) {
+        console.error("Could not save the character sheet style:", error);
+        alert("Character changes were saved, but the tracker style could not be updated.");
+      }
     }
   }
 

@@ -32,6 +32,7 @@ function loadCharacter(source) {
     console,
     readCloudJSON: async () => null,
     writeCloudJSON: async () => ({ ok: true }),
+    applyV1CharacterSheetOrder() {},
     refreshCharacterSheetTabs() {},
     localStorage: {
       getItem: (key) => storage.get(key) ?? null,

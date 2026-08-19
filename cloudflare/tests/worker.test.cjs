@@ -88,6 +88,13 @@ const { pathToFileURL } = require("node:url");
   }), env);
   assert.equal(deniedMusic.status, 401);
 
+  const deniedCharacterStyle = await handleRequest(new Request("https://example.test/api/characters/cassian/style", {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ style: "v2" }),
+  }), env);
+  assert.equal(deniedCharacterStyle.status, 401, "Player style changes should follow ordinary write protection.");
+
   const openInvalidWrite = await handleRequest(new Request("https://example.test/api/combat-loot/not-a-route", {
     method: "PUT",
     body: "{}",
@@ -268,6 +275,63 @@ const { pathToFileURL } = require("node:url");
     (await publicOverrideResponse.json()).characterSheetStyleOverrides,
     { cassian: "v2", ally: "v1" },
   );
+
+  async function savePlayerStyle(style, authorization = "") {
+    const headers = { "content-type": "application/json" };
+    if (authorization) headers.authorization = authorization;
+    return handleRequest(new Request("https://example.test/api/characters/cassian/style", {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({ style }),
+    }), settingsEnv);
+  }
+
+  let playerStyleResponse = await savePlayerStyle("v1");
+  assert.equal(playerStyleResponse.status, 200);
+  assert.equal((await playerStyleResponse.json()).style, "v1");
+  assert.equal(liveSettings.characterSheetStyleOverrides.cassian, "v1");
+
+  const adminStyleResponse = await handleRequest(new Request("https://example.test/api/admin/settings", {
+    method: "PUT",
+    headers: adminHeaders,
+    body: JSON.stringify({
+      ...liveSettings,
+      characterSheetStyleOverrides: { ...liveSettings.characterSheetStyleOverrides, cassian: "v2" },
+    }),
+  }), settingsEnv);
+  assert.equal(adminStyleResponse.status, 200);
+  assert.equal(liveSettings.characterSheetStyleOverrides.cassian, "v2");
+
+  playerStyleResponse = await savePlayerStyle("v1");
+  assert.equal(playerStyleResponse.status, 200);
+  const lastWriteSettings = await handleRequest(new Request("https://example.test/api/settings"), settingsEnv);
+  assert.equal(
+    (await lastWriteSettings.json()).characterSheetStyleOverrides.cassian,
+    "v1",
+    "The last player or Admin style save should win.",
+  );
+
+  await handleRequest(new Request("https://example.test/api/admin/settings", {
+    method: "PUT",
+    headers: adminHeaders,
+    body: JSON.stringify({ ...liveSettings, openWrites: false }),
+  }), settingsEnv);
+  assert.equal((await savePlayerStyle("v2")).status, 401);
+  assert.equal(
+    (await savePlayerStyle("v2", "Bearer correct horse battery staple")).status,
+    200,
+    "The ordinary write token should authorize a protected player style change.",
+  );
+  assert.equal(
+    (await savePlayerStyle("future", "Bearer correct horse battery staple")).status,
+    400,
+    "Unknown player-selected styles must be rejected.",
+  );
+  await handleRequest(new Request("https://example.test/api/admin/settings", {
+    method: "PUT",
+    headers: adminHeaders,
+    body: JSON.stringify({ ...liveSettings, openWrites: true }),
+  }), settingsEnv);
 
   const beforeInvalidStyle = JSON.stringify(liveSettings);
   const invalidStyle = await handleRequest(new Request("https://example.test/api/admin/settings", {

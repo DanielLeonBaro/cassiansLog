@@ -196,6 +196,17 @@ async function characterRoute(request, env, id, tail) {
     ).bind(id, JSON.stringify(body.value), now).run();
     return json({ ok: true, updatedAt: now });
   }
+  if (tail === "style" && request.method === "PUT") {
+    const body = await bodyJSON(request);
+    if (!CHARACTER_SHEET_STYLES.has(body?.style)) return error("Character sheet style must be v1 or v2.");
+    const settings = await loadSettings(env);
+    settings.characterSheetStyleOverrides = {
+      ...settings.characterSheetStyleOverrides,
+      [id]: body.style,
+    };
+    const saved = await saveSettings(env, settings);
+    return json({ ok: true, style: body.style, updatedAt: saved.updatedAt });
+  }
   return error("Method not allowed.", 405);
 }
 
@@ -361,6 +372,20 @@ function normalizeSettings(body) {
   };
 }
 
+async function saveSettings(env, settings) {
+  const stored = {
+    sections: settings.sections,
+    openWrites: settings.openWrites,
+    characterSheetStyle: settings.characterSheetStyle,
+    characterSheetStyleOverrides: settings.characterSheetStyleOverrides,
+  };
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    "INSERT INTO app_settings (id, settings_json, updated_at) VALUES ('default', ?, ?) ON CONFLICT(id) DO UPDATE SET settings_json = excluded.settings_json, updated_at = excluded.updated_at",
+  ).bind(JSON.stringify(stored), now).run();
+  return { ...stored, updatedAt: now };
+}
+
 async function adminRoute(request, env, parts) {
   if (!adminAuthorized(request, env)) return error("Admin password required.", 401);
   if (request.method === "GET" && parts.length === 0) {
@@ -384,11 +409,7 @@ async function adminRoute(request, env, parts) {
   if (request.method === "PUT" && parts[0] === "settings" && parts.length === 1) {
     const settings = normalizeSettings(await bodyJSON(request));
     if (!settings) return error("Invalid application settings.");
-    const now = new Date().toISOString();
-    await env.DB.prepare(
-      "INSERT INTO app_settings (id, settings_json, updated_at) VALUES ('default', ?, ?) ON CONFLICT(id) DO UPDATE SET settings_json = excluded.settings_json, updated_at = excluded.updated_at",
-    ).bind(JSON.stringify(settings), now).run();
-    return json({ ok: true, settings: { ...settings, updatedAt: now } });
+    return json({ ok: true, settings: await saveSettings(env, settings) });
   }
   if (request.method === "PUT" && parts[0] === "characters" && safeId(parts[1]) && parts.length === 2) {
     const body = await bodyJSON(request);

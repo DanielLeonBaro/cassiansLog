@@ -25,6 +25,12 @@ assert.match(editor, /Additional fields/);
 assert.match(editor, /Discard your unsaved character changes/);
 assert.match(editor, /Character name is required/);
 assert.match(editor, /createDialogController/);
+assert.match(editor, /id="editor-character-sheet-style"/, "Advanced should include a per-character V1\/V2 selector.");
+assert.match(editor, /data-v1-section-drag/, "V1 ordering should include drag handles.");
+assert.match(editor, /data-v1-section-move/, "V1 ordering should include accessible move buttons.");
+assert.match(editor, /data-v1-section-reset/, "V1 ordering should include Reset.");
+assert.match(editor, /Style v2 uses a fixed tabbed layout/, "V2 should explain why ordering is unavailable.");
+assert.match(editor, /saveCharacterSheetStyleOverride/, "Style changes should use shared persistence.");
 
 const dialog = fs.readFileSync("shared/js/dialog.js", "utf8");
 assert.match(dialog, /beforeClose/);

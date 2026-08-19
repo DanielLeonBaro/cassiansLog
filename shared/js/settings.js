@@ -1,3 +1,5 @@
+import { writeCloudJSON } from "./cloud-store.js";
+
 export const DEFAULT_CHARACTER_SHEET_STYLE = "v1";
 export const LOCAL_RUNTIME_SETTINGS_KEY = "cassianslog-runtime-settings";
 
@@ -105,3 +107,28 @@ async function remoteRuntimeSettings() {
 export const runtimeSettingsReady = isLocalRuntimeHost()
   ? localRuntimeSettings()
   : remoteRuntimeSettings();
+
+export async function saveCharacterSheetStyleOverride(characterId, style) {
+  if (!/^[a-z0-9][a-z0-9-]{0,127}$/i.test(characterId || "")) {
+    throw new TypeError("Character ID is invalid.");
+  }
+  if (!["v1", "v2"].includes(style)) {
+    throw new TypeError("Character sheet style must be v1 or v2.");
+  }
+  if (!isLocalRuntimeHost()) {
+    return writeCloudJSON(`api/characters/${encodeURIComponent(characterId)}/style`, { style });
+  }
+  const settings = await runtimeSettingsReady;
+  const latest = localSettings() || {};
+  const saved = persistLocalRuntimeSettings({
+    ...settings,
+    ...latest,
+    sections: { ...settings.sections, ...(latest.sections || {}) },
+    characterSheetStyleOverrides: {
+      ...settings.characterSheetStyleOverrides,
+      ...(latest.characterSheetStyleOverrides || {}),
+      [characterId]: style,
+    },
+  });
+  return { ok: true, style, updatedAt: saved.updatedAt };
+}

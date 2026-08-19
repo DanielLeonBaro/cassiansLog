@@ -1,4 +1,8 @@
 import { resolveCharacterSheetStyle } from "../../../shared/js/settings.js";
+import {
+  V1_SECTION_DEFINITIONS,
+  normalizeV1SectionOrder,
+} from "./section-order.js";
 
 const desktopQuery = window.matchMedia("(min-width: 1024px)");
 const tabDefinitions = [
@@ -19,17 +23,9 @@ const targetTabs = {
   inventoryAccordion: "inventory",
   notesSection: "notes",
 };
-const sectionElements = {
-  "character-overview": ["characterDescription"],
-  "character-stats": ["quickStatsCard", "combatAccordion"],
-  "hit-points": ["hpManager", "death-saves-section"],
-  combat: ["combatResources"],
-  spellcasting: ["spellcastingSection"],
-  "prepared-spells": ["preparedSpellsSection"],
-  "all-possibilities": ["allPossibilities"],
-  inventory: ["inventory-page"],
-  notes: ["notesSection"],
-};
+const sectionElements = Object.fromEntries(
+  V1_SECTION_DEFINITIONS.map(({ id, elementIds }) => [id, elementIds]),
+);
 
 let controller = null;
 
@@ -267,6 +263,20 @@ export function applyCharacterSheetLayout(settings = {}, characterId = "") {
   desktopQuery.addEventListener("change", renderActiveTab);
   refreshCharacterSheetTabs();
   return style;
+}
+
+export function applyV1CharacterSheetOrder(character = {}) {
+  if (document.documentElement.dataset.characterSheetStyle !== "v1") return false;
+  const container = document.getElementById("combat-page");
+  if (!container) return false;
+  const definitions = new Map(V1_SECTION_DEFINITIONS.map((definition) => [definition.id, definition]));
+  normalizeV1SectionOrder(character.v1SectionOrder).forEach((id) => {
+    definitions.get(id)?.elementIds.forEach((elementId) => {
+      const element = document.getElementById(elementId);
+      if (element) container.appendChild(element);
+    });
+  });
+  return true;
 }
 
 export function tabForScrollTarget(target) {

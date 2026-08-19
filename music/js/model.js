@@ -51,6 +51,11 @@ export function createTrack({ title, url, tags }, id = crypto.randomUUID()) {
   return { id, title: cleanTitle, url: media.url, tags: normalizeTags(tags), provider: media.provider, addedAt: new Date().toISOString() };
 }
 
+export function updateTrack(track, changes) {
+  const updated = createTrack(changes, track.id);
+  return { ...updated, addedAt: track.addedAt };
+}
+
 export function clampSeconds(value, fallback) {
   const number = Number(value);
   return Number.isFinite(number) ? Math.min(30, Math.max(0, number)) : fallback;

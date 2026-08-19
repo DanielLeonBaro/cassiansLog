@@ -95,6 +95,13 @@ async function loadSettings(label, fetchImplementation) {
     JSON.parse(values.get(module.LOCAL_RUNTIME_SETTINGS_KEY)).characterSheetStyleOverrides,
     { cassian: "v2" },
   );
+  const localStyleSave = await module.saveCharacterSheetStyleOverride("ally", "v1");
+  assert.equal(localStyleSave.style, "v1");
+  assert.deepEqual(
+    JSON.parse(values.get(module.LOCAL_RUNTIME_SETTINGS_KEY)).characterSheetStyleOverrides,
+    { cassian: "v2", ally: "v1" },
+    "Local player changes should update the same override map used by local Admin.",
+  );
 
   if (originalLocation === undefined) delete global.location;
   else global.location = originalLocation;
