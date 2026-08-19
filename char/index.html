@@ -46,22 +46,64 @@
         Choose a character.
     </footer>
 
-    <div id="character-dialog" class="fixed inset-0 z-50 hidden items-center justify-center bg-ink/80 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
-        <form id="character-form" class="w-full max-w-md rounded-2xl border border-stone-300 bg-parchment p-6 shadow-2xl dark:border-white/15 dark:bg-ink">
-            <div class="mb-5 flex items-start justify-between gap-3">
+    <div id="character-dialog" class="fixed inset-0 z-50 hidden items-center justify-center bg-ink/80 p-3 backdrop-blur-sm sm:p-6" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+        <form id="character-form" class="max-h-full w-full max-w-2xl overflow-y-auto rounded-2xl border border-stone-300 bg-parchment p-5 shadow-2xl dark:border-white/15 dark:bg-ink sm:p-6">
+            <div class="mb-6 flex items-start justify-between gap-3">
                 <div>
-                    <h2 id="dialog-title" class="font-display text-2xl font-bold">Create a character</h2>
-                    <p class="mt-1 text-sm text-stone-500 dark:text-stone-400">This creates a blank character sheet.</p>
+                    <p class="text-xs font-bold uppercase tracking-[0.18em] text-blood-500">Quick setup</p>
+                    <h2 id="dialog-title" class="mt-1 font-display text-2xl font-bold">Create a character</h2>
+                    <p class="mt-1 text-sm text-stone-500 dark:text-stone-400">Start with the essentials. You can change everything in the full editor.</p>
                 </div>
                 <button id="close-dialog" type="button" class="rounded-xl p-2 hover:bg-stone-200 dark:hover:bg-white/10" aria-label="Close"><i class="bi bi-x-lg"></i></button>
             </div>
-            <label class="block">
-                <span class="mb-1 block text-sm font-bold">Character name</span>
-                <input id="new-character-name" required maxlength="80" autocomplete="off" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="New adventurer">
-            </label>
-            <div class="mt-5 flex justify-end gap-3">
+
+            <div class="grid gap-6 sm:grid-cols-[9rem_1fr]">
+                <div>
+                    <span class="mb-2 block text-sm font-bold">Portrait</span>
+                    <button id="new-character-portrait-button" type="button" class="group relative block w-full overflow-hidden rounded-2xl border border-stone-300 bg-white/60 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/15 dark:bg-white/5" aria-label="Choose character portrait">
+                        <img id="new-character-portrait" src="shared/assets/bat.ico" alt="Character portrait preview" class="aspect-square w-full object-cover">
+                        <span class="absolute inset-x-0 bottom-0 bg-black/70 px-2 py-2 text-xs font-bold text-white"><i class="bi bi-camera-fill mr-1"></i> Choose image</span>
+                    </button>
+                    <input id="new-character-portrait-input" type="file" accept="image/*" class="sr-only">
+                </div>
+                <div class="grid content-start gap-4 sm:grid-cols-2">
+                    <label class="sm:col-span-2">
+                        <span class="mb-1 block text-sm font-bold">Character name <span class="text-blood-500">*</span></span>
+                        <input id="new-character-name" required maxlength="80" autocomplete="off" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="New adventurer">
+                    </label>
+                    <label>
+                        <span class="mb-1 block text-sm font-bold">Class</span>
+                        <input id="new-character-class" autocomplete="off" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="Fighter">
+                    </label>
+                    <label>
+                        <span class="mb-1 block text-sm font-bold">Race or lineage</span>
+                        <input id="new-character-race" autocomplete="off" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="Human">
+                    </label>
+                    <label class="sm:max-w-40">
+                        <span class="mb-1 block text-sm font-bold">Level</span>
+                        <input id="new-character-level" type="number" value="1" step="1" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 dark:border-white/15 dark:bg-white/5 dark:text-white">
+                    </label>
+                </div>
+            </div>
+
+            <fieldset class="mt-6">
+                <legend class="text-sm font-bold">Starting content</legend>
+                <div class="mt-2 grid gap-3 sm:grid-cols-2">
+                    <label class="flex cursor-pointer gap-3 rounded-xl border border-stone-300 bg-white/60 p-4 has-[:checked]:border-blood-500 has-[:checked]:ring-1 has-[:checked]:ring-blood-500 dark:border-white/15 dark:bg-white/5">
+                        <input type="radio" name="starterMode" value="starter" checked class="mt-1 h-4 w-4 accent-red-700">
+                        <span><strong class="block">Starter examples</strong><span class="mt-1 block text-sm text-stone-500 dark:text-stone-400">Includes editable example actions, spells, features, and gear.</span></span>
+                    </label>
+                    <label class="flex cursor-pointer gap-3 rounded-xl border border-stone-300 bg-white/60 p-4 has-[:checked]:border-blood-500 has-[:checked]:ring-1 has-[:checked]:ring-blood-500 dark:border-white/15 dark:bg-white/5">
+                        <input type="radio" name="starterMode" value="blank" class="mt-1 h-4 w-4 accent-red-700">
+                        <span><strong class="block">Clean sheet</strong><span class="mt-1 block text-sm text-stone-500 dark:text-stone-400">Keeps core stats and skills, with empty content lists.</span></span>
+                    </label>
+                </div>
+            </fieldset>
+
+            <p id="character-form-status" class="mt-5 min-h-5 text-sm text-stone-500 dark:text-stone-400" role="status" aria-live="polite"></p>
+            <div class="mt-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                 <button id="cancel-dialog" type="button" class="rounded-xl border border-stone-400 px-4 py-2 text-sm font-bold">Cancel</button>
-                <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-white hover:bg-blood-600"><i class="bi bi-arrow-right"></i> Create & edit</button>
+                <button id="create-character-submit" type="submit" class="inline-flex items-center justify-center gap-2 rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-white hover:bg-blood-600 disabled:cursor-wait disabled:opacity-70"><i class="bi bi-arrow-right"></i> Create & continue</button>
             </div>
         </form>
     </div>

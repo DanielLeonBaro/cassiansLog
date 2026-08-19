@@ -112,3 +112,56 @@ export function createCharacterId(name) {
   while (occupied.has(id)) id = `${base}-${suffix++}`;
   return id;
 }
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+export function applyNewCharacterSetup(template, setup) {
+  const character = clone(template);
+  character.id = setup.id;
+  character.name = String(setup.name || "").trim();
+  character.portrait = setup.portrait || fallbackPortrait;
+  character.class = String(setup.class || "").trim();
+  character.race = String(setup.race || "").trim();
+  const level = Number(setup.level);
+  character.level = String(setup.level ?? "").trim() && Number.isFinite(level) ? level : 1;
+
+  if (setup.starterMode === "blank") {
+    for (const collection of [
+      "trackers", "actions", "spells", "resources", "features", "inventory",
+    ]) character[collection] = [];
+    character.spellcasting = {
+      ...(character.spellcasting || {}),
+      enabled: false,
+      profiles: [],
+      slots: [],
+    };
+    if (character.currency && typeof character.currency === "object") {
+      Object.keys(character.currency).forEach((coin) => {
+        character.currency[coin] = 0;
+      });
+    }
+  }
+
+  return character;
+}
+
+export async function createCharacter(setup) {
+  const id = createCharacterId(setup.name);
+  const template = await getJSON(new URL("../../template/character.json", import.meta.url));
+  const character = applyNewCharacterSetup(template, { ...setup, id });
+  const stored = storedCharacters();
+  stored[id] = clone(character);
+  writeJSON(CHARACTERS_KEY, stored);
+
+  try {
+    await writeCloudJSON(`api/characters/${encodeURIComponent(id)}`, {
+      document: clone(character),
+      source: "custom",
+    });
+    return { character, cloudSaved: true, cloudError: null };
+  } catch (cloudError) {
+    return { character, cloudSaved: false, cloudError };
+  }
+}

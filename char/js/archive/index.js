@@ -1,9 +1,8 @@
 import { createDialogController } from "../../../shared/js/dialog.js";
-import { writeJSON } from "../../../shared/js/storage.js";
 import { initializeTheme } from "../../../shared/js/theme.js";
 import { mountSiteHeader } from "../../../shared/js/site-header.js";
 import { createCharacterCard } from "./cards.js";
-import { createCharacterId, listCharacters, PENDING_KEY, removeCharacter } from "./repository.js";
+import { createCharacter, listCharacters, removeCharacter } from "./repository.js";
 import { initializeDiceRoller } from "../../../shared/js/dice/index.js";
 
 export function initializeCharacterArchive() {
@@ -14,7 +13,28 @@ export function initializeCharacterArchive() {
   const dialog = document.getElementById("character-dialog");
   const form = document.getElementById("character-form");
   const nameInput = document.getElementById("new-character-name");
-  const controller = createDialogController(dialog, { form, initialFocus: nameInput });
+  const portraitInput = document.getElementById("new-character-portrait-input");
+  const portraitPreview = document.getElementById("new-character-portrait");
+  const submitButton = document.getElementById("create-character-submit");
+  const status = document.getElementById("character-form-status");
+  const fallbackPortrait = "shared/assets/bat.ico";
+  let portrait = fallbackPortrait;
+  let creating = false;
+  const controller = createDialogController(dialog, {
+    form,
+    initialFocus: nameInput,
+    returnFocus: document.getElementById("add-character"),
+    beforeClose() {
+      return !creating;
+    },
+    onClose() {
+      creating = false;
+      portrait = fallbackPortrait;
+      portraitPreview.src = fallbackPortrait;
+      status.textContent = "";
+      submitButton.disabled = false;
+    },
+  });
 
   async function load() {
     try {
@@ -40,13 +60,49 @@ export function initializeCharacterArchive() {
   document.getElementById("add-character").addEventListener("click", controller.open);
   document.getElementById("close-dialog").addEventListener("click", controller.close);
   document.getElementById("cancel-dialog").addEventListener("click", controller.close);
-  form.addEventListener("submit", (event) => {
+  document.getElementById("new-character-portrait-button").addEventListener("click", () => portraitInput.click());
+  portraitInput.addEventListener("change", () => {
+    const file = portraitInput.files?.[0];
+    if (!file?.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      portrait = reader.result;
+      portraitPreview.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const name = nameInput.value.trim();
-    if (!name) return;
-    const id = createCharacterId(name);
-    writeJSON(PENDING_KEY, { id, name });
-    location.href = `char/${encodeURIComponent(id)}/?new=1&edit=1`;
+    if (!name) {
+      nameInput.focus();
+      return;
+    }
+    creating = true;
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-r-transparent" aria-hidden="true"></span> Creating…';
+    status.textContent = "Creating the character and saving it to the shared archive…";
+    try {
+      const result = await createCharacter({
+        name,
+        portrait,
+        class: document.getElementById("new-character-class").value,
+        race: document.getElementById("new-character-race").value,
+        level: document.getElementById("new-character-level").value,
+        starterMode: form.elements.starterMode.value,
+      });
+      if (!result.cloudSaved) {
+        alert("The character was created in this browser, but could not be saved to the shared cloud database. Save it again from the editor to retry.");
+      }
+      const id = result.character.id;
+      location.href = `char/${encodeURIComponent(id)}/?new=1&edit=1`;
+    } catch (error) {
+      console.error("Could not create character:", error);
+      creating = false;
+      status.textContent = "Could not create the character. Check your connection and try again.";
+      submitButton.disabled = false;
+      submitButton.innerHTML = '<i class="bi bi-arrow-right"></i> Create & continue';
+    }
   });
   load();
 }
