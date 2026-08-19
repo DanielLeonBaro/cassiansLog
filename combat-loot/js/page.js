@@ -1,24 +1,18 @@
 import { cloneJSON } from "../../shared/js/text.js";
-import { readCloudJSON, writeCloudJSON } from "../../shared/js/cloud-store.js";
+import { writeCloudJSON } from "../../shared/js/cloud-store.js";
 import {
-  addCombatRound,
   addCustomTracker,
   calculateCurrentHP,
   createCombatLootDocument,
-  deleteCustomTracker,
-  deleteTrackerColumn,
-  deleteTrackerRow,
   initializeCombatHealthColumns,
-  insertTrackerColumn,
-  insertTrackerRow,
-  mergeInitiativeIntoCombat,
-  moveTrackerColumn,
   moveTrackerRow,
   renameTracker,
   renameTrackerColumn,
-  sortInitiativeRows,
   updateTrackerCell,
 } from "./model.js";
+import { createCombatActionDispatcher } from "./action-dispatcher.js";
+import { createCombatCloudSync } from "./cloud-sync.js";
+import { createCombatDialogController } from "./dialog-controller.js";
 import {
   createDownload,
   createPreset,
@@ -133,8 +127,9 @@ export function initializeCombatLoot() {
   let draggedRow = null;
   let toastTimer = null;
   let draftFailureShown = false;
-  const previousFocus = new WeakMap();
-  const previouslyInert = new Map();
+  const { close: closeDialog, open: openDialog } = createCombatDialogController({
+    dialogs: [elements.editorDialog, elements.nameDialog, elements.confirmDialog],
+  });
 
   function activePreset() {
     return presets.find((preset) => preset.active && preset.id === activePresetId) || null;
@@ -313,36 +308,6 @@ export function initializeCombatLoot() {
     });
     const currentHP = rowElement.querySelector("[data-current-hp]");
     if (currentHP) updateCurrentHPOutput(currentHP, health);
-  }
-
-  function openDialog(dialog, initialFocus) {
-    previousFocus.set(dialog, document.activeElement);
-    [...document.body.children].forEach((element) => {
-      if (element === dialog || element.tagName === "SCRIPT") return;
-      previouslyInert.set(element, element.hasAttribute("inert"));
-      element.setAttribute("inert", "");
-    });
-    dialog.classList.remove("hidden");
-    dialog.classList.add("flex");
-    document.body.classList.add("overflow-hidden");
-    setTimeout(() => initialFocus?.focus(), 0);
-  }
-
-  function closeDialog(dialog) {
-    dialog.classList.add("hidden");
-    dialog.classList.remove("flex");
-    if (![elements.editorDialog, elements.nameDialog, elements.confirmDialog].some(
-      (item) => !item.classList.contains("hidden"),
-    )) {
-      document.body.classList.remove("overflow-hidden");
-      previouslyInert.forEach((wasInert, element) => {
-        if (!wasInert) element.removeAttribute("inert");
-      });
-      previouslyInert.clear();
-    }
-    const returnFocus = previousFocus.get(dialog);
-    if (returnFocus?.isConnected) returnFocus.focus();
-    previousFocus.delete(dialog);
   }
 
   function askConfirmation({ title, message, acceptLabel = "Accept", action }) {
@@ -567,84 +532,19 @@ export function initializeCombatLoot() {
     }
   }
 
-  function rowHasData(row) {
-    return Object.values(row?.cells || {}).some((value) => String(value || "").trim());
-  }
-
-  function columnHasData(table, column) {
-    return Boolean(column.title.trim()) || table.rows.some((row) =>
-      Boolean(String(row.cells?.[column.id] || "").trim()),
-    );
-  }
-
-  function tableHasData(table) {
-    return Boolean(table.title.trim()) || table.columns.some((column) => columnHasData(table, column));
-  }
-
   function requestDeletion({ title, message, containsData, action }) {
     if (!containsData) return action();
     askConfirmation({ title, message, acceptLabel: "Delete", action });
   }
 
-  function handleAction(button) {
-    const action = button.dataset.action;
-    const table = tableById(button.dataset.tableId);
-    const row = rowById(table, button.dataset.rowId);
-    const column = columnById(table, button.dataset.columnId);
-
-    if (action === "sort-initiative")
-      return applyMutation(sortInitiativeRows, "Initiative sorted from highest to lowest.");
-    if (action === "send-to-combat")
-      return applyMutation(mergeInitiativeIntoCombat, "Initiative order sent to Combat.");
-    if (action === "add-round")
-      return applyMutation(addCombatRound, "A new round was added.");
-    if (action === "add-row-end")
-      return applyMutation((current) => insertTrackerRow(current, table.id, table.rows.length));
-    if (action === "add-column-end")
-      return applyMutation((current) => insertTrackerColumn(current, table.id, table.columns.length));
-    if (action === "insert-row-before" || action === "insert-row-after") {
-      const index = table.rows.indexOf(row) + (action.endsWith("after") ? 1 : 0);
-      return applyMutation((current) => insertTrackerRow(current, table.id, index));
-    }
-    if (action === "move-row") {
-      const index = table.rows.indexOf(row) + Number(button.dataset.delta);
-      return applyMutation((current) => moveTrackerRow(current, table.id, row.id, index));
-    }
-    if (action === "delete-row") {
-      return requestDeletion({
-        title: "Delete this row?",
-        message: "The text entered in this row will be removed.",
-        containsData: rowHasData(row),
-        action: () => applyMutation((current) => deleteTrackerRow(current, table.id, row.id)),
-      });
-    }
-    if (action === "insert-column-before" || action === "insert-column-after") {
-      const index = table.columns.indexOf(column) + (action.endsWith("after") ? 1 : 0);
-      return applyMutation((current) => insertTrackerColumn(current, table.id, index));
-    }
-    if (action === "move-column") {
-      const index = table.columns.indexOf(column) + Number(button.dataset.delta);
-      return applyMutation((current) => moveTrackerColumn(current, table.id, column.id, index));
-    }
-    if (action === "delete-column") {
-      return requestDeletion({
-        title: "Delete this column?",
-        message: `${column.title || "This column"} and its cell values will be removed.`,
-        containsData: columnHasData(table, column),
-        action: () => applyMutation((current) => deleteTrackerColumn(current, table.id, column.id)),
-      });
-    }
-    if (action === "delete-table") {
-      return requestDeletion({
-        title: "Delete this tracker?",
-        message: `${table.title} and all of its rows and columns will be removed.`,
-        containsData: tableHasData(table),
-        action: () => applyMutation((current) => deleteCustomTracker(current, table.id)),
-      });
-    }
-    if (action === "open-cell-editor")
-      return openCellEditor(table.id, row.id, column.id);
-  }
+  const handleAction = createCombatActionDispatcher({
+    applyMutation,
+    columnById,
+    openCellEditor,
+    requestDeletion,
+    rowById,
+    tableById,
+  });
 
   elements.trackers.addEventListener("click", (event) => {
     const button = event.target.closest("[data-action]");
@@ -834,37 +734,27 @@ export function initializeCombatLoot() {
     event.returnValue = "";
   });
 
-  async function restoreCloudWorkspace() {
-    const cloud = await readCloudJSON("api/combat-loot", { fallback: null });
-    if (!cloud) return;
-    const cloudPresets = Array.isArray(cloud.presets) ? cloud.presets : [];
-    if (!cloudPresets.length && !cloud.draft) {
-      if ((presets.length || recoveredDraft) && confirm("Local Combat & Loot data was found. Upload it to the shared cloud database?")) {
-        for (const preset of presets) {
-          await writeCloudJSON(`api/combat-loot/presets/${encodeURIComponent(preset.id)}`, preset);
-        }
-        if (recoveredDraft) await writeCloudJSON("api/combat-loot/draft", recoveredDraft);
-        showToast("Local Combat & Loot data copied to D1.");
+  const restoreCloudWorkspace = createCombatCloudSync({
+    applyCloudWorkspace(cloud) {
+      presets = cloud.presets;
+      savePresetCollection(presets);
+      if (cloud.draft?.currentDocument?.tables) {
+        workspace = prepareWorkspaceDocument(cloud.draft.currentDocument);
+        activePresetId = presets.some((preset) => preset.active && preset.id === cloud.draft.activePresetId)
+          ? cloud.draft.activePresetId
+          : null;
+        baselineDocument = cloud.draft.baselineDocument?.tables
+          ? prepareWorkspaceDocument(cloud.draft.baselineDocument)
+          : null;
+        saveDraft({ activePresetId, baselineDocument, currentDocument: workspace });
       }
-      return;
-    }
-
-    presets = cloudPresets;
-    savePresetCollection(presets);
-    if (cloud.draft?.currentDocument?.tables) {
-      workspace = prepareWorkspaceDocument(cloud.draft.currentDocument);
-      activePresetId = presets.some((preset) => preset.active && preset.id === cloud.draft.activePresetId)
-        ? cloud.draft.activePresetId
-        : null;
-      baselineDocument = cloud.draft.baselineDocument?.tables
-        ? prepareWorkspaceDocument(cloud.draft.baselineDocument)
-        : null;
-      saveDraft({ activePresetId, baselineDocument, currentDocument: workspace });
-    }
-    renderPresetOptions(activePresetId || "");
-    render();
-    showToast("Combat & Loot data restored from D1.");
-  }
+      renderPresetOptions(activePresetId || "");
+      render();
+    },
+    getLocalDraft: () => recoveredDraft,
+    getLocalPresets: () => presets,
+    showToast,
+  });
 
   renderPresetOptions(activePresetId || "");
   render();

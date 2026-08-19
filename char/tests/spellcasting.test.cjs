@@ -12,12 +12,21 @@ const hitPointCode = fs.readFileSync("char/js/tracker/hit-points.js", "utf8")
   .replace(/export /g, "");
 const filterCode = fs.readFileSync("char/js/tracker/filter-utilities.js", "utf8")
   .replace(/export /g, "");
+const filtersCode = fs.readFileSync("char/js/tracker/filters.js", "utf8")
+  .replace(/^import[\s\S]*?;\r?\n/gm, "")
+  .replace(/export /g, "");
 const deathSaveCode = fs.readFileSync("char/js/tracker/death-saves.js", "utf8")
   .replace(/export /g, "");
 const restCode = fs.readFileSync("char/js/tracker/rest.js", "utf8")
   .replace(/export /g, "");
+const restControllerCode = fs.readFileSync("char/js/tracker/rest-controller.js", "utf8")
+  .replace(/^import[\s\S]*?;\r?\n/gm, "")
+  .replace(/export /g, "");
 const renderingCode = fs.readFileSync("char/js/tracker/rendering.js", "utf8")
   .replace(/^export \{ escapeHTML \} from .*;\r?\n/m, "")
+  .replace(/export /g, "");
+const viewsCode = fs.readFileSync("char/js/tracker/views.js", "utf8")
+  .replace(/^import[\s\S]*?;\r?\n/gm, "")
   .replace(/export /g, "");
 const sharedEscapeCode = `function escapeHTML(value) {
   return String(value ?? "").replace(/[&<>"']/g, (character) => ({
@@ -38,7 +47,9 @@ function loadCharacter(source) {
   const storage = new Map();
   const context = {
     console,
+    clearTimeout,
     readCloudJSON: async () => null,
+    setTimeout,
     writeCloudJSON: async () => ({ ok: true }),
     applyV1CharacterSheetOrder() {},
     refreshCharacterSheetTabs() {},
@@ -70,7 +81,7 @@ function loadCharacter(source) {
   context.window = context;
   vm.createContext(context);
   vm.runInContext(
-    `${source}\n${modelCode}\n${storageCode}\n${storageKeyCode}\n${hitPointCode}\n${filterCode}\n${deathSaveCode}\n${restCode}\n${sharedEscapeCode}\n${renderingCode}\nconst ui = trackerUI;\n${notesCode}\n${stateCode}\n${appCode}\nglobalThis.testAPI = { character, getPreparedCount, togglePreparedSpell, toggleCharacterFlag, isAlwaysPreparedSpell, isSpellAvailableInCombat, getCombatItemRecords, renderAbilityCard, saveState, loadState, applyDamage, applyTemporaryHitPoints, toggleDeathSave, toggleStable, healHP, shortRest, longRest, getRestDetails };`,
+    `${source}\n${modelCode}\n${storageCode}\n${storageKeyCode}\n${hitPointCode}\n${filterCode}\n${filtersCode}\n${deathSaveCode}\n${restCode}\n${restControllerCode}\n${sharedEscapeCode}\n${renderingCode}\nconst ui = trackerUI;\n${viewsCode}\n${notesCode}\n${stateCode}\n${appCode}\nglobalThis.testAPI = { character, getPreparedCount, togglePreparedSpell, toggleCharacterFlag, isAlwaysPreparedSpell, isSpellAvailableInCombat, getCombatItemRecords, renderAbilityCard, saveState, loadState, applyDamage, applyTemporaryHitPoints, toggleDeathSave, toggleStable, healHP, shortRest, longRest, getRestDetails };`,
     context,
   );
   return { ...context.testAPI, storage };

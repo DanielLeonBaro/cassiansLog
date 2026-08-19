@@ -19,12 +19,13 @@ assert.match(html, /id="track-form-title"/, "The track form should expose its ad
 assert.match(html, /id="track-form-cancel"/, "The reused edit form should include Cancel.");
 
 const page = fs.readFileSync("music/js/page.js", "utf8");
-assert.match(page, /formatTag\(tag\)/, "Visible tags should use display formatting.");
-assert.match(page, /mb-5 mt-3 flex flex-wrap/, "Library tags should be separated from the Play button.");
+const libraryView = fs.readFileSync("music/js/library-view.js", "utf8");
+assert.match(libraryView, /formatTag\(tag\)/, "Visible tags should use display formatting.");
+assert.match(libraryView, /mb-5 mt-3 flex flex-wrap/, "Library tags should be separated from the Play button.");
 assert.match(page, /restoreCloudLibrary\(\)/, "The Music page should restore its authoritative D1 library.");
 assert.match(page, /"Track saved to D1\."/, "New tracks should save immediately to D1.");
 assert.match(page, /persistLibrary\("Track removed from D1\."\)/, "Removed tracks should update D1 immediately.");
-assert.match(page, /data-edit=/, "Every rendered track should include Edit beside Delete.");
+assert.match(libraryView, /data-edit=/, "Every rendered track should include Edit beside Delete.");
 assert.match(page, /updateTrack\(tracks\[editingIndex\], changes\)/, "Editing should preserve the existing track identity.");
 assert.match(page, /persistLibrary\(successMessage\)/, "Edited tracks should update D1 immediately.");
 assert.match(page, /form\.scrollIntoView/, "Edit should bring the reused form into view.");

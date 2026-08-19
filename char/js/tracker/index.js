@@ -1,8 +1,14 @@
 import { normalizeSpellcastingData } from "./spellcasting-model.js";
 import { applyDamage, applyHealing, applyTemporaryHitPoints, totalHitPoints } from "./hit-points.js";
-import { hasActiveFilters, normalizeFilterText, uniqueValues } from "./filter-utilities.js";
+import { hasActiveFilters, uniqueValues } from "./filter-utilities.js";
+import {
+  FILTER_FOCUS_OPTIONS,
+  createFilterState,
+  itemMatchesFilters,
+} from "./filters.js";
 import { normalizeDeathSaves, resetDeathSaves, toggleDeathSave, toggleStable } from "./death-saves.js";
-import { getRestDetails } from "./rest.js";
+import { createRestController } from "./rest-controller.js";
+import { createTrackerViews } from "./views.js";
 import { createNotesController } from "./notes.js";
 import { createTrackerState, normalizeCharacterFlag } from "./state.js";
 import { escapeHTML, sanitizeIdentifier, setText, trackerUI as ui } from "./rendering.js";
@@ -35,32 +41,10 @@ const actionGroups = [
   { value: "Reaction", label: "Reactions" },
   { value: "Other", label: "Other Resources" },
 ];
-const filterFocusOptions = [
-  { value: "", label: "Any focus" },
-  { value: "damage-spell", label: "Damage spells" },
-  { value: "healing-spell", label: "Healing spells" },
-  { value: "utility-spell", label: "Utility spells" },
-  { value: "melee-spell", label: "Melee spells" },
-  { value: "melee-attack", label: "Melee attacks" },
-  { value: "ranged-attack", label: "Ranged attacks" },
-  { value: "feat", label: "Feats" },
-  { value: "feature", label: "Features" },
-  { value: "resource", label: "Resources" },
-];
-const blankFilterState = () => ({
-  search: "",
-  source: "",
-  focus: "",
-  level: "",
-  category: "",
-  action: "",
-});
 const filterState = {
-  combat: blankFilterState(),
-  all: blankFilterState(),
+  combat: createFilterState(),
+  all: createFilterState(),
 };
-let pendingRest = null;
-let restToastTimer = null;
 const notesController = createNotesController({
   characterId: character.id,
   cardClasses: ui,
@@ -73,6 +57,32 @@ const trackerState = createTrackerState({
   findCharacterItem,
   findSpellSlot,
   enforcePreparedLimits,
+});
+const {
+  closeRestDialog,
+  confirmRest,
+  longRest,
+  requestRest,
+  shortRest,
+} = createRestController({
+  character,
+  getAllCharacterItems,
+  getSpellSlots,
+  refresh: refreshUI,
+  save: saveState,
+});
+const {
+  renderAbilityCard,
+  renderPreparedProfile,
+  renderResourceCard,
+  renderSpellSlot,
+} = createTrackerViews({
+  formatReset,
+  formatSpellLevel,
+  getPreparedCount,
+  getSpellcastingProfile,
+  getSpells: () => character.spells || [],
+  isAlwaysPreparedSpell,
 });
 function initializeApp() {
   notesController.load();
@@ -334,7 +344,7 @@ function renderFilterControls(scope, records) {
               </span>
             </label>
             ${renderFilterSelect("source", "Source", sourceOptions, fieldClass, labelClass)}
-            ${renderFilterSelect("focus", "Focus", filterFocusOptions, fieldClass, labelClass)}
+            ${renderFilterSelect("focus", "Focus", FILTER_FOCUS_OPTIONS, fieldClass, labelClass)}
             ${renderFilterSelect(
               "level",
               "Spell level",
@@ -404,7 +414,7 @@ function updateFilters(scope, key, value) {
   updateFilterResetButton(scope);
 }
 function resetFilters(scope) {
-  filterState[scope] = blankFilterState();
+  filterState[scope] = createFilterState();
   const container = document.getElementById(`${scope}-filters`);
   container?.querySelectorAll("[data-filter-key]").forEach((input) => {
     input.value = "";
@@ -435,89 +445,6 @@ function updateFilterSummary(scope, visible, total) {
       ? `${visible} of ${total}`
       : `${total} ${total === 1 ? "option" : "options"}`;
 }
-function itemMatchesFilters(record, state) {
-  const { item, source } = record;
-  if (state.source && source !== state.source) return false;
-  if (
-    state.level !== "" &&
-    (item.level === undefined || Number(item.level) !== Number(state.level))
-  )
-    return false;
-  if (state.category && item.category !== state.category) return false;
-  if (state.action && item.action !== state.action) return false;
-  if (state.focus && !matchesFocus(record, state.focus)) return false;
-  const terms = normalizeFilterText(state.search).split(/\s+/).filter(Boolean);
-  if (terms.length) {
-    const haystack = itemFilterText(record);
-    if (!terms.every((term) => haystack.includes(term))) return false;
-  }
-  return true;
-}
-function matchesFocus(record, focus) {
-  const { item, source } = record;
-  const text = itemFilterText(record);
-  const spell = source === "spells";
-  const healing =
-    /\b(heal|healing|cure|stabiliz)/.test(text) ||
-    /\b(regain|restore)[a-z ]{0,24}\bhit points?\b/.test(text);
-  const damaging = Boolean(item.damage) || /\bdeals?\b.{0,32}\bdamage\b/.test(text);
-  const rangeText = normalizeFilterText(item.range);
-  const description = normalizeFilterText(item.description);
-  const distances = [...String(item.range || "").matchAll(/\d+/g)].map(
-    (match) => Number(match[0]),
-  );
-  const attack =
-    Boolean(item.attack) ||
-    /\battack\b/.test(normalizeFilterText(`${item.name} ${item.description}`));
-  const melee =
-    /\b(melee|touch|adjacent)\b/.test(`${rangeText} ${description}`) ||
-    (attack && distances.length > 0 && Math.min(...distances) <= 5);
-  const ranged =
-    /\b(ranged|thrown)\b/.test(description) ||
-    (attack && distances.some((distance) => distance > 5));
-  switch (focus) {
-    case "damage-spell":
-      return spell && damaging;
-    case "healing-spell":
-      return spell && healing;
-    case "utility-spell":
-      return spell && !damaging && !healing;
-    case "melee-spell":
-      return spell && melee;
-    case "melee-attack":
-      return attack && melee;
-    case "ranged-attack":
-      return attack && ranged;
-    case "feat":
-      return /\bfeat\b/.test(
-        normalizeFilterText(`${item.name} ${item.category}`),
-      );
-    case "feature":
-      return source === "features" || /\b(feature|trait)\b/.test(text);
-    case "resource":
-      return source === "resources";
-    default:
-      return true;
-  }
-}
-function itemFilterText({ item, source }) {
-  return normalizeFilterText(
-    [
-      item.name,
-      item.category,
-      item.action,
-      item.description,
-      item.school,
-      item.range,
-      item.attack,
-      item.damage,
-      item.duration,
-      item.components,
-      item.level !== undefined ? formatSpellLevel(item.level) : "",
-      source,
-    ].join(" "),
-  );
-}
 function renderEmptyFilterState(scope) {
   const filtering = hasActiveFilters(filterState[scope]);
   return `<div class="rounded-2xl border border-dashed border-stone-300 bg-stone-50/60 px-5 py-10 text-center text-stone-500 dark:border-white/15 dark:bg-white/[.025] dark:text-stone-400"><i class="bi ${filtering ? "bi-search" : "bi-journal-plus"} mb-2 block text-2xl text-blood-500"></i><strong class="block text-stone-700 dark:text-stone-200">${filtering ? "No matching options" : "No options added yet"}</strong><span class="mt-1 block text-sm">${filtering ? "Clear a filter or shorten the search." : "Add an action, spell, feature, or resource in the character editor."}</span>${filtering ? `<button type="button" class="mt-4 rounded-xl border border-stone-300 px-3 py-2 text-xs font-bold hover:border-blood-500 hover:text-blood-500 dark:border-white/15" data-tracker-action="reset-filters" data-scope="${sanitizeIdentifier(scope)}">Clear filters</button>` : ""}</div>`;
@@ -546,17 +473,6 @@ function loadResources() {
       return `<div><h6 class="mb-2 text-sm font-semibold text-stone-500 dark:text-stone-400">${group.label}</h6><div class="grid grid-cols-1 gap-4 md:grid-cols-2">${items.map(renderResourceCard).join("")}</div></div>`;
     })
     .join("");
-}
-function renderResourceCard(item) {
-  let usage = "";
-  if (item.uses) {
-    usage = `<div class="inline-flex gap-2" role="group"><button type="button" class="${ui.iconButton}" aria-label="Decrease ${sanitizeIdentifier(item.name)}" data-tracker-action="resource" data-id="${sanitizeIdentifier(item.id)}" data-delta="-1">−</button><button type="button" class="${ui.iconButton}" aria-label="Increase ${sanitizeIdentifier(item.name)}" data-tracker-action="resource" data-id="${sanitizeIdentifier(item.id)}" data-delta="1">+</button></div><div class="flex gap-2"><span class="${ui.badge} ${ui.badgeSuccess}">${item.uses.current}/${item.uses.max}</span><span class="${ui.badge} ${ui.badgeWarning}">${formatReset(item.uses.reset)}</span></div>`;
-  } else if (item.slotLevel) {
-    usage = `<span class="${ui.badge} ${ui.badgePrimary}">Uses level ${item.slotLevel} slot</span>`;
-  } else {
-    usage = `<span class="${ui.badge} ${ui.badgeSecondary}">At will</span>`;
-  }
-  return `<div class="${ui.card}"><div class="${ui.cardHeader}"><strong>${escapeHTML(item.name)}</strong><span class="${ui.badge} ${ui.badgeDanger}">${escapeHTML(item.category || "Ability")}</span></div><div class="p-5"><div class="flex flex-wrap items-center justify-between gap-2">${usage}</div>${renderDetailBadges(item)}<p class="mt-2 text-sm">${escapeHTML(item.description || "")}</p></div></div>`;
 }
 function changeResource(id, delta) {
   const item = findCharacterItem(id);
@@ -593,10 +509,6 @@ function loadSpellcasting() {
       return `<section class="${ui.card}"><div class="${ui.cardHeader}"><div><div class="text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">Spell slots</div><strong>${escapeHTML(profile.name || "Spellcasting")}</strong></div><span class="${ui.badge} ${ui.badgeSecondary}">${profileSlots.length} level${profileSlots.length === 1 ? "" : "s"}</span></div><div class="p-4 sm:p-5">${profileSlots.length ? `<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">${profileSlots.map((slot) => renderSpellSlot(slot, profile)).join("")}</div>` : '<p class="text-sm text-stone-500 dark:text-stone-400">This profile has no spell slots.</p>'}</div></section>`;
     })
     .join("");
-}
-function renderSpellSlot(slot, profile) {
-  const profileName = profile?.name || "spellcasting";
-  return `<div class="rounded-xl border border-stone-200 bg-stone-50/70 dark:border-white/10 dark:bg-white/[.035]"><div class="flex items-center justify-between gap-3 border-b border-stone-200 px-4 py-3 dark:border-white/10"><strong>Level ${slot.level}</strong><span class="${ui.badge} ${ui.badgeDanger}">Max: ${slot.max}</span></div><div class="p-4"><div class="flex items-center justify-between gap-3"><div class="inline-flex gap-2"><button type="button" class="${ui.iconButton}" aria-label="Decrease ${sanitizeIdentifier(profileName)} level ${slot.level} spell slots" data-tracker-action="spell-slot" data-id="${sanitizeIdentifier(slot.id)}" data-delta="-1">−</button><button type="button" class="${ui.iconButton}" aria-label="Increase ${sanitizeIdentifier(profileName)} level ${slot.level} spell slots" data-tracker-action="spell-slot" data-id="${sanitizeIdentifier(slot.id)}" data-delta="1">+</button></div><span class="${ui.badge} ${ui.badgeWarning}">${slot.current}/${slot.max}</span><span class="${ui.badge} ${ui.badgeSecondary}">${formatReset(slot.reset || "long")}</span></div></div></div>`;
 }
 function changeSpellSlot(id, delta) {
   const slot = findSpellSlot(id);
@@ -637,46 +549,6 @@ function loadPreparedSpells() {
         `${getPreparedCount(profile.id)}/${profile.preparedLimit}`,
     );
   setText("prepared-spells-total", `(${totals.join(" · ")})`);
-}
-function renderPreparedProfile(profile) {
-  const spells = (character.spells || [])
-    .filter((spell) => spell.source === profile.id)
-    .sort(
-      (left, right) =>
-        Number(left.level || 0) - Number(right.level || 0) ||
-        String(left.name).localeCompare(String(right.name)),
-    );
-  const preparedCount = getPreparedCount(profile.id);
-  const atLimit =
-    profile.preparedLimit > 0 && preparedCount >= profile.preparedLimit;
-  const limitLabel =
-    profile.preparedLimit > 0
-      ? `${preparedCount} / ${profile.preparedLimit} prepared`
-      : "No preparation required";
-  return `<section class="${ui.card}"><div class="${ui.cardHeader}"><div><div class="text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">Spellcasting profile</div><strong>${escapeHTML(profile.name || "Spellcasting")}</strong></div><span class="${ui.badge} ${atLimit ? ui.badgeWarning : ui.badgeSuccess}">${limitLabel}</span></div><div class="divide-y divide-stone-200 dark:divide-white/10">${spells.length ? spells.map((spell) => renderPreparedSpell(spell, profile, atLimit)).join("") : '<p class="p-5 text-sm text-stone-500 dark:text-stone-400">No spells use this profile yet. Choose it as the source while editing a spell.</p>'}</div></section>`;
-}
-function renderPreparedSpell(spell, profile, atLimit) {
-  const cantrip = Number(spell.level) === 0;
-  const alwaysPrepared = isAlwaysPreparedSpell(spell);
-  const canPrepare = profile.preparedLimit > 0 && !cantrip && !alwaysPrepared;
-  const prepared =
-    profile.preparedLimit <= 0 ||
-    alwaysPrepared ||
-    cantrip ||
-    Boolean(spell.prepared);
-  const disabled = !canPrepare || (!prepared && atLimit);
-  const status = cantrip
-    ? "Cantrip · always ready"
-    : alwaysPrepared
-      ? "Always prepared"
-      : profile.preparedLimit <= 0
-        ? "Always available"
-        : prepared
-          ? "Prepared"
-          : atLimit
-            ? "Limit reached"
-            : "Not prepared";
-  return `<div class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="font-bold">${escapeHTML(spell.name || "Unnamed spell")}</div><div class="mt-1 flex flex-wrap gap-2"><span class="${ui.badge} ${ui.badgeSecondary}">${formatSpellLevel(spell.level)}</span>${spell.category ? `<span class="text-xs text-stone-500 dark:text-stone-400">${escapeHTML(spell.category)}</span>` : ""}</div></div><button type="button" role="switch" aria-checked="${prepared}" ${disabled ? "disabled" : ""} data-tracker-action="prepared-spell" data-id="${sanitizeIdentifier(spell.id)}" class="inline-flex shrink-0 items-center gap-2 self-start rounded-full border px-3 py-2 text-xs font-bold transition sm:self-auto ${prepared ? "border-emerald-600 bg-emerald-600 text-white" : "border-stone-300 bg-stone-100 text-stone-600 hover:border-blood-500 dark:border-white/15 dark:bg-white/10 dark:text-stone-300"} disabled:cursor-not-allowed disabled:opacity-60"><span class="relative h-5 w-9 rounded-full bg-black/20"><span class="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition ${prepared ? "left-[18px]" : "left-0.5"}"></span></span>${status}</button></div>`;
 }
 function togglePreparedSpell(id) {
   const spell = (character.spells || []).find((item) => item.id === id);
@@ -800,66 +672,6 @@ function loadAbilitySection(id, items) {
     ? items.map(renderAbilityCard).join("")
     : '<p class="text-stone-500 dark:text-stone-400">Nothing added yet.</p>';
 }
-function renderAbilityCard(item) {
-  const useBadges = item.uses
-    ? `<span class="${ui.badge} ${ui.badgeSuccess}">${item.uses.current}/${item.uses.max}</span><span class="${ui.badge} ${ui.badgeSecondary}">${formatReset(item.uses.reset)}</span>`
-    : "";
-  const googleURL = `https://www.google.com/search?q=${encodeURIComponent(`${item.name} D&D 5e`)}`;
-  return `<div class="${ui.card}"><div class="${ui.cardHeader}"><strong>${escapeHTML(item.name)}</strong><div class="flex items-center gap-2"><span class="${ui.badge} ${ui.badgeDanger}">${escapeHTML(item.category || "Ability")}</span><a class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-sky-600 text-sky-600 transition hover:bg-sky-600 hover:text-white" href="${escapeHTML(googleURL)}" target="_blank" rel="noopener noreferrer" aria-label="Search Google for ${escapeHTML(item.name)}"><i class="bi bi-google"></i></a></div></div><div class="p-5"><div class="flex flex-wrap items-center justify-between gap-2"><div class="flex flex-wrap gap-2">${item.action ? `<span class="${ui.badge} ${ui.badgePrimary}">${escapeHTML(item.action)}</span>` : ""}</div><div class="flex flex-wrap gap-2">${useBadges}</div></div>${renderDetailBadges(item)}<p class="mt-2 text-sm">${escapeHTML(item.description || "")}</p></div></div>`;
-}
-function renderDetailBadges(item) {
-  const badges = [];
-  if (item.level !== undefined && item.level !== null)
-    badges.push(
-      `<span class="${ui.badge} bg-stone-800 text-white">${formatSpellLevel(item.level)}</span>`,
-    );
-  if (item.school)
-    badges.push(
-      `<span class="${ui.badge} bg-stone-800 text-white">${escapeHTML(item.school)}</span>`,
-    );
-  if (item.range)
-    badges.push(
-      `<span class="${ui.badge} bg-stone-800 text-white">Range: ${escapeHTML(item.range)}</span>`,
-    );
-  if (item.attack)
-    badges.push(
-      `<span class="${ui.badge} bg-stone-800 text-white">${escapeHTML(item.attack)}</span>`,
-    );
-  if (item.damage)
-    badges.push(
-      `<span class="${ui.badge} bg-stone-800 text-white">${escapeHTML(item.damage)}</span>`,
-    );
-  if (item.duration)
-    badges.push(
-      `<span class="${ui.badge} bg-stone-800 text-white">Duration: ${escapeHTML(item.duration)}</span>`,
-    );
-  if (item.components)
-    badges.push(
-      `<span class="${ui.badge} bg-stone-800 text-white">${escapeHTML(item.components)}</span>`,
-    );
-  if (item.spellcasting)
-    badges.push(
-      `<span class="${ui.badge} bg-stone-800 text-white">${escapeHTML(item.spellcasting)}</span>`,
-    );
-  if (item.source) {
-    const profile = getSpellcastingProfile(item.source);
-    badges.push(
-      `<span class="${ui.badge} ${ui.badgePrimary}">${escapeHTML(profile?.name || item.source)}</span>`,
-    );
-  }
-  if (
-    item.level !== undefined &&
-    Number(item.level) > 0 &&
-    item.prepared &&
-    !isAlwaysPreparedSpell(item)
-  )
-    badges.push(`<span class="${ui.badge} ${ui.badgeSuccess}">Prepared</span>`);
-  if (item.concentration)
-    badges.push(`<span class="${ui.badge} ${ui.badgeWarning}">Concentration</span>`);
-  return badges.length
-    ? `<div class="mt-2 flex flex-wrap gap-2">${badges.join("")}</div>`
-    : "";
-}
 function loadInventory() {
   loadCurrency();
   const container = document.getElementById("inventory-container");
@@ -879,77 +691,6 @@ function loadCurrency() {
   if (!container) return;
   const currency = character.currency || {};
   container.innerHTML = `<div class="${ui.card}"><div class="${ui.cardHeader}">Currency</div><div class="${ui.cardBody}"><div class="flex flex-wrap items-center gap-3"><div class="flex grow flex-wrap gap-2"><span class="${ui.badge} ${ui.badgeSecondary}">CP: ${currency.cp ?? 0}</span><span class="${ui.badge} bg-stone-100 text-stone-900">SP: ${currency.sp ?? 0}</span><span class="${ui.badge} bg-cyan-300 text-stone-900">EP: ${currency.ep ?? 0}</span><span class="${ui.badge} ${ui.badgeWarning}">GP: ${currency.gp ?? 0}</span><span class="${ui.badge} ${ui.badgePrimary}">PP: ${currency.pp ?? 0}</span></div><button type="button" data-character-editor-section="inventory" class="ml-auto inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-blood-500 px-3 py-2 text-sm font-bold text-blood-500 transition hover:bg-blood-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"><i class="bi bi-pencil-square" aria-hidden="true"></i>Edit Inventory</button></div></div></div>`;
-}
-function shortRest() {
-  getAllCharacterItems()
-    .filter((item) => item.uses?.reset === "short")
-    .forEach((item) => (item.uses.current = item.uses.max));
-  getSpellSlots()
-    .filter((slot) => (slot.reset || "long") === "short")
-    .forEach((slot) => (slot.current = slot.max));
-  character.hp.temp = 0;
-  resetDeathSaves(character.deathSaves);
-  saveState();
-  refreshUI();
-}
-function longRest() {
-  getAllCharacterItems()
-    .filter((item) => item.uses)
-    .forEach((item) => (item.uses.current = item.uses.max));
-  getSpellSlots().forEach((slot) => (slot.current = slot.max));
-  character.hp.current = character.hp.max;
-  character.hp.temp = 0;
-  resetDeathSaves(character.deathSaves);
-  saveState();
-  refreshUI();
-}
-function requestRest(kind) {
-  pendingRest = getRestDetails(
-    character,
-    getAllCharacterItems(),
-    getSpellSlots(),
-    kind,
-  );
-  setText("rest-dialog-title", `Confirm ${pendingRest.title.toLowerCase()}`);
-  setText("rest-dialog-duration", pendingRest.duration);
-  setText("rest-dialog-description", pendingRest.description);
-  const effects = document.getElementById("rest-dialog-effects");
-  effects?.replaceChildren(
-    ...pendingRest.effects.map((effect) => {
-      const item = document.createElement("li");
-      item.textContent = effect;
-      return item;
-    }),
-  );
-  const dialog = document.getElementById("rest-dialog");
-  dialog?.classList.remove("hidden");
-  dialog?.classList.add("flex");
-  document.body.classList.add("overflow-hidden");
-  document.getElementById("confirm-rest")?.focus();
-}
-function closeRestDialog() {
-  const dialog = document.getElementById("rest-dialog");
-  if (!dialog || dialog.classList.contains("hidden")) return;
-  dialog?.classList.add("hidden");
-  dialog?.classList.remove("flex");
-  document.body.classList.remove("overflow-hidden");
-  pendingRest = null;
-}
-function showRestToast(message) {
-  const toast = document.getElementById("rest-toast");
-  if (!toast) return;
-  toast.textContent = message;
-  toast.classList.remove("hidden");
-  clearTimeout(restToastTimer);
-  restToastTimer = setTimeout(() => toast.classList.add("hidden"), 5000);
-}
-function confirmRest() {
-  if (!pendingRest) return;
-  const rest = pendingRest;
-  if (rest.kind === "short") shortRest();
-  else longRest();
-  closeRestDialog();
-  showRestToast(rest.toast);
 }
 function setupEvents() {
   document.addEventListener("click", (event) => {

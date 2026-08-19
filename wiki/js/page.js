@@ -3,13 +3,21 @@ import { loadWikiPages, saveWikiPages } from "./repository.js";
 import { compactWikiPageId, findWikiPageById, normalizeWikiPages } from "./model.js";
 import { wikiPageId, wikiPageURL } from "./routing.js";
 import { renderWikiMarkdown } from "./markdown.js";
+import { createWikiImageModalController } from "./image-modal.js";
+import { createWikiBackup, parseWikiBackup, wikiBackupFilename } from "./backup.js";
+import {
+  filterWikiPages,
+  findWikiPageByName,
+  relatedWikiPages,
+  sortWikiPages,
+  wikiIconForType,
+} from "./view-model.js";
 
 export async function initializeWiki() {
   let pages = await loadPages();
   let currentPageId = null;
   let toastTimer = null;
   let hoverTimer = null;
-  let imageModalReturnFocus = null;
   const filters = { search: "", type: "" };
 
   const elements = {
@@ -37,6 +45,11 @@ export async function initializeWiki() {
     modalImage: document.getElementById("wiki-modal-image"),
     modalClose: document.getElementById("wiki-image-close"),
   };
+  const imageModalController = createWikiImageModalController({
+    closeButton: elements.modalClose,
+    imageElement: elements.modalImage,
+    modal: elements.imageModal,
+  });
 
   async function loadPages() {
     try {
@@ -61,7 +74,7 @@ export async function initializeWiki() {
   }
 
   function sortedPages() {
-    return [...pages].sort((left, right) => left.name.localeCompare(right.name));
+    return sortWikiPages(pages);
   }
 
   function pageById(id) {
@@ -69,12 +82,7 @@ export async function initializeWiki() {
   }
 
   function pageByName(name) {
-    const target = normalize(name);
-    return pages.find(
-      (page) =>
-        normalize(page.name) === target ||
-        (page.aliases || []).some((alias) => normalize(alias) === target),
-    );
+    return findWikiPageByName(pages, name);
   }
 
   function pageURL(id) {
@@ -82,17 +90,7 @@ export async function initializeWiki() {
   }
 
   function iconForType(type) {
-    const value = normalize(type);
-    if (value.includes("city") || value.includes("town")) return "bi-buildings-fill";
-    if (value.includes("location") || value.includes("region")) return "bi-geo-alt-fill";
-    if (value.includes("character")) return "bi-person-fill";
-    if (value.includes("house") || value.includes("faction") || value.includes("guild"))
-      return "bi-shield-fill";
-    if (value.includes("religion")) return "bi-sun-fill";
-    if (value.includes("history") || value.includes("event")) return "bi-hourglass-split";
-    if (value.includes("map")) return "bi-map-fill";
-    if (value.includes("family")) return "bi-diagram-3-fill";
-    return "bi-bookmark-star-fill";
+    return wikiIconForType(type);
   }
 
   function showToast(message) {
@@ -176,14 +174,7 @@ export async function initializeWiki() {
     const grid = document.getElementById("wiki-grid");
     const summary = document.getElementById("wiki-result-summary");
     if (!grid || !summary) return;
-    const query = normalize(filters.search);
-    const filtered = sortedPages().filter((page) => {
-      if (filters.type && page.type !== filters.type) return false;
-      if (!query) return true;
-      return normalize(
-        [page.name, page.type, page.summary, page.body, ...(page.aliases || [])].join(" "),
-      ).includes(query);
-    });
+    const filtered = filterWikiPages(pages, filters);
     summary.textContent = `${filtered.length} of ${pages.length} pages`;
     if (!filtered.length) {
       grid.innerHTML = `<div class="rounded-2xl border border-dashed border-stone-300 px-5 py-14 text-center text-stone-500 dark:border-white/15 dark:text-stone-400 sm:col-span-2 lg:col-span-3"><i class="bi bi-search mb-2 block text-3xl text-blood-500"></i><strong class="block text-stone-700 dark:text-stone-200">No matching pages</strong><button type="button" data-action="clear-filters" class="mt-3 text-sm font-bold text-blood-500">Clear filters</button></div>`;
@@ -205,36 +196,10 @@ export async function initializeWiki() {
 
   const renderMarkdown = (markdown) => renderWikiMarkdown(markdown, { pageByName, pageURL });
 
-  function mentionedPages(body) {
-    const result = [];
-    const seen = new Set();
-    for (const match of String(body || "").matchAll(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g)) {
-      const page = pageByName(match[1].trim());
-      if (page && !seen.has(page.id)) {
-        seen.add(page.id);
-        result.push(page);
-      }
-    }
-    return result;
-  }
-
-  function relatedPages(page) {
-    const result = mentionedPages(page.body).filter((related) => related.id !== page.id);
-    const seen = new Set(result.map((related) => related.id));
-    pages.forEach((candidate) => {
-      if (candidate.id === page.id || seen.has(candidate.id)) return;
-      if (mentionedPages(candidate.body).some((mentioned) => mentioned.id === page.id)) {
-        result.push(candidate);
-        seen.add(candidate.id);
-      }
-    });
-    return result.slice(0, 12);
-  }
-
   function renderPage(page) {
     currentPageId = page.id;
     document.title = `${page.name} | Campaign Wiki`;
-    const related = relatedPages(page);
+    const related = relatedWikiPages(pages, page);
     elements.page.innerHTML = `
       <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <button type="button" data-action="home" class="inline-flex items-center gap-2 text-sm font-bold text-stone-500 transition hover:text-blood-500 dark:text-stone-400"><i class="bi bi-arrow-left"></i> Wiki home</button>
@@ -408,12 +373,12 @@ export async function initializeWiki() {
   }
 
   function exportWiki() {
-    const backup = { version: 1, exportedAt: new Date().toISOString(), pages };
+    const backup = createWikiBackup(pages);
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `breugaire-wiki-${new Date().toISOString().slice(0, 10)}.json`;
+    link.download = wikiBackupFilename();
     link.click();
     URL.revokeObjectURL(url);
     showToast("Wiki backup exported.");
@@ -424,11 +389,7 @@ export async function initializeWiki() {
     const reader = new FileReader();
     reader.addEventListener("load", async () => {
       try {
-        const value = JSON.parse(String(reader.result || ""));
-        const importedPages = Array.isArray(value) ? value : value.pages;
-        if (!Array.isArray(importedPages) || !importedPages.every((page) => page?.id && page?.name)) {
-          throw new Error("This file does not contain wiki pages.");
-        }
+        const importedPages = parseWikiBackup(reader.result);
         if (!confirm(`Replace this browser's wiki with ${importedPages.length} pages from the backup?`)) return;
         pages = importedPages;
         if (await savePages("Wiki backup imported.")) navigateHome();
@@ -472,28 +433,10 @@ export async function initializeWiki() {
     hoverTimer = setTimeout(() => elements.hoverCard.classList.add("hidden"), delay);
   }
 
-  function openImageModal(image) {
-    imageModalReturnFocus = document.activeElement;
-    elements.modalImage.src = image.currentSrc || image.src;
-    elements.modalImage.alt = image.alt || "Wiki image";
-    elements.imageModal.classList.remove("hidden");
-    document.body.classList.add("overflow-hidden");
-    elements.modalClose.focus();
-  }
-
-  function closeImageModal() {
-    if (elements.imageModal.classList.contains("hidden")) return;
-    elements.imageModal.classList.add("hidden");
-    elements.modalImage.removeAttribute("src");
-    document.body.classList.remove("overflow-hidden");
-    imageModalReturnFocus?.focus?.();
-    imageModalReturnFocus = null;
-  }
-
   function handleClick(event) {
     const image = event.target.closest("[data-wiki-image]");
     if (image) {
-      openImageModal(image);
+      imageModalController.open(image);
       return;
     }
     const wikiLink = event.target.closest('a[href^="/wiki/"]');
@@ -571,10 +514,10 @@ export async function initializeWiki() {
     document.getElementById("wiki-editor-close").addEventListener("click", closeEditor);
     document.getElementById("wiki-editor-cancel").addEventListener("click", closeEditor);
     elements.deletePage.addEventListener("click", deleteCurrentEditorPage);
-    elements.modalClose.addEventListener("click", closeImageModal);
+    elements.modalClose.addEventListener("click", imageModalController.close);
     elements.imageModal.addEventListener("click", (event) => {
       if (event.target === elements.imageModal || event.target === elements.modalImage.parentElement) {
-        closeImageModal();
+        imageModalController.close();
       }
     });
     elements.editor.addEventListener("click", (event) => {
@@ -583,9 +526,9 @@ export async function initializeWiki() {
     document.addEventListener("keydown", (event) => {
       if ((event.key === "Enter" || event.key === " ") && event.target.matches("[data-wiki-image]")) {
         event.preventDefault();
-        openImageModal(event.target);
+        imageModalController.open(event.target);
       } else if (event.key === "Escape" && !elements.imageModal.classList.contains("hidden")) {
-        closeImageModal();
+        imageModalController.close();
       } else if (event.key === "Escape" && !elements.editor.classList.contains("hidden")) {
         closeEditor();
       }

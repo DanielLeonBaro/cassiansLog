@@ -14,14 +14,17 @@ assert.match(archive, /name="starterMode" value="starter" checked/);
 assert.match(archive, /name="starterMode" value="blank"/);
 
 const editor = fs.readFileSync("char/js/editor/index.js", "utf8");
+const fieldSchema = fs.readFileSync("char/js/editor/field-schema.js", "utf8");
+const fieldRenderer = fs.readFileSync("char/js/editor/field-renderer.js", "utf8");
+const editorContracts = `${editor}\n${fieldRenderer}`;
 for (const section of ["basics", "combat", "actions", "spellcasting", "features", "inventory", "advanced"]) {
-  assert.ok(editor.includes(`id: "${section}"`), `Editor should include the ${section} section.`);
+  assert.ok(fieldSchema.includes(`id: "${section}"`), `Editor should include the ${section} section.`);
 }
 for (const hook of ["data-editor-section", "data-array-actions", "data-path", "data-editor-extensions"]) {
-  assert.ok(editor.includes(hook), `Editor should preserve ${hook}.`);
+  assert.ok(editorContracts.includes(hook), `Editor should preserve ${hook}.`);
 }
-assert.match(editor, /data-duplicate/);
-assert.match(editor, /Additional fields/);
+assert.match(fieldRenderer, /data-duplicate/);
+assert.match(fieldRenderer, /Additional fields/);
 assert.match(editor, /Discard your unsaved character changes/);
 assert.match(editor, /Character name is required/);
 assert.match(editor, /createDialogController/);
