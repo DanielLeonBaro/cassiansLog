@@ -1,6 +1,7 @@
 import { escapeAttribute, escapeHTML, normalizeText as normalize } from "../../shared/js/text.js";
 import { loadWikiPages, saveWikiPages } from "./repository.js";
-import { wikiPageURL } from "./routing.js";
+import { compactWikiPageId, findWikiPageById, normalizeWikiPages } from "./model.js";
+import { wikiPageId, wikiPageURL } from "./routing.js";
 import { renderWikiMarkdown } from "./markdown.js";
 
 export async function initializeWiki() {
@@ -8,6 +9,7 @@ export async function initializeWiki() {
   let currentPageId = null;
   let toastTimer = null;
   let hoverTimer = null;
+  let imageModalReturnFocus = null;
   const filters = { search: "", type: "" };
 
   const elements = {
@@ -31,6 +33,9 @@ export async function initializeWiki() {
     importFile: document.getElementById("wiki-import-file"),
     hoverCard: document.getElementById("wiki-hover-card"),
     toast: document.getElementById("wiki-toast"),
+    imageModal: document.getElementById("wiki-image-modal"),
+    modalImage: document.getElementById("wiki-modal-image"),
+    modalClose: document.getElementById("wiki-image-close"),
   };
 
   async function loadPages() {
@@ -44,6 +49,7 @@ export async function initializeWiki() {
 
   async function savePages(message) {
     try {
+      pages = normalizeWikiPages(pages);
       await saveWikiPages(pages);
       if (message) showToast(message);
       return true;
@@ -59,7 +65,7 @@ export async function initializeWiki() {
   }
 
   function pageById(id) {
-    return pages.find((page) => page.id === id);
+    return findWikiPageById(pages, id);
   }
 
   function pageByName(name) {
@@ -235,9 +241,9 @@ export async function initializeWiki() {
         <div class="flex gap-2"><button type="button" data-action="copy-link" class="inline-flex h-10 items-center gap-2 rounded-xl border border-stone-300 px-3 text-sm font-bold transition hover:border-blood-500 hover:text-blood-500 dark:border-white/15"><i class="bi bi-link-45deg"></i><span class="hidden sm:inline">Copy link</span></button><button type="button" data-action="edit" data-page-id="${escapeAttribute(page.id)}" class="inline-flex h-10 items-center gap-2 rounded-xl bg-blood-500 px-4 text-sm font-bold text-white transition hover:bg-blood-600"><i class="bi bi-pencil-fill"></i> Edit page</button></div>
       </div>
       <header class="relative overflow-hidden rounded-3xl border border-stone-300/80 bg-ink shadow-card dark:border-white/10">
-        ${page.banner ? `<img src="${escapeAttribute(page.banner)}" alt="${escapeAttribute(page.name)} banner" class="h-[18rem] w-full object-cover sm:h-[25rem]">` : `<div class="flex h-[18rem] items-center justify-center sm:h-[25rem]"><i class="bi ${iconForType(page.type)} text-7xl text-stone-500"></i></div>`}
-        <div class="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
-        <div class="absolute inset-x-0 bottom-0 p-6 text-white sm:p-10"><span class="inline-flex items-center rounded-full bg-blood-500 px-3 py-1 text-xs font-bold"><i class="bi ${iconForType(page.type)} mr-1.5"></i>${escapeHTML(page.type || "Lore")}</span><h1 class="mt-3 max-w-5xl font-display text-4xl font-bold leading-tight sm:text-6xl">${escapeHTML(page.name)}</h1>${page.aliases?.length ? `<p class="mt-2 text-sm text-stone-300">Also known as ${page.aliases.map(escapeHTML).join(" · ")}</p>` : ""}</div>
+        ${page.banner ? `<img src="${escapeAttribute(page.banner)}" alt="${escapeAttribute(page.name)} banner" class="h-[18rem] w-full cursor-zoom-in object-cover sm:h-[25rem]" data-wiki-image role="button" tabindex="0" aria-label="View ${escapeAttribute(page.name)} banner full size">` : `<div class="flex h-[18rem] items-center justify-center sm:h-[25rem]"><i class="bi ${iconForType(page.type)} text-7xl text-stone-500"></i></div>`}
+        <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
+        <div class="pointer-events-none absolute inset-x-0 bottom-0 p-6 text-white sm:p-10"><span class="inline-flex items-center rounded-full bg-blood-500 px-3 py-1 text-xs font-bold"><i class="bi ${iconForType(page.type)} mr-1.5"></i>${escapeHTML(page.type || "Lore")}</span><h1 class="mt-3 max-w-5xl font-display text-4xl font-bold leading-tight sm:text-6xl">${escapeHTML(page.name)}</h1>${page.aliases?.length ? `<p class="mt-2 text-sm text-stone-300">Also known as ${page.aliases.map(escapeHTML).join(" · ")}</p>` : ""}</div>
       </header>
       <div class="mx-auto max-w-5xl py-8 sm:py-12">
         ${page.summary ? `<p class="mb-8 border-l-4 border-blood-500 pl-5 font-display text-xl leading-relaxed text-stone-600 dark:text-stone-300 sm:text-2xl">${escapeHTML(page.summary)}</p>` : ""}
@@ -253,9 +259,13 @@ export async function initializeWiki() {
 
   function renderRoute() {
     hideHoverCard();
-    const match = location.hash.match(/^#page=(.+)$/);
-    const page = match ? pageById(decodeURIComponent(match[1])) : null;
+    const requestedId = wikiPageId();
+    const page = pageById(requestedId);
     if (page) {
+      const canonicalPath = pageURL(page.id);
+      if (location.pathname !== canonicalPath || location.hash) {
+        history.replaceState(null, "", canonicalPath);
+      }
       renderPage(page);
       return;
     }
@@ -268,7 +278,12 @@ export async function initializeWiki() {
   }
 
   function navigateHome() {
-    history.pushState(null, "", `${location.pathname}${location.search}`);
+    history.pushState(null, "", "/wiki/");
+    renderRoute();
+  }
+
+  function navigatePage(id) {
+    history.pushState(null, "", pageURL(id));
     renderRoute();
   }
 
@@ -306,25 +321,34 @@ export async function initializeWiki() {
     elements.banner.dataset.upload = "";
   }
 
-  function uniqueId() {
-    return crypto.randomUUID ? crypto.randomUUID() : `wiki-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  }
-
   async function saveEditor(event) {
     event.preventDefault();
-    const id = elements.id.value || uniqueId();
+    const previousId = elements.id.value;
     const name = elements.name.value.trim();
-    const duplicate = pages.find((page) => page.id !== id && normalize(page.name) === normalize(name));
+    const id = compactWikiPageId(name);
+    const duplicate = pages.find((page) => page.id !== previousId && normalize(page.name) === normalize(name));
     if (duplicate) {
       showToast(`A page named ${duplicate.name} already exists.`);
       elements.name.focus();
       return;
     }
-    const existingIndex = pages.findIndex((page) => page.id === id);
+    const urlDuplicate = pages.find(
+      (page) => page.id !== previousId && compactWikiPageId(page.name) === id,
+    );
+    if (urlDuplicate) {
+      showToast(`${name} would use the same URL as ${urlDuplicate.name}.`);
+      elements.name.focus();
+      return;
+    }
+    const existingIndex = pages.findIndex((page) => page.id === previousId);
     const previous = existingIndex >= 0 ? pages[existingIndex] : {};
     const updated = {
       ...previous,
       id,
+      legacyIds: [...new Set([
+        ...(previous.legacyIds || []),
+        previousId,
+      ].filter((legacyId) => legacyId && legacyId !== id))],
       name,
       type: elements.type.value.trim() || "Lore",
       aliases: elements.aliases.value.split(",").map((alias) => alias.trim()).filter(Boolean),
@@ -338,8 +362,7 @@ export async function initializeWiki() {
     else pages.push(updated);
     if (!await savePages("Wiki page saved.")) return;
     closeEditor();
-    location.hash = `page=${encodeURIComponent(id)}`;
-    renderRoute();
+    navigatePage(id);
   }
 
   async function deleteCurrentEditorPage() {
@@ -449,7 +472,46 @@ export async function initializeWiki() {
     hoverTimer = setTimeout(() => elements.hoverCard.classList.add("hidden"), delay);
   }
 
+  function openImageModal(image) {
+    imageModalReturnFocus = document.activeElement;
+    elements.modalImage.src = image.currentSrc || image.src;
+    elements.modalImage.alt = image.alt || "Wiki image";
+    elements.imageModal.classList.remove("hidden");
+    document.body.classList.add("overflow-hidden");
+    elements.modalClose.focus();
+  }
+
+  function closeImageModal() {
+    if (elements.imageModal.classList.contains("hidden")) return;
+    elements.imageModal.classList.add("hidden");
+    elements.modalImage.removeAttribute("src");
+    document.body.classList.remove("overflow-hidden");
+    imageModalReturnFocus?.focus?.();
+    imageModalReturnFocus = null;
+  }
+
   function handleClick(event) {
+    const image = event.target.closest("[data-wiki-image]");
+    if (image) {
+      openImageModal(image);
+      return;
+    }
+    const wikiLink = event.target.closest('a[href^="/wiki/"]');
+    if (
+      wikiLink
+      && event.button === 0
+      && !event.metaKey
+      && !event.ctrlKey
+      && !event.shiftKey
+      && !event.altKey
+      && !wikiLink.hasAttribute("download")
+      && wikiLink.target !== "_blank"
+    ) {
+      event.preventDefault();
+      history.pushState(null, "", wikiLink.getAttribute("href"));
+      renderRoute();
+      return;
+    }
     const action = event.target.closest("[data-action]")?.dataset.action;
     if (action === "new") openEditor(null);
     else if (action === "edit") openEditor(pageById(event.target.closest("[data-page-id]").dataset.pageId));
@@ -509,11 +571,24 @@ export async function initializeWiki() {
     document.getElementById("wiki-editor-close").addEventListener("click", closeEditor);
     document.getElementById("wiki-editor-cancel").addEventListener("click", closeEditor);
     elements.deletePage.addEventListener("click", deleteCurrentEditorPage);
+    elements.modalClose.addEventListener("click", closeImageModal);
+    elements.imageModal.addEventListener("click", (event) => {
+      if (event.target === elements.imageModal || event.target === elements.modalImage.parentElement) {
+        closeImageModal();
+      }
+    });
     elements.editor.addEventListener("click", (event) => {
       if (event.target === elements.editor) closeEditor();
     });
     document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape" && !elements.editor.classList.contains("hidden")) closeEditor();
+      if ((event.key === "Enter" || event.key === " ") && event.target.matches("[data-wiki-image]")) {
+        event.preventDefault();
+        openImageModal(event.target);
+      } else if (event.key === "Escape" && !elements.imageModal.classList.contains("hidden")) {
+        closeImageModal();
+      } else if (event.key === "Escape" && !elements.editor.classList.contains("hidden")) {
+        closeEditor();
+      }
     });
   }
 

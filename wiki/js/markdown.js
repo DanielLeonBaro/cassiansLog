@@ -8,7 +8,8 @@ function renderInline(text, { pageByName, pageURL }) {
   while ((match = expression.exec(text))) {
     output += escapeHTML(text.slice(lastIndex, match.index));
     if (match[1] !== undefined) {
-      output += `<img src="${escapeAttribute(match[2])}" alt="${escapeAttribute(match[1])}" loading="lazy">`;
+      const label = match[1] || "Wiki image";
+      output += `<img src="${escapeAttribute(match[2])}" alt="${escapeAttribute(match[1])}" loading="lazy" data-wiki-image role="button" tabindex="0" aria-label="View ${escapeAttribute(label)} full size">`;
     } else if (match[3] !== undefined) {
       const page = pageByName(match[3].trim());
       const label = (match[4] || match[3]).trim();

@@ -198,6 +198,7 @@ async function fetchText(url) {
 }
 
 async function main() {
+  const { normalizeWikiPages } = await import("../js/model.js");
   console.log(`Importing published wiki from ${SOURCE_URL}`);
   const home = await fetchText(`${SOURCE_URL}/`);
   const content = getPublishedContent(home);
@@ -287,7 +288,7 @@ async function main() {
     });
   }
 
-  writeJSON(OUTPUT_PATH, pages, true);
+  writeJSON(OUTPUT_PATH, normalizeWikiPages(pages), true);
   console.log(`Wrote ${pages.length} pages to ${OUTPUT_PATH}`);
 }
 

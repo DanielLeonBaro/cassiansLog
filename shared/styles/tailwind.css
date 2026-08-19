@@ -113,7 +113,7 @@
   }
 
   .wiki-rich img {
-    @apply my-6 max-h-[34rem] w-full rounded-2xl border border-stone-300/80 object-cover shadow-card dark:border-white/10;
+    @apply my-6 max-h-[34rem] w-full cursor-zoom-in rounded-2xl border border-stone-300/80 object-cover shadow-card dark:border-white/10;
   }
 
   .wiki-rich a:not(.wiki-mention) {

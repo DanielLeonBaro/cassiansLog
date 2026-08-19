@@ -37,11 +37,34 @@ const { pathToFileURL } = require("node:url");
   assert.equal(await customCharacter.text(), "template shell");
   assert.deepEqual(assetRequests, ["/char/custom-hero/", "/char/template/"]);
 
+  const wikiAssetRequests = [];
+  const wikiPage = await handleRequest(
+    new Request("https://example.test/wiki/fiora"),
+    {
+      ...env,
+      ASSETS: { fetch: async (request) => {
+        wikiAssetRequests.push(new URL(request.url).pathname);
+        return new URL(request.url).pathname === "/wiki/"
+          ? new Response("wiki shell")
+          : new Response("missing", { status: 404 });
+      } },
+    },
+  );
+  assert.equal(wikiPage.status, 200);
+  assert.equal(await wikiPage.text(), "wiki shell");
+  assert.deepEqual(wikiAssetRequests, ["/wiki/fiora", "/wiki/"]);
+
   const nestedAsset = await handleRequest(
     new Request("https://example.test/char/js/missing.js"),
     { ...env, ASSETS: { fetch: async () => new Response("missing", { status: 404 }) } },
   );
   assert.equal(nestedAsset.status, 404, "Only character page routes should use the template shell.");
+
+  const nestedWikiAsset = await handleRequest(
+    new Request("https://example.test/wiki/js/missing.js"),
+    { ...env, ASSETS: { fetch: async () => new Response("missing", { status: 404 }) } },
+  );
+  assert.equal(nestedWikiAsset.status, 404, "Only wiki page routes should use the wiki shell.");
 
   const health = await handleRequest(new Request("https://example.test/api/health"), env);
   assert.equal(health.status, 200);
@@ -315,6 +338,72 @@ const { pathToFileURL } = require("node:url");
   const restoredMusic = await handleRequest(new Request("https://example.test/api/music"), musicEnv);
   assert.deepEqual((await restoredMusic.json()).library, expectedMusic);
 
+  let migratedWikiPages = null;
+  const legacyWikiPages = [{
+    id: "a4901fbc-0a6f-45dd-ad3f-f82f76e04007",
+    name: "Fiora",
+    type: "Character",
+  }];
+  const wikiEnv = {
+    ...env,
+    DB: {
+      prepare(sql) {
+        if (sql.startsWith("SELECT pages_json")) {
+          return { first: async () => ({
+            pages_json: JSON.stringify(legacyWikiPages),
+            updated_at: "2026-08-18T00:00:00.000Z",
+          }) };
+        }
+        if (sql.startsWith("UPDATE wiki_documents")) {
+          return { bind(pagesJSON) {
+            return { run: async () => {
+              migratedWikiPages = JSON.parse(pagesJSON);
+              return { meta: { changes: 1 } };
+            } };
+          } };
+        }
+        throw new Error(`Unexpected SQL in Wiki migration test: ${sql}`);
+      },
+    },
+  };
+  const migratedWiki = await handleRequest(new Request("https://example.test/api/wiki"), wikiEnv);
+  assert.equal(migratedWiki.status, 200);
+  const migratedWikiBody = await migratedWiki.json();
+  assert.equal(migratedWikiBody.pages[0].id, "fiora");
+  assert.deepEqual(
+    migratedWikiBody.pages[0].legacyIds,
+    ["a4901fbc-0a6f-45dd-ad3f-f82f76e04007"],
+  );
+  assert.deepEqual(migratedWikiPages, migratedWikiBody.pages, "D1 should persist migrated Wiki IDs");
+
+  let savedWikiPages = null;
+  const wikiWriteEnv = {
+    ...env,
+    OPEN_WRITES: "true",
+    DB: {
+      prepare(sql) {
+        if (sql.includes("FROM app_settings")) return { first: async () => null };
+        if (sql.startsWith("INSERT INTO wiki_documents")) {
+          return { bind(pagesJSON) {
+            return { run: async () => {
+              savedWikiPages = JSON.parse(pagesJSON);
+              return { meta: { changes: 1 } };
+            } };
+          } };
+        }
+        throw new Error(`Unexpected SQL in Wiki write test: ${sql}`);
+      },
+    },
+  };
+  const savedWiki = await handleRequest(new Request("https://example.test/api/wiki", {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ pages: legacyWikiPages }),
+  }), wikiWriteEnv);
+  assert.equal(savedWiki.status, 200);
+  assert.equal(savedWikiPages[0].id, "fiora", "Every Wiki write should enforce title-derived IDs");
+  assert.deepEqual(savedWikiPages[0].legacyIds, [legacyWikiPages[0].id]);
+
   const adminSource = fs.readFileSync("admin/js/entry.js", "utf8");
   sectionKeys.forEach((key) => assert.ok(adminSource.includes(`${key}:`) || adminSource.includes(`"${key}":`), `${key} needs an admin toggle`));
   assert.match(
@@ -326,6 +415,11 @@ const { pathToFileURL } = require("node:url");
     fs.readFileSync("cloudflare/migrations/0004_music_library.sql", "utf8"),
     /CREATE TABLE IF NOT EXISTS music_library/,
     "Music D1 storage must have an additive migration.",
+  );
+  assert.match(
+    fs.readFileSync("wrangler.jsonc", "utf8"),
+    /"run_worker_first": \["\/api\/\*", "\/wiki\/\*"\]/,
+    "Clean Wiki routes must run through the Worker shell fallback.",
   );
 
   const missingBinding = await handleRequest(new Request("https://example.test/api/health"), {

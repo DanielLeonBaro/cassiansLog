@@ -120,6 +120,13 @@
     <div id="wiki-hover-card" class="pointer-events-none fixed z-[70] hidden w-72 overflow-hidden rounded-2xl border border-white/15 bg-ink text-white shadow-2xl" role="tooltip"></div>
     <div id="wiki-toast" class="pointer-events-none fixed bottom-5 left-1/2 z-[80] hidden -translate-x-1/2 rounded-xl bg-stone-900 px-4 py-3 text-sm font-bold text-white shadow-xl" role="status" aria-live="polite"></div>
 
+    <div id="wiki-image-modal" class="fixed inset-0 z-[90] hidden overflow-auto bg-black/90 p-4 backdrop-blur-sm sm:p-8" role="dialog" aria-modal="true" aria-label="Full-size wiki image">
+        <button id="wiki-image-close" type="button" class="fixed right-4 top-4 z-[91] inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/25 bg-black/70 text-sm text-white shadow-xl transition hover:border-white hover:bg-black" aria-label="Close full-size image"><i class="bi bi-x-lg"></i></button>
+        <div class="flex min-h-full min-w-full items-start justify-center">
+            <img id="wiki-modal-image" alt="" class="block h-auto max-w-full rounded-lg shadow-2xl">
+        </div>
+    </div>
+
     <script type="module" src="wiki/js/entry.js"></script>
 </body>
 

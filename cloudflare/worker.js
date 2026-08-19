@@ -1,3 +1,5 @@
+import { normalizeWikiPages } from "../wiki/js/model.js";
+
 const JSON_HEADERS = {
   "content-type": "application/json; charset=utf-8",
   "cache-control": "no-store",
@@ -30,15 +32,18 @@ function safeId(value) {
 
 async function staticAsset(request, env, url) {
   const response = await env.ASSETS.fetch(request);
-  if (
-    response.status !== 404
-    || request.method !== "GET"
-    || !/^\/char\/[a-z0-9][a-z0-9-]{0,127}\/?$/i.test(url.pathname)
-  ) return response;
+  if (response.status !== 404 || request.method !== "GET") return response;
 
-  const templateURL = new URL("/char/template/", url);
-  templateURL.search = url.search;
-  return env.ASSETS.fetch(new Request(templateURL.toString(), request));
+  if (/^\/char\/[a-z0-9][a-z0-9-]{0,127}\/?$/i.test(url.pathname)) {
+    const templateURL = new URL("/char/template/", url);
+    templateURL.search = url.search;
+    return env.ASSETS.fetch(new Request(templateURL.toString(), request));
+  }
+  if (/^\/wiki\/[^/]+\/?$/i.test(url.pathname)) {
+    const wikiURL = new URL("/wiki/", url);
+    return env.ASSETS.fetch(new Request(wikiURL.toString(), request));
+  }
+  return response;
 }
 
 function secureEqual(left, right) {
@@ -288,7 +293,19 @@ async function wikiRoute(request, env) {
       "SELECT pages_json, updated_at FROM wiki_documents WHERE id = 'default'",
     ).first();
     if (!row) return error("The Wiki has not been seeded.", 404);
-    return json({ pages: parseStored(row.pages_json, []), updatedAt: row.updated_at });
+    const storedPages = parseStored(row.pages_json);
+    if (!Array.isArray(storedPages) || !storedPages.every((page) => page?.id && page?.name)) {
+      return error("The Wiki document is invalid.", 500);
+    }
+    const pages = normalizeWikiPages(storedPages);
+    let updatedAt = row.updated_at;
+    if (JSON.stringify(pages) !== JSON.stringify(storedPages)) {
+      updatedAt = new Date().toISOString();
+      await env.DB.prepare(
+        "UPDATE wiki_documents SET pages_json = ?, updated_at = ? WHERE id = 'default'",
+      ).bind(JSON.stringify(pages), updatedAt).run();
+    }
+    return json({ pages, updatedAt });
   }
   if (!await authorized(request, env)) return error("Edit password required.", 401);
   if (request.method === "PUT") {
@@ -296,10 +313,11 @@ async function wikiRoute(request, env) {
     if (!Array.isArray(body?.pages) || !body.pages.every((page) => page?.id && page?.name)) {
       return error("Invalid Wiki document.");
     }
+    const pages = normalizeWikiPages(body.pages);
     const now = new Date().toISOString();
     await env.DB.prepare(
       "INSERT INTO wiki_documents (id, pages_json, updated_at) VALUES ('default', ?, ?) ON CONFLICT(id) DO UPDATE SET pages_json = excluded.pages_json, updated_at = excluded.updated_at",
-    ).bind(JSON.stringify(body.pages), now).run();
+    ).bind(JSON.stringify(pages), now).run();
     return json({ ok: true, updatedAt: now });
   }
   return error("Method not allowed.", 405);
