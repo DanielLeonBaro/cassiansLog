@@ -31,6 +31,12 @@ assert.match(editor, /data-v1-section-move/, "V1 ordering should include accessi
 assert.match(editor, /data-v1-section-reset/, "V1 ordering should include Reset.");
 assert.match(editor, /Style v2 uses a fixed tabbed layout/, "V2 should explain why ordering is unavailable.");
 assert.match(editor, /saveCharacterSheetStyleOverride/, "Style changes should use shared persistence.");
+assert.match(editor, /data-character-editor-section/, "Editor should accept focused section triggers.");
+assert.match(editor, /return \{ open \};/, "Editor should expose its focused open action.");
+
+const tracker = fs.readFileSync("char/js/tracker/index.js", "utf8");
+assert.match(tracker, /data-character-editor-section="inventory"/, "Currency should link directly to inventory editing.");
+assert.match(tracker, />Edit Inventory<\/button>/, "Currency should show an Edit Inventory button.");
 
 const dialog = fs.readFileSync("shared/js/dialog.js", "utf8");
 assert.match(dialog, /beforeClose/);

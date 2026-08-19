@@ -70,6 +70,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
   let draftStyle = "v1";
   let draggedV1Section = null;
   let activeSection = "basics";
+  let returnFocusTarget = null;
   let controller;
 
   const classes = {
@@ -350,7 +351,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
       initialFocus: () => window.matchMedia("(min-width: 1024px)").matches
         ? document.querySelector(`[data-editor-section-button="${activeSection}"]`)
         : document.getElementById("editor-mobile-section"),
-      returnFocus: toggle,
+      returnFocus: () => returnFocusTarget || toggle,
       beforeClose() {
         if (!draftsDiffer(baseline, draft) && baselineStyle === draftStyle) return true;
         return confirm("Discard your unsaved character changes?");
@@ -367,7 +368,12 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
       },
     });
 
-    toggle.addEventListener("click", open);
+    toggle.addEventListener("click", () => open());
+    document.addEventListener("click", (event) => {
+      const trigger = event.target.closest("[data-character-editor-section]");
+      if (!trigger) return;
+      open({ section: trigger.dataset.characterEditorSection, trigger });
+    });
     document.getElementById("editor-close").addEventListener("click", controller.close);
     document.getElementById("editor-cancel").addEventListener("click", controller.close);
     document.getElementById("editor-save").addEventListener("click", save);
@@ -400,13 +406,14 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     });
   }
 
-  function open() {
+  function open({ section = "basics", trigger = null } = {}) {
     editing = true;
     baseline = clone(window.character);
     draft = clone(window.character);
     baselineStyle = document.documentElement.dataset.characterSheetStyle === "v2" ? "v2" : "v1";
     draftStyle = baselineStyle;
-    activeSection = "basics";
+    activeSection = sectionRenderers[section] ? section : "basics";
+    returnFocusTarget = trigger || document.activeElement || document.getElementById("edit-character-toggle");
     expandedItems.clear();
     document.getElementById("editor-title").textContent = params.get("new") === "1" ? "Finish character setup" : "Edit character sheet";
     document.getElementById("editor-character-name").textContent = draft.name || "Character";
@@ -638,4 +645,5 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
 
   buildUI();
   if (params.get("edit") === "1") open();
+  return { open };
 }
