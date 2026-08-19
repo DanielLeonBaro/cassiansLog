@@ -3,7 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = process.cwd();
-const features = new Set(["char", "combat-loot", "compendium", "music", "wiki"]);
+const features = new Set(["char", "combat-loot", "compendium", "music", "public-initiative", "wiki"]);
 const removedRoots = ["data", "js", "scripts", "tests", "config", "bootstrap", "src", "dist", "stuffToParse"];
 
 for (const directory of removedRoots) {
@@ -77,8 +77,10 @@ assert.ok(adminEntrypoint.includes("persistLocalRuntimeSettings"), "Local Admin 
 assert.ok(adminEntrypoint.includes("characterSheetStyleOverrides"), "Admin should save per-character style choices.");
 
 const siteBuild = fs.readFileSync("shared/build/site.cjs", "utf8");
+const tailwindConfig = fs.readFileSync("shared/styles/tailwind.config.cjs", "utf8");
 for (const feature of features) {
   assert.ok(siteBuild.includes(`"${feature}"`), `${feature} must be included in the Cloudflare static site build.`);
+  assert.ok(tailwindConfig.includes(`./${feature}/**/*.{html,js}`), `${feature} must be included in the Tailwind source scan.`);
 }
 assert.ok(siteBuild.includes('"character-route-worker.js"'), "The localhost character-route fallback must be deployed.");
 
@@ -88,6 +90,7 @@ const pageShells = new Map([
   ["combat-loot/index.html", "combat-loot/js/entry.js"],
   ["compendium/index.html", "compendium/js/entry.js"],
   ["music/index.html", "music/js/entry.js"],
+  ["public-initiative/index.html", "public-initiative/js/entry.js"],
   ["wiki/index.html", "wiki/js/entry.js"],
 ]);
 for (const [file, entrypoint] of pageShells) {

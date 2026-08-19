@@ -9,7 +9,7 @@
     "d1:seed:remote": "npm run d1:seed && wrangler d1 execute cassianslog-data --remote --file=.cloudflare/d1-seed.sql",
     "build:compendium": "node compendium/scripts/build.cjs",
     "import:wiki": "node wiki/scripts/import.cjs",
-    "test": "node char/tests/spellcasting.test.cjs && node char/tests/repository.test.cjs && node char/tests/layout.test.cjs && node shared/tests/dice.test.cjs && node combat-loot/tests/model.test.cjs && node combat-loot/tests/repository.test.cjs && node music/tests/model.test.cjs && node music/tests/page.test.cjs && node compendium/tests/compendium.test.cjs && node wiki/tests/wiki.test.cjs && node integrations/character-compendium/integration.test.cjs && node cloudflare/tests/worker.test.cjs && node shared/tests/settings.test.cjs && node shared/tests/sections.test.cjs && node shared/tests/architecture.test.cjs && node shared/tests/routes.test.cjs && npm run build:css"
+    "test": "node char/tests/spellcasting.test.cjs && node char/tests/repository.test.cjs && node char/tests/layout.test.cjs && node shared/tests/dice.test.cjs && node combat-loot/tests/model.test.cjs && node combat-loot/tests/repository.test.cjs && node public-initiative/tests/model.test.cjs && node public-initiative/tests/page.test.cjs && node music/tests/model.test.cjs && node music/tests/page.test.cjs && node compendium/tests/compendium.test.cjs && node wiki/tests/wiki.test.cjs && node integrations/character-compendium/integration.test.cjs && node cloudflare/tests/worker.test.cjs && node shared/tests/settings.test.cjs && node shared/tests/sections.test.cjs && node shared/tests/architecture.test.cjs && node shared/tests/routes.test.cjs && npm run build:css"
   },
   "devDependencies": {
     "fast-xml-parser": "^5.7.0",

@@ -9,6 +9,7 @@ module.exports = {
     "./combat-loot/**/*.{html,js}",
     "./compendium/**/*.{html,js}",
     "./music/**/*.{html,js}",
+    "./public-initiative/**/*.{html,js}",
     "./wiki/**/*.{html,js}",
     "./integrations/**/*.js",
     "./shared/**/*.js",

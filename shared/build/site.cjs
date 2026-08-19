@@ -12,6 +12,7 @@ const publicEntries = [
   "compendium",
   "integrations",
   "music",
+  "public-initiative",
   "shared",
   "wiki",
 ];
