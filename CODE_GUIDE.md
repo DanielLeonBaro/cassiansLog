@@ -272,12 +272,13 @@ The repository currently has strong foundations:
 - model/repository separation is already good in Combat & Loot, Music, Wiki, Compendium, and several Character subsystems;
 - `npm test` passes, including the Tailwind rebuild.
 
-The main standardization opportunities are:
+The final reassessment found:
 
-- several page coordinators mix too many responsibilities;
-- some tests are coupled to source text or execute transformed source instead of importing public modules;
-- the Worker contains several independent route families in one file;
-- browser interaction coverage remains less complete than model, route, and source-contract coverage.
+- the largest remaining browser entries coordinate tightly coupled DOM state and events; another split would add parameter-heavy facades without clearer ownership;
+- shared runtime text, cloning, host detection, storage-key, and Worker HTTP/authentication helpers have one canonical owner;
+- build-time escaping and feature-specific normalization remain local because they run in different environments or encode different semantics;
+- extracted pure logic has direct module tests, while source-contract tests remain only where markup, architecture, generated output, or legacy loading behavior is the contract;
+- compatibility and recovery branches are exercised by tests and remain intentional rather than dead code.
 
 Implementation status as of 2026-08-19:
 
@@ -285,71 +286,11 @@ Implementation status as of 2026-08-19:
 - Phase 1 is complete: shared escaping, JSON cloning, localhost detection, Character storage-key ownership, identifier naming, and text-safe Character loader errors are standardized.
 - Phase 2 is complete for the planned first extraction boundaries: Character tracker filters, views, and rest behavior; Character editor field schema and rendering; Combat & Loot actions, cloud synchronization, and dialogs; Wiki view data, backup parsing, and image dialogs; and Music library/tag rendering now have focused owners and direct tests.
 - Phase 3 is complete: the Worker entry point owns visible route dispatch and static fallback while neutral HTTP, settings, and authentication helpers plus Admin, Character, Combat & Loot, Compendium, Music, and Wiki route modules own their validation and D1 statements.
+- Phase 4 is complete: size, duplication, dependency, unused-export, and test-coupling audits found no further production cleanup whose maintenance benefit outweighs its compatibility risk.
 
-No production code is safe to delete solely from this audit. Deletion should follow the proof in section 10.
+Further deletion still requires the proof in section 10; repository-wide absence alone does not prove that a compatibility export or recovery path is obsolete.
 
-## 12. Refactor plan
-
-The phases are ordered by safety and leverage. Do not combine them into one large rewrite.
-
-### Phase 0: strengthen the safety net
-
-1. Add a repeatable browser smoke checklist or lightweight automation for the Character archive/editor/tracker, Combat & Loot, Music, Wiki, Compendium, Public Initiative, and Admin localhost mode.
-2. Catalog the compatibility contracts in tests: URLs, `<base>` paths, storage keys, API shapes, save timing, extension entry points, and generated-data rules.
-3. Convert pure-module tests from source transformation to direct imports, one suite at a time.
-4. In a standalone configuration commit, evaluate adding `"type": "module"` to `package.json`. All Node build/import scripts already use `.cjs`, but the full test, build, Wrangler, and local-route proof must pass before keeping the change.
-
-Stop condition: tests fail for a deliberate break of each protected boundary, and the current application still passes.
-
-### Phase 1: low-risk consistency patches
-
-1. Reuse `shared/js/text.js` HTML escaping in Admin and Music. Let Character tracker rendering re-export the shared text escape temporarily so its public imports do not change.
-2. Rename the Character tracker's identifier sanitizer so it cannot be confused with HTML attribute escaping. Preserve its exact output and cover it with tests.
-3. Centralize Character storage-key constants within the Character feature and replace repeated literals without changing the strings.
-4. Extract a side-effect-free local-host predicate so settings and localhost route support share the same host rules without importing settings initialization.
-5. Replace interpolated error messages in Character loaders with `textContent`-based rendering.
-6. Standardize JSON cloning only after tests lock down omission of `undefined`, date handling, and nested document behavior. If semantics differ, retain clearly named local helpers.
-
-Stop condition: exact duplication is reduced, names describe behavior, and no feature ownership boundary changes.
-
-### Phase 2: split the highest-value browser coordinators
-
-Move one region at a time while keeping each current initialization/export contract stable.
-
-| Current file | First extraction targets | Preserve |
-|---|---|---|
-| `char/js/tracker/index.js` | filter controller; combat/resource/spell views; rest controller | `character`, `initializeTracker()`, `refreshUI()`, DOM IDs, data actions, save timing |
-| `combat-loot/js/page.js` | cloud synchronization; preset dialogs; action dispatcher | model/repository/view APIs, draft timing, confirmations, dirty state |
-| `char/js/editor/index.js` | field schema/rendering; collection controller; editor session | extension hooks, Additional fields, draft protection, focused-section opening |
-| `wiki/js/page.js` | editor controller; route/view rendering; import/export; hover/image UI | clean and legacy URLs, ID normalization, Markdown behavior, D1/local ordering |
-| `music/js/page.js` | tag-entry controller and library view if further growth occurs | queued writes, form reuse, section order, playback behavior |
-
-Add direct tests for each extracted pure module before moving the next region. Do not redesign the UI during these moves.
-
-Stop condition: each page entry reads as orchestration, extracted modules have one reason to change, and all behavior proof remains green.
-
-### Phase 3: split Worker route ownership
-
-1. Extract neutral response, body, ID, stored-JSON, and authentication helpers with Worker tests unchanged.
-2. Move `characters`, `combat-loot`, `music`, `wiki`, and `admin/settings` route families one at a time.
-3. Keep `handleRequest()` as the visible router and static-asset fallback owner.
-4. Validate `wrangler.jsonc` against the installed schema and current Cloudflare documentation during the change.
-5. Add focused tests per route module before considering further D1/schema cleanup.
-
-Stop condition: routing remains obvious, route modules own their validation and D1 statements, and no request-scoped mutable global exists.
-
-### Phase 4: reassess, then stop
-
-After phases 0–3:
-
-- rerun size, duplication, dependency, and test-coupling audits;
-- remove only helpers or compatibility branches proven obsolete;
-- leave cohesive parsers, generators, and models alone unless a concrete maintenance problem remains;
-- update this guide when a new durable rule or compatibility contract is established.
-
-Refactoring stops when ownership is clear and remaining duplication is cheaper and safer than another abstraction.
-
-## 13. Change checklist
+## 12. Change checklist
 
 Before merging a change, confirm:
 
