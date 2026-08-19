@@ -46,7 +46,7 @@ export function initializeCharacterArchive() {
     if (!name) return;
     const id = createCharacterId(name);
     writeJSON(PENDING_KEY, { id, name });
-    location.href = `char/template/?character=${encodeURIComponent(id)}&new=1&edit=1`;
+    location.href = `char/${encodeURIComponent(id)}/?new=1&edit=1`;
   });
   load();
 }

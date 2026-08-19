@@ -8,12 +8,37 @@ export function initializeCharacterPage() {
   const loaderScript = document.querySelector("script[data-character]");
   const bundledCharacter = loaderScript?.dataset.character;
   const params = new URLSearchParams(window.location.search);
-  const requestedCharacter = params.get("character") || bundledCharacter;
+  const routeMatch = window.location.pathname.match(/\/char\/([^/]+)\/?$/i);
+  const routeCharacter = routeMatch ? decodeURIComponent(routeMatch[1]) : "";
+  const requestedCharacter = params.get("character") || (
+    bundledCharacter === "template" && routeCharacter !== "template"
+      ? routeCharacter
+      : bundledCharacter
+  );
   const characterName = /^[a-z0-9-]+$/i.test(requestedCharacter || "")
     ? requestedCharacter
     : bundledCharacter;
+  let characterShell = bundledCharacter;
   const storageKey = "dnd-characters";
   const trackerURL = new URL("../tracker.html", window.location.href);
+
+  async function useCanonicalCharacterRoute() {
+    if (bundledCharacter !== "template" || !params.has("character")) return;
+    const canonical = new URL(`char/${encodeURIComponent(characterName)}/`, document.baseURI);
+    params.delete("character");
+    canonical.search = params.toString();
+    window.history.replaceState(null, "", canonical);
+
+    try {
+      const response = await fetch(new URL("../catalog.json", import.meta.url));
+      if (!response.ok) return;
+      const catalog = await response.json();
+      if (!catalog.characters?.includes(characterName)) return;
+      characterShell = characterName;
+    } catch (error) {
+      console.warn("Could not resolve the character shell.", error);
+    }
+  }
 
   function showError(message) {
     document.body.innerHTML = `
@@ -64,6 +89,7 @@ export function initializeCharacterPage() {
     }
 
     try {
+      await useCanonicalCharacterRoute();
       const [response, settings] = await Promise.all([
         fetch(trackerURL),
         runtimeSettingsReady,
@@ -77,6 +103,7 @@ export function initializeCharacterPage() {
       document.body.className = trackerDocument.body.className;
       document.body.id = trackerDocument.body.id;
       document.body.innerHTML = trackerDocument.body.innerHTML;
+      document.body.dataset.characterShell = characterShell || "";
       applyCharacterSheetLayout(settings, characterName);
       const { initializeTrackerHeader } = await import("./tracker/header.js");
       initializeTrackerHeader();
@@ -87,7 +114,10 @@ export function initializeCharacterPage() {
         `api/characters/${encodeURIComponent(characterName)}`,
         { fallback: null },
       );
-      const characterResponse = await fetch(new URL("character.json", window.location.href));
+      const characterDataURL = characterShell === "template"
+        ? new URL("../template/character.json", import.meta.url)
+        : new URL(`../${encodeURIComponent(characterShell)}/character.json`, import.meta.url);
+      const characterResponse = await fetch(characterDataURL);
       if (!characterResponse.ok) {
         throw new Error(`Could not load the character data (${characterResponse.status}).`);
       }

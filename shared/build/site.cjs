@@ -5,6 +5,7 @@ const root = path.resolve(__dirname, "../..");
 const output = path.join(root, ".cloudflare", "public");
 const publicEntries = [
   "index.html",
+  "character-route-worker.js",
   "admin",
   "char",
   "combat-loot",

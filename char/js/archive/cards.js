@@ -18,9 +18,7 @@ export function createCharacterCard(character, { onRemove }) {
   description.textContent = character.description || "Open character tracker.";
   text.append(name, description);
 
-  const route = character.custom
-    ? `char/template/?character=${encodeURIComponent(character.id)}`
-    : `char/${encodeURIComponent(character.id)}/`;
+  const route = `char/${encodeURIComponent(character.id)}/`;
   const actions = document.createElement("div");
   actions.className = "relative z-10 flex shrink-0 flex-wrap gap-2 pt-5";
   const open = document.createElement("a");
@@ -29,7 +27,7 @@ export function createCharacterCard(character, { onRemove }) {
   open.innerHTML = 'Open tracker <i class="bi bi-arrow-right ml-1"></i>';
   const edit = document.createElement("a");
   edit.className = "inline-flex h-10 w-10 items-center justify-center rounded-xl border border-sky-600 text-sky-600 transition hover:bg-sky-600 hover:text-white";
-  edit.href = `${route}${route.includes("?") ? "&" : "?"}edit=1`;
+  edit.href = `${route}?edit=1`;
   edit.setAttribute("aria-label", `Edit ${character.name}`);
   edit.innerHTML = '<i class="bi bi-pencil-fill"></i>';
   const remove = document.createElement("button");

@@ -247,7 +247,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     close();
     refreshUI();
     try {
-      const bundledId = document.querySelector("script[data-character]")?.dataset.character;
+      const bundledId = document.body.dataset.characterShell;
       await writeCloudJSON(`api/characters/${encodeURIComponent(character.id)}`, {
         document: clone(character),
         source: bundledId && bundledId !== "template" ? "bundled" : "custom",

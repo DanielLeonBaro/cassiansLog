@@ -22,7 +22,7 @@ const context = {
   },
 };
 vm.createContext(context);
-vm.runInContext(`${storageCode}\n${repositoryCode}\nglobalThis.api = { storedCharacters, migrateLegacyPortrait };`, context);
+vm.runInContext(`${storageCode}\n${repositoryCode}\nglobalThis.api = { storedCharacters, migrateLegacyPortrait, isBundledCharacter };`, context);
 
 const characters = context.api.storedCharacters();
 assert.equal(characters.cassian.portrait, "char/cassian/portrait.jpg");
@@ -30,6 +30,10 @@ assert.equal(characters.custom.portrait, "data:image/png;base64,abc");
 assert.equal(JSON.parse(values.get("dnd-characters")).cassian.portrait, "char/cassian/portrait.jpg");
 
 const catalog = JSON.parse(fs.readFileSync("char/catalog.json", "utf8"));
+assert.equal(context.api.isBundledCharacter("cassian", catalog), true);
+assert.equal(context.api.isBundledCharacter("elaria", catalog), true);
+assert.equal(context.api.isBundledCharacter("template", catalog), true);
+assert.equal(context.api.isBundledCharacter("custom", catalog), false);
 for (const id of [...catalog.characters, "template"]) {
   const character = JSON.parse(fs.readFileSync(`char/${id}/character.json`, "utf8"));
   assert.equal(character.id, id);

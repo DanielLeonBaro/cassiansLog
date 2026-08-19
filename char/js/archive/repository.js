@@ -43,6 +43,12 @@ export function characterDescription(character) {
   return `Level ${character.level ?? "—"} ${ancestryAndClass}`.trim();
 }
 
+export function isBundledCharacter(id, catalog) {
+  return id === "template" || (
+    Array.isArray(catalog?.characters) && catalog.characters.includes(id)
+  );
+}
+
 async function getJSON(url) {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`HTTP ${response.status}: ${url}`);
@@ -56,8 +62,11 @@ export async function listCharacters() {
   ));
   const cloud = await readCloudJSON("api/characters", { fallback: null });
   const bundled = Array.isArray(cloud?.characters) && cloud.characters.length
-    ? cloud.characters.map(({ document, source }) => ({ ...document, custom: source !== "bundled" }))
-    : staticBundled;
+    ? cloud.characters.map(({ document }) => ({
+      ...document,
+      custom: !isBundledCharacter(document.id, catalog),
+    }))
+    : staticBundled.map((character) => ({ ...character, custom: false }));
   const saved = storedCharacters();
   const cloudIsAuthoritative = Array.isArray(cloud?.characters) && cloud.characters.length;
   const deleted = new Set(readJSON(DELETED_KEY, []));

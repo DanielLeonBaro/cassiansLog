@@ -20,6 +20,29 @@ const { pathToFileURL } = require("node:url");
   const asset = await handleRequest(new Request("https://example.test/char/"), env);
   assert.equal(await asset.text(), "asset");
 
+  const assetRequests = [];
+  const customCharacter = await handleRequest(
+    new Request("https://example.test/char/custom-hero/?edit=1"),
+    {
+      ...env,
+      ASSETS: { fetch: async (request) => {
+        assetRequests.push(new URL(request.url).pathname);
+        return new URL(request.url).pathname === "/char/template/"
+          ? new Response("template shell")
+          : new Response("missing", { status: 404 });
+      } },
+    },
+  );
+  assert.equal(customCharacter.status, 200);
+  assert.equal(await customCharacter.text(), "template shell");
+  assert.deepEqual(assetRequests, ["/char/custom-hero/", "/char/template/"]);
+
+  const nestedAsset = await handleRequest(
+    new Request("https://example.test/char/js/missing.js"),
+    { ...env, ASSETS: { fetch: async () => new Response("missing", { status: 404 }) } },
+  );
+  assert.equal(nestedAsset.status, 404, "Only character page routes should use the template shell.");
+
   const health = await handleRequest(new Request("https://example.test/api/health"), env);
   assert.equal(health.status, 200);
   assert.deepEqual(await health.json(), { ok: true });

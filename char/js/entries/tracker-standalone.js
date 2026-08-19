@@ -15,6 +15,7 @@ try {
   ]);
   if (!response.ok) throw new Error(`Could not load the character data (${response.status}).`);
   window.character = await response.json();
+  document.body.dataset.characterShell = characterName;
   applyCharacterSheetLayout(settings, characterName);
   initializeTrackerHeader();
   await import("./tracker.js");

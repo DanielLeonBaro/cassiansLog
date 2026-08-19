@@ -80,6 +80,7 @@ const siteBuild = fs.readFileSync("shared/build/site.cjs", "utf8");
 for (const feature of features) {
   assert.ok(siteBuild.includes(`"${feature}"`), `${feature} must be included in the Cloudflare static site build.`);
 }
+assert.ok(siteBuild.includes('"character-route-worker.js"'), "The localhost character-route fallback must be deployed.");
 
 const pageShells = new Map([
   ["char/index.html", "char/js/entries/characters.js"],
@@ -109,6 +110,16 @@ const characterLoader = fs.readFileSync("char/js/page-loader.js", "utf8");
 for (const key of ["dnd-characters", "dnd-new-character"]) assert.ok(characterLoader.includes(key));
 assert.ok(characterLoader.includes("applyCharacterSheetLayout"), "Every routed character should apply the configured sheet layout.");
 assert.ok(characterLoader.includes("applyCharacterSheetLayout(settings, characterName)"), "Character routes should resolve style overrides by ID.");
+assert.ok(characterLoader.includes("history.replaceState"), "Legacy template links should receive their canonical character URL.");
+assert.ok(characterLoader.includes("dataset.characterShell"), "Tracker loading should preserve the owning character shell.");
+assert.ok(fs.readFileSync("char/js/editor/index.js", "utf8").includes("dataset.characterShell"), "Character saves should preserve bundled ownership after tracker injection.");
+const characterCards = fs.readFileSync("char/js/archive/cards.js", "utf8");
+const characterArchive = fs.readFileSync("char/js/archive/index.js", "utf8");
+assert.ok(!characterCards.includes("template/?character="), "Character cards must never generate template query routes.");
+assert.ok(!characterArchive.includes("template/?character="), "New characters must never generate template query routes.");
+assert.ok(characterCards.includes("char/${encodeURIComponent(character.id)}/"), "Every character card should use /char/id/.");
+assert.ok(characterArchive.includes("char/${encodeURIComponent(id)}/?new=1&edit=1"), "New characters should open through /char/id/.");
+assert.ok(fs.readFileSync("character-route-worker.js", "utf8").includes("/char/template/"), "Localhost should fall back to the shared template shell behind clean character URLs.");
 const trackerState = fs.readFileSync("char/js/tracker/state.js", "utf8");
 const trackerNotes = fs.readFileSync("char/js/tracker/notes.js", "utf8");
 assert.ok(trackerState.includes('dnd-${character.id || "character"}-state'));

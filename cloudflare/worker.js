@@ -28,6 +28,19 @@ function safeId(value) {
   return ID_PATTERN.test(value || "") ? value : null;
 }
 
+async function staticAsset(request, env, url) {
+  const response = await env.ASSETS.fetch(request);
+  if (
+    response.status !== 404
+    || request.method !== "GET"
+    || !/^\/char\/[a-z0-9][a-z0-9-]{0,127}\/?$/i.test(url.pathname)
+  ) return response;
+
+  const templateURL = new URL("/char/template/", url);
+  templateURL.search = url.search;
+  return env.ASSETS.fetch(new Request(templateURL.toString(), request));
+}
+
 function secureEqual(left, right) {
   const a = new TextEncoder().encode(left || "");
   const b = new TextEncoder().encode(right || "");
@@ -368,7 +381,7 @@ async function adminRoute(request, env, parts) {
 
 export async function handleRequest(request, env) {
   const url = new URL(request.url);
-  if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
+  if (!url.pathname.startsWith("/api/")) return staticAsset(request, env, url);
   if (!env.DB) return error("D1 binding is unavailable.", 503);
   try {
     if (url.pathname === "/api/health" && request.method === "GET") {
