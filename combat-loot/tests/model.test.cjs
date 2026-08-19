@@ -206,6 +206,17 @@ function setCell(document, tableType, rowId, role, value) {
 }
 
 {
+  const { document: initial, idFactory } = makeDocument();
+  const combat = tracker(initial, "combat");
+  const changed = model.insertTrackerRow(initial, combat.id, combat.rows.length, { idFactory });
+  const insertedRow = tracker(changed, "combat").rows.at(-1);
+
+  assert.equal(insertedRow.cells[column(combat, "damage").id], "0");
+  assert.equal(insertedRow.cells[column(combat, "hp").id], "0");
+  assert.equal(insertedRow.cells[column(combat, "ac").id], "0");
+}
+
+{
   const { document } = makeDocument();
   const initiative = tracker(document, "initiative");
   const combat = tracker(document, "combat");
@@ -340,13 +351,36 @@ function setCell(document, tableType, rowId, role, value) {
   assert.equal(JSON.stringify(document), originalJSON);
 
   const mergedCombat = tracker(merged, "combat");
-  assert.deepEqual(cellValues(mergedCombat, "hp"), ["4", "8", "", "", "9"]);
+  assert.deepEqual(cellValues(mergedCombat, "hp"), ["4", "8", "0", "0", "9"]);
   assert.deepEqual(cellValues(mergedCombat, "character"), [
     "Goblin", "Renamed", "goblin", "New foe", "Unmatched",
   ]);
   assert.equal(mergedCombat.rows[0].sourceInitiativeRowId, tracker(merged, "initiative").rows[0].id);
   assert.equal(mergedCombat.rows[1].sourceInitiativeRowId, sourceInitiativeRow.id);
   assert.equal(mergedCombat.rows[2].sourceInitiativeRowId, tracker(merged, "initiative").rows[2].id);
+}
+
+{
+  const { document: initial, idFactory } = makeDocument();
+  const initiative = tracker(initial, "initiative");
+  const document = setCell(initial, "initiative", initiative.rows[0].id, "character", "Goblin");
+  const merged = model.mergeInitiativeIntoCombat(document, { idFactory });
+  const combat = tracker(merged, "combat");
+
+  assert.equal(combat.rows.length, 1, "the default blank combat row should be removed");
+  assert.equal(cellValues(combat, "character")[0], "Goblin");
+  assert.equal(cellValues(combat, "damage")[0], "0");
+  assert.equal(cellValues(combat, "hp")[0], "0");
+  assert.equal(cellValues(combat, "ac")[0], "0");
+}
+
+{
+  const { document, idFactory } = makeDocument();
+  const merged = model.mergeInitiativeIntoCombat(document, { idFactory });
+  const combat = tracker(merged, "combat");
+
+  assert.equal(combat.rows.length, 1, "an empty send should keep the default combat row");
+  assert.equal(cellValues(combat, "character")[0], "");
 }
 
 {

@@ -123,6 +123,23 @@ function makeRow(id, columns) {
   return { id, cells: blankCells(columns) };
 }
 
+function makeTrackerRow(id, tracker) {
+  const row = makeRow(id, tracker.columns);
+  if (tracker.type === "combat") {
+    tracker.columns.forEach((column) => {
+      if (["damage", "hp", "ac"].includes(column.role)) {
+        row.cells[column.id] = "0";
+      }
+    });
+  }
+  return row;
+}
+
+function isDefaultBlankCombatRow(row, columns) {
+  return !row.sourceInitiativeRowId
+    && columns.every((column) => normalizeText(row.cells?.[column.id]).trim() === "");
+}
+
 function healthNumber(value) {
   const text = normalizeText(value).trim();
   if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(text)) return null;
@@ -270,7 +287,7 @@ export function insertTrackerRow(document, tableId, index, options = {}) {
   const tracker = findTracker(copy, tableId);
   assertInsertionIndex(index, tracker.rows.length, "Row");
   const allocateId = createIdAllocator(resolveIdFactory(options), copy);
-  tracker.rows.splice(index, 0, makeRow(allocateId("row"), tracker.columns));
+  tracker.rows.splice(index, 0, makeTrackerRow(allocateId("row"), tracker));
   return copy;
 }
 
@@ -424,6 +441,13 @@ export function mergeInitiativeIntoCombat(document, options = {}) {
       name: normalizeText(row.cells[initiativeCharacterColumn.id]).trim(),
     }))
     .filter(({ name }) => name.length > 0);
+  if (
+    incoming.length > 0
+    && combat.rows.length === 1
+    && isDefaultBlankCombatRow(combat.rows[0], combat.columns)
+  ) {
+    combat.rows = [];
+  }
   const availableRows = new Set(combat.rows);
   const matchedRows = new Map();
 
@@ -456,7 +480,7 @@ export function mergeInitiativeIntoCombat(document, options = {}) {
       match.cells[combatCharacterColumn.id] = name;
       return match;
     }
-    const row = makeRow(allocateId("row"), combat.columns);
+    const row = makeTrackerRow(allocateId("row"), combat);
     row.sourceInitiativeRowId = initiativeRow.id;
     row.cells[combatCharacterColumn.id] = name;
     return row;
