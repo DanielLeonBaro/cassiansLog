@@ -71,8 +71,15 @@ export function createCharacterFieldRenderer({ classes, expandedItems, getDraft 
   function renderNode(value, path = [], key = "", options = {}) {
     if (Array.isArray(value)) return renderCollection(value, path, key);
     if (value && typeof value === "object") {
-      const entries = Object.entries(value);
       const collection = typeof path.at(-1) === "number" ? path.at(-2) : "";
+      const editableValue = collection === "inventory"
+        ? {
+            ...value,
+            attunement: value.attunement === true || Number(value.attunement) === 1,
+            wearable: value.wearable === true || Number(value.wearable) === 1,
+          }
+        : value;
+      const entries = Object.entries(editableValue);
       const knownFields = COLLECTION_KNOWN_FIELDS[collection];
       const primaryEntries = knownFields ? entries.filter(([childKey]) => knownFields.has(childKey)) : entries;
       const additionalEntries = knownFields ? entries.filter(([childKey]) => !knownFields.has(childKey)) : [];

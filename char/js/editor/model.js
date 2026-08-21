@@ -35,7 +35,7 @@ export function createBlankCollectionItem(path, items, draft) {
     spells: { id: uniqueItemId("spell"), name: "", category: "Spell", action: "Action", level: 1, source: draft.spellcasting?.profiles?.[0]?.id || "", prepared: false, description: "" },
     resources: { id: uniqueItemId("resource"), name: "", category: "Resource", action: "Other", description: "" },
     features: { id: uniqueItemId("feature"), name: "", category: "Feature", description: "" },
-    inventory: { name: "", quantity: 1, description: "" },
+    inventory: { name: "", quantity: 1, description: "", attunement: false, wearable: false },
   };
   if (defaults[collection]) return cloneJSON(defaults[collection]);
   if (!items.length) return "";

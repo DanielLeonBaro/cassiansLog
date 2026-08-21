@@ -8,6 +8,26 @@ export function createTrackerViews({
   getSpells,
   isAlwaysPreparedSpell,
 }) {
+  const attunedToggleClasses = "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-300 bg-stone-100 text-stone-600 shadow-sm transition hover:border-yellow-300 hover:text-yellow-500 aria-checked:border-yellow-200 aria-checked:bg-yellow-200 aria-checked:text-yellow-950 dark:border-white/15 dark:bg-white/10 dark:text-stone-300";
+  const wearingToggleClasses = "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-300 bg-stone-100 text-stone-600 shadow-sm transition hover:border-violet-300 hover:text-violet-400 aria-checked:border-violet-300 aria-checked:bg-violet-300 aria-checked:text-violet-950 dark:border-white/15 dark:bg-white/10 dark:text-stone-300";
+
+  function renderInventoryItem(item, index, state = {}) {
+    const supportsAttunement = item.attunement === true || Number(item.attunement) === 1;
+    const supportsWearing = item.wearable === true || Number(item.wearable) === 1;
+    const attuned = supportsAttunement && Boolean(state.attuned);
+    const wearing = supportsWearing && Boolean(state.wearing);
+    const attunedToggle = supportsAttunement
+      ? `<button type="button" role="switch" aria-checked="${attuned}" aria-label="Attuned: ${attuned ? "Yes" : "No"}" title="Attuned" data-tracker-action="inventory-item-status" data-index="${index}" data-field="attuned" class="${attunedToggleClasses}"><i class="bi bi-gem" aria-hidden="true"></i></button>`
+      : "";
+    const wearingToggle = supportsWearing
+      ? `<button type="button" role="switch" aria-checked="${wearing}" aria-label="Wearing: ${wearing ? "Yes" : "No"}" title="Wearing" data-tracker-action="inventory-item-status" data-index="${index}" data-field="wearing" class="${wearingToggleClasses}"><i class="bi bi-person-check-fill" aria-hidden="true"></i></button>`
+      : "";
+    const statusToggles = attunedToggle || wearingToggle
+      ? `<div class="flex shrink-0 items-start gap-2">${attunedToggle}${wearingToggle}</div>`
+      : "";
+    return `<div class="${ui.card}"><div class="${ui.cardHeader}"><strong>${escapeHTML(item.name)}</strong><span class="${ui.badge} ${ui.badgePrimary}">x${item.quantity}</span></div><div class="${ui.cardBody} flex items-start justify-between gap-3"><small class="min-w-0 grow text-left">${escapeHTML(item.description || "")}</small>${statusToggles}</div></div>`;
+  }
+
   function renderDetailBadges(item) {
     const badges = [];
     if (item.level !== undefined && item.level !== null)
@@ -104,6 +124,7 @@ export function createTrackerViews({
   }
 
   return {
+    renderInventoryItem,
     renderAbilityCard,
     renderDetailBadges,
     renderPreparedProfile,

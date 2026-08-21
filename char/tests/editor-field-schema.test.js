@@ -14,6 +14,8 @@ assert.deepEqual(EDITOR_SECTION_DEFINITIONS.map(({ id }) => id), [
 ]);
 assert.equal(CHARACTER_SECTION_KEYS.has("v1SectionOrder"), true);
 assert.equal(COLLECTION_KNOWN_FIELDS.spells.has("prepared"), true);
+assert.equal(COLLECTION_KNOWN_FIELDS.inventory.has("attunement"), true);
+assert.equal(COLLECTION_KNOWN_FIELDS.inventory.has("wearable"), true);
 assert.equal(fieldTitle("saveDC"), "Save DC");
 assert.equal(fieldTitle("custom_field"), "Custom field");
 assert.equal(fieldPathKey(["spellcasting", "profiles", 0, "name"]), "spellcasting.profiles.0.name");

@@ -16,6 +16,41 @@ export function createTrackerState({
   enforcePreparedLimits,
 }) {
   const storageKey = characterStateStorageKey(character.id);
+  const inventoryState = new Map();
+
+  function inventoryItemKey(item, index) {
+    if (item?.id) return `id:${item.id}`;
+    const name = String(item?.name || "");
+    const occurrence = (character.inventory || [])
+      .slice(0, index + 1)
+      .filter((entry) => String(entry?.name || "") === name)
+      .length;
+    return `name:${name}:${occurrence}`;
+  }
+
+  function getInventoryItemState(index) {
+    const item = (character.inventory || [])[index];
+    if (!item) return { attuned: false, wearing: false };
+    const saved = inventoryState.get(inventoryItemKey(item, index)) || {
+      attuned: normalizeCharacterFlag(item.attuned) === 1,
+      wearing: normalizeCharacterFlag(item.wearing) === 1,
+    };
+    return {
+      attuned: normalizeCharacterFlag(item.attunement) === 1 && Boolean(saved.attuned),
+      wearing: normalizeCharacterFlag(item.wearable) === 1 && Boolean(saved.wearing),
+    };
+  }
+
+  function toggleInventoryItemState(index, field) {
+    const item = (character.inventory || [])[index];
+    const capability = field === "attuned" ? "attunement"
+      : field === "wearing" ? "wearable" : "";
+    if (!item || !capability || normalizeCharacterFlag(item[capability]) !== 1) return false;
+    const key = inventoryItemKey(item, index);
+    const current = getInventoryItemState(index);
+    inventoryState.set(key, { ...current, [field]: !current[field] });
+    return true;
+  }
 
   function apply(state) {
     if (!state) return;
@@ -47,6 +82,23 @@ export function createTrackerState({
       const spell = (character.spells || []).find((item) => item.id === saved.id);
       if (spell) spell.prepared = Boolean(saved.prepared);
     });
+    if (Array.isArray(state.inventory)) {
+      inventoryState.clear();
+      state.inventory.forEach((saved) => {
+        const inventory = character.inventory || [];
+        const index = saved.key
+          ? inventory.findIndex((item, itemIndex) => inventoryItemKey(item, itemIndex) === saved.key)
+          : saved.id
+            ? inventory.findIndex((entry) => entry.id === saved.id)
+            : Number(saved.index);
+        const item = inventory[index];
+        if (!item || index < 0) return;
+        inventoryState.set(inventoryItemKey(item, index), {
+          attuned: normalizeCharacterFlag(saved.attuned) === 1,
+          wearing: normalizeCharacterFlag(saved.wearing) === 1,
+        });
+      });
+    }
     if (character.hp.current > 0) resetDeathSaves(character.deathSaves);
     enforcePreparedLimits();
   }
@@ -61,10 +113,16 @@ export function createTrackerState({
       uses: getAllCharacterItems().filter((item) => item.uses).map((item) => ({ id: item.id, current: item.uses.current })),
       slots: getSpellSlots().map((slot) => ({ id: slot.id, current: slot.current })),
       prepared: (character.spells || []).map((spell) => ({ id: spell.id, prepared: Boolean(spell.prepared) })),
+      inventory: (character.inventory || []).map((item, index) => ({
+        key: inventoryItemKey(item, index),
+        ...getInventoryItemState(index),
+      })),
     };
   }
 
   return {
+    getInventoryItemState,
+    toggleInventoryItemState,
     save() {
       const state = snapshot();
       writeJSON(storageKey, state);

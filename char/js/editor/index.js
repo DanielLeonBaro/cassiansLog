@@ -310,7 +310,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     const parent = pathValue(draft, path.slice(0, -1));
     const current = parent?.[path.at(-1)];
     if (!parent) return;
-    parent[path.at(-1)] = typeof current === "boolean" ? input.checked
+    parent[path.at(-1)] = input.type === "checkbox" ? input.checked
       : typeof current === "number" ? Number(input.value) : input.value;
     if (path.length === 1 && path[0] === "name") {
       document.getElementById("editor-character-name").textContent = input.value || "Character";

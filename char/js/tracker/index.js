@@ -72,6 +72,7 @@ const {
   save: saveState,
 });
 const {
+  renderInventoryItem,
   renderAbilityCard,
   renderPreparedProfile,
   renderResourceCard,
@@ -679,10 +680,7 @@ function loadInventory() {
   const inventory = character.inventory || [];
   container.innerHTML = inventory.length
     ? inventory
-        .map(
-          (item) =>
-            `<div class="${ui.card}"><div class="${ui.cardHeader}"><strong>${escapeHTML(item.name)}</strong><span class="${ui.badge} ${ui.badgePrimary}">x${item.quantity}</span></div><div class="${ui.cardBody}"><small>${escapeHTML(item.description || "")}</small></div></div>`,
-        )
+        .map((item, index) => renderInventoryItem(item, index, trackerState.getInventoryItemState(index)))
         .join("")
     : '<p class="text-stone-500 dark:text-stone-400">Inventory is empty.</p>';
 }
@@ -702,6 +700,7 @@ function setupEvents() {
     else if (action === "spell-slot") changeSpellSlot(target.dataset.id, Number(target.dataset.delta));
     else if (action === "prepared-spell") togglePreparedSpell(target.dataset.id);
     else if (action === "character-flag") toggleCharacterFlag(target.dataset.field);
+    else if (action === "inventory-item-status") toggleInventoryItemStatus(Number(target.dataset.index), target.dataset.field);
     else if (action === "death-save") changeDeathSave(target.dataset.kind, Number(target.dataset.index));
     else if (action === "stable") changeStable();
     else if (action === "edit-note") notesController.edit(Number(target.dataset.index));
@@ -797,6 +796,12 @@ function setupEvents() {
       tracker.active = input.checked;
       saveState();
     });
+}
+
+function toggleInventoryItemStatus(index, field) {
+  if (!trackerState.toggleInventoryItemState(index, field)) return;
+  saveState();
+  loadInventory();
 }
 function getCombatItems() {
   return getCombatItemRecords().map((record) => record.item);

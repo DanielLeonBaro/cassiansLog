@@ -24,7 +24,7 @@ export const COLLECTION_KNOWN_FIELDS = {
   spells: new Set(["id", "name", "category", "action", "level", "school", "source", "spellcasting", "slotLevel", "range", "attack", "damage", "duration", "components", "concentration", "prepared", "uses", "description"]),
   resources: new Set(["id", "name", "category", "action", "uses", "description"]),
   features: new Set(["id", "name", "category", "description"]),
-  inventory: new Set(["id", "name", "quantity", "description"]),
+  inventory: new Set(["id", "name", "quantity", "description", "attunement", "wearable"]),
 };
 
 const FIELD_LABELS = {

@@ -37,6 +37,8 @@ const { pathToFileURL } = require("node:url");
 
   const inventory = createBlankCollectionItem(["inventory"], [], original);
   assert.equal(inventory.quantity, 1);
+  assert.equal(inventory.attunement, false);
+  assert.equal(inventory.wearable, false);
   console.log("Character editor draft and collection model tests passed.");
 })().catch((error) => {
   console.error(error);
