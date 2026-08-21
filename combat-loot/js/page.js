@@ -2,17 +2,32 @@ import { cloneJSON } from "../../shared/js/text.js";
 import { writeCloudJSON } from "../../shared/js/cloud-store.js";
 import {
   addCustomTracker,
+  bringPartyMembersToInitiative,
   calculateCurrentHP,
   createCombatLootDocument,
+  evaluateArithmeticFormula,
+  initializeDefaultTrackers,
   initializeCombatHealthColumns,
+  mergeInitiativeIntoCombat,
   moveTrackerRow,
+  normalizeCharacterName,
   renameTracker,
   renameTrackerColumn,
+  sortInitiativeRows,
   updateTrackerCell,
 } from "./model.js";
 import { createCombatActionDispatcher } from "./action-dispatcher.js";
 import { createCombatCloudSync } from "./cloud-sync.js";
 import { createCombatDialogController } from "./dialog-controller.js";
+import {
+  loadPartyLibrary,
+  membersForPartyIds,
+  normalizePartyLibrary,
+  partyCandidatesForCharacters,
+  resolvePartyCandidates,
+  savePartyLibrary,
+  upsertParty,
+} from "./party-library.js";
 import {
   createDownload,
   createPreset,
@@ -61,8 +76,11 @@ function healthColumnIdFactory(document) {
 }
 
 function prepareWorkspaceDocument(document) {
-  const prepared = initializeCombatHealthColumns(document, {
+  let prepared = initializeCombatHealthColumns(document, {
     idFactory: healthColumnIdFactory(document),
+  });
+  prepared = initializeDefaultTrackers(prepared, {
+    idFactory: healthColumnIdFactory(prepared),
   });
   const combat = prepared.tables.find((table) => table.type === "combat");
   const derivedColumns = combat?.columns.filter((column) => column.role === "currentHp") || [];
@@ -72,6 +90,31 @@ function prepareWorkspaceDocument(document) {
     });
   });
   return prepared;
+}
+
+function migrateLegacyPartyLibrary(parties, sources) {
+  let migrated = parties;
+  let changed = false;
+  sources.forEach(({ document: sourceDocument, name }) => {
+    const members = Array.isArray(sourceDocument?.party) ? sourceDocument.party : [];
+    if (!members.length || !sourceDocument?.id) return;
+    const id = `legacy-${sourceDocument.id}`;
+    if (migrated.some((party) => party.id === id)) return;
+    const baseName = String(name || "Imported Party").trim() || "Imported Party";
+    let partyName = baseName;
+    let suffix = 2;
+    while (migrated.some((party) => party.name.toLocaleLowerCase() === partyName.toLocaleLowerCase())) {
+      partyName = `${baseName} ${suffix}`;
+      suffix += 1;
+    }
+    try {
+      migrated = upsertParty(migrated, { id, name: partyName, members });
+      changed = true;
+    } catch (error) {
+      console.warn("Could not migrate a legacy party:", error);
+    }
+  });
+  return { changed, parties: migrated };
 }
 
 export function initializeCombatLoot() {
@@ -90,6 +133,24 @@ export function initializeCombatLoot() {
     editorContext: document.getElementById("editor-dialog-context"),
     editorLabel: document.getElementById("editor-field-label"),
     editorValue: document.getElementById("editor-value"),
+    editorHelp: document.getElementById("editor-help"),
+    editorError: document.getElementById("editor-error"),
+    partyDialog: document.getElementById("party-dialog"),
+    partyForm: document.getElementById("party-form"),
+    partyMembers: document.getElementById("party-members"),
+    addPartyMember: document.getElementById("add-party-member"),
+    partySelect: document.getElementById("party-select"),
+    partyName: document.getElementById("party-name"),
+    bringPartyDialog: document.getElementById("bring-party-dialog"),
+    bringPartyForm: document.getElementById("bring-party-form"),
+    bringPartyList: document.getElementById("bring-party-list"),
+    partyConflictDialog: document.getElementById("party-conflict-dialog"),
+    partyConflictForm: document.getElementById("party-conflict-form"),
+    partyConflictList: document.getElementById("party-conflict-list"),
+    sendCombatDialog: document.getElementById("send-combat-dialog"),
+    sortSendCombat: document.getElementById("sort-send-combat"),
+    sendCombatAsIs: document.getElementById("send-combat-as-is"),
+    cancelSendCombat: document.getElementById("cancel-send-combat"),
     nameDialog: document.getElementById("name-dialog"),
     nameForm: document.getElementById("name-form"),
     presetName: document.getElementById("preset-name"),
@@ -102,6 +163,16 @@ export function initializeCombatLoot() {
 
   let presets = loadPresetCollection();
   const recoveredDraft = loadDraft();
+  let partyLibrary = loadPartyLibrary();
+  const migratedParties = migrateLegacyPartyLibrary(partyLibrary, [
+    ...presets.map((preset) => ({
+      document: preset.document,
+      name: `${preset.baseName || "Imported"} Party`,
+    })),
+    { document: recoveredDraft?.currentDocument, name: "Imported Party" },
+  ]);
+  partyLibrary = migratedParties.parties;
+  if (migratedParties.changed) savePartyLibrary(partyLibrary);
   const recoveredWasDirty = recoveredDraft
     ? isDocumentDirty(recoveredDraft.currentDocument, recoveredDraft.baselineDocument)
     : false;
@@ -124,11 +195,21 @@ export function initializeCombatLoot() {
     : cloneJSON(workspace);
   let editorTarget = null;
   let confirmationAction = null;
+  let pendingCombatSend = null;
   let draggedRow = null;
   let toastTimer = null;
   let draftFailureShown = false;
+  const tableViews = {};
   const { close: closeDialog, open: openDialog } = createCombatDialogController({
-    dialogs: [elements.editorDialog, elements.nameDialog, elements.confirmDialog],
+    dialogs: [
+      elements.editorDialog,
+      elements.partyDialog,
+      elements.bringPartyDialog,
+      elements.partyConflictDialog,
+      elements.nameDialog,
+      elements.sendCombatDialog,
+      elements.confirmDialog,
+    ],
   });
 
   function activePreset() {
@@ -224,8 +305,16 @@ export function initializeCombatLoot() {
   }
 
   function render() {
-    elements.trackers.innerHTML = renderWorkspace(workspace);
+    elements.trackers.innerHTML = renderWorkspace(workspace, tableViews);
     updateChrome();
+  }
+
+  function toggleTableView(tableId, key) {
+    tableViews[tableId] = {
+      ...(tableViews[tableId] || {}),
+      [key]: !tableViews[tableId]?.[key],
+    };
+    render();
   }
 
   function applyMutation(createNext, message = "") {
@@ -270,6 +359,14 @@ export function initializeCombatLoot() {
   function updateCurrentHPOutput(container, health) {
     container.dataset.valid = String(health.valid);
     container.replaceChildren();
+    if (!health.hasCharacter && health.hpPlaceholder && health.damagePlaceholder) {
+      const placeholder = document.createElement("span");
+      placeholder.className = "italic text-stone-400";
+      placeholder.setAttribute("aria-label", "Current HP placeholder");
+      placeholder.textContent = "0";
+      container.append(placeholder);
+      return;
+    }
     if (health.valid) {
       const output = document.createElement("output");
       output.className = "font-semibold tabular-nums";
@@ -296,16 +393,47 @@ export function initializeCombatLoot() {
     if (!rowElement || table?.type !== "combat" || !row) return;
     const hpColumn = table.columns.find((column) => column.role === "hp");
     const damageColumn = table.columns.find((column) => column.role === "damage");
-    const health = calculateCurrentHP(
-      hpColumn ? row.cells?.[hpColumn.id] : "",
-      damageColumn ? row.cells?.[damageColumn.id] : "",
-    );
+    const hp = hpColumn ? row.cells?.[hpColumn.id] : "";
+    const damage = damageColumn ? row.cells?.[damageColumn.id] : "";
+    const characterColumn = table.columns.find((column) => column.role === "character");
+    const hasCharacter = Boolean(String(
+      characterColumn ? row.cells?.[characterColumn.id] : "",
+    ).trim());
+    const hpPlaceholder = !String(hp ?? "").trim() || String(hp).trim() === "0";
+    const damagePlaceholder = !String(damage ?? "").trim() || String(damage).trim() === "0";
+    const calculated = calculateCurrentHP(hp, damage);
+    const health = {
+      ...calculated,
+      hasCharacter,
+      hpPlaceholder,
+      damagePlaceholder,
+      hpValid: hpPlaceholder ? !hasCharacter : calculated.hpValid,
+      damageValid: damagePlaceholder ? true : calculated.damageValid,
+      valid: calculated.valid && !(hasCharacter && hpPlaceholder),
+    };
 
     rowElement.querySelectorAll("[data-inline-cell]").forEach((input) => {
       const role = columnById(table, input.dataset.columnId)?.role;
       if (role === "hp") setHealthInputValidity(input, health.hpValid);
-      if (role === "damage") setHealthInputValidity(input, health.damageValid);
+      if (role === "ac") {
+        const acPlaceholder = !input.value.trim();
+        const acNumeric = calculateCurrentHP(input.value || "0", "0").hpValid;
+        setHealthInputValidity(input, (!hasCharacter || !acPlaceholder) && acNumeric);
+      }
     });
+    const damageCell = rowElement.querySelector("[data-damage-cell]");
+    if (damageCell) {
+      damageCell.classList.toggle("border-red-500/80", !health.damageValid);
+      damageCell.classList.toggle("dark:border-red-400/80", !health.damageValid);
+      damageCell.classList.toggle("border-transparent", health.damageValid);
+      if (health.damageValid) {
+        damageCell.removeAttribute("aria-invalid");
+        damageCell.removeAttribute("title");
+      } else {
+        damageCell.setAttribute("aria-invalid", "true");
+        damageCell.setAttribute("title", "Enter a formula using numbers, +, -, and parentheses");
+      }
+    }
     const currentHP = rowElement.querySelector("[data-current-hp]");
     if (currentHP) updateCurrentHPOutput(currentHP, health);
   }
@@ -328,9 +456,127 @@ export function initializeCombatLoot() {
     elements.editorTitle.textContent = `Edit ${column.title || "cell"}`;
     elements.editorContext.textContent = `${table.title} · Row ${rowNumber}`;
     elements.editorLabel.textContent = column.title || "Text";
-    elements.editorValue.value = row.cells?.[column.id] || "";
+    const isDamage = table.type === "combat" && column.role === "damage";
+    const storedValue = String(row.cells?.[column.id] || "");
+    elements.editorValue.value = isDamage && storedValue.trim() === "0" ? "" : storedValue;
+    elements.editorValue.rows = isDamage ? 3 : 7;
+    elements.editorValue.placeholder = isDamage ? "5+10-2" : "";
+    if (isDamage) elements.editorValue.setAttribute("inputmode", "decimal");
+    else elements.editorValue.removeAttribute("inputmode");
+    elements.editorHelp.textContent = isDamage
+      ? "Use numbers, +, -, and parentheses. Healing can be entered as subtraction."
+      : "";
+    elements.editorHelp.classList.toggle("hidden", !isDamage);
+    elements.editorError.textContent = "";
+    elements.editorError.classList.add("hidden");
     openDialog(elements.editorDialog, elements.editorValue);
   }
+
+  function partyMemberMarkup(member = {}) {
+    return `<div data-party-member class="grid gap-2 rounded-xl border border-stone-300 p-3 dark:border-white/10 sm:grid-cols-[minmax(0,1fr)_7rem_7rem_auto] sm:items-end">
+      <label><span class="mb-1 block text-xs font-bold">Character</span><input data-party-character maxlength="100" value="${escapeOptionValue(member.character || "")}" placeholder="Cassian" class="w-full rounded-lg border border-stone-300 bg-white/80 px-3 py-2 text-stone-900 outline-none focus:border-blood-500 dark:border-white/15 dark:bg-white/5 dark:text-white"></label>
+      <label><span class="mb-1 block text-xs font-bold">Max HP</span><input data-party-hp inputmode="decimal" value="${escapeOptionValue(member.maxHp || "")}" placeholder="40" class="w-full rounded-lg border border-stone-300 bg-white/80 px-3 py-2 text-stone-900 outline-none focus:border-blood-500 dark:border-white/15 dark:bg-white/5 dark:text-white"></label>
+      <label><span class="mb-1 block text-xs font-bold">AC</span><input data-party-ac inputmode="decimal" value="${escapeOptionValue(member.ac || "")}" placeholder="16" class="w-full rounded-lg border border-stone-300 bg-white/80 px-3 py-2 text-stone-900 outline-none focus:border-blood-500 dark:border-white/15 dark:bg-white/5 dark:text-white"></label>
+      <button type="button" data-remove-party-member class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-red-400 text-red-600 transition hover:border-red-500 hover:text-red-700 dark:text-red-300" aria-label="Remove party member" title="Remove party member"><i class="bi bi-trash-fill"></i></button>
+    </div>`;
+  }
+
+  function addPartyMemberRow(member = {}) {
+    elements.partyMembers.insertAdjacentHTML("beforeend", partyMemberMarkup(member));
+  }
+
+  function persistParties(nextParties, message = "") {
+    const result = savePartyLibrary(nextParties);
+    if (!result.ok) {
+      console.error("Could not save party library:", result.error);
+      showToast(result.error.message || "The party library could not be saved.");
+      return false;
+    }
+    partyLibrary = result.parties;
+    writeCloudJSON("api/combat-loot/party-library", result.envelope)
+      .catch((error) => {
+        console.error("Could not save party library to D1:", error);
+        showToast("Parties remain in this browser, but the cloud save failed.");
+      });
+    if (message) showToast(message);
+    return true;
+  }
+
+  function renderPartyEditorOptions(selectedId = "") {
+    elements.partySelect.innerHTML = `<option value="">Create a new party</option>${partyLibrary
+      .map((party) => `<option value="${escapeOptionValue(party.id)}">${escapeOptionText(party.name)}</option>`)
+      .join("")}`;
+    elements.partySelect.value = selectedId;
+  }
+
+  function loadPartyIntoEditor(partyId) {
+    const party = partyLibrary.find((candidate) => candidate.id === partyId);
+    elements.partyName.value = party?.name || "";
+    elements.partyMembers.replaceChildren();
+    (party?.members?.length ? party.members : [{}]).forEach(addPartyMemberRow);
+  }
+
+  function openPartyEditor() {
+    renderPartyEditorOptions();
+    loadPartyIntoEditor("");
+    openDialog(elements.partyDialog, elements.partyName);
+  }
+
+  function partyBadges(party) {
+    return party.members.map((member) => `<span class="inline-flex items-center rounded-full border border-yellow-300/70 bg-yellow-200 px-2.5 py-1 text-xs font-bold text-yellow-950">${escapeOptionText(member.character)} · HP ${escapeOptionText(member.maxHp)} · AC ${escapeOptionText(member.ac)}</span>`).join("");
+  }
+
+  function openBringParty() {
+    elements.bringPartyList.innerHTML = partyLibrary.length
+      ? partyLibrary.map((party) => `<label class="block cursor-pointer rounded-xl border border-stone-300 bg-white/50 p-4 transition hover:border-yellow-300 dark:border-white/10 dark:bg-white/[.025]"><span class="flex items-center gap-3"><input type="checkbox" name="party" value="${escapeOptionValue(party.id)}" class="h-5 w-5 accent-yellow-500"><strong>${escapeOptionText(party.name)}</strong></span><span class="mt-3 flex flex-wrap gap-2">${partyBadges(party)}</span></label>`).join("")
+      : '<p class="rounded-xl border border-dashed border-stone-400 p-6 text-center text-sm text-stone-500 dark:text-stone-400">No parties saved yet. Use Set a Party first.</p>';
+    openDialog(elements.bringPartyDialog, elements.bringPartyList.querySelector("input"));
+  }
+
+  function initiativeCharacters(source = workspace) {
+    const initiative = source.tables.find((table) => table.type === "initiative");
+    const characterColumn = initiative?.columns.find((column) => column.role === "character");
+    return characterColumn
+      ? initiative.rows.map((row) => row.cells[characterColumn.id]).filter((name) => String(name || "").trim())
+      : [];
+  }
+
+  function renderPartyConflicts(conflicts) {
+    elements.partyConflictList.innerHTML = conflicts.map((conflict, conflictIndex) => `<fieldset data-conflict-key="${escapeOptionValue(conflict.key)}" class="rounded-xl border border-stone-300 p-4 dark:border-white/10"><legend class="px-2 font-display text-lg font-bold">${escapeOptionText(conflict.character)}</legend><div class="mt-2 grid gap-2 sm:grid-cols-2">${conflict.options.map((option, optionIndex) => `<label class="cursor-pointer rounded-xl border border-stone-300 bg-white/50 p-3 transition hover:border-violet-300 has-[:checked]:border-violet-300 has-[:checked]:bg-violet-300/10 dark:border-white/10 dark:bg-white/[.025]"><span class="flex items-center gap-2"><input type="radio" name="party-conflict-${conflictIndex}" value="${escapeOptionValue(option.partyId)}" ${optionIndex === 0 ? "required" : ""}><strong>${escapeOptionText(option.partyName)}</strong></span><span class="mt-2 block text-sm">HP ${escapeOptionText(option.maxHp)} · AC ${escapeOptionText(option.ac)}</span></label>`).join("")}</div></fieldset>`).join("");
+  }
+
+  function completeCombatSend({ sort, candidates, selections = {} }) {
+    closeDialog(elements.partyConflictDialog);
+    pendingCombatSend = null;
+    const partyMembers = resolvePartyCandidates(candidates, selections);
+    applyMutation(
+      (current) => mergeInitiativeIntoCombat(
+        sort ? sortInitiativeRows(current) : current,
+        { partyMembers },
+      ),
+      sort
+        ? "Initiative sorted and sent to Combat."
+        : "Initiative order sent to Combat as shown.",
+    );
+  }
+
+  function requestCombatSend({ sort = false } = {}) {
+    closeDialog(elements.sendCombatDialog);
+    const candidates = partyCandidatesForCharacters(partyLibrary, initiativeCharacters());
+    const conflicts = candidates.filter((candidate) => candidate.options.length > 1);
+    if (!conflicts.length) {
+      completeCombatSend({ sort, candidates });
+      return;
+    }
+    pendingCombatSend = { sort, candidates, conflicts };
+    renderPartyConflicts(conflicts);
+    openDialog(elements.partyConflictDialog, elements.partyConflictList.querySelector("input"));
+  }
+
+  function openSendToCombat() {
+    openDialog(elements.sendCombatDialog, elements.sortSendCombat);
+  }
+
 
   function startNewPreset() {
     workspace = createCombatLootDocument();
@@ -510,6 +756,13 @@ export function initializeCombatLoot() {
         throw new Error("Preset files must be 5 MiB or smaller.");
       }
       const parsed = parsePresetUpload(await file.text());
+      const migratedUploadParties = migrateLegacyPartyLibrary(partyLibrary, [{
+        document: parsed.document,
+        name: `${parsed.label || "Imported"} Party`,
+      }]);
+      if (migratedUploadParties.changed) {
+        persistParties(migratedUploadParties.parties, "The uploaded preset's party was added globally.");
+      }
       const upload = {
         ...parsed,
         document: prepareWorkspaceDocument(parsed.document),
@@ -540,10 +793,14 @@ export function initializeCombatLoot() {
   const handleAction = createCombatActionDispatcher({
     applyMutation,
     columnById,
+    openBringParty,
     openCellEditor,
+    openPartyEditor,
+    openSendToCombat,
     requestDeletion,
     rowById,
     tableById,
+    toggleTableView,
   });
 
   elements.trackers.addEventListener("click", (event) => {
@@ -565,7 +822,7 @@ export function initializeCombatLoot() {
         input.dataset.columnId,
         input.value,
       ));
-      if (updated && ["hp", "damage"].includes(role)) {
+      if (updated && ["character", "hp", "damage", "ac"].includes(role)) {
         refreshCombatHealthRow(
           input.closest("[data-table-row]"),
           input.dataset.tableId,
@@ -581,6 +838,31 @@ export function initializeCombatLoot() {
       ));
     } else if (input.matches("[data-tracker-title]")) {
       applyTextMutation((current) => renameTracker(current, input.dataset.tableId, input.value));
+    }
+  });
+
+  elements.trackers.addEventListener("focusout", (event) => {
+    const input = event.target;
+    if (!input.matches("[data-inline-cell]")) return;
+    const table = tableById(input.dataset.tableId);
+    const column = columnById(table, input.dataset.columnId);
+    if (column?.role !== "character") return;
+    const normalized = normalizeCharacterName(input.value);
+    if (normalized === input.value) return;
+    input.value = normalized;
+    const updated = applyTextMutation((current) => updateTrackerCell(
+      current,
+      input.dataset.tableId,
+      input.dataset.rowId,
+      input.dataset.columnId,
+      normalized,
+    ));
+    if (updated && table.type === "combat") {
+      refreshCombatHealthRow(
+        input.closest("[data-table-row]"),
+        input.dataset.tableId,
+        input.dataset.rowId,
+      );
     }
   });
 
@@ -632,6 +914,16 @@ export function initializeCombatLoot() {
     event.preventDefault();
     if (!editorTarget) return;
     const target = editorTarget;
+    const targetTable = tableById(target.tableId);
+    const targetColumn = columnById(targetTable, target.columnId);
+    const isDamage = targetTable?.type === "combat" && targetColumn?.role === "damage";
+    const formula = elements.editorValue.value.trim();
+    if (isDamage && formula && formula !== "0" && !evaluateArithmeticFormula(formula).valid) {
+      elements.editorError.textContent = "Enter a valid formula using numbers, +, -, and parentheses.";
+      elements.editorError.classList.remove("hidden");
+      elements.editorValue.focus();
+      return;
+    }
     closeDialog(elements.editorDialog);
     editorTarget = null;
     applyMutation((current) => updateTrackerCell(
@@ -639,8 +931,82 @@ export function initializeCombatLoot() {
       target.tableId,
       target.rowId,
       target.columnId,
-      elements.editorValue.value,
+      isDamage ? formula : elements.editorValue.value,
     ));
+  });
+
+  elements.addPartyMember.addEventListener("click", () => {
+    addPartyMemberRow();
+    elements.partyMembers.lastElementChild?.querySelector("[data-party-character]")?.focus();
+  });
+
+  elements.partySelect.addEventListener("change", () => {
+    loadPartyIntoEditor(elements.partySelect.value);
+  });
+
+  elements.partyMembers.addEventListener("click", (event) => {
+    const remove = event.target.closest("[data-remove-party-member]");
+    if (!remove) return;
+    remove.closest("[data-party-member]")?.remove();
+    if (!elements.partyMembers.children.length) addPartyMemberRow();
+  });
+
+  elements.partyForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const members = [...elements.partyMembers.querySelectorAll("[data-party-member]")]
+      .map((row) => ({
+        character: row.querySelector("[data-party-character]").value,
+        maxHp: row.querySelector("[data-party-hp]").value,
+        ac: row.querySelector("[data-party-ac]").value,
+      }));
+    try {
+      const nextParties = upsertParty(partyLibrary, {
+        id: elements.partySelect.value,
+        name: elements.partyName.value,
+        members,
+      });
+      if (persistParties(nextParties, `${elements.partyName.value.trim()} saved.`)) {
+        closeDialog(elements.partyDialog);
+      }
+    } catch (error) {
+      showToast(error.message || "That party could not be saved.");
+    }
+  });
+
+  elements.bringPartyForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const selectedIds = [...elements.bringPartyList.querySelectorAll('input[name="party"]:checked')]
+      .map((input) => input.value);
+    if (!selectedIds.length) {
+      showToast("Select at least one party to bring.");
+      return;
+    }
+    const members = membersForPartyIds(partyLibrary, selectedIds);
+    if (applyMutation(
+      (current) => bringPartyMembersToInitiative(current, members),
+      `${selectedIds.length === 1 ? "Party" : "Parties"} added to Initiative.`,
+    )) {
+      closeDialog(elements.bringPartyDialog);
+    }
+  });
+
+  elements.partyConflictForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (!pendingCombatSend) return;
+    const selections = {};
+    elements.partyConflictList.querySelectorAll("[data-conflict-key]").forEach((field) => {
+      const selected = field.querySelector('input[type="radio"]:checked');
+      if (selected) selections[field.dataset.conflictKey] = selected.value;
+    });
+    if (Object.keys(selections).length !== pendingCombatSend.conflicts.length) {
+      showToast("Choose a party for every conflicting character.");
+      return;
+    }
+    completeCombatSend({
+      sort: pendingCombatSend.sort,
+      candidates: pendingCombatSend.candidates,
+      selections,
+    });
   });
 
   elements.nameForm.addEventListener("submit", (event) => {
@@ -658,6 +1024,16 @@ export function initializeCombatLoot() {
     action?.();
   });
 
+  elements.sortSendCombat.addEventListener("click", () => {
+    requestCombatSend({ sort: true });
+  });
+  elements.sendCombatAsIs.addEventListener("click", () => {
+    requestCombatSend();
+  });
+  elements.cancelSendCombat.addEventListener("click", () => {
+    closeDialog(elements.sendCombatDialog);
+  });
+
   document.getElementById("cancel-confirm").addEventListener("click", () => {
     confirmationAction = null;
     closeDialog(elements.confirmDialog);
@@ -665,14 +1041,26 @@ export function initializeCombatLoot() {
   document.querySelectorAll("[data-close-dialog]").forEach((button) =>
     button.addEventListener("click", () => {
       if (button.dataset.closeDialog === "editor-dialog") editorTarget = null;
+      if (button.dataset.closeDialog === "party-conflict-dialog") pendingCombatSend = null;
       closeDialog(document.getElementById(button.dataset.closeDialog));
     }),
   );
-  [elements.editorDialog, elements.nameDialog].forEach((dialog) =>
+  [
+    elements.editorDialog,
+    elements.partyDialog,
+    elements.bringPartyDialog,
+    elements.partyConflictDialog,
+    elements.nameDialog,
+  ].forEach((dialog) =>
     dialog.addEventListener("click", (event) => {
-      if (event.target === dialog) closeDialog(dialog);
+      if (event.target !== dialog) return;
+      if (dialog === elements.partyConflictDialog) pendingCombatSend = null;
+      closeDialog(dialog);
     }),
   );
+  elements.sendCombatDialog.addEventListener("click", (event) => {
+    if (event.target === elements.sendCombatDialog) closeDialog(elements.sendCombatDialog);
+  });
   elements.confirmDialog.addEventListener("click", (event) => {
     if (event.target !== elements.confirmDialog) return;
     confirmationAction = null;
@@ -696,7 +1084,11 @@ export function initializeCombatLoot() {
   document.addEventListener("keydown", (event) => {
     const openDialogElement = [
       elements.confirmDialog,
+      elements.partyConflictDialog,
+      elements.sendCombatDialog,
+      elements.bringPartyDialog,
       elements.nameDialog,
+      elements.partyDialog,
       elements.editorDialog,
     ].find((dialog) => !dialog.classList.contains("hidden"));
     if (event.key === "Tab" && openDialogElement) {
@@ -720,8 +1112,17 @@ export function initializeCombatLoot() {
     if (!elements.confirmDialog.classList.contains("hidden")) {
       confirmationAction = null;
       closeDialog(elements.confirmDialog);
+    } else if (!elements.partyConflictDialog.classList.contains("hidden")) {
+      pendingCombatSend = null;
+      closeDialog(elements.partyConflictDialog);
+    } else if (!elements.sendCombatDialog.classList.contains("hidden")) {
+      closeDialog(elements.sendCombatDialog);
+    } else if (!elements.bringPartyDialog.classList.contains("hidden")) {
+      closeDialog(elements.bringPartyDialog);
     } else if (!elements.nameDialog.classList.contains("hidden")) {
       closeDialog(elements.nameDialog);
+    } else if (!elements.partyDialog.classList.contains("hidden")) {
+      closeDialog(elements.partyDialog);
     } else if (!elements.editorDialog.classList.contains("hidden")) {
       editorTarget = null;
       closeDialog(elements.editorDialog);
@@ -738,6 +1139,24 @@ export function initializeCombatLoot() {
     applyCloudWorkspace(cloud) {
       presets = cloud.presets;
       savePresetCollection(presets);
+      const cloudParties = cloud.partyLibrary
+        ? normalizePartyLibrary(cloud.partyLibrary)
+        : partyLibrary;
+      const migratedCloudParties = migrateLegacyPartyLibrary(cloudParties, [
+        ...presets.map((preset) => ({
+          document: preset.document,
+          name: `${preset.baseName || "Imported"} Party`,
+        })),
+        { document: cloud.draft?.currentDocument, name: "Imported Party" },
+      ]);
+      partyLibrary = migratedCloudParties.parties;
+      savePartyLibrary(partyLibrary);
+      if (migratedCloudParties.changed || (!cloud.partyLibrary && partyLibrary.length)) {
+        writeCloudJSON("api/combat-loot/party-library", {
+          version: 1,
+          parties: partyLibrary,
+        }).catch((error) => console.error("Could not save migrated parties to D1:", error));
+      }
       if (cloud.draft?.currentDocument?.tables) {
         workspace = prepareWorkspaceDocument(cloud.draft.currentDocument);
         activePresetId = presets.some((preset) => preset.active && preset.id === cloud.draft.activePresetId)
@@ -752,6 +1171,7 @@ export function initializeCombatLoot() {
       render();
     },
     getLocalDraft: () => recoveredDraft,
+    getLocalPartyLibrary: () => partyLibrary,
     getLocalPresets: () => presets,
     showToast,
   });

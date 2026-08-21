@@ -17,6 +17,10 @@ const initiative = () => document.tables.find((table) => table.type === "initiat
 const initialRows = initiative().rows.length;
 let appliedMessage = "";
 let opened = null;
+let partyOpened = false;
+let bringOpened = false;
+let sendOpened = false;
+let toggled = null;
 const handleAction = createCombatActionDispatcher({
   applyMutation(operation, message = "") {
     document = operation(document);
@@ -27,6 +31,10 @@ const handleAction = createCombatActionDispatcher({
   columnById: (table, id) => table?.columns.find((column) => column.id === id),
   requestDeletion: ({ action }) => action(),
   openCellEditor: (...ids) => { opened = ids; },
+  openPartyEditor: () => { partyOpened = true; },
+  openBringParty: () => { bringOpened = true; },
+  openSendToCombat: () => { sendOpened = true; },
+  toggleTableView: (...args) => { toggled = args; },
 });
 
 handleAction({ dataset: { action: "add-row-end", tableId: initiative().id } });
@@ -44,5 +52,13 @@ handleAction({
   },
 });
 assert.deepEqual(opened, [initiative().id, row.id, column.id]);
+handleAction({ dataset: { action: "set-party", tableId: initiative().id } });
+assert.equal(partyOpened, true);
+handleAction({ dataset: { action: "bring-party", tableId: initiative().id } });
+assert.equal(bringOpened, true);
+handleAction({ dataset: { action: "send-to-combat", tableId: initiative().id } });
+assert.equal(sendOpened, true);
+handleAction({ dataset: { action: "toggle-row-tools", tableId: initiative().id } });
+assert.deepEqual(toggled, [initiative().id, "hideRowTools"]);
 
 console.log("Combat action dispatcher tests passed.");

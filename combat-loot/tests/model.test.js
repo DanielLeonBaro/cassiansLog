@@ -36,8 +36,9 @@ function setCell(document, tableType, rowId, role, value) {
 {
   const { document } = makeDocument();
   assert.equal(document.version, 1);
-  assert.equal(document.tables.length, 3);
+  assert.equal(document.tables.length, 4);
   assert.equal(document.nextTrackerNumber, 1);
+  assert.equal(Object.prototype.hasOwnProperty.call(document, "party"), false);
 
   const initiative = tracker(document, "initiative");
   assert.equal(initiative.title, "Initiative");
@@ -55,13 +56,21 @@ function setCell(document, tableType, rowId, role, value) {
   assert.equal(combat.healthColumnsVersion, 1);
   assert.equal(combat.nextRoundNumber, 2);
   assert.equal(combat.rows.length, 1);
+  assert.equal(cellValues(combat, "damage")[0], "0");
+  assert.equal(cellValues(combat, "hp")[0], "0");
+  assert.equal(cellValues(combat, "ac")[0], "0");
 
   const loot = document.tables.find((table) => table.title === "Loot");
   assert.equal(loot.type, "custom");
-  assert.equal(loot.columns.length, 1);
-  assert.equal(loot.columns[0].title, "Column 1");
+  assert.deepEqual(loot.columns.map((item) => item.title), [
+    "Item", "Quantity", "Description/Source",
+  ]);
   assert.equal(loot.rows.length, 1);
   assert.equal(loot.rows[0].cells[loot.columns[0].id], "");
+
+  const xp = document.tables.find((table) => table.title === "XP");
+  assert.deepEqual(xp.columns.map((item) => item.title), ["Source", "Points"]);
+  assert.equal(document.tables.indexOf(xp), document.tables.indexOf(loot) + 1);
 
   const ids = [document.id];
   document.tables.forEach((table) => {
@@ -81,6 +90,16 @@ function setCell(document, tableType, rowId, role, value) {
   assert.equal(result.valid, true);
   assert.equal(result.value, 18);
 
+  result = model.calculateCurrentHP("40", "5+10-2");
+  assert.equal(result.valid, true);
+  assert.equal(result.value, 27);
+  assert.deepEqual(model.evaluateArithmeticFormula("5 + (10 - 2)"), {
+    valid: true,
+    value: 13,
+  });
+  assert.equal(model.evaluateArithmeticFormula("5*2").valid, false);
+  assert.equal(model.evaluateArithmeticFormula("5+").valid, false);
+
   result = model.calculateCurrentHP("50 HP", "3");
   assert.equal(result.valid, false);
   assert.equal(result.hpValid, false);
@@ -88,13 +107,36 @@ function setCell(document, tableType, rowId, role, value) {
   assert.equal(result.value, null);
 
   result = model.calculateCurrentHP("50", "");
-  assert.equal(result.valid, false);
+  assert.equal(result.valid, true);
   assert.equal(result.hpValid, true);
-  assert.equal(result.damageValid, false);
-  assert.equal(result.value, null);
+  assert.equal(result.damageValid, true);
+  assert.equal(result.value, 50);
 
   assert.equal(model.calculateCurrentHP("Infinity", "1").valid, false);
   assert.equal(model.calculateCurrentHP("0x10", "1").valid, false);
+}
+
+{
+  const { document: current, idFactory } = makeDocument();
+  const older = JSON.parse(JSON.stringify(current));
+  delete older.defaultTrackersVersion;
+  older.party = [{ character: "Legacy", maxHp: "12", ac: "13" }];
+  const loot = older.tables.find((table) => table.title === "Loot");
+  delete loot.defaultTrackerKey;
+  const removedColumns = loot.columns.splice(1);
+  removedColumns.forEach((removed) => delete loot.rows[0].cells[removed.id]);
+  loot.columns[0].title = "Column 1";
+  older.tables = older.tables.filter((table) => table.title !== "XP");
+
+  const migrated = model.initializeDefaultTrackers(older, { idFactory });
+  const migratedLoot = migrated.tables.find((table) => table.title === "Loot");
+  const xp = migrated.tables.find((table) => table.title === "XP");
+  assert.deepEqual(migratedLoot.columns.map((item) => item.title), [
+    "Item", "Quantity", "Description/Source",
+  ]);
+  assert.deepEqual(xp.columns.map((item) => item.title), ["Source", "Points"]);
+  assert.equal(Object.prototype.hasOwnProperty.call(migrated, "party"), false);
+  assert.equal(older.tables.some((table) => table.title === "XP"), false);
 }
 
 {
@@ -392,6 +434,28 @@ function setCell(document, tableType, rowId, role, value) {
     () => model.moveTrackerRow(document, initiative.id, initiative.rows[0].id, 1),
     /move index/,
   );
+}
+
+{
+  const { document: initial, idFactory } = makeDocument();
+  const members = [
+    { character: "cassian", maxHp: "40", ac: "16" },
+    { character: "Karma", maxHp: "28", ac: "14" },
+  ];
+
+  let document = model.bringPartyMembersToInitiative(initial, members, { idFactory });
+  let initiative = tracker(document, "initiative");
+  assert.deepEqual(cellValues(initiative, "character"), ["Cassian", "Karma"]);
+  assert.deepEqual(cellValues(initiative, "initiative"), ["", ""]);
+  document = model.bringPartyMembersToInitiative(document, members, { idFactory });
+  initiative = tracker(document, "initiative");
+  assert.equal(initiative.rows.length, 2, "bringing the party twice should not duplicate names");
+
+  document = model.mergeInitiativeIntoCombat(document, { idFactory, partyMembers: members });
+  const combat = tracker(document, "combat");
+  assert.deepEqual(cellValues(combat, "character"), ["Cassian", "Karma"]);
+  assert.deepEqual(cellValues(combat, "hp"), ["40", "28"]);
+  assert.deepEqual(cellValues(combat, "ac"), ["16", "14"]);
 }
 
 console.log("Combat and Loot model tests passed.");

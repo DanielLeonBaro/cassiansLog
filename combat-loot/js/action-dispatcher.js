@@ -5,7 +5,6 @@ import {
   deleteTrackerRow,
   insertTrackerColumn,
   insertTrackerRow,
-  mergeInitiativeIntoCombat,
   moveTrackerColumn,
   moveTrackerRow,
   sortInitiativeRows,
@@ -29,9 +28,13 @@ export function createCombatActionDispatcher({
   applyMutation,
   columnById,
   openCellEditor,
+  openBringParty = () => {},
+  openPartyEditor = () => {},
+  openSendToCombat = () => {},
   requestDeletion,
   rowById,
   tableById,
+  toggleTableView = () => {},
 }) {
   return function handleAction(button) {
     const action = button.dataset.action;
@@ -41,8 +44,12 @@ export function createCombatActionDispatcher({
 
     if (action === "sort-initiative")
       return applyMutation(sortInitiativeRows, "Initiative sorted from highest to lowest.");
-    if (action === "send-to-combat")
-      return applyMutation(mergeInitiativeIntoCombat, "Initiative order sent to Combat.");
+    if (action === "send-to-combat") return openSendToCombat();
+    if (action === "set-party") return openPartyEditor();
+    if (action === "bring-party") return openBringParty();
+    if (action === "toggle-row-tools") return toggleTableView(table.id, "hideRowTools");
+    if (action === "toggle-character-info") return toggleTableView(table.id, "hideCharacterInfo");
+    if (action === "toggle-rounds") return toggleTableView(table.id, "hideRounds");
     if (action === "add-round")
       return applyMutation(addCombatRound, "A new round was added.");
     if (action === "add-row-end")

@@ -1,5 +1,6 @@
 export const COMBAT_LOOT_DOCUMENT_VERSION = 1;
 export const COMBAT_HEALTH_COLUMNS_VERSION = 1;
+export const DEFAULT_TRACKERS_VERSION = 1;
 
 let fallbackIdSequence = 0;
 
@@ -137,7 +138,10 @@ function makeTrackerRow(id, tracker) {
 
 function isDefaultBlankCombatRow(row, columns) {
   return !row.sourceInitiativeRowId
-    && columns.every((column) => normalizeText(row.cells?.[column.id]).trim() === "");
+    && columns.every((column) => {
+      const value = normalizeText(row.cells?.[column.id]).trim();
+      return value === "" || (["damage", "hp", "currentHp", "ac"].includes(column.role) && value === "0");
+    });
 }
 
 function healthNumber(value) {
@@ -147,17 +151,83 @@ function healthNumber(value) {
   return Number.isFinite(number) ? number : null;
 }
 
+export function evaluateArithmeticFormula(value) {
+  const formula = normalizeText(value).trim();
+  if (!formula) return { valid: false, value: null };
+
+  let index = 0;
+  const skipWhitespace = () => {
+    while (/\s/.test(formula[index] || "")) index += 1;
+  };
+  const parseNumber = () => {
+    skipWhitespace();
+    const match = formula.slice(index).match(/^(?:\d+(?:\.\d*)?|\.\d+)/);
+    if (!match) return null;
+    index += match[0].length;
+    return Number(match[0]);
+  };
+  const parseValue = () => {
+    skipWhitespace();
+    let sign = 1;
+    while (formula[index] === "+" || formula[index] === "-") {
+      if (formula[index] === "-") sign *= -1;
+      index += 1;
+      skipWhitespace();
+    }
+    let number;
+    if (formula[index] === "(") {
+      index += 1;
+      number = parseExpression();
+      skipWhitespace();
+      if (number === null || formula[index] !== ")") return null;
+      index += 1;
+    } else {
+      number = parseNumber();
+    }
+    return number === null ? null : sign * number;
+  };
+  const parseExpression = () => {
+    let total = parseValue();
+    if (total === null) return null;
+    while (true) {
+      skipWhitespace();
+      const operator = formula[index];
+      if (operator !== "+" && operator !== "-") break;
+      index += 1;
+      const right = parseValue();
+      if (right === null) return null;
+      total = operator === "+" ? total + right : total - right;
+    }
+    return total;
+  };
+
+  const result = parseExpression();
+  skipWhitespace();
+  return result !== null && Number.isFinite(result) && index === formula.length
+    ? { valid: true, value: result }
+    : { valid: false, value: null };
+}
+
 export function calculateCurrentHP(hitPoints, damage) {
   const hpNumber = healthNumber(hitPoints);
-  const damageNumber = healthNumber(damage);
+  const damageText = normalizeText(damage).trim();
+  const damageResult = damageText
+    ? evaluateArithmeticFormula(damageText)
+    : { valid: true, value: 0 };
+  const damageNumber = damageResult.value;
   const hpValid = hpNumber !== null;
-  const damageValid = damageNumber !== null;
+  const damageValid = damageResult.valid;
   return {
     valid: hpValid && damageValid,
     hpValid,
     damageValid,
     value: hpValid && damageValid ? hpNumber - damageNumber : null,
   };
+}
+
+export function normalizeCharacterName(value) {
+  const name = normalizeText(value).trim();
+  return name ? `${name[0].toLocaleUpperCase()}${name.slice(1)}` : "";
 }
 
 export function createCombatLootDocument(options = {}) {
@@ -177,13 +247,20 @@ export function createCombatLootDocument(options = {}) {
     makeColumn(allocateId("column"), "Round 1", "round"),
   ];
   const lootColumns = [
-    makeColumn(allocateId("column"), "Column 1", "custom"),
+    makeColumn(allocateId("column"), "Item", "custom"),
+    makeColumn(allocateId("column"), "Quantity", "custom"),
+    makeColumn(allocateId("column"), "Description/Source", "custom"),
+  ];
+  const xpColumns = [
+    makeColumn(allocateId("column"), "Source", "custom"),
+    makeColumn(allocateId("column"), "Points", "custom"),
   ];
 
   return {
     version: COMBAT_LOOT_DOCUMENT_VERSION,
     id: allocateId("document"),
     nextTrackerNumber: 1,
+    defaultTrackersVersion: DEFAULT_TRACKERS_VERSION,
     tables: [
       {
         id: allocateId("table"),
@@ -199,17 +276,70 @@ export function createCombatLootDocument(options = {}) {
         nextRoundNumber: 2,
         healthColumnsVersion: COMBAT_HEALTH_COLUMNS_VERSION,
         columns: combatColumns,
-        rows: [makeRow(allocateId("row"), combatColumns)],
+        rows: [makeTrackerRow(allocateId("row"), { type: "combat", columns: combatColumns })],
       },
       {
         id: allocateId("table"),
         type: "custom",
         title: "Loot",
+        defaultTrackerKey: "loot",
         columns: lootColumns,
         rows: [makeRow(allocateId("row"), lootColumns)],
       },
+      {
+        id: allocateId("table"),
+        type: "custom",
+        title: "XP",
+        defaultTrackerKey: "xp",
+        columns: xpColumns,
+        rows: [makeRow(allocateId("row"), xpColumns)],
+      },
     ],
   };
+}
+
+export function initializeDefaultTrackers(document, options = {}) {
+  const copy = cloneDocument(document);
+  delete copy.party;
+  if (copy.defaultTrackersVersion >= DEFAULT_TRACKERS_VERSION) return copy;
+
+  const allocateId = createIdAllocator(resolveIdFactory(options), copy);
+  const loot = copy.tables.find((table) => table.defaultTrackerKey === "loot")
+    || copy.tables.find((table) => table.type === "custom" && table.title === "Loot");
+  if (loot) {
+    loot.defaultTrackerKey = "loot";
+    if (loot.columns[0]?.title === "Column 1") loot.columns[0].title = "Item";
+    ["Quantity", "Description/Source"].forEach((title) => {
+      if (loot.columns.some((column) => column.title === title)) return;
+      const column = makeColumn(allocateId("column"), title, "custom");
+      loot.columns.push(column);
+      loot.rows.forEach((row) => { row.cells[column.id] = ""; });
+    });
+  }
+
+  let xp = copy.tables.find((table) => table.defaultTrackerKey === "xp")
+    || copy.tables.find((table) => table.type === "custom" && table.title === "XP");
+  if (!xp) {
+    const columns = [
+      makeColumn(allocateId("column"), "Source", "custom"),
+      makeColumn(allocateId("column"), "Points", "custom"),
+    ];
+    xp = {
+      id: allocateId("table"),
+      type: "custom",
+      title: "XP",
+      defaultTrackerKey: "xp",
+      columns,
+      rows: [makeRow(allocateId("row"), columns)],
+    };
+    const lootIndex = loot ? copy.tables.indexOf(loot) : copy.tables.length - 1;
+    copy.tables.splice(lootIndex + 1, 0, xp);
+  } else {
+    xp.defaultTrackerKey = "xp";
+  }
+
+  copy.defaultTrackersVersion = DEFAULT_TRACKERS_VERSION;
+  return copy;
 }
 
 export function initializeCombatHealthColumns(document, options = {}) {
@@ -418,6 +548,36 @@ function comparableName(value) {
   return normalizeText(value).trim().toLowerCase();
 }
 
+export function bringPartyMembersToInitiative(document, members, options = {}) {
+  const copy = cloneDocument(document);
+  const initiative = findTrackerByType(copy, "initiative");
+  const characterColumn = initiative.columns.find((column) => column.role === "character");
+  if (!characterColumn) throw new Error("Initiative character column was not found.");
+  const initiativeColumn = initiative.columns.find((column) => column.role === "initiative");
+  const party = Array.isArray(members) ? members : [];
+  const existingNames = new Set(initiative.rows
+    .map((row) => comparableName(row.cells[characterColumn.id]))
+    .filter(Boolean));
+  const incoming = party.filter((member) => {
+    const name = comparableName(member.character);
+    if (!name || existingNames.has(name)) return false;
+    existingNames.add(name);
+    return true;
+  });
+  if (!incoming.length) return copy;
+
+  const allocateId = createIdAllocator(resolveIdFactory(options), copy);
+  const blankRows = initiative.rows.filter((row) =>
+    initiative.columns.every((column) => !normalizeText(row.cells[column.id]).trim()));
+  incoming.forEach((member, index) => {
+    const row = blankRows[index] || makeRow(allocateId("row"), initiative.columns);
+    row.cells[characterColumn.id] = normalizeCharacterName(member.character);
+    if (initiativeColumn) row.cells[initiativeColumn.id] = "";
+    if (!blankRows[index]) initiative.rows.push(row);
+  });
+  return copy;
+}
+
 export function mergeInitiativeIntoCombat(document, options = {}) {
   const copy = cloneDocument(document);
   const initiative = findTrackerByType(copy, "initiative");
@@ -490,5 +650,20 @@ export function mergeInitiativeIntoCombat(document, options = {}) {
     ...orderedRows,
     ...combat.rows.filter((row) => availableRows.has(row)),
   ];
+
+  const hpColumn = combat.columns.find((column) => column.role === "hp");
+  const acColumn = combat.columns.find((column) => column.role === "ac");
+  const suppliedPartyMembers = typeof options === "object" && Array.isArray(options.partyMembers)
+    ? options.partyMembers
+    : [];
+  const partyByName = new Map(suppliedPartyMembers
+    .map((member) => [comparableName(member.character), member])
+    .filter(([name]) => name));
+  combat.rows.forEach((row) => {
+    const member = partyByName.get(comparableName(row.cells[combatCharacterColumn.id]));
+    if (!member) return;
+    if (hpColumn) row.cells[hpColumn.id] = normalizeText(member.maxHp);
+    if (acColumn) row.cells[acColumn.id] = normalizeText(member.ac);
+  });
   return copy;
 }
