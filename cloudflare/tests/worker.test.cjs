@@ -38,6 +38,12 @@ const { pathToFileURL } = require("node:url");
   assert.equal(localAsset.status, 200, "Localhost page requests should bypass login without a database.");
   assert.equal(await localAsset.text(), "local asset");
 
+  const failedBootstrap = await handleRequest(new Request("https://example.test/char/"), {
+    ASSETS: env.ASSETS,
+    DB: { prepare: () => { throw new Error("bootstrap unavailable"); } },
+  });
+  assert.equal(failedBootstrap.status, 503, "Authentication bootstrap failures should not escape as Worker 1101 errors.");
+
   const assetRequests = [];
   const customCharacter = await handleRequest(
     new Request("https://example.test/char/custom-hero/?edit=1", { headers: { cookie: "cassianslog_session=test" } }),

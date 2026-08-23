@@ -22,6 +22,7 @@ assert.equal(localBypassUser().localBypass, true);
 assert.ok(localBypassUser().roles.includes("admin"));
 
 const credentials = await hashPassword("longPassword1!");
+assert.equal(credentials.iterations, 100_000, "PBKDF2 must stay within the Cloudflare Workers limit.");
 const row = {
   password_hash: credentials.hash,
   password_salt: credentials.salt,

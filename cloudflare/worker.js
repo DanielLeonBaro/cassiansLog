@@ -78,7 +78,18 @@ async function staticAsset(request, env, url) {
 
 export async function handleRequest(request, env) {
   const url = new URL(request.url);
-  if (!url.pathname.startsWith("/api/")) return staticAsset(request, env, url);
+  if (!url.pathname.startsWith("/api/")) {
+    try {
+      return await staticAsset(request, env, url);
+    } catch (caught) {
+      console.error(JSON.stringify({
+        event: "static_request_failed",
+        pathname: url.pathname,
+        error: caught instanceof Error ? caught.message : String(caught),
+      }));
+      return error("Authentication service is temporarily unavailable.", 503);
+    }
+  }
   if (!env.DB) return error("D1 binding is unavailable.", 503);
   try {
     if (url.pathname === "/api/health" && request.method === "GET") {

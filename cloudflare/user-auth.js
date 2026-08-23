@@ -12,7 +12,8 @@ export const DEFAULT_ROLES = [
 export const ASSIGNABLE_ROLES = [...DEFAULT_ROLES];
 
 const SESSION_COOKIE = "cassianslog_session";
-const PASSWORD_ITERATIONS = 210_000;
+// Cloudflare Workers Web Crypto rejects PBKDF2 counts above 100,000.
+const PASSWORD_ITERATIONS = 100_000;
 const SESSION_DAYS = 30;
 
 export function isLocalRequest(request) {
