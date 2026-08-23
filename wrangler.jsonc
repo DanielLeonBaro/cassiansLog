@@ -9,10 +9,18 @@
   "vars": {
     "OPEN_WRITES": "true"
   },
+  "secrets": {
+    "required": [
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+      "FACEBOOK_APP_ID",
+      "FACEBOOK_APP_SECRET"
+    ]
+  },
   "assets": {
     "directory": "./.cloudflare/public",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*", "/wiki/*"]
+    "run_worker_first": ["/*"]
   },
   "d1_databases": [
     {

@@ -73,8 +73,16 @@ for (const file of javascriptFiles("integrations")) {
 
 const rootHTML = fs.readFileSync("index.html", "utf8");
 assert.match(rootHTML, /url=char\//, "The root page must redirect to /char/.");
-assert.ok(fs.existsSync("admin/index.html"), "The unlinked admin route must exist.");
-assert.ok(!fs.readFileSync("shared/js/site-header.js", "utf8").includes("admin/"), "Admin must not appear in public navigation.");
+assert.ok(fs.existsSync("admin/index.html"), "The admin route must exist.");
+assert.ok(fs.readFileSync("shared/js/site-header.js", "utf8").includes("admin/"), "Role-aware navigation must include Admin.");
+assert.ok(fs.readFileSync("shared/js/site-header.js", "utf8").includes('id: "wiki"'), "Role-aware navigation must include Wiki.");
+assert.ok(fs.existsSync("login/index.html"), "The authentication route must exist.");
+assert.ok(fs.existsSync("shared/js/account-menu.js"), "The shared Me account panel must exist.");
+assert.ok(fs.readFileSync("shared/js/site-header.js", "utf8").includes("mountAccountMenu"), "The site header must mount the Me account panel.");
+const accountMenu = fs.readFileSync("shared/js/account-menu.js", "utf8");
+for (const control of ["data-email-form", "data-password-form", "google", "facebook", "data-unlink-provider"]) {
+  assert.ok(accountMenu.includes(control), `The Me account panel must include ${control}.`);
+}
 assert.match(fs.readFileSync("admin/index.html", "utf8"), /name="character-sheet-style" value="v1"/);
 assert.match(fs.readFileSync("admin/index.html", "utf8"), /name="character-sheet-style" value="v2"/);
 assert.match(fs.readFileSync("admin/index.html", "utf8"), /id="character-style-settings"/);
@@ -89,6 +97,8 @@ for (const feature of features) {
   assert.ok(siteBuild.includes(`"${feature}"`), `${feature} must be included in the Cloudflare static site build.`);
   assert.ok(tailwindConfig.includes(`./${feature}/**/*.{html,js}`), `${feature} must be included in the Tailwind source scan.`);
 }
+assert.ok(siteBuild.includes('"login"'), "Login must be included in the Cloudflare static site build.");
+assert.ok(tailwindConfig.includes('./login/**/*.{html,js}'), "Login must be included in the Tailwind source scan.");
 assert.ok(siteBuild.includes('"character-route-worker.js"'), "The localhost character-route fallback must be deployed.");
 
 const pageShells = new Map([

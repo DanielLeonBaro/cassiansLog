@@ -11,6 +11,7 @@ const publicEntries = [
   "combat-loot",
   "compendium",
   "integrations",
+  "login",
   "music",
   "public-initiative",
   "shared",

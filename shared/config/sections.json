@@ -5,7 +5,7 @@
     "public-initiative": true,
     "music": true,
     "compendium": true,
-    "wiki": false,
+    "wiki": true,
     "character-overview": true,
     "character-stats": true,
     "hit-points": true,

@@ -6,15 +6,18 @@ The app leaves ability scores, armor class, spell save DCs, prepared-spell limit
 
 ## Run locally
 
-Requirements: Node.js 20 or newer, npm, and a local HTTP server.
+Requirements: Node.js 20 or newer and npm.
 
 ```bash
 npm install
-npm run build:css
-python -m http.server 8000
+npm run build:site
+npm run d1:migrate:local
+npx wrangler dev
 ```
 
-Open `http://localhost:8000`. The root redirects to the Character archive at `/char/`. Do not open pages through a `file://` URL because feature data is loaded with `fetch()`.
+Open the URL printed by Wrangler. Unauthenticated requests redirect to `/login/`; successful sign-in redirects to the Character archive at `/char/`. A plain static server remains useful for the legacy local-storage fallback, but it cannot exercise secure sessions or OAuth.
+
+Requests served from `localhost`, `127.0.0.1`, or IPv6 loopback bypass login and receive local administrator visibility. The **Me** panel explains that real email, password, and provider changes are disabled during this bypass.
 
 If PowerShell blocks `npm.ps1`, use `npm.cmd`.
 
@@ -60,7 +63,7 @@ Bundled character data and portraits live beside their routes under `char/<id>/`
 
 Edit `shared/config/sections.json` to choose which destinations and Character Tracker Jump-to controls appear. Only the literal JSON value `false` hides a control; omitted settings remain visible.
 
-These settings hide navigation only. They do not remove or protect the corresponding pages.
+These global settings control shared feature visibility. Account roles in Admin additionally protect the corresponding page and API routes for individual users.
 
 ## Updating data
 
@@ -75,13 +78,50 @@ To refresh the Wiki seed from the configured published campaign source, run `npm
 
 ## D1 data and deployment
 
-Cloudflare Workers serves the static site and handles `/api/*`. D1 uses the `DB` binding and database `cassianslog-data`. Writes are temporarily public while `OPEN_WRITES` is `"true"` in `wrangler.jsonc`. Remove that variable or set it to `"false"` to restore `WRITE_TOKEN` protection; never put the token itself in Git, `wrangler.jsonc`, or a build variable. When protection is enabled, the browser keeps the entered token in `sessionStorage`, so closing the tab ends that editing session.
+Cloudflare Workers serves the static site, protects every application route, and handles `/api/*`. D1 uses the `DB` binding and database `cassianslog-data`. `OPEN_WRITES: "true"` lets signed-in members edit; setting it to `"false"` limits protected writes to the primary administrator or the legacy `WRITE_TOKEN` flow. Anonymous API requests are rejected either way.
+
+Migration `0006_user_authentication.sql` adds users, provider links, sessions, and short-lived OAuth states. The first authentication request bootstraps the primary administrator as `dleonbaro@gmail.com` with password `adminPass1!`. For a deployment-specific initial password, set the `PRIMARY_ADMIN_PASSWORD` Worker secret before the first sign-in. Passwords are stored as salted PBKDF2-SHA-256 hashes; sessions use hashed, random tokens in secure HTTP-only cookies.
+
+Google and Facebook sign-in require provider applications with these exact callback URLs:
+
+```text
+https://<your-domain>/api/auth/oauth/google/callback
+https://<your-domain>/api/auth/oauth/facebook/callback
+```
+
+Configure `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `FACEBOOK_APP_ID`, and `FACEBOOK_APP_SECRET` as Worker secrets or environment bindings. A first-time social account must set a policy-compliant password before its session is created, allowing later direct email/password sign-in.
 
 The Compendium, bundled characters, and Wiki are generated from the same checked-in JSON used by the static fallback. `npm run d1:seed` writes `.cloudflare/d1-seed.sql`; the file is ignored because it is generated and about 59 MiB. Applying the seed inserts or updates Compendium entries by ID, inserts missing bundled characters, inserts the character template as unavailable by default, and inserts the initial Wiki. It does not remove unrelated Compendium rows, overwrite edited or inactive character or Wiki records, or delete custom characters, runtime state, notes, presets, or drafts.
 
 Existing `localStorage` keys remain stable. This preserves older browser data and lets the `localstorage-version` Git branch run locally or on GitHub Pages without D1. The D1-enabled `main` branch tries cloud reads first where shared data exists and falls back to local or static data when the API is unavailable.
 
-The unlinked `/admin/` route manages D1-backed runtime configuration: public write protection, navigation and character-sheet section visibility, and character-list availability. It always requires `ADMIN_TOKEN`, falling back to `WRITE_TOKEN` when a separate admin secret is not configured; public-write mode never bypasses admin authentication. Apply D1 migration `0003_app_settings.sql` before deploying this route. To use a separate password, run `npx wrangler secret put ADMIN_TOKEN`.
+The navbar exposes Wiki according to the user's Wiki role and Admin only for the primary administrator. `/admin/` manages D1-backed runtime configuration, page roles per account, character availability, and password resets. A reset revokes every existing session for that user. Legacy admin-token access is disabled unless `LEGACY_ADMIN_TOKEN_ENABLED` is explicitly set to `"true"`.
+
+The **Me** button beside **Sign out** lets a signed-in user change their password, change their email, and connect or unlink Google and Facebook. The fixed primary administrator email cannot be changed because it identifies the only account allowed into Admin.
+
+## Production deployment checklist
+
+Before pushing to the branch connected to Cloudflare:
+
+1. Run `npm install` and `npm audit --audit-level=high`.
+2. Confirm Wrangler authentication with `npx wrangler whoami` or set `CLOUDFLARE_API_TOKEN` in CI.
+3. In each provider console, configure the production callback URLs shown above.
+4. Add the four required OAuth values in **Cloudflare → Workers & Pages → cassianslog → Settings → Variables and Secrets**. Store them as secrets. Wrangler declares these names as required and will reject a deployment when one is absent.
+5. Run `npm test` and `npm run build:site`.
+6. Run `npm run d1:migrate:local` and `npx wrangler deploy --dry-run`.
+7. Back up D1 if desired, then run `npm run d1:migrate:remote` before pushing. The authentication Worker needs migrations `0006` and `0007` as soon as the new code is live.
+8. Review `git diff --check` and `git status`, commit the intended files, and push the deployment branch.
+
+After pushing:
+
+1. Wait for the Cloudflare Workers Build to report success and review its migration/deployment logs.
+2. Open `/api/health`; it should return `{ "ok": true }`.
+3. In a private browser window, open `/char/` and confirm it redirects to `/login/`.
+4. Sign in as the primary administrator and confirm Character Selection opens.
+5. Open **Me**, reset the password if this is the first production launch, and connect Google and Facebook.
+6. Verify direct Google/Facebook sign-in, then verify direct email/password sign-in still works.
+7. Open Admin and check Wiki visibility and each user's roles. Use a non-admin account to confirm disallowed pages return to Character Selection and their APIs return `403`.
+8. Review Worker errors and D1 metrics in Cloudflare. If the Worker must be rolled back, use the previous Worker deployment; migrations `0006` and `0007` are additive and can remain in place.
 
 Combat & Loot keeps its named presets under `dnd-combat-loot-presets-v1` and its recoverable draft under `dnd-combat-loot-draft-v1` as local fallbacks while synchronizing the same records to D1. Removed presets use `active: false`; records remain recoverable. Downloads still export the visible document without changing saved state.
 

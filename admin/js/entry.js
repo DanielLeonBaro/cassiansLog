@@ -5,9 +5,17 @@ import {
   persistLocalRuntimeSettings,
   runtimeSettingsReady,
 } from "../../shared/js/settings.js";
+import { logout } from "../../shared/js/auth-client.js";
 
-const TOKEN_KEY = "cassianslog-admin-token";
 const localMode = isLocalRuntimeHost();
+const accountRoleLabels = {
+  characters: "Characters",
+  wiki: "Wiki",
+  compendium: "Compendium",
+  "combat-loot": "Combat & Loot",
+  "public-initiative": "Public Initiative",
+  music: "Music",
+};
 const sectionLabels = {
   characters: "Characters navigation",
   "combat-loot": "Combat & Loot navigation",
@@ -33,9 +41,9 @@ const content = document.getElementById("admin-content");
 const sectionRoot = document.getElementById("section-settings");
 const characterRoot = document.getElementById("character-settings");
 const characterStyleRoot = document.getElementById("character-style-settings");
+const userRoot = document.getElementById("user-settings");
 const openWrites = document.getElementById("open-writes");
 const characterStyleInputs = [...document.querySelectorAll('[name="character-sheet-style"]')];
-let token = localMode ? "" : sessionStorage.getItem(TOKEN_KEY) || "";
 let snapshot = null;
 
 async function localCharacters() {
@@ -100,7 +108,6 @@ async function adminRequest(path = "", options = {}) {
     ...options,
     headers: {
       accept: "application/json",
-      authorization: `Bearer ${token}`,
       ...(options.body ? { "content-type": "application/json" } : {}),
       ...options.headers,
     },
@@ -112,6 +119,31 @@ async function adminRequest(path = "", options = {}) {
     throw error;
   }
   return response.json();
+}
+
+function renderUsers(users = []) {
+  if (localMode) {
+    userRoot.innerHTML = '<p class="text-sm text-stone-500">User accounts require D1 and are not available in local static mode.</p>';
+    return;
+  }
+  userRoot.innerHTML = users.map((user) => `
+    <article class="rounded-2xl border border-stone-300 p-4 dark:border-white/15" data-user="${escapeHTML(user.id)}">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div><strong>${escapeHTML(user.email)}</strong>${user.isPrimaryAdmin ? '<span class="ml-2 rounded-full bg-blood-500 px-2 py-0.5 text-xs font-bold text-white">Primary admin</span>' : ""}</div>
+        <small class="text-stone-500 dark:text-stone-400">Created ${escapeHTML(new Date(user.createdAt).toLocaleDateString())}</small>
+      </div>
+      <fieldset class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3"${user.isPrimaryAdmin ? " disabled" : ""}>
+        <legend class="mb-2 text-sm font-bold">Visible pages / roles</legend>
+        ${Object.entries(accountRoleLabels).map(([role, label]) => `
+          <label class="flex items-center gap-2 rounded-lg border border-stone-300 px-3 py-2 text-sm dark:border-white/10">
+            <input type="checkbox" data-user-role="${role}" class="accent-red-700"${user.roles.includes(role) ? " checked" : ""}${role === "characters" ? " disabled" : ""}> ${label}
+          </label>`).join("")}
+      </fieldset>
+      <div class="mt-4 flex flex-col gap-3 border-t border-stone-300 pt-4 dark:border-white/10 sm:flex-row sm:items-end">
+        <label class="grow"><span class="mb-1 block text-sm font-bold">New password</span><input type="password" data-user-password minlength="10" autocomplete="new-password" class="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 dark:border-white/15 dark:bg-white/5" placeholder="10+ characters, number, special character"></label>
+        <button type="button" data-reset-password class="rounded-xl border border-blood-500 px-4 py-2 text-sm font-bold text-blood-500">Reset password</button>
+      </div>
+    </article>`).join("") || '<p class="text-sm text-stone-500">No user accounts found.</p>';
 }
 
 function renderSections(sections) {
@@ -150,13 +182,8 @@ function renderCharacterStyles(characters, overrides = {}) {
 }
 
 async function unlock() {
-  if (!localMode) {
-    if (!token) token = prompt("Enter the Cassian's Log admin password:")?.trim() || "";
-    if (!token) return setStatus("Admin access was cancelled.", "error");
-  }
   try {
     snapshot = await adminRequest();
-    if (!localMode) sessionStorage.setItem(TOKEN_KEY, token);
     openWrites.checked = snapshot.settings.openWrites;
     const selectedStyle = characterStyleInputs.find(
       (input) => input.value === snapshot.settings.characterSheetStyle,
@@ -165,15 +192,15 @@ async function unlock() {
     renderSections(snapshot.settings.sections);
     renderCharacterStyles(snapshot.characters, snapshot.settings.characterSheetStyleOverrides);
     renderCharacters(snapshot.characters);
+    renderUsers(snapshot.users);
     content.classList.remove("hidden");
     setStatus(localMode
       ? "Local mode: settings are stored in this browser's localStorage. No password or D1 connection is used."
       : "Connected to the shared D1 configuration.", "success");
   } catch (error) {
-    token = "";
-    sessionStorage.removeItem(TOKEN_KEY);
     content.classList.add("hidden");
-    setStatus(error.status === 401 ? "That admin password was rejected. Refresh to try again." : error.message, "error");
+    if (error.status === 401) location.replace("login/?error=Primary%20administrator%20access%20required.");
+    else setStatus(error.message, "error");
   }
 }
 
@@ -224,10 +251,51 @@ characterRoot.addEventListener("change", async (event) => {
 });
 
 document.getElementById("admin-lock").addEventListener("click", () => {
-  token = "";
-  sessionStorage.removeItem(TOKEN_KEY);
-  content.classList.add("hidden");
-  setStatus("Admin panel locked. Refresh to sign in again.");
+  logout();
+});
+
+userRoot.addEventListener("change", async (event) => {
+  const input = event.target.closest("[data-user-role]");
+  if (!input) return;
+  const card = input.closest("[data-user]");
+  const roles = [...card.querySelectorAll("[data-user-role]:checked")].map((item) => item.dataset.userRole);
+  card.querySelectorAll("input, button").forEach((control) => { control.disabled = true; });
+  try {
+    const result = await adminRequest(`/users/${encodeURIComponent(card.dataset.user)}/roles`, {
+      method: "PUT",
+      body: JSON.stringify({ roles }),
+    });
+    const user = snapshot.users.find((item) => item.id === card.dataset.user);
+    if (user) user.roles = result.roles;
+    setStatus("User roles saved.", "success");
+  } catch (error) {
+    input.checked = !input.checked;
+    setStatus(error.message, "error");
+  } finally {
+    card.querySelectorAll("input, button").forEach((control) => { control.disabled = false; });
+    card.querySelector('[data-user-role="characters"]').disabled = true;
+  }
+});
+
+userRoot.addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-reset-password]");
+  if (!button) return;
+  const card = button.closest("[data-user]");
+  const passwordInput = card.querySelector("[data-user-password]");
+  if (!passwordInput.value) return setStatus("Enter a new password first.", "error");
+  button.disabled = true;
+  try {
+    await adminRequest(`/users/${encodeURIComponent(card.dataset.user)}/password`, {
+      method: "PUT",
+      body: JSON.stringify({ password: passwordInput.value }),
+    });
+    passwordInput.value = "";
+    setStatus("Password reset. That account has been signed out on every device.", "success");
+  } catch (error) {
+    setStatus(error.message, "error");
+  } finally {
+    button.disabled = false;
+  }
 });
 
 if (localMode) {

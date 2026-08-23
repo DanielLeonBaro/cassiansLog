@@ -7,6 +7,7 @@ function source(file) {
 
 const pageBases = new Map([
   ["admin/index.html", "../"],
+  ["login/index.html", "../"],
   ["char/index.html", "../"],
   ["char/tracker.html", "../"],
   ["combat-loot/index.html", "../"],
@@ -43,7 +44,6 @@ const storageContracts = new Map([
   ["shared/js/settings.js", ["cassianslog-runtime-settings"]],
   ["shared/js/theme.js", ["dnd-theme"]],
   ["shared/js/cloud-store.js", ["cassianslog-write-token"]],
-  ["admin/js/entry.js", ["cassianslog-admin-token"]],
 ]);
 
 for (const [file, keys] of storageContracts) {
@@ -63,10 +63,11 @@ for (const route of [
   "/api/combat-loot",
   "/api/music",
   "/api/wiki",
+  "/api/auth",
 ]) {
   assert.ok(worker.includes(route), `The Worker must preserve ${route}.`);
 }
-assert.match(workerAuthentication, /env\.ADMIN_TOKEN \|\| env\.WRITE_TOKEN/, "Admin authentication must remain separate from public writes.");
+assert.match(workerAuthentication, /LEGACY_ADMIN_TOKEN_ENABLED/, "Legacy admin-token access must require an explicit opt-in.");
 assert.match(workerAuthentication, /if \(\(await loadSettings\(env\)\)\.openWrites\) return true;/, "Open writes may bypass only ordinary write authentication.");
 
 const seed = source("cloudflare/scripts/build-seed.cjs");

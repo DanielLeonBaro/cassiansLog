@@ -1,4 +1,5 @@
 import { loadSettings } from "./settings.js";
+import { userFromRequest } from "./user-auth.js";
 
 export function secureEqual(left, right) {
   const a = new TextEncoder().encode(left || "");
@@ -17,9 +18,13 @@ export function tokenAuthorized(request, token) {
 
 export async function authorized(request, env) {
   if ((await loadSettings(env)).openWrites) return true;
+  if ((await userFromRequest(request, env))?.isPrimaryAdmin) return true;
   return tokenAuthorized(request, env.WRITE_TOKEN);
 }
 
-export function adminAuthorized(request, env) {
-  return tokenAuthorized(request, env.ADMIN_TOKEN || env.WRITE_TOKEN);
+export async function adminAuthorized(request, env) {
+  const user = await userFromRequest(request, env);
+  if (user?.isPrimaryAdmin) return true;
+  return env.LEGACY_ADMIN_TOKEN_ENABLED === "true"
+    && tokenAuthorized(request, env.ADMIN_TOKEN || env.WRITE_TOKEN);
 }

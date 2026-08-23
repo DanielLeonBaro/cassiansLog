@@ -7,22 +7,40 @@ const { pathToFileURL } = require("node:url");
   const { handleRequest } = await import(`${pathToFileURL(path.resolve("cloudflare/worker.js"))}?test=${Date.now()}`);
   const env = {
     WRITE_TOKEN: "correct horse battery staple",
+    LEGACY_ADMIN_TOKEN_ENABLED: "true",
+    AUTH_REQUIRED: "false",
     ASSETS: { fetch: async () => new Response("asset") },
     DB: {
       prepare(sql) {
         if (sql === "SELECT 1") return { first: async () => ({ 1: 1 }) };
         if (sql.includes("FROM app_settings")) return { first: async () => null };
+        if (sql === "SELECT id FROM users WHERE email = ? COLLATE NOCASE") {
+          return { bind: () => ({ first: async () => ({ id: "primary-admin" }) }) };
+        }
+        if (sql.includes("FROM user_sessions JOIN users")) {
+          return { bind: () => ({ first: async () => ({
+            id: "primary-admin",
+            email: "dleonbaro@gmail.com",
+            roles_json: "[]",
+          }) }) };
+        }
         throw new Error(`Unexpected SQL in routing test: ${sql}`);
       },
     },
   };
 
-  const asset = await handleRequest(new Request("https://example.test/char/"), env);
+  const asset = await handleRequest(new Request("https://example.test/char/", { headers: { cookie: "cassianslog_session=test" } }), env);
   assert.equal(await asset.text(), "asset");
+
+  const localAsset = await handleRequest(new Request("http://localhost:8787/char/"), {
+    ASSETS: { fetch: async () => new Response("local asset") },
+  });
+  assert.equal(localAsset.status, 200, "Localhost page requests should bypass login without a database.");
+  assert.equal(await localAsset.text(), "local asset");
 
   const assetRequests = [];
   const customCharacter = await handleRequest(
-    new Request("https://example.test/char/custom-hero/?edit=1"),
+    new Request("https://example.test/char/custom-hero/?edit=1", { headers: { cookie: "cassianslog_session=test" } }),
     {
       ...env,
       ASSETS: { fetch: async (request) => {
@@ -39,7 +57,7 @@ const { pathToFileURL } = require("node:url");
 
   const wikiAssetRequests = [];
   const wikiPage = await handleRequest(
-    new Request("https://example.test/wiki/fiora"),
+    new Request("https://example.test/wiki/fiora", { headers: { cookie: "cassianslog_session=test" } }),
     {
       ...env,
       ASSETS: { fetch: async (request) => {
@@ -53,6 +71,10 @@ const { pathToFileURL } = require("node:url");
   assert.equal(wikiPage.status, 200);
   assert.equal(await wikiPage.text(), "wiki shell");
   assert.deepEqual(wikiAssetRequests, ["/wiki/fiora", "/wiki/"]);
+
+  const anonymousPage = await handleRequest(new Request("https://example.test/char/"), env);
+  assert.equal(anonymousPage.status, 302, "Anonymous page requests should redirect to login.");
+  assert.match(anonymousPage.headers.get("location"), /\/login\//);
 
   const nestedAsset = await handleRequest(
     new Request("https://example.test/char/js/missing.js"),
@@ -69,6 +91,32 @@ const { pathToFileURL } = require("node:url");
   const health = await handleRequest(new Request("https://example.test/api/health"), env);
   assert.equal(health.status, 200);
   assert.deepEqual(await health.json(), { ok: true });
+
+  const anonymousApi = await handleRequest(
+    new Request("https://example.test/api/settings"),
+    { ...env, AUTH_REQUIRED: undefined },
+  );
+  assert.equal(anonymousApi.status, 401, "Anonymous API requests should be rejected.");
+  const restrictedApi = await handleRequest(
+    new Request("https://example.test/api/wiki", { headers: { cookie: "cassianslog_session=test" } }),
+    {
+      ...env,
+      AUTH_REQUIRED: undefined,
+      DB: {
+        prepare(sql) {
+          if (sql.includes("FROM user_sessions JOIN users")) {
+            return { bind: () => ({ first: async () => ({
+              id: "characters-only",
+              email: "player@example.com",
+              roles_json: '["characters"]',
+            }) }) };
+          }
+          throw new Error(`Unexpected SQL in role access test: ${sql}`);
+        },
+      },
+    },
+  );
+  assert.equal(restrictedApi.status, 403, "Account roles should protect API resources as well as navigation.");
 
   const denied = await handleRequest(new Request("https://example.test/api/combat-loot/draft", {
     method: "PUT",
@@ -497,9 +545,14 @@ const { pathToFileURL } = require("node:url");
     "Public Initiative must have an additive settings migration.",
   );
   assert.match(
+    fs.readFileSync("cloudflare/migrations/0007_wiki_navigation.sql", "utf8"),
+    /json_set[\s\S]*wiki[\s\S]*json\('true'\)/,
+    "Wiki navigation must be enabled for existing D1 settings.",
+  );
+  assert.match(
     fs.readFileSync("wrangler.jsonc", "utf8"),
-    /"run_worker_first": \["\/api\/\*", "\/wiki\/\*"\]/,
-    "Clean Wiki routes must run through the Worker shell fallback.",
+    /"run_worker_first": \["\/\*"\]/,
+    "Every page route must run through the Worker authentication guard.",
   );
 
   const missingBinding = await handleRequest(new Request("https://example.test/api/health"), {

@@ -12,6 +12,7 @@ module.exports = {
     "./public-initiative/**/*.{html,js}",
     "./wiki/**/*.{html,js}",
     "./integrations/**/*.js",
+    "./login/**/*.{html,js}",
     "./shared/**/*.js",
   ],
   darkMode: ["selector", '[data-theme="dark"]'],

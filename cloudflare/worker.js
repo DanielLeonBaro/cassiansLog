@@ -6,8 +6,61 @@ import { combatRoute } from "./routes/combat-loot.js";
 import { compendiumCatalog, compendiumCategory } from "./routes/compendium.js";
 import { musicRoute } from "./routes/music.js";
 import { wikiRoute } from "./routes/wiki.js";
+import { authRoute } from "./routes/auth.js";
+import { ensurePrimaryAdmin, hasRole, isLocalRequest, userFromRequest } from "./user-auth.js";
+
+const PUBLIC_ASSET_PATTERN = /\.(?:css|js|mjs|png|jpe?g|gif|webp|svg|ico|woff2?|map)$/i;
+const PAGE_ROLES = [
+  [/^\/admin(?:\/|$)/, "admin"],
+  [/^\/char(?:\/|$)/, "characters"],
+  [/^\/wiki(?:\/|$)/, "wiki"],
+  [/^\/compendium(?:\/|$)/, "compendium"],
+  [/^\/combat-loot(?:\/|$)/, "combat-loot"],
+  [/^\/public-initiative(?:\/|$)/, "public-initiative"],
+  [/^\/music(?:\/|$)/, "music"],
+];
+
+function requiredPageRole(pathname) {
+  return PAGE_ROLES.find(([pattern]) => pattern.test(pathname))?.[1] || null;
+}
+
+function requiredApiRole(pathname) {
+  if (pathname.startsWith("/api/characters")) return "characters";
+  if (pathname.startsWith("/api/wiki")) return "wiki";
+  if (pathname.startsWith("/api/compendium")) return "compendium";
+  if (pathname.startsWith("/api/combat-loot")) return "combat-loot";
+  if (pathname.startsWith("/api/music")) return "music";
+  return null;
+}
+
+function loginRedirect(url, reason = "") {
+  const target = new URL("/login/", url);
+  if (url.pathname !== "/") target.searchParams.set("return", `${url.pathname}${url.search}`);
+  if (reason) target.searchParams.set("error", reason);
+  return Response.redirect(target.toString(), 302);
+}
 
 async function staticAsset(request, env, url) {
+  if (url.pathname === "/login") return Response.redirect(new URL("/login/", url).toString(), 301);
+  const localBypass = isLocalRequest(request);
+  const publicPath = url.pathname === "/login" || url.pathname.startsWith("/login/") || PUBLIC_ASSET_PATTERN.test(url.pathname);
+  if (!publicPath && !localBypass) {
+    if (!env.DB) return loginRedirect(url, "Authentication storage is unavailable.");
+    await ensurePrimaryAdmin(env);
+    const user = await userFromRequest(request, env);
+    if (!user) return loginRedirect(url);
+    const role = requiredPageRole(url.pathname);
+    if (role && !hasRole(user, role)) {
+      const fallback = new URL("/char/", url);
+      fallback.searchParams.set("access", "denied");
+      return Response.redirect(fallback.toString(), 302);
+    }
+  } else if ((url.pathname === "/login" || url.pathname === "/login/") && localBypass) {
+    return Response.redirect(new URL("/char/", url).toString(), 302);
+  } else if ((url.pathname === "/login" || url.pathname === "/login/") && env.DB) {
+    await ensurePrimaryAdmin(env);
+    if (await userFromRequest(request, env)) return Response.redirect(new URL("/char/", url).toString(), 302);
+  }
   const response = await env.ASSETS.fetch(request);
   if (response.status !== 404 || request.method !== "GET") return response;
 
@@ -31,6 +84,16 @@ export async function handleRequest(request, env) {
     if (url.pathname === "/api/health" && request.method === "GET") {
       await env.DB.prepare("SELECT 1").first();
       return json({ ok: true });
+    }
+    if (url.pathname === "/api/auth" || url.pathname.startsWith("/api/auth/")) {
+      const parts = url.pathname.slice("/api/auth".length).split("/").filter(Boolean).map(decodeURIComponent);
+      return authRoute(request, env, parts);
+    }
+    if (!isLocalRequest(request) && env.AUTH_REQUIRED !== "false" && !url.pathname.startsWith("/api/admin")) {
+      const user = await userFromRequest(request, env);
+      if (!user) return error("Sign in required.", 401);
+      const role = requiredApiRole(url.pathname);
+      if (role && !hasRole(user, role)) return error("Your account cannot access this resource.", 403);
     }
     if (url.pathname === "/api/settings" && request.method === "GET") return publicSettings(env);
     if (url.pathname === "/api/admin" || url.pathname.startsWith("/api/admin/")) {

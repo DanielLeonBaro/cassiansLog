@@ -1,4 +1,6 @@
 import { applySectionVisibility, sectionConfigReady } from "./sections.js";
+import { currentSession, logout } from "./auth-client.js";
+import { mountAccountMenu } from "./account-menu.js";
 
 const linkClass = "inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-bold shadow-sm transition";
 const idleClass = "border-stone-400 bg-white/70 text-stone-700 hover:border-blood-500 hover:text-blood-500 dark:border-white/20 dark:bg-white/5 dark:text-stone-200";
@@ -12,12 +14,13 @@ const pages = [
   { id: "combat-loot", href: "combat-loot/", icon: "bi-shield-shaded", label: "Combat & Loot" },
   { id: "public-initiative", href: "public-initiative/", icon: "bi-list-ol", label: "Public Initiative" },
   { id: "music", href: "music/", icon: "bi-music-note-beamed", label: "Music" },
+  { id: "admin", href: "admin/", icon: "bi-shield-lock-fill", label: "Admin" },
 ];
 
-const trackerPageOrder = ["characters", "compendium", "wiki", "combat-loot", "public-initiative", "music"];
+const trackerPageOrder = ["characters", "compendium", "wiki", "combat-loot", "public-initiative", "music", "admin"];
 
 function pageMenuLink(page) {
-  return `<a class="${menuItemClass}" href="${page.href}" data-section-link="${page.id}">
+  return `<a class="${menuItemClass}" href="${page.href}" data-section-link="${page.id}" data-role-link="${page.id}">
     <i class="bi ${page.icon}"></i>${page.label}
   </a>`;
 }
@@ -79,8 +82,23 @@ export function mountSiteHeader({ activePage, actions = "", tracker = false } = 
   const endActions = typeof actions === "string" ? "" : actions.end || "";
   mount.innerHTML = `<div class="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-2 sm:flex-nowrap sm:gap-3 sm:px-6 lg:px-8">
     <div class="flex min-w-0 flex-wrap items-center gap-2">${home}${pagesMenu}${startActions}</div>
-    <div class="flex shrink-0 items-center gap-2">${endActions}<div id="page-header-actions"></div><button id="theme-toggle" type="button" class="${linkClass} ${idleClass}" aria-label="Switch theme"><i id="theme-icon" class="bi bi-sun-fill"></i></button></div>
+    <div class="flex shrink-0 items-center gap-2">${endActions}<div id="page-header-actions"></div><button id="site-account" type="button" class="${linkClass} ${idleClass}" aria-label="Open my account settings"><i class="bi bi-person-circle"></i><span>Me</span></button><button id="site-logout" type="button" class="${linkClass} ${idleClass}" aria-label="Sign out"><i class="bi bi-box-arrow-right"></i><span class="hidden md:inline">Sign out</span></button><button id="theme-toggle" type="button" class="${linkClass} ${idleClass}" aria-label="Switch theme"><i id="theme-icon" class="bi bi-sun-fill"></i></button></div>
   </div>`;
   applySectionVisibility(mount);
   initializePageMenu(mount);
+  mount.querySelector("#site-logout")?.addEventListener("click", logout);
+  currentSession().then(({ user }) => {
+    if (!user) return;
+    const account = mount.querySelector("#site-account");
+    mountAccountMenu(account, user);
+    document.addEventListener("cassianslog:account-updated", (event) => {
+      account.title = event.detail.email;
+    });
+    account.title = user.email;
+    mount.querySelectorAll("[data-role-link]").forEach((link) => {
+      const allowed = user.roles.includes(link.dataset.roleLink);
+      link.hidden = !allowed;
+      if (!allowed) link.style.setProperty("display", "none", "important");
+    });
+  });
 }
