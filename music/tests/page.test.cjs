@@ -17,6 +17,7 @@ assert.match(html, /id="tag-entry-badges"/, "The add form should include live ta
 assert.match(html, /id="tag-suggestions"/, "The add form should include existing-tag suggestions.");
 assert.match(html, /id="track-form-title"/, "The track form should expose its add\/edit heading.");
 assert.match(html, /id="track-form-cancel"/, "The reused edit form should include Cancel.");
+assert.match(html, /name="loopable" type="checkbox"/, "The track form should include a per-track loop option.");
 
 const page = fs.readFileSync("music/js/page.js", "utf8");
 const libraryView = fs.readFileSync("music/js/library-view.js", "utf8");
@@ -29,6 +30,13 @@ assert.match(libraryView, /data-edit=/, "Every rendered track should include Edi
 assert.match(page, /updateTrack\(tracks\[editingIndex\], changes\)/, "Editing should preserve the existing track identity.");
 assert.match(page, /persistLibrary\(successMessage\)/, "Edited tracks should update D1 immediately.");
 assert.match(page, /form\.scrollIntoView/, "Edit should bring the reused form into view.");
+assert.match(page, /form\.elements\.loopable\.checked = track\.loopable === true/, "Edit should restore the track loop setting.");
+assert.match(page, /loopable: data\.has\("loopable"\)/, "Saving should persist the track loop setting.");
+
+const player = fs.readFileSync("music/js/player.js", "utf8");
+assert.match(player, /PlayerState\.ENDED/, "YouTube playback should handle the ended state explicitly.");
+assert.match(player, /controller\.restart\(\)/, "Spotify playback should restart loopable tracks.");
+assert.match(player, /controller\.pause\(\)/, "Spotify playback should stop tracks that play once.");
 
 const tailwindConfig = fs.readFileSync("shared/styles/tailwind.config.cjs", "utf8");
 assert.match(tailwindConfig, /\.\/music\/\*\*\/\*\.\{html,js\}/, "Tailwind should scan Music templates and scripts.");

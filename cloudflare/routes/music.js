@@ -12,6 +12,7 @@ export function normalizeMusicLibrary(body) {
     if (!safeId(track?.id) || typeof track.title !== "string" || !track.title.trim() || track.title.length > 120) return null;
     if (typeof track.url !== "string" || !track.url || track.url.length > 2048) return null;
     if (!["youtube", "spotify"].includes(track.provider) || typeof track.addedAt !== "string") return null;
+    if (track.loopable !== undefined && typeof track.loopable !== "boolean") return null;
     if (!Array.isArray(track.tags) || track.tags.length > 100) return null;
     if (!track.tags.every((tag) => typeof tag === "string" && tag.length > 0 && tag.length <= 64)) return null;
     tracks.push({
@@ -20,6 +21,7 @@ export function normalizeMusicLibrary(body) {
       url: track.url,
       tags: [...new Set(track.tags)],
       provider: track.provider,
+      loopable: track.loopable === true,
       addedAt: track.addedAt,
     });
   }

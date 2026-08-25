@@ -132,6 +132,7 @@ export function initializeMusic() {
     if (!track) return;
     form.elements.title.value = track.title;
     form.elements.url.value = track.url;
+    form.elements.loopable.checked = track.loopable === true;
     pendingTags = normalizeTags(track.tags);
     tagInput.value = "";
     setTrackFormMode(track);
@@ -152,7 +153,7 @@ export function initializeMusic() {
     try {
       if (tagInput.value.trim()) commitTag();
       const data = new FormData(form);
-      const changes = { title: data.get("title"), url: data.get("url"), tags: pendingTags };
+      const changes = { title: data.get("title"), url: data.get("url"), tags: pendingTags, loopable: data.has("loopable") };
       const editingIndex = tracks.findIndex((track) => track.id === editingTrackId);
       if (editingIndex >= 0) tracks[editingIndex] = updateTrack(tracks[editingIndex], changes);
       else tracks.unshift(createTrack(changes));

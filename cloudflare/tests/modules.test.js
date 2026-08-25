@@ -59,9 +59,28 @@ assert.equal(missingCompendium.status, 503);
 
 assert.deepEqual(normalizeMusicLibrary({
   version: 1,
-  tracks: [],
+  tracks: [{
+    id: "legacy-track",
+    title: "Legacy track",
+    url: "https://youtu.be/dQw4w9WgXcQ",
+    tags: [],
+    provider: "youtube",
+    addedAt: "2026-08-18T00:00:00.000Z",
+  }],
   settings: { fadeIn: 3, fadeOut: 2 },
-}), { version: 1, tracks: [], settings: { fadeIn: 3, fadeOut: 2 } });
+}), {
+  version: 1,
+  tracks: [{
+    id: "legacy-track",
+    title: "Legacy track",
+    url: "https://youtu.be/dQw4w9WgXcQ",
+    tags: [],
+    provider: "youtube",
+    loopable: false,
+    addedAt: "2026-08-18T00:00:00.000Z",
+  }],
+  settings: { fadeIn: 3, fadeOut: 2 },
+});
 const invalidMusicMethod = await musicRoute(
   new Request("https://example.test/api/music", { method: "POST" }),
   {},

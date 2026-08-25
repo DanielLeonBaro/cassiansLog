@@ -44,11 +44,19 @@ export function formatTag(value) {
   return tag ? `${tag[0].toUpperCase()}${tag.slice(1)}` : "";
 }
 
-export function createTrack({ title, url, tags }, id = crypto.randomUUID()) {
+export function createTrack({ title, url, tags, loopable = false }, id = crypto.randomUUID()) {
   const media = parseMediaLink(url);
   const cleanTitle = String(title || "").trim();
   if (!cleanTitle || !media) throw new Error("Add a title and a valid YouTube or Spotify link.");
-  return { id, title: cleanTitle, url: media.url, tags: normalizeTags(tags), provider: media.provider, addedAt: new Date().toISOString() };
+  return {
+    id,
+    title: cleanTitle,
+    url: media.url,
+    tags: normalizeTags(tags),
+    provider: media.provider,
+    loopable: loopable === true,
+    addedAt: new Date().toISOString(),
+  };
 }
 
 export function updateTrack(track, changes) {

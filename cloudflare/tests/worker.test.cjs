@@ -453,6 +453,7 @@ const { pathToFileURL } = require("node:url");
       url: "https://youtu.be/dQw4w9WgXcQ",
       tags: ["ambience", "suspense"],
       provider: "youtube",
+      loopable: true,
       addedAt: "2026-08-18T00:00:00.000Z",
     }],
     settings: { fadeIn: 3, fadeOut: 2 },

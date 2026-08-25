@@ -17,6 +17,23 @@ function loadYouTubeApi() {
   return youtubeApiPromise;
 }
 
+let spotifyApiPromise;
+function loadSpotifyApi() {
+  if (spotifyApiPromise) return spotifyApiPromise;
+  spotifyApiPromise = new Promise((resolve) => {
+    const previous = window.onSpotifyIframeApiReady;
+    window.onSpotifyIframeApiReady = (api) => {
+      previous?.(api);
+      resolve(api);
+    };
+    const script = document.createElement("script");
+    script.src = "https://open.spotify.com/embed/iframe-api/v1";
+    script.async = true;
+    document.head.append(script);
+  });
+  return spotifyApiPromise;
+}
+
 function wait(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
@@ -41,15 +58,64 @@ export function createMusicPlayer(container, status) {
 
   async function stop(fadeOut) {
     if (!current) return;
+    clearTimeout(current.endTimer);
     if (current.provider === "youtube") {
-      await fadeVolume(current.player, current.player.getVolume(), 0, fadeOut);
+      if (!current.ended) await fadeVolume(current.player, current.player.getVolume(), 0, fadeOut);
       current.player.stopVideo();
       current.player.destroy();
     } else {
-      await wait(fadeOut * 1000);
-      current.iframe.remove();
+      if (!current.ended) await wait(fadeOut * 1000);
+      current.controller.pause();
+      current.controller.destroy();
     }
     current = null;
+  }
+
+  function finishYouTube(event, track) {
+    if (event.data !== window.YT.PlayerState.ENDED || current?.player !== event.target) return;
+    if (track.loopable === true) {
+      event.target.seekTo(0, true);
+      event.target.playVideo();
+      status.textContent = `Looping ${track.title}`;
+      return;
+    }
+    event.target.stopVideo();
+    current.ended = true;
+    status.textContent = `Finished ${track.title}. Nothing else will play.`;
+  }
+
+  function finishSpotify(controller, track) {
+    if (current?.controller !== controller || current.ended || current.ending) return;
+    clearTimeout(current.endTimer);
+    if (track.loopable === true) {
+      current.ending = true;
+      controller.restart();
+      status.textContent = `Looping ${track.title}`;
+      return;
+    }
+    controller.pause();
+    current.ended = true;
+    status.textContent = `Finished ${track.title}. Nothing else will play.`;
+  }
+
+  function watchSpotifyPlayback(controller, track, event) {
+    if (current?.controller !== controller || current.ended) return;
+    const playback = event.data || {};
+    const duration = Number(playback.duration);
+    const position = Number(playback.position);
+    clearTimeout(current.endTimer);
+    if (!Number.isFinite(duration) || !Number.isFinite(position) || duration <= 0) return;
+    if (current.ending) {
+      if (position < Math.min(1000, duration / 2)) current.ending = false;
+      else return;
+    }
+    if (position >= duration) {
+      finishSpotify(controller, track);
+      return;
+    }
+    if (!playback.isPaused && !playback.isBuffering) {
+      current.endTimer = setTimeout(() => finishSpotify(controller, track), Math.max(0, duration - position));
+    }
   }
 
   async function playNow(track, settings) {
@@ -65,13 +131,16 @@ export function createMusicPlayer(container, status) {
       container.append(mount);
       const YT = await loadYouTubeApi();
       const player = await new Promise((resolve) => {
-        const instance = new YT.Player(mount, {
+        new YT.Player(mount, {
           width: "100%", height: "100%", videoId: media.id,
           playerVars: { autoplay: 1, rel: 0 },
-          events: { onReady: () => resolve(instance) },
+          events: {
+            onReady: (event) => resolve(event.target),
+            onStateChange: (event) => finishYouTube(event, track),
+          },
         });
       });
-      current = { provider: "youtube", player };
+      current = { provider: "youtube", player, ended: false };
       player.setVolume(0);
       player.playVideo();
       status.textContent = `Now playing ${track.title}`;
@@ -80,16 +149,31 @@ export function createMusicPlayer(container, status) {
     }
     container.classList.remove("aspect-video");
     container.classList.add("min-h-40");
-    const iframe = document.createElement("iframe");
-    iframe.src = `https://open.spotify.com/embed/${media.type}/${media.id}?utm_source=generator&theme=0`;
-    iframe.width = "100%";
-    iframe.height = media.type === "track" ? "152" : "352";
-    iframe.allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
-    iframe.loading = "eager";
-    iframe.title = `Spotify player: ${track.title}`;
-    iframe.className = "w-full rounded-xl border-0";
-    container.append(iframe);
-    current = { provider: "spotify", iframe };
+    const mount = document.createElement("div");
+    mount.className = "w-full";
+    container.append(mount);
+    const api = await loadSpotifyApi();
+    const controller = await new Promise((resolve) => {
+      api.createController(mount, {
+        uri: media.uri,
+        width: "100%",
+        height: media.type === "track" ? 152 : 352,
+      }, resolve);
+    });
+    current = { provider: "spotify", controller, ended: false, ending: false, endTimer: null };
+    controller.addListener("playback_update", (event) => watchSpotifyPlayback(controller, track, event));
+    let playingUri = "";
+    controller.addListener("playback_started", (event) => {
+      const nextUri = event.data?.playingURI || "";
+      if (track.loopable === true && current?.controller === controller) current.ending = false;
+      if (!playingUri) playingUri = nextUri;
+      else if (track.loopable !== true && nextUri && nextUri !== playingUri) finishSpotify(controller, track);
+    });
+    const iframe = container.querySelector("iframe");
+    if (iframe) {
+      iframe.title = `Spotify player: ${track.title}`;
+      iframe.className = "w-full rounded-xl border-0";
+    }
     status.textContent = `Loaded ${track.title}. Press play in the Spotify player.`;
   }
 

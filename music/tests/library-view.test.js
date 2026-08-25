@@ -8,8 +8,8 @@ import {
 } from "../js/library-view.js";
 
 const tracks = [
-  { id: "1", title: "Battle Theme", provider: "YouTube", tags: ["combat", "boss"] },
-  { id: "2", title: "Quiet Tavern", provider: "YouTube", tags: ["ambient", "tavern"] },
+  { id: "1", title: "Battle Theme", provider: "YouTube", tags: ["combat", "boss"], loopable: true },
+  { id: "2", title: "Quiet Tavern", provider: "YouTube", tags: ["ambient", "tavern"], loopable: false },
 ];
 
 assert.deepEqual(allMusicTags(tracks), ["ambient", "boss", "combat", "tavern"]);
@@ -19,5 +19,7 @@ assert.deepEqual(visibleMusicTracks(tracks, { search: "quiet tavern" }), [tracks
 assert.match(renderMusicTagBadges(["boss"]), /data-entry-tag="boss"/);
 assert.match(renderMusicTrackCards([tracks[0]], false), /data-edit="1" disabled/);
 assert.match(renderMusicTrackCards([tracks[0]], true), /data-play="1"/);
+assert.match(renderMusicTrackCards(tracks, true), /Loops/);
+assert.match(renderMusicTrackCards(tracks, true), /Plays once/);
 
 console.log("Music library view tests passed.");

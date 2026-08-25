@@ -21,6 +21,7 @@ const original = {
   title: "Old title",
   url: "https://youtu.be/dQw4w9WgXcQ",
   provider: "youtube",
+  loopable: false,
   tags: ["old"],
   addedAt: "2026-08-18T00:00:00.000Z",
 };
@@ -28,9 +29,11 @@ const updated = updateTrack(original, {
   title: "New title",
   url: "https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT",
   tags: ["Battle", "battle", "Boss"],
+  loopable: true,
 });
 assert.equal(updated.id, original.id);
 assert.equal(updated.addedAt, original.addedAt);
 assert.equal(updated.provider, "spotify");
+assert.equal(updated.loopable, true);
 assert.deepEqual(Array.from(updated.tags), ["battle", "boss"]);
 console.log("Music model tests passed.");
