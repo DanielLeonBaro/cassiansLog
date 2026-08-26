@@ -1,0 +1,78 @@
+#To do:
+5. Sound effects soundboard
+    5.1. Make it so button shortcuts do it too
+11. Depure Compendium entries, useless information like ability score improvements, basic movement speed.
+12. Facebook login is not working atm
+                            
+# Done
+
+1. Music Module
+2. Character Module v2, similar to D&D Beyond
+3. Live public combat tracker
+4. Combat tracker
+    4.1 When sending to combat, if combat has no rows, remove the blank row automatically
+    4.2. Damage, HP, and AC are default to 0 when adding new line or sending characters to combat
+6. Character Tracker URL shows template and /char/template/?character=cassian, and I just want it to be /char/cassian only for Cassian and Elaria / DONE
+7. Wiki Rework
+    7.1. I want that if I click an image, it opens in a modal so I can see the full picture
+    7.2. URL shows https://cassianslog.urhyse.workers.dev/wiki/#page=a4901fbc-0a6f-45dd-ad3f-f82f76e04007 and I want it to be https://cassianslog.urhyse.workers.dev/wiki/fiora
+8. Let's make Character Edit and New Character more user friendly
+9. item attunement
+10. Loopable songs on Music component
+
+
+
+---------------------------------------------------------------
+#Themes
+Peach & Lime: Soft Pink and Dark Yellow
+Beach Day: Blue and Cream
+Under the Sea: Teal and soft blue
+Saffron: Yellow and dark gray
+Watermelon: Soft Pink and Green
+Lilacs: Lilac (soft purple) and soft cream
+Nautical: Deep blue and teal
+Mint Chocolate: Chocolate and mint green
+Aloe: Deep green and hot pink
+Linen: Dark gray and light gray
+Plum: Soft blue and deep purple
+Denim: Denim blue and cream
+Bubblegum: Pink and light blue
+Dusk: Jade and light blue
+Lagoon: Soft teal and cream
+Midnight: Dark purple and lilac (light purple)
+Indigo and Salmon: Indigo and Salmon
+Peachy: Peach and light yellow
+Pacific: Light blue and light gray
+Monaco: Monaco green and lilac
+Autumn Orange: Autumn orange and light gray
+Salmon: Salmon and light gray
+Orange and Salmon: Autumn orange and Salmon
+Zuriel: Light gray and golden
+Sylen: Light gray and light blue
+
+Forest Champagne	Deep Forest #19352A	Champagne Gold #E7C27D
+Aubergine Sage	Aubergine #46283E	Sage Green #A8B89A
+Ink Apricot	Ink Slate #1F2937	Apricot #F4A261
+Burgundy Blush	Burgundy #5C2434	Dusty Blush #E8B4B8
+Petrol Coral	Petrol Blue #0E4D5A	Living Coral #FF7A6B
+Espresso Parchment	Espresso Brown #2B2118	Parchment Cream #F1E4C3
+Plum Seafoam	Deep Plum #3D2645	Seafoam #9ADBC5
+
+Solarized Cyan	Solarized Navy #002B36	Solarized Cyan #2AA198
+Everforest	Forest Charcoal #2D353B	Moss Green #A7C080
+Kanagawa Wave	Sumi Ink #1F1F28	Crystal Blue #7E9CD8
+Ayu Mirage	Mirage Navy #1F2430	Warm Gold #FFCC66
+Material Palenight	Palenight Slate #292D3E	Orchid Purple #C792EA
+Monokai Lime	Monokai Charcoal #272822	Electric Lime #A6E22E
+Night Owl	Midnight Navy #011627	Cornflower Blue #82AAFF
+Horizon	Horizon Charcoal #1C1E26	Watermelon Red #E95678
+Velvet Gold	Velvet Purple #3B2746	Honey Gold #E3B341
+Oxford Copper	Oxford Blue #14213D	Burnished Copper #D9824B
+Mulberry Mint	Dark Mulberry #552B4E	Fresh Mint #9FE3C2
+Raven Ice	Raven Gray #242832	Ice Blue #A8DADC
+Emerald Pearl	Deep Emerald #123C32	Warm Pearl #F1E8D5
+Cocoa Rose	Cocoa Brown #3B2921	Antique Rose #D99A9A
+Terracotta Sea	Terracotta #A34F3E	Pale Seafoam #B8D8D0
+Storm Lavender	Storm Blue #27364B	Soft Lavender #C4B5E0
+Blackberry Honey	Blackberry #321B3A	Honey Amber #E8B04A
+Pine Clay	Pine Green #203B32	Rose Clay #D08C7A
