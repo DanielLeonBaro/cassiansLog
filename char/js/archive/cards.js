@@ -32,7 +32,7 @@ export function createCharacterCard(character, { onRemove }) {
   edit.innerHTML = '<i class="bi bi-pencil-fill"></i>';
   const remove = document.createElement("button");
   remove.type = "button";
-  remove.className = "inline-flex h-10 w-10 items-center justify-center rounded-xl border border-blood-500 text-blood-500 transition hover:bg-blood-500 hover:text-white";
+  remove.className = "inline-flex h-10 w-10 items-center justify-center rounded-xl border border-danger-500 text-danger-500 transition hover:bg-danger-500 hover:text-white";
   remove.setAttribute("aria-label", `Remove ${character.name}`);
   remove.innerHTML = '<i class="bi bi-trash-fill"></i>';
   remove.addEventListener("click", () => onRemove(character));

@@ -60,7 +60,7 @@ export function createCharacterFieldRenderer({ classes, expandedItems, getDraft 
               ${collectionSummary(item, key, index)}<i class="bi ${open ? "bi-chevron-up" : "bi-chevron-down"} shrink-0 text-stone-400"></i>
             </button>
             <button type="button" data-duplicate="${escapeAttribute(collectionPath)}" data-index="${index}" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sky-600 hover:bg-sky-600/10" aria-label="Duplicate ${escapeAttribute(item?.name || `${fieldTitle(key)} ${index + 1}`)}"><i class="bi bi-copy"></i></button>
-            <button type="button" data-remove="${escapeAttribute(collectionPath)}" data-index="${index}" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-blood-500 hover:bg-blood-500/10" aria-label="Remove ${escapeAttribute(item?.name || `${fieldTitle(key)} ${index + 1}`)}"><i class="bi bi-trash"></i></button>
+            <button type="button" data-remove="${escapeAttribute(collectionPath)}" data-index="${index}" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-danger-500 hover:bg-danger-500/10" aria-label="Remove ${escapeAttribute(item?.name || `${fieldTitle(key)} ${index + 1}`)}"><i class="bi bi-trash"></i></button>
           </div>
           ${open ? `<div class="border-t border-stone-200 p-4 dark:border-white/10">${renderNode(item, [...path, index], `${fieldTitle(key)} ${index + 1}`)}</div>` : ""}
         </article>`;

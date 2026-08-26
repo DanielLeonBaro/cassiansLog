@@ -52,7 +52,7 @@ export function initializeCharacterArchive() {
         },
       })));
     } catch (error) {
-      container.innerHTML = '<div class="rounded-2xl border border-blood-500/30 bg-blood-500/10 p-4 text-blood-600 dark:text-red-300 md:col-span-2 xl:col-span-3">Could not load the character list.</div>';
+      container.innerHTML = '<div class="rounded-2xl border border-danger-500/30 bg-danger-500/10 p-4 text-danger-600 dark:text-red-300 md:col-span-2 xl:col-span-3">Could not load the character list.</div>';
       console.error("Could not load characters:", error);
     }
   }

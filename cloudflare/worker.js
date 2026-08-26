@@ -7,6 +7,7 @@ import { compendiumCatalog, compendiumCategory } from "./routes/compendium.js";
 import { musicRoute } from "./routes/music.js";
 import { wikiRoute } from "./routes/wiki.js";
 import { authRoute } from "./routes/auth.js";
+import { themeCatalogRoute } from "./routes/themes.js";
 import { ensurePrimaryAdmin, hasRole, isLocalRequest, userFromRequest } from "./user-auth.js";
 
 const PUBLIC_ASSET_PATTERN = /\.(?:css|js|mjs|png|jpe?g|gif|webp|svg|ico|woff2?|map)$/i;
@@ -107,6 +108,7 @@ export async function handleRequest(request, env) {
       if (role && !hasRole(user, role)) return error("Your account cannot access this resource.", 403);
     }
     if (url.pathname === "/api/settings" && request.method === "GET") return publicSettings(env);
+    if (url.pathname === "/api/themes" && request.method === "GET") return themeCatalogRoute(env);
     if (url.pathname === "/api/admin" || url.pathname.startsWith("/api/admin/")) {
       const parts = url.pathname.slice("/api/admin".length).split("/").filter(Boolean).map(decodeURIComponent);
       return adminRoute(request, env, parts);

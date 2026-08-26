@@ -4,7 +4,7 @@ const path = require("node:path");
 
 const root = process.cwd();
 const features = new Set(["char", "combat-loot", "compendium", "music", "public-initiative", "wiki"]);
-const workerRouteFiles = ["admin", "characters", "combat-loot", "compendium", "music", "wiki"]
+const workerRouteFiles = ["admin", "characters", "combat-loot", "compendium", "music", "themes", "wiki"]
   .map((name) => `cloudflare/routes/${name}.js`);
 const removedRoots = ["data", "js", "scripts", "tests", "config", "bootstrap", "src", "dist", "stuffToParse"];
 
@@ -90,6 +90,8 @@ const adminEntrypoint = fs.readFileSync("admin/js/entry.js", "utf8");
 assert.ok(adminEntrypoint.includes("isLocalRuntimeHost"), "Admin should detect its localhost storage mode.");
 assert.ok(adminEntrypoint.includes("persistLocalRuntimeSettings"), "Local Admin settings should persist without D1.");
 assert.ok(adminEntrypoint.includes("characterSheetStyleOverrides"), "Admin should save per-character style choices.");
+assert.ok(adminEntrypoint.includes("data-user-theme"), "Admin should support per-user theme assignment.");
+assert.ok(adminEntrypoint.includes("data-remove-theme"), "Admin should support unprotected theme removal.");
 
 const siteBuild = fs.readFileSync("shared/build/site.cjs", "utf8");
 const tailwindConfig = fs.readFileSync("shared/styles/tailwind.config.cjs", "utf8");

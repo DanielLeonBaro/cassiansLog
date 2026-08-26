@@ -81,12 +81,50 @@
       </section>
 
       <section class="rounded-2xl border border-stone-300 bg-white/70 p-5 shadow-card dark:border-white/10 dark:bg-white/[.05]">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 class="font-display text-2xl font-bold">Themes</h2>
+            <p class="mt-1 text-sm text-stone-500 dark:text-stone-400">Manage the shared catalog. Protected themes always remain available.</p>
+          </div>
+          <button id="add-theme" type="button" class="rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-white hover:bg-blood-600"><i class="bi bi-plus-lg mr-2"></i>Add Theme</button>
+        </div>
+        <div id="theme-admin-unavailable" class="mt-4 hidden rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm">Theme management requires D1 and is unavailable in local static mode.</div>
+        <div id="theme-settings" class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2"></div>
+      </section>
+
+      <section class="rounded-2xl border border-stone-300 bg-white/70 p-5 shadow-card dark:border-white/10 dark:bg-white/[.05]">
         <h2 class="font-display text-2xl font-bold">User access</h2>
         <p class="mt-1 text-sm text-stone-500 dark:text-stone-400">Choose which pages each account can open, or replace its password. Password resets sign that user out everywhere.</p>
         <div id="user-settings" class="mt-5 space-y-4"></div>
       </section>
     </div>
   </main>
+
+  <div id="theme-editor-dialog" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="theme-editor-title">
+    <form id="theme-editor-form" class="max-h-full w-full max-w-2xl overflow-y-auto rounded-3xl border border-theme-border bg-theme-surface p-6 text-theme-text shadow-2xl">
+      <div class="flex items-start justify-between gap-4">
+        <div><p class="text-xs font-bold uppercase tracking-[.18em] text-blood-500">Theme catalog</p><h2 id="theme-editor-title" class="mt-1 font-display text-3xl font-bold">Add Theme</h2></div>
+        <button type="button" data-close-theme-editor class="rounded-xl p-2 hover:bg-theme-surface-strong" aria-label="Close theme editor"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <input id="theme-editor-id" type="hidden">
+      <div class="mt-6 grid gap-4 sm:grid-cols-2">
+        <label class="sm:col-span-2"><span class="mb-1 block text-sm font-bold">Theme name</span><input id="theme-editor-name" required maxlength="60" class="w-full rounded-xl border border-theme-border bg-theme-surface px-3 py-2" placeholder="Theme name"></label>
+        <fieldset class="rounded-2xl border border-theme-border p-4">
+          <legend class="px-1 font-display text-lg font-bold">Background</legend>
+          <label class="mt-2 block"><span class="mb-1 block text-sm font-bold">Friendly color name</span><input id="theme-editor-background-name" required maxlength="40" class="w-full rounded-xl border border-theme-border bg-theme-surface px-3 py-2" placeholder="Charcoal Gray"></label>
+          <label class="mt-3 block"><span class="mb-1 block text-sm font-bold">Hex color</span><span class="flex gap-2"><input id="theme-editor-background-color" type="color" class="h-11 w-14 rounded-lg border border-theme-border bg-transparent p-1" value="#18181b" aria-label="Background color preview"><input id="theme-editor-background-hex" required maxlength="7" pattern="#[0-9A-Fa-f]{6}" class="min-w-0 grow rounded-xl border border-theme-border bg-theme-surface px-3 py-2 font-mono uppercase" value="#18181B"></span></label>
+        </fieldset>
+        <fieldset class="rounded-2xl border border-theme-border p-4">
+          <legend class="px-1 font-display text-lg font-bold">Accent</legend>
+          <label class="mt-2 block"><span class="mb-1 block text-sm font-bold">Friendly color name</span><input id="theme-editor-accent-name" required maxlength="40" class="w-full rounded-xl border border-theme-border bg-theme-surface px-3 py-2" placeholder="Brick Red"></label>
+          <label class="mt-3 block"><span class="mb-1 block text-sm font-bold">Hex color</span><span class="flex gap-2"><input id="theme-editor-accent-color" type="color" class="h-11 w-14 rounded-lg border border-theme-border bg-transparent p-1" value="#b83b35" aria-label="Accent color preview"><input id="theme-editor-accent-hex" required maxlength="7" pattern="#[0-9A-Fa-f]{6}" class="min-w-0 grow rounded-xl border border-theme-border bg-theme-surface px-3 py-2 font-mono uppercase" value="#B83B35"></span></label>
+        </fieldset>
+      </div>
+      <div id="theme-editor-preview" class="mt-4 flex min-h-20 items-center justify-center rounded-2xl border border-theme-border p-4 text-center font-bold">Live preview</div>
+      <p id="theme-editor-status" class="mt-3 min-h-5 text-sm text-danger-500" role="alert"></p>
+      <div class="mt-5 flex justify-end gap-2"><button type="button" data-close-theme-editor class="rounded-xl border border-theme-border px-4 py-2 text-sm font-bold">Cancel</button><button id="save-theme" type="submit" class="rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-white hover:bg-blood-600">Save Theme</button></div>
+    </form>
+  </div>
   <script type="module" src="admin/js/entry.js"></script>
 </body>
 </html>

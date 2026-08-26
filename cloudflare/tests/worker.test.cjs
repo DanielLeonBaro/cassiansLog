@@ -14,6 +14,16 @@ const { pathToFileURL } = require("node:url");
       prepare(sql) {
         if (sql === "SELECT 1") return { first: async () => ({ 1: 1 }) };
         if (sql.includes("FROM app_settings")) return { first: async () => null };
+        if (sql.includes("FROM themes ORDER BY name COLLATE NOCASE")) return { all: async () => ({ results: [{
+          id: "cassians-classic",
+          name: "Cassian’s Classic",
+          background_name: "Charcoal Gray",
+          background_hex: "#18181B",
+          accent_name: "Brick Red",
+          accent_hex: "#B83B35",
+          protected: 1,
+          updated_at: "1970-01-01T00:00:00.000Z",
+        }] }) };
         if (sql === "SELECT id FROM users WHERE email = ? COLLATE NOCASE") {
           return { bind: () => ({ first: async () => ({ id: "primary-admin" }) }) };
         }
@@ -174,6 +184,9 @@ const { pathToFileURL } = require("node:url");
   assert.equal(settingsBody.writeProtectionEnabled, true);
   assert.equal(settingsBody.characterSheetStyle, "v1", "Absent settings should default to Style v1.");
   assert.deepEqual(settingsBody.characterSheetStyleOverrides, {});
+  const themes = await handleRequest(new Request("https://example.test/api/themes"), env);
+  assert.equal(themes.status, 200);
+  assert.equal((await themes.json()).themes[0].id, "cassians-classic", "The authenticated theme catalog route must be reachable.");
 
   const adminEnv = {
     ...env,

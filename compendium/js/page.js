@@ -61,7 +61,7 @@ export function initializeCompendium() {
       console.error("Could not initialize compendium:", error);
       elements.summary.textContent = "Could not load the compendium.";
       elements.results.innerHTML =
-        '<div class="rounded-2xl border border-blood-500/30 bg-blood-500/10 p-5 text-blood-600 dark:text-red-300 md:col-span-2 xl:col-span-3">The compendium data is unavailable. Run the compendium build before deploying.</div>';
+        '<div class="rounded-2xl border border-danger-500/30 bg-danger-500/10 p-5 text-danger-600 dark:text-red-300 md:col-span-2 xl:col-span-3">The compendium data is unavailable. Run the compendium build before deploying.</div>';
     }
   }
 
@@ -138,7 +138,7 @@ export function initializeCompendium() {
     } catch (error) {
       console.error("Could not load compendium entry:", error);
       elements.detailBody.innerHTML =
-        '<p class="rounded-xl border border-blood-500/30 bg-blood-500/10 p-4 text-blood-600 dark:text-red-300">The full entry could not be loaded.</p>';
+        '<p class="rounded-xl border border-danger-500/30 bg-danger-500/10 p-4 text-danger-600 dark:text-red-300">The full entry could not be loaded.</p>';
     }
   }
 

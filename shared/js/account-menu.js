@@ -35,7 +35,7 @@ function providerControls(user) {
 function setStatus(root, message, kind = "neutral") {
   const status = root.querySelector("[data-account-status]");
   status.textContent = message;
-  status.className = `min-h-5 text-sm ${kind === "error" ? "text-blood-500" : kind === "success" ? "text-emerald-600 dark:text-emerald-300" : "text-stone-500 dark:text-stone-400"}`;
+  status.className = `min-h-5 text-sm ${kind === "error" ? "text-danger-500" : kind === "success" ? "text-emerald-600 dark:text-emerald-300" : "text-stone-500 dark:text-stone-400"}`;
 }
 
 export function mountAccountMenu(button, user) {

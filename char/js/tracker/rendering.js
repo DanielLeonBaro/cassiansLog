@@ -5,7 +5,7 @@ export const trackerUI = {
   cardHeader: "flex flex-wrap items-center justify-between gap-3 border-b border-stone-200/80 bg-stone-100/70 px-5 py-4 font-bold leading-none dark:border-white/10 dark:bg-white/[.045]",
   cardBody: "p-5",
   badge: "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold",
-  badgeDanger: "bg-blood-500 text-white",
+  badgeDanger: "bg-danger-500 text-white",
   badgeSecondary: "bg-stone-200 text-stone-700 dark:bg-white/10 dark:text-stone-200",
   badgeWarning: "bg-amber-300 text-stone-900",
   badgeSuccess: "bg-emerald-600 text-white",

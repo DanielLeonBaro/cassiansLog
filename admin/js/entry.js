@@ -6,6 +6,13 @@ import {
   runtimeSettingsReady,
 } from "../../shared/js/settings.js";
 import { logout } from "../../shared/js/auth-client.js";
+import { createDialogController } from "../../shared/js/dialog.js";
+import {
+  BASE_THEME_ID,
+  normalizeHex,
+  readableForeground,
+  sortThemes,
+} from "../../shared/js/theme-catalog.js";
 
 const localMode = isLocalRuntimeHost();
 const accountRoleLabels = {
@@ -42,6 +49,16 @@ const sectionRoot = document.getElementById("section-settings");
 const characterRoot = document.getElementById("character-settings");
 const characterStyleRoot = document.getElementById("character-style-settings");
 const userRoot = document.getElementById("user-settings");
+const themeRoot = document.getElementById("theme-settings");
+const themeUnavailable = document.getElementById("theme-admin-unavailable");
+const addThemeButton = document.getElementById("add-theme");
+const themeEditorRoot = document.getElementById("theme-editor-dialog");
+const themeEditorForm = document.getElementById("theme-editor-form");
+let themeEditorReturnFocus = addThemeButton;
+const themeEditor = createDialogController(themeEditorRoot, {
+  initialFocus: () => document.getElementById("theme-editor-name"),
+  returnFocus: () => themeEditorReturnFocus,
+});
 const openWrites = document.getElementById("open-writes");
 const characterStyleInputs = [...document.querySelectorAll('[name="character-sheet-style"]')];
 let snapshot = null;
@@ -86,7 +103,7 @@ async function localCharacters() {
 function setStatus(message, kind = "neutral") {
   status.textContent = message;
   status.className = `mb-6 rounded-2xl border p-4 text-sm ${kind === "error"
-    ? "border-blood-500/40 bg-blood-500/10 text-blood-600 dark:text-red-300"
+    ? "border-danger-500/40 bg-danger-500/10 text-danger-600 dark:text-red-300"
     : kind === "success"
       ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
       : "border-stone-300 bg-white/70 dark:border-white/10 dark:bg-white/[.05]"}`;
@@ -97,7 +114,7 @@ async function adminRequest(path = "", options = {}) {
     const method = options.method || "GET";
     if (!path && method === "GET") {
       const [settings, characters] = await Promise.all([runtimeSettingsReady, localCharacters()]);
-      return { settings, characters };
+      return { settings, characters, users: [], themes: [], themeStorageAvailable: false };
     }
     if (path === "/settings" && method === "PUT") {
       return { ok: true, settings: persistLocalRuntimeSettings(JSON.parse(options.body)) };
@@ -139,11 +156,78 @@ function renderUsers(users = []) {
             <input type="checkbox" data-user-role="${role}" class="accent-red-700"${user.roles.includes(role) ? " checked" : ""}${role === "characters" ? " disabled" : ""}> ${label}
           </label>`).join("")}
       </fieldset>
+      ${snapshot?.themeStorageAvailable === false
+        ? '<p class="mt-4 border-t border-stone-300 pt-4 text-sm text-stone-500 dark:border-white/10 dark:text-stone-400">Theme assignment requires migration 0008 and is currently unavailable.</p>'
+        : `<label class="mt-4 block border-t border-stone-300 pt-4 dark:border-white/10"><span class="mb-1 block text-sm font-bold">Theme</span>
+        <select data-user-theme class="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm font-bold dark:border-white/15 dark:bg-stone-900">
+          ${(snapshot?.themes || []).map((theme) => `<option value="${escapeHTML(theme.id)}"${(user.themePreference?.themeId || BASE_THEME_ID) === theme.id ? " selected" : ""}>${escapeHTML(theme.name)}</option>`).join("")}
+        </select>
+        <small class="mt-1 block text-stone-500 dark:text-stone-400">Keeps this user's Standard/Reversed and font choices. Latest save wins.</small>
+      </label>`}
       <div class="mt-4 flex flex-col gap-3 border-t border-stone-300 pt-4 dark:border-white/10 sm:flex-row sm:items-end">
         <label class="grow"><span class="mb-1 block text-sm font-bold">New password</span><input type="password" data-user-password minlength="10" autocomplete="new-password" class="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 dark:border-white/15 dark:bg-white/5" placeholder="10+ characters, number, special character"></label>
         <button type="button" data-reset-password class="rounded-xl border border-blood-500 px-4 py-2 text-sm font-bold text-blood-500">Reset password</button>
       </div>
     </article>`).join("") || '<p class="text-sm text-stone-500">No user accounts found.</p>';
+}
+
+function themeSwatch(label, name, hex) {
+  return `<div class="grid grid-cols-[2rem_minmax(0,1fr)] items-center gap-2"><span class="h-8 w-8 rounded-lg border border-black/15" style="background:${escapeHTML(hex)}"></span><span class="min-w-0"><strong class="block truncate text-xs">${label}: ${escapeHTML(name)}</strong><code class="text-xs text-stone-500 dark:text-stone-400">${escapeHTML(hex)}</code></span></div>`;
+}
+
+function renderThemes(themes = []) {
+  const available = !localMode && snapshot?.themeStorageAvailable !== false;
+  themeUnavailable.classList.toggle("hidden", available);
+  addThemeButton.disabled = !available;
+  addThemeButton.classList.toggle("opacity-50", !available);
+  if (!available) {
+    themeRoot.replaceChildren();
+    return;
+  }
+  themeRoot.innerHTML = themes.map((theme) => `
+    <article data-admin-theme="${escapeHTML(theme.id)}" class="rounded-2xl border border-stone-300 p-4 dark:border-white/15">
+      <div class="flex items-start justify-between gap-3"><h3 class="font-display text-lg font-bold">${escapeHTML(theme.name)}</h3>${theme.protected
+        ? '<span class="rounded-full bg-theme-surface-strong px-2 py-1 text-xs font-bold">Protected</span>'
+        : `<span class="flex gap-1"><button type="button" data-edit-theme class="rounded-lg border border-stone-300 px-2 py-1 text-xs font-bold hover:border-blood-500 hover:text-blood-500 dark:border-white/15"><i class="bi bi-pencil mr-1"></i>Edit</button><button type="button" data-remove-theme class="rounded-lg border border-danger-500 px-2 py-1 text-xs font-bold text-danger-500 hover:bg-danger-500 hover:text-white"><i class="bi bi-trash mr-1"></i>Remove</button></span>`}</div>
+      <div class="mt-3 grid gap-2 sm:grid-cols-2">${themeSwatch("Background", theme.backgroundName, theme.backgroundHex)}${themeSwatch("Accent", theme.accentName, theme.accentHex)}</div>
+      <p class="mt-3 text-xs text-stone-500 dark:text-stone-400">People using this theme: ${Number(theme.peopleUsingTheme) || 0}</p>
+    </article>`).join("");
+}
+
+function themeFormValue() {
+  return {
+    name: document.getElementById("theme-editor-name").value,
+    backgroundName: document.getElementById("theme-editor-background-name").value,
+    backgroundHex: document.getElementById("theme-editor-background-hex").value,
+    accentName: document.getElementById("theme-editor-accent-name").value,
+    accentHex: document.getElementById("theme-editor-accent-hex").value,
+  };
+}
+
+function updateThemePreview() {
+  const backgroundHex = normalizeHex(document.getElementById("theme-editor-background-hex").value) || "#18181B";
+  const accentHex = normalizeHex(document.getElementById("theme-editor-accent-hex").value) || "#B83B35";
+  const preview = document.getElementById("theme-editor-preview");
+  preview.style.backgroundColor = backgroundHex;
+  preview.style.color = readableForeground(backgroundHex);
+  preview.style.borderColor = accentHex;
+  preview.innerHTML = `<span><span class="block">Live preview</span><span class="mt-2 inline-block rounded-lg px-3 py-1 text-sm" style="background:${accentHex};color:${readableForeground(accentHex)}">Accent</span></span>`;
+}
+
+function openThemeEditor(theme = null, trigger = addThemeButton) {
+  themeEditorReturnFocus = trigger;
+  document.getElementById("theme-editor-title").textContent = theme ? "Edit Theme" : "Add Theme";
+  document.getElementById("theme-editor-id").value = theme?.id || "";
+  document.getElementById("theme-editor-name").value = theme?.name || "";
+  document.getElementById("theme-editor-background-name").value = theme?.backgroundName || "";
+  document.getElementById("theme-editor-background-hex").value = theme?.backgroundHex || "#18181B";
+  document.getElementById("theme-editor-background-color").value = (theme?.backgroundHex || "#18181B").toLowerCase();
+  document.getElementById("theme-editor-accent-name").value = theme?.accentName || "";
+  document.getElementById("theme-editor-accent-hex").value = theme?.accentHex || "#B83B35";
+  document.getElementById("theme-editor-accent-color").value = (theme?.accentHex || "#B83B35").toLowerCase();
+  document.getElementById("theme-editor-status").textContent = "";
+  updateThemePreview();
+  themeEditor.open();
 }
 
 function renderSections(sections) {
@@ -192,6 +276,7 @@ async function unlock() {
     renderSections(snapshot.settings.sections);
     renderCharacterStyles(snapshot.characters, snapshot.settings.characterSheetStyleOverrides);
     renderCharacters(snapshot.characters);
+    renderThemes(snapshot.themes);
     renderUsers(snapshot.users);
     content.classList.remove("hidden");
     setStatus(localMode
@@ -255,6 +340,33 @@ document.getElementById("admin-lock").addEventListener("click", () => {
 });
 
 userRoot.addEventListener("change", async (event) => {
+  const themeSelect = event.target.closest("[data-user-theme]");
+  if (themeSelect) {
+    const card = themeSelect.closest("[data-user]");
+    const previousPreference = snapshot.users.find((item) => item.id === card.dataset.user)?.themePreference;
+    const previous = previousPreference?.themeId || BASE_THEME_ID;
+    themeSelect.disabled = true;
+    try {
+      const result = await adminRequest(`/users/${encodeURIComponent(card.dataset.user)}/theme`, {
+        method: "PUT",
+        body: JSON.stringify({ themeId: themeSelect.value }),
+      });
+      const user = snapshot.users.find((item) => item.id === card.dataset.user);
+      if (user) user.themePreference = result.themePreference;
+      snapshot.themes.forEach((theme) => {
+        if (previousPreference && theme.id === previous) theme.peopleUsingTheme = Math.max(0, (Number(theme.peopleUsingTheme) || 0) - 1);
+        if (theme.id === themeSelect.value) theme.peopleUsingTheme = (Number(theme.peopleUsingTheme) || 0) + 1;
+      });
+      renderThemes(snapshot.themes);
+      setStatus("User theme saved. Their reverse and font choices were preserved.", "success");
+    } catch (error) {
+      themeSelect.value = previous;
+      setStatus(error.message, "error");
+    } finally {
+      themeSelect.disabled = false;
+    }
+    return;
+  }
   const input = event.target.closest("[data-user-role]");
   if (!input) return;
   const card = input.closest("[data-user]");
@@ -274,6 +386,91 @@ userRoot.addEventListener("change", async (event) => {
   } finally {
     card.querySelectorAll("input, button").forEach((control) => { control.disabled = false; });
     card.querySelector('[data-user-role="characters"]').disabled = true;
+  }
+});
+
+addThemeButton.addEventListener("click", () => openThemeEditor());
+themeEditorRoot.querySelectorAll("[data-close-theme-editor]").forEach((button) => {
+  button.addEventListener("click", themeEditor.close);
+});
+
+themeEditorForm.addEventListener("input", (event) => {
+  const pairs = {
+    "theme-editor-background-color": "theme-editor-background-hex",
+    "theme-editor-accent-color": "theme-editor-accent-hex",
+    "theme-editor-background-hex": "theme-editor-background-color",
+    "theme-editor-accent-hex": "theme-editor-accent-color",
+  };
+  const pairedId = pairs[event.target.id];
+  if (pairedId) {
+    const normalized = normalizeHex(event.target.value);
+    if (event.target.type === "color") document.getElementById(pairedId).value = normalized;
+    else if (normalized) document.getElementById(pairedId).value = normalized.toLowerCase();
+  }
+  updateThemePreview();
+});
+
+themeEditorForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const id = document.getElementById("theme-editor-id").value;
+  const saveButton = document.getElementById("save-theme");
+  const editorStatus = document.getElementById("theme-editor-status");
+  saveButton.disabled = true;
+  editorStatus.textContent = "Saving theme...";
+  try {
+    const result = await adminRequest(id ? `/themes/${encodeURIComponent(id)}` : "/themes", {
+      method: id ? "PUT" : "POST",
+      body: JSON.stringify(themeFormValue()),
+    });
+    const existing = snapshot.themes.find((theme) => theme.id === result.theme.id);
+    result.theme.peopleUsingTheme = existing?.peopleUsingTheme || 0;
+    snapshot.themes = sortThemes([
+      ...snapshot.themes.filter((theme) => theme.id !== result.theme.id),
+      result.theme,
+    ]);
+    renderThemes(snapshot.themes);
+    renderUsers(snapshot.users);
+    themeEditor.forceClose("saved");
+    setStatus(`${result.theme.name} ${id ? "updated" : "added"}.`, "success");
+  } catch (error) {
+    editorStatus.textContent = error.message;
+  } finally {
+    saveButton.disabled = false;
+  }
+});
+
+themeRoot.addEventListener("click", async (event) => {
+  const card = event.target.closest("[data-admin-theme]");
+  if (!card) return;
+  const theme = snapshot.themes.find((item) => item.id === card.dataset.adminTheme);
+  if (!theme || theme.protected) return;
+  const edit = event.target.closest("[data-edit-theme]");
+  if (edit) {
+    openThemeEditor(theme, edit);
+    return;
+  }
+  const remove = event.target.closest("[data-remove-theme]");
+  if (!remove) return;
+  const people = Number(theme.peopleUsingTheme) || 0;
+  const warning = `People using this theme: ${people}. Removing it will return them to Cassian’s Classic.`;
+  if (!globalThis.confirm(`${warning}\n\nRemove ${theme.name}?`)) return;
+  remove.disabled = true;
+  try {
+    const result = await adminRequest(`/themes/${encodeURIComponent(theme.id)}${people ? "?confirm=1" : ""}`, {
+      method: "DELETE",
+    });
+    snapshot.themes = snapshot.themes.filter((item) => item.id !== theme.id);
+    snapshot.users.forEach((user) => {
+      if (user.themePreference?.themeId === theme.id) {
+        user.themePreference = { themeId: BASE_THEME_ID, reversed: false, fontMode: "auto", updatedAt: null };
+      }
+    });
+    renderThemes(snapshot.themes);
+    renderUsers(snapshot.users);
+    setStatus(`${theme.name} removed. ${result.resetUsers || 0} user${result.resetUsers === 1 ? "" : "s"} returned to Cassian’s Classic.`, "success");
+  } catch (error) {
+    remove.disabled = false;
+    setStatus(error.message, "error");
   }
 });
 

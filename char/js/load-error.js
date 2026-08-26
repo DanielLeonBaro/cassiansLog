@@ -8,7 +8,7 @@ export function renderCharacterLoadError(message, {
   const errorMargin = showBackLink ? "mb-4 " : "";
   documentRoot.body.innerHTML = `
     <main class="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-      <div data-character-load-error class="${errorMargin}rounded-2xl border border-blood-500/30 bg-blood-500/10 p-4 text-blood-600 dark:text-red-300"></div>
+      <div data-character-load-error class="${errorMargin}rounded-2xl border border-danger-500/30 bg-danger-500/10 p-4 text-danger-600 dark:text-red-300"></div>
       ${backLink}
     </main>`;
   documentRoot.querySelector("[data-character-load-error]").textContent = String(message ?? "");

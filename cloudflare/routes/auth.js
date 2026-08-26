@@ -1,4 +1,6 @@
-import { bodyJSON, error, json } from "../http.js";
+import { bodyJSON, error, json, safeId } from "../http.js";
+import { THEME_FONT_MODES } from "../../shared/js/theme-catalog.js";
+import { loadUserThemePreference, saveUserThemePreference } from "../themes.js";
 import {
   DEFAULT_ROLES,
   PRIMARY_ADMIN_EMAIL,
@@ -36,10 +38,13 @@ async function credentialsRowById(id, env) {
 async function userWithProviders(request, env) {
   const user = await userFromRequest(request, env);
   if (!user || user.localBypass) return user;
-  const providers = await env.DB.prepare(
-    "SELECT provider FROM oauth_accounts WHERE user_id = ? ORDER BY provider",
-  ).bind(user.id).all();
-  return { ...user, providers: providers.results.map((row) => row.provider) };
+  const [providers, themePreference] = await Promise.all([
+    env.DB.prepare(
+      "SELECT provider FROM oauth_accounts WHERE user_id = ? ORDER BY provider",
+    ).bind(user.id).all(),
+    loadUserThemePreference(user.id, env),
+  ]);
+  return { ...user, providers: providers.results.map((row) => row.provider), themePreference };
 }
 
 function accountRedirect(origin, message, failed = false) {
@@ -218,6 +223,27 @@ export async function authRoute(request, env, parts) {
   }
   if (request.method === "POST" && action === "logout") {
     return jsonWithCookie({ ok: true }, await destroySession(request, env));
+  }
+  if (request.method === "PUT" && action === "theme") {
+    const user = await userFromRequest(request, env);
+    if (!user) return error("Sign in required.", 401);
+    const body = await bodyJSON(request);
+    if (!safeId(body?.themeId) || typeof body?.reversed !== "boolean" || !THEME_FONT_MODES.includes(body?.fontMode)) {
+      return error("Invalid theme preference.");
+    }
+    try {
+      const themePreference = await saveUserThemePreference(user.id, {
+        themeId: body.themeId,
+        reversed: body.reversed,
+        fontMode: body.fontMode,
+      }, env);
+      return themePreference
+        ? json({ ok: true, themePreference })
+        : error("Theme not found.", 404);
+    } catch (caught) {
+      console.warn("Theme preference could not be saved.", caught);
+      return error("Theme storage is unavailable. Apply migration 0008.", 503);
+    }
   }
   if (request.method === "POST" && action === "password") {
     const user = await userFromRequest(request, env);

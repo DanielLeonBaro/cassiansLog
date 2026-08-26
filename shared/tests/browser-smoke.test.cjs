@@ -188,6 +188,44 @@ async function main() {
       'return document.getElementById("character-dialog").classList.contains("hidden");',
       "Quick Setup did not close",
     );
+    const themePicker = await execute(`
+      const toggle = document.getElementById("theme-toggle");
+      toggle.click();
+      const cards = [...document.querySelectorAll("[data-theme-card]")];
+      document.querySelector('[data-theme-card="peach-and-lime"]').click();
+      document.querySelector('[data-theme-reverse="true"]').click();
+      document.querySelector('[data-theme-font="black"]').click();
+      const result = {
+        count: cards.length,
+        firstThemes: cards.slice(0, 4).map((card) => card.firstElementChild.textContent.trim()),
+        theme: document.documentElement.dataset.themePalette,
+        reversed: document.documentElement.dataset.themeReversed,
+        backgroundToken: getComputedStyle(document.documentElement).getPropertyValue("--theme-background").trim(),
+        accent: getComputedStyle(document.documentElement).getPropertyValue("--theme-accent").trim(),
+        storedTheme: localStorage.getItem("dnd-theme"),
+        storedFont: localStorage.getItem("dnd-theme-font"),
+      };
+      document.querySelector("[data-theme-dialog]").dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      return result;
+    `);
+    assert.deepEqual(themePicker, {
+      count: 28,
+      firstThemes: ["Cassian’s Classic", "Evil Cassian", "Black and White", "Aloe"],
+      theme: "peach-and-lime",
+      reversed: "true",
+      backgroundToken: "154 118 0",
+      accent: "244 184 196",
+      storedTheme: "peach-and-lime",
+      storedFont: "black",
+    }, "Theme picker should apply and persist the complete local preference.");
+    await waitFor(
+      'return getComputedStyle(document.body).backgroundColor === "rgb(154, 118, 0)";',
+      "Theme background transition did not reach the selected color",
+    );
+    await waitFor(
+      'return document.querySelector("[data-theme-dialog]").classList.contains("hidden");',
+      "Theme picker did not close with Escape",
+    );
 
     await smoke(
       "Character tracker and editor",
@@ -266,7 +304,7 @@ async function main() {
       "Admin localhost mode",
       "/admin/",
       'return !document.getElementById("admin-content").classList.contains("hidden");',
-      'return document.getElementById("admin-description").textContent.includes("localStorage") && document.getElementById("admin-lock").hidden;',
+      'return document.getElementById("admin-description").textContent.includes("localStorage") && document.getElementById("admin-lock").hidden && !document.getElementById("theme-admin-unavailable").classList.contains("hidden") && document.getElementById("add-theme").disabled;',
     );
 
     console.log("Headless Firefox browser smoke tests passed.");

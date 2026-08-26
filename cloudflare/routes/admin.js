@@ -1,6 +1,12 @@
 import { adminAuthorized } from "../auth.js";
 import { bodyJSON, error, json, parseStored, safeId } from "../http.js";
 import { loadSettings, updateSettings } from "../settings.js";
+import { adminThemeRoute } from "./admin-themes.js";
+import {
+  assignUserTheme,
+  loadThemeCatalog,
+  preferenceFromRow,
+} from "../themes.js";
 import {
   ASSIGNABLE_ROLES,
   PRIMARY_ADMIN_EMAIL,
@@ -12,18 +18,32 @@ import {
 export async function adminRoute(request, env, parts) {
   if (!await adminAuthorized(request, env)) return error("Primary administrator access required.", 401);
   if (request.method === "GET" && parts.length === 0) {
-    const [settings, characters] = await Promise.all([
+    const [settings, characters, themeCatalog] = await Promise.all([
       loadSettings(env),
       env.DB.prepare("SELECT id, document_json, source, active, updated_at FROM characters ORDER BY id").all(),
+      loadThemeCatalog(env, { includeUsage: true }),
     ]);
     let users = { results: [] };
     try {
-      users = await env.DB.prepare("SELECT id, email, roles_json, created_at, updated_at FROM users ORDER BY email COLLATE NOCASE").all();
+      users = await env.DB.prepare(
+        `SELECT users.id, users.email, users.roles_json, users.created_at, users.updated_at,
+          user_theme_preferences.theme_id, user_theme_preferences.reversed,
+          user_theme_preferences.font_mode, user_theme_preferences.updated_at AS theme_updated_at
+        FROM users
+        LEFT JOIN user_theme_preferences ON user_theme_preferences.user_id = users.id
+        ORDER BY users.email COLLATE NOCASE`,
+      ).all();
     } catch (caught) {
-      console.warn("User accounts could not be listed. Apply migration 0006.", caught);
+      try {
+        users = await env.DB.prepare("SELECT id, email, roles_json, created_at, updated_at FROM users ORDER BY email COLLATE NOCASE").all();
+      } catch (fallbackCaught) {
+        console.warn("User accounts could not be listed. Apply migration 0006.", fallbackCaught);
+      }
     }
     return json({
       settings,
+      themes: themeCatalog.themes,
+      themeStorageAvailable: themeCatalog.storageAvailable,
       characters: characters.results.map((row) => ({
         id: row.id,
         name: parseStored(row.document_json, {})?.name || row.id,
@@ -41,6 +61,12 @@ export async function adminRoute(request, env, parts) {
             ...parseStored(row.roles_json, []).filter((role) => ASSIGNABLE_ROLES.includes(role)),
           ])],
         isPrimaryAdmin: normalizeEmail(row.email) === PRIMARY_ADMIN_EMAIL,
+        themePreference: preferenceFromRow(row.theme_id ? {
+          theme_id: row.theme_id,
+          reversed: row.reversed,
+          font_mode: row.font_mode,
+          updated_at: row.theme_updated_at,
+        } : null),
         createdAt: row.created_at,
         updatedAt: row.updated_at,
       })),
@@ -48,6 +74,14 @@ export async function adminRoute(request, env, parts) {
   }
   if (request.method === "PUT" && parts[0] === "settings" && parts.length === 1) {
     return updateSettings(request, env);
+  }
+  if (parts[0] === "themes") {
+    try {
+      return await adminThemeRoute(request, env, parts);
+    } catch (caught) {
+      console.warn("Admin theme storage is unavailable. Apply migration 0008.", caught);
+      return error("Theme storage is unavailable. Apply migration 0008.", 503);
+    }
   }
   if (request.method === "PUT" && parts[0] === "characters" && safeId(parts[1]) && parts.length === 2) {
     const body = await bodyJSON(request);
@@ -70,6 +104,19 @@ export async function adminRoute(request, env, parts) {
     await env.DB.prepare("UPDATE users SET roles_json = ?, updated_at = ? WHERE id = ?")
       .bind(JSON.stringify(roles), new Date().toISOString(), parts[1]).run();
     return json({ ok: true, roles });
+  }
+  if (request.method === "PUT" && parts[0] === "users" && parts[1] && parts[2] === "theme" && parts.length === 3) {
+    const body = await bodyJSON(request);
+    if (!safeId(body?.themeId)) return error("Theme ID is invalid.");
+    try {
+      const result = await assignUserTheme(parts[1], body.themeId, env);
+      if (result.problem === "user") return error("User not found.", 404);
+      if (result.problem === "theme") return error("Theme not found.", 404);
+      return json({ ok: true, themePreference: result.preference });
+    } catch (caught) {
+      console.warn("Admin could not assign a user theme.", caught);
+      return error("Theme storage is unavailable. Apply migration 0008.", 503);
+    }
   }
   if (request.method === "PUT" && parts[0] === "users" && parts[1] && parts[2] === "password" && parts.length === 3) {
     const body = await bodyJSON(request);
