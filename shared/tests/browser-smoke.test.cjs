@@ -238,6 +238,31 @@ async function main() {
         return name === window.character.name && !editor.classList.contains("hidden") && Boolean(document.getElementById("editor-fields").children.length);
       `,
     );
+    const characterFlags = await execute(`
+      const inspiration = document.getElementById("inspiration-toggle");
+      const cinematic = document.getElementById("cinematic-toggle");
+      inspiration.click();
+      cinematic.click();
+      return {
+        inspiration: inspiration.getAttribute("aria-checked"),
+        cinematic: cinematic.getAttribute("aria-checked"),
+        inspirationValue: window.character.inspiration,
+        cinematicValue: window.character.cinematic,
+      };
+    `);
+    assert.deepEqual(characterFlags, {
+      inspiration: "true",
+      cinematic: "true",
+      inspirationValue: 1,
+      cinematicValue: 1,
+    }, "Character status switches should respond to clicks.");
+    await waitFor(
+      `
+        return getComputedStyle(document.getElementById("inspiration-toggle")).backgroundColor === "rgb(254, 240, 138)"
+          && getComputedStyle(document.getElementById("cinematic-toggle")).backgroundColor === "rgb(196, 181, 253)";
+      `,
+      "Character status switches did not show their active colors",
+    );
     await execute('document.getElementById("editor-cancel").click(); return true;');
     await waitFor(
       'return document.getElementById("character-editor").classList.contains("hidden");',

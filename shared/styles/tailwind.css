@@ -37,11 +37,11 @@
 }
 
 @layer utilities {
-  [data-theme-palette] :is(.bg-white, [class*="bg-white/"], .bg-stone-50, .bg-stone-100, [class~="dark:bg-stone-800"], [class~="dark:bg-stone-900"]) {
+  [data-theme-palette] :is(.bg-white, [class*="bg-white/"], .bg-stone-50, .bg-stone-100, [class~="dark:bg-stone-800"], [class~="dark:bg-stone-900"]):not([data-tracker-action="character-flag"]) {
     background-color: rgb(var(--theme-surface) / 0.88);
   }
 
-  [data-theme-palette] :is(.border-stone-200, .border-stone-300, .border-stone-400, [class*="dark:border-white/"]) {
+  [data-theme-palette] :is(.border-stone-200, .border-stone-300, .border-stone-400, [class*="dark:border-white/"]):not([data-tracker-action="character-flag"]) {
     border-color: rgb(var(--theme-border));
   }
 
@@ -49,7 +49,7 @@
     color: rgb(var(--theme-text));
   }
 
-  [data-theme-palette] :is(.text-stone-400, .text-stone-500, .text-stone-600, [class~="dark:text-stone-300"], [class~="dark:text-stone-400"]) {
+  [data-theme-palette] :is(.text-stone-400, .text-stone-500, .text-stone-600, [class~="dark:text-stone-300"], [class~="dark:text-stone-400"]):not([data-tracker-action="character-flag"]) {
     color: rgb(var(--theme-muted));
   }
 
