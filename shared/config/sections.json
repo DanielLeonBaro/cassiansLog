@@ -1,6 +1,8 @@
 {
   "sections": {
     "characters": true,
+    "player-screen": true,
+    "dm-screen": true,
     "combat-loot": true,
     "public-initiative": true,
     "music": true,

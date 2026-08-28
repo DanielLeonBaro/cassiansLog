@@ -8,7 +8,7 @@ const combatPage = fs.readFileSync("combat-loot/index.html", "utf8");
 
 assert.match(html, /id="initiative-list"/);
 assert.doesNotMatch(html, /<(?:form|input|textarea|select)\b|contenteditable=/i);
-assert.match(page, /readCloudJSON\("api\/combat-loot"/);
+assert.match(page, /readCloudJSON\("api\/public-initiative"/);
 assert.doesNotMatch(page, /writeCloudJSON|addEventListener/);
 assert.match(page, /item\.textContent = name/);
 assert.match(combatPage, /href="public-initiative\/"/);

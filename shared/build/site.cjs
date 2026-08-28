@@ -10,10 +10,13 @@ const publicEntries = [
   "char",
   "combat-loot",
   "compendium",
+  "dm-screen",
   "integrations",
   "login",
   "music",
   "public-initiative",
+  "player-screen",
+  "screens",
   "shared",
   "wiki",
 ];

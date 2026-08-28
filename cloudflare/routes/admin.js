@@ -9,6 +9,7 @@ import {
 } from "../themes.js";
 import {
   ASSIGNABLE_ROLES,
+  MANDATORY_ROLES,
   PRIMARY_ADMIN_EMAIL,
   hashPassword,
   normalizeEmail,
@@ -57,7 +58,7 @@ export async function adminRoute(request, env, parts) {
         roles: normalizeEmail(row.email) === PRIMARY_ADMIN_EMAIL
           ? [...ASSIGNABLE_ROLES, "admin"]
           : [...new Set([
-            "characters",
+            ...MANDATORY_ROLES,
             ...parseStored(row.roles_json, []).filter((role) => ASSIGNABLE_ROLES.includes(role)),
           ])],
         isPrimaryAdmin: normalizeEmail(row.email) === PRIMARY_ADMIN_EMAIL,
@@ -97,7 +98,7 @@ export async function adminRoute(request, env, parts) {
     if (!Array.isArray(body?.roles)) return error("Roles must be an array.");
     const requestedRoles = [...new Set(body.roles)];
     if (requestedRoles.some((role) => !ASSIGNABLE_ROLES.includes(role))) return error("One or more roles are invalid.");
-    const roles = [...new Set(["characters", ...requestedRoles])];
+    const roles = [...new Set([...MANDATORY_ROLES, ...requestedRoles])];
     const target = await env.DB.prepare("SELECT email FROM users WHERE id = ?").bind(parts[1]).first();
     if (!target) return error("User not found.", 404);
     if (normalizeEmail(target.email) === PRIMARY_ADMIN_EMAIL) return error("The primary administrator always has full access.", 409);

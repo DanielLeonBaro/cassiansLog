@@ -325,6 +325,194 @@ async function main() {
       'return Boolean(document.getElementById("initiative-list")) && !document.querySelector("form, input, textarea, select");',
     );
 
+    await navigate("/player-screen/");
+    await waitFor(
+      'return Boolean(document.querySelector("[data-add-widget]"));',
+      "Player Screen did not become ready",
+    );
+    await execute(`
+      localStorage.removeItem("cassianslog-screen-v1:localhost:player");
+      localStorage.removeItem("cassianslog-screen-v1:localhost:dm");
+      location.reload();
+      return true;
+    `);
+    await waitFor(
+      'return document.querySelectorAll("[data-widget-id]").length === 0 && Boolean(document.querySelector("[data-add-widget]"));',
+      "Player Screen did not show its blank state",
+    );
+    await execute(`
+      document.querySelector("[data-add-widget]").click();
+      const type = document.getElementById("screen-widget-type");
+      type.value = "note";
+      type.dispatchEvent(new Event("change", { bubbles: true }));
+      document.querySelector('[name="title"]').value = "Table note";
+      document.querySelector('[name="body"]').value = "## Reminder\\n\\nUse **cover**.";
+      document.getElementById("screen-editor-form").requestSubmit();
+      return true;
+    `);
+    await waitFor(
+      'return document.querySelectorAll("[data-widget-id]").length === 1 && document.querySelector("[data-widget-id] h2")?.textContent === "Table note";',
+      "Player Screen Note was not saved",
+    );
+    const noteDialog = await execute(`
+      const trigger = document.querySelector("[data-view-widget]");
+      trigger.focus();
+      trigger.click();
+      const detail = document.getElementById("screen-detail");
+      const opened = !detail.classList.contains("hidden") && detail.textContent.includes("Reminder");
+      detail.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      return { opened, restored: document.activeElement === trigger };
+    `);
+    assert.deepEqual(noteDialog, { opened: true, restored: true }, "Note detail should open, close with Escape, and restore focus.");
+    await execute(`
+      document.querySelector("[data-edit-widget]").click();
+      document.querySelector('[name="title"]').value = "Updated table note";
+      document.getElementById("screen-editor-form").requestSubmit();
+      return true;
+    `);
+    await waitFor(
+      'return document.querySelector("[data-widget-id] h2")?.textContent === "Updated table note";',
+      "Player Screen Note edit was not saved",
+    );
+
+    await execute(`
+      document.querySelector("[data-add-widget]").click();
+      const type = document.getElementById("screen-widget-type");
+      type.value = "manual";
+      type.dispatchEvent(new Event("change", { bubbles: true }));
+      document.querySelector('[name="title"]').value = "Image reference";
+      document.querySelector('[name="body"]').value = "Uploaded image";
+      const bytes = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="), (character) => character.charCodeAt(0));
+      const transfer = new DataTransfer();
+      transfer.items.add(new File([bytes], "pixel.png", { type: "image/png" }));
+      const upload = document.querySelector('[name="imageUpload"]');
+      upload.files = transfer.files;
+      upload.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    `);
+    await waitFor(
+      'return document.querySelector(\'[name="storedImage"]\')?.value.startsWith("data:image/webp;base64,");',
+      "Manual Reference image was not compressed to WebP",
+    );
+    await execute('document.getElementById("screen-editor-form").requestSubmit(); return true;');
+    await waitFor(
+      'return document.querySelectorAll("[data-widget-id]").length === 2 && Boolean(document.querySelector("[data-screen-image]"));',
+      "Manual Reference image was not saved",
+    );
+    const imageDialog = await execute(`
+      const image = document.querySelector("[data-screen-image]");
+      image.focus();
+      image.click();
+      const modal = document.getElementById("screen-image-modal");
+      const opened = !modal.classList.contains("hidden") && document.getElementById("screen-modal-image").src.startsWith("data:image/webp");
+      document.getElementById("screen-modal-image").parentElement.click();
+      return { opened, restored: document.activeElement === image };
+    `);
+    assert.deepEqual(imageDialog, { opened: true, restored: true }, "Uploaded images should open full-size and close from the backdrop with focus restored.");
+    await execute(`
+      window.confirm = () => true;
+      const imageCard = document.querySelector("[data-screen-image]").closest("[data-widget-id]");
+      imageCard.querySelector("[data-remove-widget]").click();
+      return true;
+    `);
+    await waitFor(
+      'return document.querySelectorAll("[data-widget-id]").length === 1 && !document.querySelector("[data-screen-image]");',
+      "Manual Reference was not removed",
+    );
+
+    await execute(`
+      document.querySelector("[data-add-widget]").click();
+      const type = document.getElementById("screen-widget-type");
+      type.value = "calculator";
+      type.dispatchEvent(new Event("change", { bubbles: true }));
+      document.getElementById("screen-editor-form").requestSubmit();
+      return true;
+    `);
+    await waitFor(
+      'return document.querySelectorAll("[data-widget-id]").length === 2 && Boolean(document.querySelector("[data-calculator-expression]"));',
+      "Player Screen Calculator was not saved",
+    );
+    await execute(`
+      const input = document.querySelector("[data-calculator-expression]");
+      input.value = "1+3/2(3+2)";
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      return true;
+    `);
+    await waitFor(
+      'return document.querySelector("[data-calculator-expression]")?.value === "8.5";',
+      "Player Screen Calculator did not return 8.5",
+    );
+    await execute(`
+      const calculator = document.querySelector("[data-calculator-expression]").closest("[data-widget-id]");
+      calculator.querySelector("[data-view-widget]").click();
+      return true;
+    `);
+    await waitFor(
+      'return document.querySelector("[data-history-list]")?.textContent.includes("1+3/2(3+2)");',
+      "Calculator history did not persist the expression",
+    );
+    await execute('document.querySelector("[data-close-detail]").click(); return true;');
+
+    await execute(`
+      document.querySelector("[data-add-widget]").click();
+      const type = document.getElementById("screen-widget-type");
+      type.value = "initiative";
+      type.dispatchEvent(new Event("change", { bubbles: true }));
+      document.getElementById("screen-editor-form").requestSubmit();
+      return true;
+    `);
+    await waitFor(
+      'return document.querySelectorAll("[data-widget-id]").length === 3;',
+      "Player Screen Initiative was not saved",
+    );
+    const playerActions = await execute(`
+      const initiative = [...document.querySelectorAll("[data-widget-id]")].find((card) => card.textContent.includes("Initiative Order"));
+      initiative.querySelector('[data-move-widget="-1"]').click();
+      return {
+        publicLink: Boolean(initiative.querySelector('a[href="public-initiative/"]')),
+        combatLink: Boolean(initiative.querySelector('a[href="combat-loot/"]')),
+      };
+    `);
+    assert.deepEqual(playerActions, { publicLink: true, combatLink: false }, "Player Initiative should not expose Combat & Loot.");
+    await navigate("/player-screen/");
+    await waitFor(
+      'return document.querySelectorAll("[data-widget-id]").length === 3 && document.querySelector("[data-calculator-expression]")?.value === "8.5";',
+      "Player Screen did not restore its saved layout",
+    );
+    await command("POST", "/window/rect", { width: 375, height: 800 });
+    const mobileScreen = await execute(`
+      const grid = document.getElementById("screen-grid");
+      return {
+        columns: getComputedStyle(grid).gridTemplateColumns.split(" ").length,
+        viewport: innerWidth,
+        overflow: document.documentElement.scrollWidth > innerWidth,
+      };
+    `);
+    assert.equal(mobileScreen.columns, 1, "Player Screen should use one grid column at Firefox's minimum mobile viewport.");
+    assert.equal(mobileScreen.overflow, false, "Player Screen should not overflow horizontally on mobile.");
+    assert.ok(mobileScreen.viewport <= 500, `Expected a mobile-width viewport, received ${mobileScreen.viewport}px.`);
+
+    await navigate("/dm-screen/");
+    await waitFor(
+      'return document.querySelectorAll("[data-widget-id]").length === 0 && Boolean(document.querySelector("[data-add-widget]"));',
+      "DM Screen should have a separate blank layout",
+    );
+    await execute(`
+      document.querySelector("[data-add-widget]").click();
+      const type = document.getElementById("screen-widget-type");
+      type.value = "initiative";
+      type.dispatchEvent(new Event("change", { bubbles: true }));
+      document.getElementById("screen-editor-form").requestSubmit();
+      return true;
+    `);
+    await waitFor(
+      'return document.querySelector("[data-widget-id]")?.querySelector(\'a[href="combat-loot/"]\');',
+      "DM Screen Initiative did not expose the authorized Combat & Loot action",
+    );
+    console.log("Browser smoke passed: Player Screen widgets and responsive layout");
+    console.log("Browser smoke passed: separate DM Screen actions");
+    await command("POST", "/window/rect", { width: 1280, height: 900 });
+
     await smoke(
       "Admin localhost mode",
       "/admin/",

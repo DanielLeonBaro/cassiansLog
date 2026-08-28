@@ -9,6 +9,8 @@ const menuItemClass = "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 tex
 
 const pages = [
   { id: "characters", href: "char/", icon: "bi-people-fill", label: "Characters" },
+  { id: "player-screen", href: "player-screen/", icon: "bi-grid-fill", label: "Player Screen" },
+  { id: "dm-screen", href: "dm-screen/", icon: "bi-shield-shaded", label: "DM Screen" },
   { id: "wiki", href: "wiki/", icon: "bi-book-half", label: "Wiki" },
   { id: "compendium", href: "compendium/", icon: "bi-journals", label: "Compendium" },
   { id: "combat-loot", href: "combat-loot/", icon: "bi-shield-shaded", label: "Combat & Loot" },
@@ -17,7 +19,7 @@ const pages = [
   { id: "admin", href: "admin/", icon: "bi-shield-lock-fill", label: "Admin" },
 ];
 
-const trackerPageOrder = ["characters", "compendium", "wiki", "combat-loot", "public-initiative", "music", "admin"];
+const trackerPageOrder = ["characters", "player-screen", "dm-screen", "compendium", "wiki", "combat-loot", "public-initiative", "music", "admin"];
 
 function pageMenuLink(page) {
   return `<a class="${menuItemClass}" href="${page.href}" data-section-link="${page.id}" data-role-link="${page.id}">

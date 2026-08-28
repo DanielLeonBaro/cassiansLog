@@ -12,8 +12,10 @@ const pageBases = new Map([
   ["char/tracker.html", "../"],
   ["combat-loot/index.html", "../"],
   ["compendium/index.html", "../"],
+  ["dm-screen/index.html", "../"],
   ["music/index.html", "../"],
   ["public-initiative/index.html", "../"],
+  ["player-screen/index.html", "../"],
   ["wiki/index.html", "../"],
 ]);
 
@@ -44,6 +46,7 @@ const storageContracts = new Map([
   ["shared/js/settings.js", ["cassianslog-runtime-settings"]],
   ["shared/js/theme.js", ["dnd-theme"]],
   ["shared/js/cloud-store.js", ["cassianslog-write-token"]],
+  ["screens/js/repository.js", ["cassianslog-screen-v1"]],
 ]);
 
 for (const [file, keys] of storageContracts) {
@@ -62,6 +65,8 @@ for (const route of [
   "/api/characters",
   "/api/combat-loot",
   "/api/music",
+  "/api/public-initiative",
+  "/api/screens",
   "/api/wiki",
   "/api/auth",
 ]) {

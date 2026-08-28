@@ -1,5 +1,4 @@
 import { readCloudJSON } from "../../shared/js/cloud-store.js";
-import { initiativeNamesFromSnapshot } from "./model.js";
 
 function renderNames(list, names) {
   list.replaceChildren(...names.map((name) => {
@@ -16,10 +15,10 @@ export async function initializePublicInitiative() {
   if (!list || !status) return;
 
   try {
-    const snapshot = await readCloudJSON("api/combat-loot", { fallback: null });
-    if (!snapshot) throw new Error("The shared initiative is unavailable.");
+    const snapshot = await readCloudJSON("api/public-initiative", { fallback: null });
+    if (!snapshot || !Array.isArray(snapshot.names)) throw new Error("The shared initiative is unavailable.");
 
-    const names = initiativeNamesFromSnapshot(snapshot);
+    const names = snapshot.names;
     renderNames(list, names);
     status.textContent = "No initiative entries yet.";
     status.hidden = names.length > 0;

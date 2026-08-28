@@ -5,7 +5,7 @@ let sessionPromise;
 const localhostUser = {
   id: "localhost",
   email: "localhost@cassianslog.local",
-  roles: ["characters", "wiki", "compendium", "combat-loot", "public-initiative", "music", "admin"],
+  roles: ["characters", "player-screen", "dm-screen", "wiki", "compendium", "combat-loot", "public-initiative", "music", "admin"],
   providers: [],
   isPrimaryAdmin: true,
   localBypass: true,

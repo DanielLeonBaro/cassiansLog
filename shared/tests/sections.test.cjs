@@ -16,11 +16,13 @@ sectionNames.forEach((name) => {
 });
 assert.equal(config.sections["combat-loot"], true, "Combat & Loot navigation should be enabled.");
 assert.equal(config.sections["public-initiative"], true, "Public Initiative navigation should be enabled.");
+assert.equal(config.sections["player-screen"], true, "Player Screen navigation should be enabled.");
+assert.equal(config.sections["dm-screen"], true, "DM Screen navigation should be enabled.");
 assert.equal(config.sections.combat, true, "Character combat controls should keep their independent setting.");
 assert.equal(config.sections.wiki, true, "Wiki navigation should be enabled by default.");
 
 const siteHeader = fs.readFileSync("shared/js/site-header.js", "utf8");
-const siteSections = ["characters", "combat-loot", "compendium", "music", "public-initiative", "wiki"];
+const siteSections = ["characters", "player-screen", "dm-screen", "combat-loot", "compendium", "music", "public-initiative", "wiki"];
 for (const name of siteSections) {
   assert.ok(siteHeader.includes(`id: "${name}"`), `${name} should be defined in the shared site header.`);
 }

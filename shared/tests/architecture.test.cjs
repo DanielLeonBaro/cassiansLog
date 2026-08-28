@@ -3,8 +3,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = process.cwd();
-const features = new Set(["char", "combat-loot", "compendium", "music", "public-initiative", "wiki"]);
-const workerRouteFiles = ["admin", "characters", "combat-loot", "compendium", "music", "themes", "wiki"]
+const features = new Set(["char", "combat-loot", "compendium", "music", "public-initiative", "screens", "wiki"]);
+const workerRouteFiles = ["admin", "characters", "combat-loot", "compendium", "music", "public-initiative", "screens", "themes", "wiki"]
   .map((name) => `cloudflare/routes/${name}.js`);
 const removedRoots = ["data", "js", "scripts", "tests", "config", "bootstrap", "src", "dist", "stuffToParse"];
 
@@ -36,7 +36,7 @@ for (const feature of features) {
     for (const specifier of imports(file)) {
       const dependency = targetRoot(file, specifier);
       assert.ok(
-        dependency === feature || dependency === "shared" || dependency === "external",
+        dependency === feature || dependency === "shared" || dependency === "external" || (feature === "screens" && dependency === "integrations"),
         `${file} must not import ${dependency}: ${specifier}`,
       );
     }
@@ -108,8 +108,10 @@ const pageShells = new Map([
   ["char/tracker.html", "char/js/entries/tracker-standalone.js"],
   ["combat-loot/index.html", "combat-loot/js/entry.js"],
   ["compendium/index.html", "compendium/js/entry.js"],
+  ["dm-screen/index.html", "screens/js/entry.js"],
   ["music/index.html", "music/js/entry.js"],
   ["public-initiative/index.html", "public-initiative/js/entry.js"],
+  ["player-screen/index.html", "screens/js/entry.js"],
   ["wiki/index.html", "wiki/js/entry.js"],
 ]);
 for (const [file, entrypoint] of pageShells) {

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import {
   DEFAULT_ROLES,
+  ASSIGNABLE_ROLES,
   PRIMARY_ADMIN_EMAIL,
   hashPassword,
   isLocalRequest,
@@ -32,10 +33,10 @@ assert.equal(await verifyPassword(row, "longPassword1!"), true);
 assert.equal(await verifyPassword(row, "wrongPassword1!"), false);
 
 const ordinary = publicUser({ id: "user-1", email: "player@example.com", roles_json: '["wiki"]' });
-assert.deepEqual(ordinary.roles, ["characters", "wiki"], "Character selection is mandatory for signed-in accounts.");
+assert.deepEqual(ordinary.roles, ["characters", "player-screen", "wiki"], "Character and Player Screen access are mandatory for signed-in accounts.");
 const primary = publicUser({ id: "admin-1", email: PRIMARY_ADMIN_EMAIL, roles_json: "[]" });
 assert.equal(primary.isPrimaryAdmin, true);
-assert.deepEqual(primary.roles, [...DEFAULT_ROLES, "admin"]);
+assert.deepEqual(primary.roles, [...ASSIGNABLE_ROLES, "admin"]);
 
 const migration = fs.readFileSync("cloudflare/migrations/0006_user_authentication.sql", "utf8");
 for (const table of ["users", "oauth_accounts", "user_sessions", "oauth_states"]) {

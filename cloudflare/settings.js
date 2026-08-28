@@ -2,7 +2,8 @@ import { bodyJSON, error, json, parseStored, safeId } from "./http.js";
 
 export const CHARACTER_SHEET_STYLES = new Set(["v1", "v2"]);
 const DEFAULT_SECTIONS = {
-  characters: true, "combat-loot": true, "public-initiative": true,
+  characters: true, "player-screen": true, "dm-screen": true,
+  "combat-loot": true, "public-initiative": true,
   compendium: true, music: true, wiki: false,
   "character-overview": true, "character-stats": true, "hit-points": true,
   combat: true, spellcasting: true, "prepared-spells": true,
@@ -46,7 +47,7 @@ export function normalizeSettings(body) {
   if (!Object.entries(styleOverrides).every(([id, style]) => safeId(id) && CHARACTER_SHEET_STYLES.has(style))) return null;
   const sections = {};
   for (const key of Object.keys(DEFAULT_SECTIONS)) {
-    if (key === "public-initiative" && body.sections[key] === undefined) sections[key] = DEFAULT_SECTIONS[key];
+    if (["public-initiative", "player-screen", "dm-screen"].includes(key) && body.sections[key] === undefined) sections[key] = DEFAULT_SECTIONS[key];
     else {
       if (typeof body.sections[key] !== "boolean") return null;
       sections[key] = body.sections[key];

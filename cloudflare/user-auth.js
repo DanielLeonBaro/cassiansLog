@@ -3,13 +3,15 @@ import { parseStored } from "./http.js";
 export const PRIMARY_ADMIN_EMAIL = "dleonbaro@gmail.com";
 export const DEFAULT_ROLES = [
   "characters",
+  "player-screen",
   "wiki",
   "compendium",
   "combat-loot",
   "public-initiative",
   "music",
 ];
-export const ASSIGNABLE_ROLES = [...DEFAULT_ROLES];
+export const ASSIGNABLE_ROLES = [...DEFAULT_ROLES, "dm-screen"];
+export const MANDATORY_ROLES = ["characters", "player-screen"];
 
 const SESSION_COOKIE = "cassianslog_session";
 // Cloudflare Workers Web Crypto rejects PBKDF2 counts above 100,000.
@@ -29,7 +31,7 @@ export function localBypassUser() {
   return {
     id: "localhost",
     email: "localhost@cassianslog.local",
-    roles: [...DEFAULT_ROLES, "admin"],
+    roles: [...ASSIGNABLE_ROLES, "admin"],
     isPrimaryAdmin: true,
     localBypass: true,
     providers: [],
@@ -99,9 +101,9 @@ export function publicUser(row) {
   if (!row) return null;
   const isPrimaryAdmin = normalizeEmail(row.email) === PRIMARY_ADMIN_EMAIL;
   const roles = isPrimaryAdmin
-    ? [...DEFAULT_ROLES, "admin"]
+    ? [...ASSIGNABLE_ROLES, "admin"]
     : [...new Set([
-      "characters",
+      ...MANDATORY_ROLES,
       ...parseStored(row.roles_json, []).filter((role) => ASSIGNABLE_ROLES.includes(role)),
     ])];
   return { id: row.id, email: row.email, roles, isPrimaryAdmin };

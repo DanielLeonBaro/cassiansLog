@@ -5,6 +5,8 @@ import { characterRoute, listCharacters } from "./routes/characters.js";
 import { combatRoute } from "./routes/combat-loot.js";
 import { compendiumCatalog, compendiumCategory } from "./routes/compendium.js";
 import { musicRoute } from "./routes/music.js";
+import { publicInitiativeRoute } from "./routes/public-initiative.js";
+import { screenRoute } from "./routes/screens.js";
 import { wikiRoute } from "./routes/wiki.js";
 import { authRoute } from "./routes/auth.js";
 import { themeCatalogRoute } from "./routes/themes.js";
@@ -14,6 +16,8 @@ const PUBLIC_ASSET_PATTERN = /\.(?:css|js|mjs|png|jpe?g|gif|webp|svg|ico|woff2?|
 const PAGE_ROLES = [
   [/^\/admin(?:\/|$)/, "admin"],
   [/^\/char(?:\/|$)/, "characters"],
+  [/^\/player-screen(?:\/|$)/, "player-screen"],
+  [/^\/dm-screen(?:\/|$)/, "dm-screen"],
   [/^\/wiki(?:\/|$)/, "wiki"],
   [/^\/compendium(?:\/|$)/, "compendium"],
   [/^\/combat-loot(?:\/|$)/, "combat-loot"],
@@ -27,6 +31,9 @@ function requiredPageRole(pathname) {
 
 function requiredApiRole(pathname) {
   if (pathname.startsWith("/api/characters")) return "characters";
+  if (pathname.startsWith("/api/screens/player")) return "player-screen";
+  if (pathname.startsWith("/api/screens/dm")) return "dm-screen";
+  if (pathname.startsWith("/api/public-initiative")) return "public-initiative";
   if (pathname.startsWith("/api/wiki")) return "wiki";
   if (pathname.startsWith("/api/compendium")) return "compendium";
   if (pathname.startsWith("/api/combat-loot")) return "combat-loot";
@@ -115,6 +122,13 @@ export async function handleRequest(request, env) {
     }
     if (url.pathname === "/api/compendium/catalog" && request.method === "GET") {
       return compendiumCatalog(env);
+    }
+    if (url.pathname === "/api/public-initiative" && request.method === "GET") {
+      return publicInitiativeRoute(env);
+    }
+    if (url.pathname === "/api/screens" || url.pathname.startsWith("/api/screens/")) {
+      const parts = url.pathname.slice("/api/screens".length).split("/").filter(Boolean).map(decodeURIComponent);
+      return screenRoute(request, env, parts);
     }
     if (url.pathname.startsWith("/api/compendium/categories/") && request.method === "GET") {
       const category = safeId(decodeURIComponent(url.pathname.split("/").at(-1)));

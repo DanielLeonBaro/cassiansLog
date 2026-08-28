@@ -17,6 +17,8 @@ import {
 const localMode = isLocalRuntimeHost();
 const accountRoleLabels = {
   characters: "Characters",
+  "player-screen": "Player Screen",
+  "dm-screen": "DM Screen",
   wiki: "Wiki",
   compendium: "Compendium",
   "combat-loot": "Combat & Loot",
@@ -25,6 +27,8 @@ const accountRoleLabels = {
 };
 const sectionLabels = {
   characters: "Characters navigation",
+  "player-screen": "Player Screen navigation",
+  "dm-screen": "DM Screen navigation",
   "combat-loot": "Combat & Loot navigation",
   "public-initiative": "Public Initiative navigation",
   compendium: "Compendium navigation",
@@ -153,7 +157,7 @@ function renderUsers(users = []) {
         <legend class="mb-2 text-sm font-bold">Visible pages / roles</legend>
         ${Object.entries(accountRoleLabels).map(([role, label]) => `
           <label class="flex items-center gap-2 rounded-lg border border-stone-300 px-3 py-2 text-sm dark:border-white/10">
-            <input type="checkbox" data-user-role="${role}" class="accent-red-700"${user.roles.includes(role) ? " checked" : ""}${role === "characters" ? " disabled" : ""}> ${label}
+            <input type="checkbox" data-user-role="${role}" class="accent-red-700"${user.roles.includes(role) ? " checked" : ""}${["characters", "player-screen"].includes(role) ? " disabled" : ""}> ${label}
           </label>`).join("")}
       </fieldset>
       ${snapshot?.themeStorageAvailable === false
