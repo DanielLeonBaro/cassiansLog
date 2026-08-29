@@ -66,17 +66,6 @@ function oauthConfig(provider, env, origin) {
       scope: "openid email profile",
     };
   }
-  if (provider === "facebook" && env.FACEBOOK_APP_ID && env.FACEBOOK_APP_SECRET) {
-    return {
-      clientId: env.FACEBOOK_APP_ID,
-      secret: env.FACEBOOK_APP_SECRET,
-      callback,
-      authorization: "https://www.facebook.com/v23.0/dialog/oauth",
-      token: "https://graph.facebook.com/v23.0/oauth/access_token",
-      profile: "https://graph.facebook.com/me?fields=id,email",
-      scope: "email",
-    };
-  }
   return null;
 }
 
@@ -277,7 +266,7 @@ export async function authRoute(request, env, parts) {
     }
     return json({ user: { ...user, email } });
   }
-  if (request.method === "DELETE" && action === "providers" && ["google", "facebook"].includes(parts[1])) {
+  if (request.method === "DELETE" && action === "providers" && parts[1] === "google") {
     const user = await userFromRequest(request, env);
     if (!user) return error("Sign in required.", 401);
     await env.DB.prepare("DELETE FROM oauth_accounts WHERE provider = ? AND user_id = ?")
@@ -305,7 +294,7 @@ export async function authRoute(request, env, parts) {
     }
     return jsonWithCookie({ user: publicUser({ id, email: context.email, roles_json: JSON.stringify(DEFAULT_ROLES) }) }, await createSession(id, env), 201);
   }
-  if (request.method === "GET" && action === "oauth" && ["google", "facebook"].includes(parts[1])) {
+  if (request.method === "GET" && action === "oauth" && parts[1] === "google") {
     return parts[2] === "callback"
       ? finishOAuth(request, parts[1], env)
       : beginOAuth(request, parts[1], env);

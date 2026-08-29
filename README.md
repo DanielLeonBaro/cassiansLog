@@ -82,14 +82,13 @@ Cloudflare Workers serves the static site, protects every application route, and
 
 Migration `0006_user_authentication.sql` adds users, provider links, sessions, and short-lived OAuth states. The first authentication request bootstraps the primary administrator as `dleonbaro@gmail.com` with password `adminPass1!`. For a deployment-specific initial password, set the `PRIMARY_ADMIN_PASSWORD` Worker secret before the first sign-in. Passwords are stored as salted PBKDF2-SHA-256 hashes; sessions use hashed, random tokens in secure HTTP-only cookies.
 
-Google and Facebook sign-in require provider applications with these exact callback URLs:
+Google sign-in requires a provider application with this exact callback URL:
 
 ```text
 https://<your-domain>/api/auth/oauth/google/callback
-https://<your-domain>/api/auth/oauth/facebook/callback
 ```
 
-Configure `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `FACEBOOK_APP_ID`, and `FACEBOOK_APP_SECRET` as Worker secrets or environment bindings. A first-time social account must set a policy-compliant password before its session is created, allowing later direct email/password sign-in.
+Configure `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` as Worker secrets or environment bindings. A first-time Google account must set a policy-compliant password before its session is created, allowing later direct email/password sign-in.
 
 The Compendium, bundled characters, and Wiki are generated from the same checked-in JSON used by the static fallback. `npm run d1:seed` writes `.cloudflare/d1-seed.sql`; the file is ignored because it is generated and about 59 MiB. Applying the seed inserts or updates Compendium entries by ID, inserts missing bundled characters, inserts the character template as unavailable by default, and inserts the initial Wiki. It does not remove unrelated Compendium rows, overwrite edited or inactive character or Wiki records, or delete custom characters, runtime state, notes, presets, or drafts.
 
@@ -97,7 +96,7 @@ Existing `localStorage` keys remain stable. This preserves older browser data an
 
 The navbar exposes Wiki according to the user's Wiki role and Admin only for the primary administrator. `/admin/` manages D1-backed runtime configuration, page roles per account, character availability, and password resets. A reset revokes every existing session for that user. Legacy admin-token access is disabled unless `LEGACY_ADMIN_TOKEN_ENABLED` is explicitly set to `"true"`.
 
-The **Me** button beside **Sign out** lets a signed-in user change their password, change their email, and connect or unlink Google and Facebook. The fixed primary administrator email cannot be changed because it identifies the only account allowed into Admin.
+The **Me** button beside **Sign out** lets a signed-in user change their password, change their email, and connect or unlink Google. The fixed primary administrator email cannot be changed because it identifies the only account allowed into Admin.
 
 ## Production deployment checklist
 
@@ -105,8 +104,8 @@ Before pushing to the branch connected to Cloudflare:
 
 1. Run `npm install` and `npm audit --audit-level=high`.
 2. Confirm Wrangler authentication with `npx wrangler whoami` or set `CLOUDFLARE_API_TOKEN` in CI.
-3. In each provider console, configure the production callback URLs shown above.
-4. Add the four required OAuth values in **Cloudflare → Workers & Pages → cassianslog → Settings → Variables and Secrets**. Store them as secrets. Wrangler declares these names as required and will reject a deployment when one is absent.
+3. In the Google provider console, configure the production callback URL shown above.
+4. Add the two required OAuth values in **Cloudflare → Workers & Pages → cassianslog → Settings → Variables and Secrets**. Store them as secrets. Wrangler declares these names as required and will reject a deployment when one is absent.
 5. Run `npm test` and `npm run build:site`.
 6. Run `npm run d1:migrate:local` and `npx wrangler deploy --dry-run`.
 7. Back up D1 if desired, then run `npm run d1:migrate:remote` before pushing. The authentication Worker needs migrations `0006` and `0007` as soon as the new code is live.
@@ -118,8 +117,8 @@ After pushing:
 2. Open `/api/health`; it should return `{ "ok": true }`.
 3. In a private browser window, open `/char/` and confirm it redirects to `/login/`.
 4. Sign in as the primary administrator and confirm Character Selection opens.
-5. Open **Me**, reset the password if this is the first production launch, and connect Google and Facebook.
-6. Verify direct Google/Facebook sign-in, then verify direct email/password sign-in still works.
+5. Open **Me**, reset the password if this is the first production launch, and connect Google.
+6. Verify direct Google sign-in, then verify direct email/password sign-in still works.
 7. Open Admin and check Wiki visibility and each user's roles. Use a non-admin account to confirm disallowed pages return to Character Selection and their APIs return `403`.
 8. Review Worker errors and D1 metrics in Cloudflare. If the Worker must be rolled back, use the previous Worker deployment; migrations `0006` and `0007` are additive and can remain in place.
 

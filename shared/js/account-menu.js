@@ -20,7 +20,6 @@ async function accountRequest(path, options = {}) {
 function providerControls(user) {
   return [
     { id: "google", label: "Google", icon: "bi-google" },
-    { id: "facebook", label: "Facebook", icon: "bi-facebook" },
   ].map((provider) => {
     const linked = user.providers?.includes(provider.id);
     return `<div class="flex items-center justify-between gap-3 rounded-xl border border-stone-300 px-4 py-3 dark:border-white/15">
@@ -72,7 +71,7 @@ export function mountAccountMenu(button, user) {
       </section>
       <section class="mt-4 rounded-2xl border border-stone-300 p-4 dark:border-white/15">
         <h3 class="font-display text-xl font-bold">Connected accounts</h3>
-        <p class="mt-1 text-sm text-stone-500 dark:text-stone-400">Connect or remove the social accounts you can use to sign in.</p>
+        <p class="mt-1 text-sm text-stone-500 dark:text-stone-400">Manage the Google account you can use to sign in.</p>
         <div data-provider-controls class="mt-4 space-y-2">${providerControls(user)}</div>
       </section>`}
   </div>`;

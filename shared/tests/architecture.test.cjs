@@ -80,9 +80,11 @@ assert.ok(fs.existsSync("login/index.html"), "The authentication route must exis
 assert.ok(fs.existsSync("shared/js/account-menu.js"), "The shared Me account panel must exist.");
 assert.ok(fs.readFileSync("shared/js/site-header.js", "utf8").includes("mountAccountMenu"), "The site header must mount the Me account panel.");
 const accountMenu = fs.readFileSync("shared/js/account-menu.js", "utf8");
-for (const control of ["data-email-form", "data-password-form", "google", "facebook", "data-unlink-provider"]) {
+for (const control of ["data-email-form", "data-password-form", "google", "data-unlink-provider"]) {
   assert.ok(accountMenu.includes(control), `The Me account panel must include ${control}.`);
 }
+assert.ok(!accountMenu.toLowerCase().includes("facebook"), "The Me account panel must not offer Facebook.");
+assert.ok(!fs.readFileSync("login/index.html", "utf8").toLowerCase().includes("facebook"), "Login must not offer Facebook.");
 assert.match(fs.readFileSync("admin/index.html", "utf8"), /name="character-sheet-style" value="v1"/);
 assert.match(fs.readFileSync("admin/index.html", "utf8"), /name="character-sheet-style" value="v2"/);
 assert.match(fs.readFileSync("admin/index.html", "utf8"), /id="character-style-settings"/);

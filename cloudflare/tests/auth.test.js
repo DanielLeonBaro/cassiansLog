@@ -51,5 +51,6 @@ assert.match(authRoute, /action === "password"/, "Users must be able to reset th
 assert.match(authRoute, /action === "email"/, "Users must be able to change their own email.");
 assert.match(authRoute, /action === "providers"/, "Users must be able to unlink social accounts.");
 assert.match(authRoute, /purpose: "link-account"/, "OAuth must support linking providers to an authenticated user.");
+assert.doesNotMatch(authRoute, /facebook/i, "Facebook OAuth must remain disabled.");
 
 console.log("User authentication and password policy tests passed.");

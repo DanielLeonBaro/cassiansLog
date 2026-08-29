@@ -2,7 +2,6 @@
 5. Sound effects soundboard
     5.1. Make it so button shortcuts do it too
 11. Depure Compendium entries, useless information like ability score improvements, basic movement speed.
-12. Facebook login is not working atm
                             
 # Done
 
@@ -18,6 +17,7 @@
     7.2. URL shows https://cassianslog.urhyse.workers.dev/wiki/#page=a4901fbc-0a6f-45dd-ad3f-f82f76e04007 and I want it to be https://cassianslog.urhyse.workers.dev/wiki/fiora
 8. Let's make Character Edit and New Character more user friendly
 9. item attunement
+12. Facebook login removed
 10. Loopable songs on Music component
 
 ---------------------------------------------------------------
