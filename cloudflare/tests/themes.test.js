@@ -11,7 +11,13 @@ const themes = new Map([
   ["custom", { id: "custom", name: "Custom", background_name: "Blue", background_hex: "#123456", accent_name: "Cream", accent_hex: "#FFF1D2", protected: 0, updated_at: "old" }],
 ]);
 const users = new Set(["user-1"]);
-const preferences = new Map([["user-1", { theme_id: "custom", reversed: 1, font_mode: "white", updated_at: "old" }]]);
+const preferences = new Map([["user-1", {
+  theme_id: "custom",
+  reversed: 1,
+  font_mode: "white",
+  background_id: "graph-paper",
+  updated_at: "old",
+}]]);
 
 function statement(sql) {
   return {
@@ -48,13 +54,13 @@ function statement(sql) {
         themes.delete(id);
         for (const [userId, value] of preferences) if (value.theme_id === id) preferences.delete(userId);
       } else if (sql.startsWith("INSERT INTO user_theme_preferences")) {
-        const [userId, themeId, reversed, fontMode, updatedAt] = this.values.length === 5
+        const [userId, themeId, reversed, fontMode, backgroundId, updatedAt] = this.values.length === 6
           ? this.values
-          : [this.values[0], this.values[1], 0, "auto", this.values[2]];
+          : [this.values[0], this.values[1], 0, "auto", "default-squared", this.values[2]];
         const previous = preferences.get(userId);
         preferences.set(userId, sql.includes("ON CONFLICT(user_id) DO UPDATE SET theme_id") && previous
           ? { ...previous, theme_id: themeId, updated_at: updatedAt }
-          : { theme_id: themeId, reversed, font_mode: fontMode, updated_at: updatedAt });
+          : { theme_id: themeId, reversed, font_mode: fontMode, background_id: backgroundId, updated_at: updatedAt });
       }
       return { meta: { changes: 1 } };
     },
@@ -106,9 +112,16 @@ const assigned = await assignUserTheme("user-1", "cassians-classic", env);
 assert.equal(assigned.preference.themeId, "cassians-classic");
 assert.equal(assigned.preference.reversed, true, "Admin assignment must preserve reverse choice.");
 assert.equal(assigned.preference.fontMode, "white", "Admin assignment must preserve font choice.");
-const saved = await saveUserThemePreference("user-1", { themeId: "custom", reversed: false, fontMode: "black" }, env);
+assert.equal(assigned.preference.backgroundId, "graph-paper", "Admin assignment must preserve background choice.");
+const saved = await saveUserThemePreference("user-1", {
+  themeId: "custom",
+  reversed: false,
+  fontMode: "black",
+  backgroundId: "graph-paper",
+}, env);
 assert.equal(saved.themeId, "custom");
 assert.equal(preferences.get("user-1").font_mode, "black", "The latest account save must replace the complete preference.");
+assert.equal(preferences.get("user-1").background_id, "graph-paper");
 
 const removed = await adminThemeRoute(new Request("https://example.test/api/admin/themes/custom?confirm=1", { method: "DELETE" }), env, ["themes", "custom"]);
 assert.equal(removed.status, 200);
@@ -123,10 +136,19 @@ assert.equal(anonymousThemeWrite.status, 401, "Open-write authorization must nev
 const authenticatedThemeWrite = await authRoute(new Request("https://example.test/api/auth/theme", {
   method: "PUT",
   headers: { cookie: "cassianslog_session=test" },
-  body: JSON.stringify({ themeId: "cassians-classic", reversed: true, fontMode: "auto" }),
+  body: JSON.stringify({ themeId: "cassians-classic", reversed: true, fontMode: "auto", backgroundId: "shooting-stars" }),
 }), env, ["theme"]);
 assert.equal(authenticatedThemeWrite.status, 200);
-assert.equal((await authenticatedThemeWrite.json()).themePreference.reversed, true);
+const authenticatedPreference = (await authenticatedThemeWrite.json()).themePreference;
+assert.equal(authenticatedPreference.reversed, true);
+assert.equal(authenticatedPreference.backgroundId, "default-squared", "Removed animated choices must normalize safely.");
+const legacyThemeWrite = await authRoute(new Request("https://example.test/api/auth/theme", {
+  method: "PUT",
+  headers: { cookie: "cassianslog_session=test" },
+  body: JSON.stringify({ themeId: "cassians-classic", reversed: false, fontMode: "auto" }),
+}), env, ["theme"]);
+assert.equal(legacyThemeWrite.status, 200);
+assert.equal((await legacyThemeWrite.json()).themePreference.backgroundId, "default-squared", "An older open tab must preserve the normalized background.");
 const session = await authRoute(new Request("https://example.test/api/auth/session", {
   headers: { cookie: "cassianslog_session=test" },
 }), env, ["session"]);
@@ -139,10 +161,12 @@ const ordinaryAdmin = await adminRoute(new Request("https://example.test/api/adm
 assert.equal(ordinaryAdmin.status, 401, "Theme CRUD must remain primary-admin-only.");
 
 const migration = fs.readFileSync("cloudflare/migrations/0008_themes.sql", "utf8");
+const backgroundMigration = fs.readFileSync("cloudflare/migrations/0010_theme_backgrounds.sql", "utf8");
 for (const table of ["themes", "user_theme_preferences"]) assert.match(migration, new RegExp(`CREATE TABLE IF NOT EXISTS ${table}`));
 assert.match(migration, /COLLATE NOCASE UNIQUE/);
 assert.match(migration, /REFERENCES themes\(id\) ON DELETE CASCADE/);
 assert.equal((migration.match(/^  \('[a-z0-9-]+',/gm) || []).length, 28, "Migration must insert all built-in themes.");
 assert.equal((migration.match(/, 1, '1970/g) || []).length, 3, "Exactly three built-in themes must be protected.");
+assert.match(backgroundMigration, /ADD COLUMN background_id TEXT NOT NULL DEFAULT 'default-squared'/);
 
 console.log("Theme D1 CRUD, assignment, deletion, and migration contract tests passed.");

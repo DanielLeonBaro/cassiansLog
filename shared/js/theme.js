@@ -1,5 +1,6 @@
 // Loads available themes, applies palette variables, and wires the theme toggle.
 import { currentSession } from "./auth-client.js";
+import { BACKGROUND_GROUPS, normalizeBackgroundId } from "./background-catalog.js";
 import { createDialogController } from "./dialog.js";
 import {
   BASE_THEME_ID,
@@ -17,6 +18,7 @@ export const THEME_KEY = "dnd-theme";
 export const THEME_REVERSED_KEY = "dnd-theme-reversed";
 export const THEME_FONT_KEY = "dnd-theme-font";
 export const THEME_CATALOG_KEY = "dnd-theme-catalog";
+export const THEME_BACKGROUND_KEY = "dnd-theme-background";
 
 let catalog = cachedCatalog();
 let preference = localPreference();
@@ -39,6 +41,7 @@ function localPreference() {
     themeId: local?.getItem(THEME_KEY) || BASE_THEME_ID,
     reversed: local?.getItem(THEME_REVERSED_KEY) === "true",
     fontMode: local?.getItem(THEME_FONT_KEY) || "auto",
+    backgroundId: local?.getItem(THEME_BACKGROUND_KEY),
   });
 }
 
@@ -80,6 +83,7 @@ function persistPreference(value) {
   local.setItem(THEME_KEY, value.themeId);
   local.setItem(THEME_REVERSED_KEY, String(value.reversed));
   local.setItem(THEME_FONT_KEY, value.fontMode);
+  local.setItem(THEME_BACKGROUND_KEY, value.backgroundId);
 }
 
 function rgbValue(hex) {
@@ -141,6 +145,7 @@ export function applyTheme(themeId, {
   persist = true,
   reversed = preference.reversed,
   fontMode = preference.fontMode,
+  backgroundId = preference.backgroundId,
   themes = catalog,
 } = {}) {
   const appearance = resolveThemeAppearance(themeId, { reversed, fontMode, themes });
@@ -148,12 +153,14 @@ export function applyTheme(themeId, {
     themeId: appearance.theme.id,
     reversed,
     fontMode,
+    backgroundId,
     updatedAt: preference.updatedAt,
   });
   const root = document.documentElement;
   root.dataset.theme = appearance.textHex === "#FFFFFF" ? "dark" : "light";
   root.dataset.themePalette = appearance.theme.id;
   root.dataset.themeReversed = String(preference.reversed);
+  root.dataset.background = preference.backgroundId;
   root.style.setProperty("--theme-background", rgbValue(appearance.backgroundHex));
   root.style.setProperty("--theme-surface", rgbValue(appearance.surfaceHex));
   root.style.setProperty("--theme-surface-strong", rgbValue(appearance.surfaceStrongHex));
@@ -202,6 +209,13 @@ function controlState() {
     button.setAttribute("aria-pressed", String(active));
     button.classList.toggle("bg-blood-500", active);
     button.classList.toggle("text-white", active);
+  });
+  document.querySelectorAll("[data-background-card]").forEach((button) => {
+    const active = button.dataset.backgroundCard === preference.backgroundId;
+    button.setAttribute("aria-pressed", String(active));
+    button.classList.toggle("border-blood-500", active);
+    button.classList.toggle("ring-2", active);
+    button.classList.toggle("ring-blood-500/30", active);
   });
   updateContrastWarning();
 }
@@ -265,6 +279,50 @@ function renderCards() {
   grid.replaceChildren(...cards);
 }
 
+function renderBackgroundGroups() {
+  const mount = document.querySelector("[data-background-groups]");
+  if (!mount) return;
+  const groups = BACKGROUND_GROUPS.map((group) => {
+    const section = document.createElement("section");
+    section.setAttribute("aria-labelledby", `background-group-${group.id}`);
+    const heading = document.createElement("h4");
+    heading.id = `background-group-${group.id}`;
+    heading.className = "mb-2 text-xs font-bold uppercase tracking-wider text-theme-muted";
+    heading.textContent = group.name;
+    const grid = document.createElement("div");
+    grid.className = "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4";
+    const cards = group.backgrounds.map((background) => {
+      const selected = background.id === preference.backgroundId;
+      const card = document.createElement("button");
+      card.type = "button";
+      card.dataset.backgroundCard = background.id;
+      card.setAttribute("aria-pressed", String(selected));
+      card.className = `rounded-xl border bg-theme-surface p-2 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blood-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold ${selected
+        ? "border-blood-500 ring-2 ring-blood-500/30"
+        : "border-theme-border"}`;
+      const preview = document.createElement("span");
+      preview.dataset.backgroundPreview = background.id;
+      preview.className = "theme-background-preview block h-16 overflow-hidden rounded-lg border border-black/10";
+      preview.setAttribute("aria-hidden", "true");
+      const label = document.createElement("span");
+      label.className = "mt-2 flex items-center justify-between gap-2 text-xs font-bold";
+      label.append(document.createTextNode(background.name));
+      if (selected) {
+        const check = document.createElement("i");
+        check.className = "bi bi-check-circle-fill text-blood-500";
+        check.setAttribute("aria-hidden", "true");
+        label.append(check);
+      }
+      card.append(preview, label);
+      return card;
+    });
+    grid.append(...cards);
+    section.append(heading, grid);
+    return section;
+  });
+  mount.replaceChildren(...groups);
+}
+
 function refreshPicker() {
   const focused = document.activeElement;
   const focusSelector = focused?.dataset.themeCard
@@ -273,8 +331,11 @@ function refreshPicker() {
       ? `[data-theme-reverse="${focused.dataset.themeReverse}"]`
       : focused?.dataset.themeFont
         ? `[data-theme-font="${focused.dataset.themeFont}"]`
-        : null;
+        : focused?.dataset.backgroundCard
+          ? `[data-background-card="${focused.dataset.backgroundCard}"]`
+          : null;
   renderCards();
+  renderBackgroundGroups();
   controlState();
   if (focusSelector) queueMicrotask(() => document.querySelector(focusSelector)?.focus());
 }
@@ -302,12 +363,17 @@ async function saveCloudPreference(nextPreference) {
 
 function choosePreference(changes) {
   const next = normalizeThemePreference({ ...preference, ...changes });
-  applyTheme(next.themeId, { reversed: next.reversed, fontMode: next.fontMode });
+  applyTheme(next.themeId, {
+    reversed: next.reversed,
+    fontMode: next.fontMode,
+    backgroundId: next.backgroundId,
+  });
   pickerStatus("Saving theme...");
   void saveCloudPreference({
     themeId: preference.themeId,
     reversed: preference.reversed,
     fontMode: preference.fontMode,
+    backgroundId: preference.backgroundId,
   });
 }
 
@@ -322,7 +388,7 @@ function mountPicker(button) {
   root.setAttribute("aria-labelledby", "theme-dialog-title");
   root.innerHTML = `<div class="flex max-h-full w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-theme-border bg-theme-surface text-theme-text shadow-2xl">
     <div class="flex items-start justify-between gap-4 border-b border-theme-border p-5 sm:p-6">
-      <div><p class="text-xs font-bold uppercase tracking-[.18em] text-blood-500">Appearance</p><h2 id="theme-dialog-title" class="mt-1 font-display text-3xl font-bold">Choose a theme</h2><p class="mt-1 text-sm text-theme-muted">Colors apply immediately and follow your account.</p></div>
+      <div><p class="text-xs font-bold uppercase tracking-[.18em] text-blood-500">Appearance</p><h2 id="theme-dialog-title" class="mt-1 font-display text-3xl font-bold">Choose theme and background</h2><p class="mt-1 text-sm text-theme-muted">Colors and background apply immediately and follow your account.</p></div>
       <button type="button" data-close-theme class="rounded-xl p-2 hover:bg-theme-surface-strong" aria-label="Close theme picker"><i class="bi bi-x-lg"></i></button>
     </div>
     <div class="border-b border-theme-border bg-theme-surface px-5 py-4 sm:px-6">
@@ -333,7 +399,10 @@ function mountPicker(button) {
       <p data-theme-contrast-warning class="mt-3 hidden rounded-xl border border-amber-500/40 bg-amber-500/10 p-2 text-sm font-semibold"></p>
       <p data-theme-save-status class="mt-2 min-h-5 text-sm text-theme-muted" aria-live="polite"></p>
     </div>
-    <div class="overflow-y-auto p-5 sm:p-6"><div data-theme-grid class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"></div></div>
+    <div class="overflow-y-auto p-5 sm:p-6">
+      <section aria-labelledby="theme-colors-title"><h3 id="theme-colors-title" class="mb-3 font-display text-xl font-bold">Colors</h3><div data-theme-grid class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"></div></section>
+      <section aria-labelledby="theme-backgrounds-title" class="mt-8 border-t border-theme-border pt-6"><h3 id="theme-backgrounds-title" class="font-display text-xl font-bold">Background</h3><p class="mb-4 mt-1 text-sm text-theme-muted">Patterns use the selected theme colors.</p><div data-background-groups class="grid gap-6"></div></section>
+    </div>
   </div>`;
   document.body.append(root);
   dialogController = createDialogController(root, {
@@ -355,6 +424,8 @@ function mountPicker(button) {
     if (reverse) choosePreference({ reversed: reverse.dataset.themeReverse === "true" });
     const font = event.target.closest("[data-theme-font]");
     if (font) choosePreference({ fontMode: font.dataset.themeFont });
+    const background = event.target.closest("[data-background-card]");
+    if (background) choosePreference({ backgroundId: normalizeBackgroundId(background.dataset.backgroundCard) });
   });
   refreshPicker();
 }
@@ -388,14 +459,19 @@ async function hydrateTheme() {
     if (currentUser.themePreference) {
       const remote = normalizeThemePreference(currentUser.themePreference);
       const validTheme = catalog.some((theme) => theme.id === remote.themeId) ? remote.themeId : BASE_THEME_ID;
-      applyTheme(validTheme, { reversed: remote.reversed, fontMode: remote.fontMode });
+      applyTheme(validTheme, { reversed: remote.reversed, fontMode: remote.fontMode, backgroundId: remote.backgroundId });
       return;
     }
     const local = localPreference();
     const validTheme = catalog.some((theme) => theme.id === local.themeId) ? local.themeId : BASE_THEME_ID;
-    applyTheme(validTheme, { reversed: local.reversed, fontMode: local.fontMode });
+    applyTheme(validTheme, { reversed: local.reversed, fontMode: local.fontMode, backgroundId: local.backgroundId });
     if (catalogResponse.storageAvailable !== false) {
-      await saveCloudPreference({ themeId: validTheme, reversed: local.reversed, fontMode: local.fontMode });
+      await saveCloudPreference({
+        themeId: validTheme,
+        reversed: local.reversed,
+        fontMode: local.fontMode,
+        backgroundId: local.backgroundId,
+      });
     }
   } catch (error) {
     console.warn("Account theme could not be loaded; using the browser fallback.", error);

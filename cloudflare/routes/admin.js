@@ -30,7 +30,8 @@ export async function adminRoute(request, env, parts) {
       users = await env.DB.prepare(
         `SELECT users.id, users.email, users.roles_json, users.created_at, users.updated_at,
           user_theme_preferences.theme_id, user_theme_preferences.reversed,
-          user_theme_preferences.font_mode, user_theme_preferences.updated_at AS theme_updated_at
+          user_theme_preferences.font_mode, user_theme_preferences.background_id,
+          user_theme_preferences.updated_at AS theme_updated_at
         FROM users
         LEFT JOIN user_theme_preferences ON user_theme_preferences.user_id = users.id
         ORDER BY users.email COLLATE NOCASE`,
@@ -67,6 +68,7 @@ export async function adminRoute(request, env, parts) {
           theme_id: row.theme_id,
           reversed: row.reversed,
           font_mode: row.font_mode,
+          background_id: row.background_id,
           updated_at: row.theme_updated_at,
         } : null),
         createdAt: row.created_at,

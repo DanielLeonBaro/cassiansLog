@@ -193,18 +193,28 @@ async function main() {
       const toggle = document.getElementById("theme-toggle");
       toggle.click();
       const cards = [...document.querySelectorAll("[data-theme-card]")];
+      const backgroundCards = [...document.querySelectorAll("[data-background-card]")];
       document.querySelector('[data-theme-card="peach-and-lime"]').click();
       document.querySelector('[data-theme-reverse="true"]').click();
       document.querySelector('[data-theme-font="black"]').click();
+      document.querySelector('[data-background-card="graph-paper"]').click();
       const result = {
         count: cards.length,
         firstThemes: cards.slice(0, 4).map((card) => card.firstElementChild.textContent.trim()),
+        backgroundCount: backgroundCards.length,
+        backgroundGroups: [...document.querySelectorAll("[data-background-groups] h4")].map((heading) => heading.textContent),
+        firstBackgrounds: backgroundCards.slice(0, 4).map((card) => card.textContent.trim()),
         theme: document.documentElement.dataset.themePalette,
         reversed: document.documentElement.dataset.themeReversed,
+        background: document.documentElement.dataset.background,
         backgroundToken: getComputedStyle(document.documentElement).getPropertyValue("--theme-background").trim(),
         accent: getComputedStyle(document.documentElement).getPropertyValue("--theme-accent").trim(),
+        hasPattern: getComputedStyle(document.body).backgroundImage.includes("linear-gradient"),
+        hasVignette: getComputedStyle(document.body).boxShadow.includes("rgba(0, 0, 0, 0.12)"),
+        hasSoftener: getComputedStyle(document.body).boxShadow.includes("rgba(154, 118, 0, 0.12)"),
         storedTheme: localStorage.getItem("dnd-theme"),
         storedFont: localStorage.getItem("dnd-theme-font"),
+        storedBackground: localStorage.getItem("dnd-theme-background"),
       };
       document.querySelector("[data-theme-dialog]").dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
       return result;
@@ -212,12 +222,20 @@ async function main() {
     assert.deepEqual(themePicker, {
       count: 28,
       firstThemes: ["Cassian’s Classic", "Evil Cassian", "Black and White", "Aloe"],
+      backgroundCount: 32,
+      backgroundGroups: ["Static backgrounds"],
+      firstBackgrounds: ["Arcs", "Checkerboard", "Chevron", "Circuit Grid"],
       theme: "peach-and-lime",
       reversed: "true",
+      background: "graph-paper",
       backgroundToken: "154 118 0",
       accent: "244 184 196",
+      hasPattern: true,
+      hasVignette: true,
+      hasSoftener: true,
       storedTheme: "peach-and-lime",
       storedFont: "black",
+      storedBackground: "graph-paper",
     }, "Theme picker should apply and persist the complete local preference.");
     await waitFor(
       'return getComputedStyle(document.body).backgroundColor === "rgb(154, 118, 0)";',

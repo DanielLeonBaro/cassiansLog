@@ -5,6 +5,7 @@ import {
   normalizeThemePreference,
   sortThemes,
 } from "../shared/js/theme-catalog.js";
+import { normalizeBackgroundId } from "../shared/js/background-catalog.js";
 
 export function themeFromRow(row) {
   return {
@@ -28,6 +29,7 @@ export function preferenceFromRow(row) {
     themeId: row.theme_id,
     reversed: Boolean(row.reversed),
     fontMode: row.font_mode,
+    backgroundId: row.background_id,
     updatedAt: row.updated_at,
   });
 }
@@ -59,36 +61,41 @@ export async function loadUserThemePreference(userId, env) {
   if (!userId || userId === "localhost") return null;
   try {
     const row = await env.DB.prepare(
-      "SELECT theme_id, reversed, font_mode, updated_at FROM user_theme_preferences WHERE user_id = ?",
+      "SELECT theme_id, reversed, font_mode, background_id, updated_at FROM user_theme_preferences WHERE user_id = ?",
     ).bind(userId).first();
     return preferenceFromRow(row);
   } catch (caught) {
-    console.warn("D1 theme preferences are unavailable; using the browser fallback. Apply migration 0008.", caught);
+    console.warn("D1 theme preferences are unavailable; using the browser fallback. Apply migrations through 0010.", caught);
     return null;
   }
 }
 
 export async function saveUserThemePreference(userId, preference, env) {
-  const theme = await env.DB.prepare("SELECT id FROM themes WHERE id = ?")
-    .bind(preference.themeId).first();
+  const [theme, current] = await Promise.all([
+    env.DB.prepare("SELECT id FROM themes WHERE id = ?").bind(preference.themeId).first(),
+    env.DB.prepare("SELECT background_id FROM user_theme_preferences WHERE user_id = ?").bind(userId).first(),
+  ]);
   if (!theme) return null;
+  const backgroundId = normalizeBackgroundId(preference.backgroundId ?? current?.background_id);
   const now = new Date().toISOString();
   await env.DB.prepare(
-    `INSERT INTO user_theme_preferences (user_id, theme_id, reversed, font_mode, updated_at)
-      VALUES (?, ?, ?, ?, ?)
+    `INSERT INTO user_theme_preferences (user_id, theme_id, reversed, font_mode, background_id, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?)
       ON CONFLICT(user_id) DO UPDATE SET
         theme_id = excluded.theme_id,
         reversed = excluded.reversed,
         font_mode = excluded.font_mode,
+        background_id = excluded.background_id,
         updated_at = excluded.updated_at`,
   ).bind(
     userId,
     preference.themeId,
     preference.reversed ? 1 : 0,
     preference.fontMode,
+    backgroundId,
     now,
   ).run();
-  return { ...preference, updatedAt: now };
+  return { ...preference, backgroundId, updatedAt: now };
 }
 
 export async function assignUserTheme(userId, themeId, env) {
@@ -100,12 +107,12 @@ export async function assignUserTheme(userId, themeId, env) {
   if (!theme) return { problem: "theme" };
   const now = new Date().toISOString();
   await env.DB.prepare(
-    `INSERT INTO user_theme_preferences (user_id, theme_id, reversed, font_mode, updated_at)
-      VALUES (?, ?, 0, 'auto', ?)
+    `INSERT INTO user_theme_preferences (user_id, theme_id, reversed, font_mode, background_id, updated_at)
+      VALUES (?, ?, 0, 'auto', 'default-squared', ?)
       ON CONFLICT(user_id) DO UPDATE SET theme_id = excluded.theme_id, updated_at = excluded.updated_at`,
   ).bind(userId, themeId, now).run();
   const row = await env.DB.prepare(
-    "SELECT theme_id, reversed, font_mode, updated_at FROM user_theme_preferences WHERE user_id = ?",
+    "SELECT theme_id, reversed, font_mode, background_id, updated_at FROM user_theme_preferences WHERE user_id = ?",
   ).bind(userId).first();
   return { preference: preferenceFromRow(row) };
 }

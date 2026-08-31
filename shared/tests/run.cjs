@@ -53,6 +53,7 @@ const suites = [
   ["User authentication and password policy", "cloudflare/tests/auth.test.js"],
   ["Per-user Screen and Public Initiative APIs", "cloudflare/tests/screens.test.js"],
   ["Screen D1 migration and rollback compatibility", "cloudflare/tests/screens-migration.test.cjs", ["--no-warnings"]],
+  ["Theme background D1 migration compatibility", "cloudflare/tests/theme-backgrounds-migration.test.cjs", ["--no-warnings"]],
   ["Theme D1 CRUD and assignments", "cloudflare/tests/themes.test.js"],
   ["Cloudflare Worker routing and write protection", "cloudflare/tests/worker.test.cjs"],
   ["Runtime settings and fallbacks", "shared/tests/settings.test.cjs"],

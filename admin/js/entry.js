@@ -8,6 +8,7 @@ import {
 } from "../../shared/js/settings.js";
 import { logout } from "../../shared/js/auth-client.js";
 import { createDialogController } from "../../shared/js/dialog.js";
+import { DEFAULT_BACKGROUND_ID } from "../../shared/js/background-catalog.js";
 import {
   BASE_THEME_ID,
   normalizeHex,
@@ -467,7 +468,13 @@ themeRoot.addEventListener("click", async (event) => {
     snapshot.themes = snapshot.themes.filter((item) => item.id !== theme.id);
     snapshot.users.forEach((user) => {
       if (user.themePreference?.themeId === theme.id) {
-        user.themePreference = { themeId: BASE_THEME_ID, reversed: false, fontMode: "auto", updatedAt: null };
+        user.themePreference = {
+          themeId: BASE_THEME_ID,
+          reversed: false,
+          fontMode: "auto",
+          backgroundId: DEFAULT_BACKGROUND_ID,
+          updatedAt: null,
+        };
       }
     });
     renderThemes(snapshot.themes);

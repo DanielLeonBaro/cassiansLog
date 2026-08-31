@@ -1,5 +1,6 @@
 // Handles auth API routing, validation, authorization, and D1 persistence.
 import { bodyJSON, error, json, safeId } from "../http.js";
+import { BACKGROUND_IDS, REMOVED_BACKGROUND_IDS } from "../../shared/js/background-catalog.js";
 import { THEME_FONT_MODES } from "../../shared/js/theme-catalog.js";
 import { loadUserThemePreference, saveUserThemePreference } from "../themes.js";
 import {
@@ -218,7 +219,11 @@ export async function authRoute(request, env, parts) {
     const user = await userFromRequest(request, env);
     if (!user) return error("Sign in required.", 401);
     const body = await bodyJSON(request);
-    if (!safeId(body?.themeId) || typeof body?.reversed !== "boolean" || !THEME_FONT_MODES.includes(body?.fontMode)) {
+    if (!safeId(body?.themeId) || typeof body?.reversed !== "boolean"
+      || !THEME_FONT_MODES.includes(body?.fontMode)
+      || (body?.backgroundId !== undefined
+        && !BACKGROUND_IDS.includes(body.backgroundId)
+        && !REMOVED_BACKGROUND_IDS.includes(body.backgroundId))) {
       return error("Invalid theme preference.");
     }
     try {
@@ -226,13 +231,14 @@ export async function authRoute(request, env, parts) {
         themeId: body.themeId,
         reversed: body.reversed,
         fontMode: body.fontMode,
+        backgroundId: body.backgroundId,
       }, env);
       return themePreference
         ? json({ ok: true, themePreference })
         : error("Theme not found.", 404);
     } catch (caught) {
       console.warn("Theme preference could not be saved.", caught);
-      return error("Theme storage is unavailable. Apply migration 0008.", 503);
+      return error("Theme storage is unavailable. Apply migrations through 0010.", 503);
     }
   }
   if (request.method === "POST" && action === "password") {

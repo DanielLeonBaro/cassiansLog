@@ -1,4 +1,6 @@
 // Normalizes theme colors, computes contrast, and derives accessible palette values.
+import { normalizeBackgroundId } from "./background-catalog.js";
+
 export const BASE_THEME_ID = "cassians-classic";
 export const FEATURED_THEME_IDS = Object.freeze([
   BASE_THEME_ID,
@@ -82,6 +84,7 @@ export function normalizeThemePreference(value, fallbackThemeId = BASE_THEME_ID)
     themeId: typeof legacyTheme === "string" && legacyTheme ? legacyTheme : fallbackThemeId,
     reversed: value?.reversed === true,
     fontMode: THEME_FONT_MODES.includes(value?.fontMode) ? value.fontMode : "auto",
+    backgroundId: normalizeBackgroundId(value?.backgroundId),
     updatedAt: typeof value?.updatedAt === "string" ? value.updatedAt : null,
   };
 }

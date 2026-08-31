@@ -31,6 +31,14 @@
     watermelon: ["#F4B8C4", "#3E7C3A"],
     zuriel: ["#F4F4F5", "#C69224"],
   };
+  const backgroundIds = new Set([
+    "arcs", "checkerboard", "chevron", "circuit-grid", "cross", "default-squared",
+    "diagonal-1", "diagonal-2", "diagonal-3", "diamond", "dots-grid", "flower", "graph-paper", "graph-paper-dotted",
+    "horizontal-lines", "horizontal-slim-lines", "horizontal-wavy-lines", "infinite-circles",
+    "infinite-wave", "isometric", "paper", "paper-thin", "polka-halftone", "polka-pin",
+    "rhombus", "ripple", "vertical-lines", "vertical-slim-lines",
+    "vertical-wavy-lines", "wide-diagonal", "zigzag", "zigzag-3d",
+  ]);
 
   const hexPattern = /^#[0-9A-F]{6}$/i;
   const rgb = (hex) => [1, 3, 5].map((index) => Number.parseInt(hex.slice(index, index + 2), 16));
@@ -93,6 +101,8 @@
     root.dataset.theme = textHex === "#FFFFFF" ? "dark" : "light";
     root.dataset.themePalette = builtInColors[themeId] || cachedTheme ? themeId : BASE_THEME_ID;
     root.dataset.themeReversed = String(reversed);
+    const storedBackgroundId = storage?.getItem("dnd-theme-background");
+    root.dataset.background = backgroundIds.has(storedBackgroundId) ? storedBackgroundId : "default-squared";
     const values = {
       "--theme-background": backgroundHex,
       "--theme-surface": mixHex(backgroundHex, textHex, 0.07),
