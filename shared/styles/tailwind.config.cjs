@@ -1,3 +1,4 @@
+// Defines scanned source paths and the shared theme-aware Tailwind tokens.
 const colors = require("tailwindcss/colors");
 
 /** @type {import('tailwindcss').Config} */

@@ -1,3 +1,4 @@
+// Handles combat loot API routing, validation, authorization, and D1 persistence.
 import { authorized } from "../auth.js";
 import { bodyJSON, error, json, parseStored, safeId } from "../http.js";
 

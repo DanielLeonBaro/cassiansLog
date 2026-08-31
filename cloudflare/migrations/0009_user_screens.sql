@@ -1,3 +1,4 @@
+-- Adds per-user Screen documents and calculator history.
 CREATE TABLE IF NOT EXISTS user_screens (
   user_id TEXT NOT NULL,
   screen_kind TEXT NOT NULL CHECK (screen_kind IN ('player', 'dm')),

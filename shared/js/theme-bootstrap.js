@@ -1,3 +1,4 @@
+// Applies the stored theme before paint to avoid a light or dark flash.
 (() => {
   const BASE_THEME_ID = "cassians-classic";
   const builtInColors = {

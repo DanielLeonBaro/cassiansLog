@@ -1,8 +1,14 @@
+// Transforms source XML into deterministic categorized Compendium JSON.
 const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const { XMLParser } = require("fast-xml-parser");
 const { writeJSON } = require("../../shared/build/output.cjs");
+const {
+  filterCompendiumEntries,
+  preferenceScore,
+} = require("./cleanup-rules.cjs");
+const { compendiumFacets } = require("./facets.cjs");
 
 const featureRoot = path.resolve(__dirname, "..");
 const inputRoot = path.join(featureRoot, "source");
@@ -513,16 +519,6 @@ function addPayload(entry) {
   }
 }
 
-function preferenceScore(record) {
-  const relative = record.inputPath.replace(/\\/g, "/");
-  let score = Math.min(record.description.length / 1000, 15);
-  if (!relative.startsWith("AuroraLegacy/")) score += 100;
-  if (relative.startsWith("core/")) score += 30;
-  if (relative.startsWith("supplements/")) score += 20;
-  if (relative.split("/").length <= 3) score += 5;
-  return score;
-}
-
 function readFileRecord(filePath) {
   const inputPath = path.relative(inputRoot, filePath);
   const parsed = parser.parse(fs.readFileSync(filePath, "utf8"));
@@ -662,7 +658,10 @@ for (const entry of canonicalEntries) {
     sentenceSummary(entry.sheet || entry.short || entry.description) ||
     detailSummary(entry);
   entry.add = addPayload(entry);
+  entry.facets = compendiumFacets(entry);
 }
+
+const compendiumEntries = filterCompendiumEntries(canonicalEntries);
 
 const nameByOriginalId = new Map(
   canonicalEntries
@@ -686,7 +685,7 @@ const outputFiles = new Set(["manifest.json", "index.json"]);
 
 const categoryCounts = {};
 for (const [category, definition] of Object.entries(categoryDefinitions)) {
-  const entries = canonicalEntries.filter((entry) => entry.category === category);
+  const entries = compendiumEntries.filter((entry) => entry.category === category);
   categoryCounts[category] = entries.length;
   const fileName = `${category}.json`;
   outputFiles.add(fileName);
@@ -698,7 +697,7 @@ for (const [category, definition] of Object.entries(categoryDefinitions)) {
   });
 }
 
-const indexEntries = canonicalEntries.map((entry) => ({
+const indexEntries = compendiumEntries.map((entry) => ({
   id: entry.id,
   originalId: entry.originalId,
   name: entry.name,
@@ -708,10 +707,11 @@ const indexEntries = canonicalEntries.map((entry) => ({
   summary: entry.summary,
   supports: entry.supports,
   prerequisite: entry.prerequisite,
+  facets: entry.facets,
   add: entry.add,
 }));
 
-const publications = [...new Set(canonicalEntries.map((entry) => entry.publication))].sort(
+const publications = [...new Set(compendiumEntries.map((entry) => entry.publication))].sort(
   (left, right) => left.localeCompare(right),
 );
 
@@ -724,7 +724,7 @@ writeJSON(path.join(outputRoot, "manifest.json"), {
     generatedAt: new Date().toISOString(),
     inputFiles: xmlFiles.length,
     rawEntries: rawEntries.length,
-    entries: canonicalEntries.length,
+  entries: compendiumEntries.length,
     categories: Object.entries(categoryDefinitions).map(([id, definition]) => ({
       id,
       label: definition.label,
@@ -751,5 +751,5 @@ const sizeMB =
   1024;
 
 console.log(
-  `Built ${canonicalEntries.length.toLocaleString()} compendium entries from ${xmlFiles.length.toLocaleString()} XML files (${sizeMB.toFixed(1)} MB JSON).`,
+  `Built ${compendiumEntries.length.toLocaleString()} compendium entries from ${xmlFiles.length.toLocaleString()} XML files (${sizeMB.toFixed(1)} MB JSON).`,
 );

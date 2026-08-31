@@ -1,3 +1,4 @@
+// Verifies shared text escaping and JSON cloning.
 import assert from "node:assert/strict";
 import {
   clone,

@@ -1,3 +1,4 @@
+// Verifies theme D1 CRUD and assignments.
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { adminRoute } from "../routes/admin.js";

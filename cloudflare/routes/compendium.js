@@ -1,3 +1,4 @@
+// Handles compendium API routing, validation, authorization, and D1 persistence.
 import { error, json, parseStored } from "../http.js";
 
 export async function compendiumCatalog(env) {

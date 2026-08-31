@@ -1,3 +1,4 @@
+// Verifies static routes and colocated data.
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const http = require("node:http");

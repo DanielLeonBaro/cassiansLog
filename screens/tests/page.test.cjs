@@ -1,3 +1,4 @@
+// Verifies player and DM Screen page contracts.
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 

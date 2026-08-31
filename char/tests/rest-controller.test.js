@@ -1,3 +1,4 @@
+// Verifies character rest controller.
 import assert from "node:assert/strict";
 import { createRestController } from "../js/tracker/rest-controller.js";
 

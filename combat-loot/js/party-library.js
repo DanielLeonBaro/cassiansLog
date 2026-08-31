@@ -1,3 +1,4 @@
+// Stores reusable party members and converts them into combatants.
 import { readJSON, writeJSON } from "../../shared/js/storage.js";
 import { cloneJSON } from "../../shared/js/text.js";
 import { normalizeCharacterName } from "./model.js";

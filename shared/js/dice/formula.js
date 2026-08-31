@@ -1,3 +1,4 @@
+// Parses bounded dice formulas and returns deterministic roll summaries.
 const MAX_FORMULA_LENGTH = 200;
 const MAX_DICE_PER_TERM = 100;
 const MAX_DIE_SIDES = 100000;

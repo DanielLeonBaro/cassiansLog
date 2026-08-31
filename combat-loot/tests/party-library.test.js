@@ -1,3 +1,4 @@
+// Verifies combat party library.
 import assert from "node:assert/strict";
 import {
   loadPartyLibrary,

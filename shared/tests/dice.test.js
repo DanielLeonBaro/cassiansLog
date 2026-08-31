@@ -1,3 +1,4 @@
+// Verifies dice formula parsing and rolling.
 import assert from "node:assert/strict";
 import {
   appendDieToFormula,

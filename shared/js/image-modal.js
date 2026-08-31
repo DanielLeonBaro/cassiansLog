@@ -1,3 +1,4 @@
+// Provides accessible full-image viewing with keyboard and focus handling.
 export function createImageModalController({
   closeButton,
   documentRoot = document,

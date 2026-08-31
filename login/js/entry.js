@@ -1,3 +1,4 @@
+// Coordinates email and Google sign-in while preserving safe return routes.
 import { initializeTheme } from "../../shared/js/theme.js";
 
 initializeTheme();

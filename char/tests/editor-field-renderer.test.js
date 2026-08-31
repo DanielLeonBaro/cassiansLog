@@ -1,3 +1,4 @@
+// Verifies character editor field rendering.
 import assert from "node:assert/strict";
 import { createCharacterFieldRenderer } from "../js/editor/field-renderer.js";
 

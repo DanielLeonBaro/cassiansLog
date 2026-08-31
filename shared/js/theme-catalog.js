@@ -1,3 +1,4 @@
+// Normalizes theme colors, computes contrast, and derives accessible palette values.
 export const BASE_THEME_ID = "cassians-classic";
 export const FEATURED_THEME_IDS = Object.freeze([
   BASE_THEME_ID,

@@ -1,3 +1,4 @@
+// Mounts the shared dice dialog and connects formula input to rendered results.
 import { appendDieToFormula, rollDiceFormula } from "./formula.js";
 
 const buttonClass = "inline-flex h-10 w-10 items-center justify-center rounded-xl border border-stone-400 bg-white/70 text-stone-700 shadow-sm transition hover:border-blood-500 hover:text-blood-500 dark:border-white/20 dark:bg-white/5 dark:text-stone-200";

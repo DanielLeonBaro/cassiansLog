@@ -1,3 +1,4 @@
+-- Adds runtime settings and seeds their compatibility defaults.
 CREATE TABLE IF NOT EXISTS app_settings (
   id TEXT PRIMARY KEY,
   settings_json TEXT NOT NULL,

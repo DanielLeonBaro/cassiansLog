@@ -1,3 +1,4 @@
+// Registers localhost clean-route fallback without affecting deployed routing.
 import { isLocalRuntimeHost } from "../../../shared/js/runtime-host.js";
 
 export async function enableLocalCharacterRoutes() {

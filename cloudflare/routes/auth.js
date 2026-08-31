@@ -1,3 +1,4 @@
+// Handles auth API routing, validation, authorization, and D1 persistence.
 import { bodyJSON, error, json, safeId } from "../http.js";
 import { THEME_FONT_MODES } from "../../shared/js/theme-catalog.js";
 import { loadUserThemePreference, saveUserThemePreference } from "../themes.js";

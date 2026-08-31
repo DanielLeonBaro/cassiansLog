@@ -1,3 +1,4 @@
+// Maps Compendium entries into compatible character actions, spells, features, and inventory.
 import { cloneJSON } from "../../shared/js/text.js";
 
 const primitiveTargets = new Set(["class", "subclass", "race", "background"]);

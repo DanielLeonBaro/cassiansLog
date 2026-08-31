@@ -1,3 +1,4 @@
+// Loads and renders the shared read-only Public Initiative snapshot.
 import { readCloudJSON } from "../../shared/js/cloud-store.js";
 
 function renderNames(list, names) {

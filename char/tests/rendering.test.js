@@ -1,3 +1,4 @@
+// Verifies character rendering helpers.
 import assert from "node:assert/strict";
 import { escapeHTML as sharedEscapeHTML } from "../../shared/js/text.js";
 import {

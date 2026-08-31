@@ -1,3 +1,4 @@
+// Moves existing tracker sections between V1 flow and V2 tabs without cloning controls.
 import { resolveCharacterSheetStyle } from "../../../shared/js/settings.js";
 import {
   V1_SECTION_DEFINITIONS,

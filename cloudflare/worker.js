@@ -1,3 +1,4 @@
+// Routes static pages and APIs while enforcing authentication and clean-route fallbacks.
 import { error, json, safeId } from "./http.js";
 import { publicSettings } from "./settings.js";
 import { adminRoute } from "./routes/admin.js";

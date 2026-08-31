@@ -1,3 +1,4 @@
+// Coordinates character listing, Quick Setup, portrait selection, creation, and removal.
 import { createDialogController } from "../../../shared/js/dialog.js";
 import { initializeTheme } from "../../../shared/js/theme.js";
 import { mountSiteHeader } from "../../../shared/js/site-header.js";

@@ -1,3 +1,4 @@
+// Owns compatibility-sensitive character localStorage keys and key builders.
 export const CHARACTERS_STORAGE_KEY = "dnd-characters";
 export const DELETED_CHARACTERS_STORAGE_KEY = "dnd-deleted-characters";
 export const PENDING_CHARACTER_STORAGE_KEY = "dnd-new-character";

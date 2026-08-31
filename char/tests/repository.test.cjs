@@ -1,3 +1,4 @@
+// Verifies character repository and creation.
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");

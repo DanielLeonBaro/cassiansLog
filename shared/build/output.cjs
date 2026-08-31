@@ -1,3 +1,4 @@
+// Captures child-process output and reports concise command failures.
 const fs = require("node:fs");
 
 function writeJSON(filePath, value, pretty = false) {

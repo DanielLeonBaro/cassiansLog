@@ -1,3 +1,4 @@
+// Verifies wiki view model.
 import assert from "node:assert/strict";
 import {
   filterWikiPages,

@@ -1,3 +1,4 @@
+// Verifies music player loops and fades.
 import assert from "node:assert/strict";
 import { createMusicPlayer } from "../js/player.js";
 

@@ -1,3 +1,4 @@
+// Builds accessible character cards and their open, edit, and remove actions.
 export function createCharacterCard(character, { onRemove }) {
   const card = document.createElement("article");
   card.className = "group relative flex h-full flex-col overflow-hidden rounded-2xl border border-stone-300/80 bg-white/75 shadow-card backdrop-blur-sm transition hover:-translate-y-1 hover:border-blood-500/40 hover:shadow-xl dark:border-white/10 dark:bg-white/[.055]";

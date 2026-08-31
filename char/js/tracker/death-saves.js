@@ -1,3 +1,4 @@
+// Normalizes and mutates death-save and stabilization state.
 function clampCount(value) {
   return Math.max(0, Math.min(3, Math.trunc(Number(value) || 0)));
 }

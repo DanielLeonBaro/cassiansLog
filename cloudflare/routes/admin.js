@@ -1,3 +1,4 @@
+// Handles admin API routing, validation, authorization, and D1 persistence.
 import { adminAuthorized } from "../auth.js";
 import { bodyJSON, error, json, parseStored, safeId } from "../http.js";
 import { loadSettings, updateSettings } from "../settings.js";

@@ -1,3 +1,4 @@
+// Starts the standalone tracker shell used outside a routed character page.
 import { initializeTrackerHeader } from "../tracker/header.js";
 import { applyCharacterSheetLayout } from "../tracker/layout.js";
 import { runtimeSettingsReady } from "../../../shared/js/settings.js";

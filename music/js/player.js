@@ -1,3 +1,4 @@
+// Controls media loading, loop points, fades, volume, and playback transitions.
 import { parseMediaLink } from "./model.js";
 
 let youtubeApiPromise;

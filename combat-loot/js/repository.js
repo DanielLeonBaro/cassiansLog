@@ -1,3 +1,4 @@
+// Owns Combat and Loot serialization, persistence, and fallback precedence.
 import { readJSON, removeStored, writeJSON } from "../../shared/js/storage.js";
 import { cloneJSON, normalizeText } from "../../shared/js/text.js";
 

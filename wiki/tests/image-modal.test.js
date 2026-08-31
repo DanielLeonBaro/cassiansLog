@@ -1,3 +1,4 @@
+// Verifies wiki image modal.
 import assert from "node:assert/strict";
 import { createWikiImageModalController } from "../js/image-modal.js";
 

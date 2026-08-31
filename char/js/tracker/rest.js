@@ -1,3 +1,4 @@
+// Applies short-rest, long-rest, turn, and manual reset rules to character resources.
 function plural(count, singular, pluralForm = `${singular}s`) {
   return `${count} ${count === 1 ? singular : pluralForm}`;
 }

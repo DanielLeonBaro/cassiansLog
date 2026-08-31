@@ -1,3 +1,4 @@
+-- Enables Public Initiative in existing runtime settings.
 UPDATE app_settings
 SET
   settings_json = json_set(

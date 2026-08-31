@@ -1,3 +1,4 @@
+// Verifies headless Firefox browser smoke behavior.
 const assert = require("node:assert/strict");
 const childProcess = require("node:child_process");
 const fs = require("node:fs");
@@ -316,6 +317,34 @@ async function main() {
     await waitFor(
       'return [...document.querySelectorAll("#compendium-results h3")].some((heading) => heading.textContent.includes("Oathbreaker"));',
       "Compendium search did not update",
+    );
+    await execute(`
+      document.getElementById("compendium-clear").click();
+      const type = document.getElementById("compendium-type");
+      const kind = document.getElementById("compendium-kind");
+      type.value = "Weapon";
+      kind.value = "Swords";
+      kind.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    `);
+    await waitFor(
+      'return [...document.querySelectorAll("#compendium-results h3")].some((heading) => heading.textContent === "Shortsword");',
+      "Compendium facets did not find swords",
+    );
+    await execute(`
+      const card = [...document.querySelectorAll("#compendium-results article")]
+        .find((item) => item.querySelector("h3")?.textContent === "Shortsword");
+      card.querySelector("[data-detail-id]").click();
+      return true;
+    `);
+    await waitFor(
+      `
+        const body = document.getElementById("compendium-detail-body");
+        const technical = body.querySelector("[data-technical-identifiers]");
+        return body.textContent.includes("Martial Melee") &&
+          !body.textContent.includes("ID_INTERNAL") && technical && !technical.open;
+      `,
+      "Compendium detail metadata was not friendly",
     );
 
     await smoke(

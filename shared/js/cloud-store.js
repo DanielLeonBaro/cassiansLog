@@ -1,3 +1,4 @@
+// Wraps authenticated JSON reads and writes with write-token compatibility.
 const TOKEN_KEY = "cassianslog-write-token";
 
 export class CloudStoreError extends Error {

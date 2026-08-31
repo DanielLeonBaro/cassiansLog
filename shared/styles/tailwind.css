@@ -1,3 +1,4 @@
+/* Shared Tailwind layers: global theme behavior, reusable components, and tracker layouts. */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

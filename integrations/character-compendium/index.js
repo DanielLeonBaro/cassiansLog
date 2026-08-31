@@ -1,3 +1,4 @@
+// Registers optional Compendium lookup controls with the character editor.
 import { registerCharacterEditorExtension } from "../../char/js/editor/extensions.js";
 import { filterCompendiumEntries, loadCompendiumCatalog } from "../../compendium/js/api.js";
 import { applySectionVisibility } from "../../shared/js/sections.js";

@@ -1,3 +1,4 @@
+// Owns Wiki serialization, persistence, and fallback precedence.
 import { cloneJSON } from "../../shared/js/text.js";
 import { readJSON, writeJSON } from "../../shared/js/storage.js";
 import { readCloudJSON, writeCloudJSON } from "../../shared/js/cloud-store.js";

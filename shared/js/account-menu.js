@@ -1,3 +1,4 @@
+// Builds the account dialog for email, password, OAuth, and session actions.
 import { escapeHTML } from "./text.js";
 
 const fieldClass = "w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/15 dark:bg-white/5 dark:text-white";

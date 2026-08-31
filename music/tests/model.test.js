@@ -1,3 +1,4 @@
+// Verifies music model.
 import assert from "node:assert/strict";
 import {
   parseMediaLink,

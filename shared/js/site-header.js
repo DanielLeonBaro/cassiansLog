@@ -1,3 +1,4 @@
+// Builds shared page navigation, account actions, and role-aware link visibility.
 import { applySectionVisibility, sectionConfigReady } from "./sections.js";
 import { currentSession, logout } from "./auth-client.js";
 import { mountAccountMenu } from "./account-menu.js";
@@ -97,7 +98,8 @@ export function mountSiteHeader({ activePage, actions = "", tracker = false } = 
       account.title = event.detail.email;
     });
     account.title = user.email;
-    mount.querySelectorAll("[data-role-link]").forEach((link) => {
+    // Page-level shortcuts use the same role contract as links inside the header.
+    document.querySelectorAll("[data-role-link]").forEach((link) => {
       const allowed = user.roles.includes(link.dataset.roleLink);
       link.hidden = !allowed;
       if (!allowed) link.style.setProperty("display", "none", "important");

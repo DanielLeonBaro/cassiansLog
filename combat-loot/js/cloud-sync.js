@@ -1,3 +1,4 @@
+// Keeps Combat and Loot draft and preset records synchronized with D1.
 import { readCloudJSON, writeCloudJSON } from "../../shared/js/cloud-store.js";
 
 export function createCombatCloudSync({

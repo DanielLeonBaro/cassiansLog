@@ -1,3 +1,4 @@
+// Converts a constrained Markdown-like syntax into escaped safe HTML.
 import { escapeAttribute, escapeHTML } from "./text.js";
 
 function renderInline(text, {

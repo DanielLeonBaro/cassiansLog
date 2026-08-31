@@ -1,3 +1,4 @@
+// Loads available themes, applies palette variables, and wires the theme toggle.
 import { currentSession } from "./auth-client.js";
 import { createDialogController } from "./dialog.js";
 import {

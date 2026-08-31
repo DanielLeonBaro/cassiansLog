@@ -1,3 +1,4 @@
+// Coordinates Admin settings, users, themes, and local or D1 persistence.
 import { initializeTheme } from "../../shared/js/theme.js";
 import { escapeHTML } from "../../shared/js/text.js";
 import {

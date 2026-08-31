@@ -1,3 +1,4 @@
+// Starts tracker behavior and connects focused character-editor actions.
 import { initializeCharacterEditor } from "../editor/index.js";
 import {
   character,

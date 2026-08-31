@@ -1,3 +1,4 @@
+// Handles screens API routing, validation, authorization, and D1 persistence.
 import {
   MAX_SCREEN_DOCUMENT_BYTES,
   normalizeScreenDocument,

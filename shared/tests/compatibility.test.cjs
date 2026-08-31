@@ -1,3 +1,4 @@
+// Verifies URL, storage, API, and seed compatibility.
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 

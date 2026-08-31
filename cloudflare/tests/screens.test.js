@@ -1,3 +1,4 @@
+// Verifies per-user Screen and Public Initiative APIs.
 import assert from "node:assert/strict";
 import { publicInitiativeRoute } from "../routes/public-initiative.js";
 import { screenRoute } from "../routes/screens.js";

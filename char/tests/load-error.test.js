@@ -1,3 +1,4 @@
+// Verifies character load-error rendering.
 import assert from "node:assert/strict";
 import { renderCharacterLoadError } from "../js/load-error.js";
 

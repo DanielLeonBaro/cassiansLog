@@ -1,3 +1,4 @@
+// Coordinates the full character editor, focused sections, validation, and saving.
 import { createDialogController } from "../../../shared/js/dialog.js";
 import { readJSON, removeStored, writeJSON } from "../../../shared/js/storage.js";
 import { writeCloudJSON } from "../../../shared/js/cloud-store.js";

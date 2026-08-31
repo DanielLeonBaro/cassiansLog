@@ -1,3 +1,4 @@
+// Handles wiki API routing, validation, authorization, and D1 persistence.
 import { normalizeWikiPages } from "../../wiki/js/model.js";
 import { authorized } from "../auth.js";
 import { bodyJSON, error, json, parseStored } from "../http.js";

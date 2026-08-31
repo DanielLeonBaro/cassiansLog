@@ -1,3 +1,4 @@
+// Coordinates all tracker state, rendering, filtering, events, rests, and persistence.
 import { normalizeSpellcastingData } from "./spellcasting-model.js";
 import { applyDamage, applyHealing, applyTemporaryHitPoints, totalHitPoints } from "./hit-points.js";
 import { hasActiveFilters, uniqueValues } from "./filter-utilities.js";

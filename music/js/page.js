@@ -1,3 +1,4 @@
+// Coordinates Music page state, rendering, persistence, and user events.
 import { createTrack, normalizeTags, updateTrack } from "./model.js";
 import {
   createMusicLibrary,

@@ -1,3 +1,4 @@
+// Verifies character editor draft model.
 const assert = require("node:assert/strict");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");

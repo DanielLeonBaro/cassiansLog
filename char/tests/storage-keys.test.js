@@ -1,3 +1,4 @@
+// Verifies character storage keys.
 import assert from "node:assert/strict";
 import {
   CHARACTERS_STORAGE_KEY,

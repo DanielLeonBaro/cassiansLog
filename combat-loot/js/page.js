@@ -1,3 +1,4 @@
+// Coordinates Combat and Loot page state, rendering, persistence, and user events.
 import { cloneJSON } from "../../shared/js/text.js";
 import { writeCloudJSON } from "../../shared/js/cloud-store.js";
 import {

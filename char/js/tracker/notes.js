@@ -1,3 +1,4 @@
+// Owns character note editing, local recovery, cloud loading, and cloud saving.
 import { readJSON, writeJSON } from "../../../shared/js/storage.js";
 import { readCloudJSON, writeCloudJSON } from "../../../shared/js/cloud-store.js";
 import { characterNotesStorageKey } from "../storage-keys.js";

@@ -1,3 +1,4 @@
+// Coordinates Player and DM Screen page state, rendering, persistence, and user events.
 import { currentSession } from "../../shared/js/auth-client.js";
 import { createDialogController } from "../../shared/js/dialog.js";
 import { createImageModalController } from "../../shared/js/image-modal.js";

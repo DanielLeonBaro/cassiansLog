@@ -1,3 +1,4 @@
+// Builds normalized Wiki navigation trees and page lookup state.
 import { normalizeText as normalize } from "../../shared/js/text.js";
 
 export function sortWikiPages(pages) {

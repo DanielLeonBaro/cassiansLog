@@ -1,3 +1,4 @@
+// Applies runtime section visibility to static and dynamically rendered links.
 import { runtimeSettingsReady } from "./settings.js";
 
 let sections = {};

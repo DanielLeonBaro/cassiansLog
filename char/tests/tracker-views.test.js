@@ -1,3 +1,4 @@
+// Verifies character tracker views.
 import assert from "node:assert/strict";
 import { createTrackerViews } from "../js/tracker/views.js";
 

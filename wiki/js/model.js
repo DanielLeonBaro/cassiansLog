@@ -1,3 +1,4 @@
+// Defines Wiki normalization and state transformations without DOM side effects.
 export function compactWikiPageId(title) {
   return String(title || "")
     .normalize("NFKD")

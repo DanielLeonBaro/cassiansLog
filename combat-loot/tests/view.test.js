@@ -1,3 +1,4 @@
+// Verifies combat tracker view.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createCombatLootDocument, updateTrackerCell } from "../js/model.js";

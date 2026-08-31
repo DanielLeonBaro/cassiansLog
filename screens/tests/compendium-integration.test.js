@@ -1,3 +1,4 @@
+// Verifies screen Compendium snapshots.
 import assert from "node:assert/strict";
 
 const detail = {

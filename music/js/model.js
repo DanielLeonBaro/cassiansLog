@@ -1,3 +1,4 @@
+// Defines Music normalization and state transformations without DOM side effects.
 export const DEFAULT_SETTINGS = Object.freeze({ fadeIn: 3, fadeOut: 2 });
 
 export function parseMediaLink(value) {

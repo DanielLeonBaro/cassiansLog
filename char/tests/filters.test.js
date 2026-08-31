@@ -1,3 +1,4 @@
+// Verifies character tracker filters.
 import assert from "node:assert/strict";
 import {
   createFilterState,

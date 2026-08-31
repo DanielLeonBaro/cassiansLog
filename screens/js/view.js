@@ -1,3 +1,4 @@
+// Builds Player and DM Screen DOM and markup from prepared state.
 import { renderRichText } from "../../shared/js/rich-text.js";
 import { escapeAttribute, escapeHTML } from "../../shared/js/text.js";
 

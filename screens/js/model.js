@@ -1,3 +1,4 @@
+// Defines Player and DM Screen normalization and state transformations without DOM side effects.
 import { cloneJSON } from "../../shared/js/text.js";
 
 export const SCREEN_VERSION = 1;

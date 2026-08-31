@@ -1,3 +1,4 @@
+// Builds Combat and Loot DOM and markup from prepared state.
 import { escapeAttribute, escapeHTML } from "../../shared/js/text.js";
 import { calculateCurrentHP, evaluateArithmeticFormula } from "./model.js";
 

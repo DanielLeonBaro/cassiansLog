@@ -1,3 +1,4 @@
+// Verifies section configuration and visibility.
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -44,6 +45,7 @@ assert.match(
 assert.match(siteHeader, /data-section-link="\$\{page\.id\}"/, "Site links should expose their section IDs.");
 assert.match(siteHeader, /id="site-pages-menu-button"/, "Site navigation should use a Pages dropdown.");
 assert.match(siteHeader, /sectionConfigReady\.then\(syncAvailability\)/, "The Pages dropdown should react to runtime section settings.");
+assert.match(siteHeader, /document\.querySelectorAll\("\[data-role-link\]"\)/, "Role visibility should include page-level shortcuts.");
 assert.doesNotMatch(
   siteHeader,
   /tracker && page\.id === "characters"/,

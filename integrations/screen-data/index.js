@@ -1,3 +1,4 @@
+// Defines built-in Player and DM Screen reference tables and widgets.
 import {
   filterCompendiumEntries,
   loadCompendiumCatalog,

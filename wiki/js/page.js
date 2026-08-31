@@ -1,3 +1,4 @@
+// Coordinates Wiki page state, rendering, persistence, and user events.
 import { escapeAttribute, escapeHTML, normalizeText as normalize } from "../../shared/js/text.js";
 import { loadWikiPages, saveWikiPages } from "./repository.js";
 import { compactWikiPageId, findWikiPageById, normalizeWikiPages } from "./model.js";

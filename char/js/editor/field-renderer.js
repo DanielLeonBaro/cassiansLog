@@ -1,3 +1,4 @@
+// Renders schema-driven editor fields and nested collection controls.
 import { escapeAttribute, escapeHTML } from "../../../shared/js/text.js";
 import {
   COLLECTION_KNOWN_FIELDS,

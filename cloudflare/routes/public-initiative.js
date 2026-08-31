@@ -1,3 +1,4 @@
+// Handles public initiative API routing, validation, authorization, and D1 persistence.
 import { initiativeNamesFromSnapshot } from "../../public-initiative/js/model.js";
 import { json, parseStored } from "../http.js";
 

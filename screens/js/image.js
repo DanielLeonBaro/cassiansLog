@@ -1,3 +1,4 @@
+// Validates, resizes, and serializes Screen images within storage limits.
 const MAX_IMAGE_BYTES = 500_000;
 const MAX_IMAGE_EDGE = 1600;
 

@@ -1,3 +1,4 @@
+// Defines Combat and Loot normalization and state transformations without DOM side effects.
 export const COMBAT_LOOT_DOCUMENT_VERSION = 1;
 export const COMBAT_HEALTH_COLUMNS_VERSION = 1;
 export const DEFAULT_TRACKERS_VERSION = 1;

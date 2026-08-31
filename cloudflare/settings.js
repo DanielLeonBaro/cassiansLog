@@ -1,3 +1,4 @@
+// Loads, normalizes, publishes, and updates D1-backed runtime settings.
 import { bodyJSON, error, json, parseStored, safeId } from "./http.js";
 
 export const CHARACTER_SHEET_STYLES = new Set(["v1", "v2"]);

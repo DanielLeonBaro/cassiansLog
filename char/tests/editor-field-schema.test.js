@@ -1,3 +1,4 @@
+// Verifies character editor field schema.
 import assert from "node:assert/strict";
 import {
   CHARACTER_SECTION_KEYS,

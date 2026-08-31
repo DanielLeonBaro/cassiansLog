@@ -1,3 +1,4 @@
+// Verifies Combat and Loot model behavior.
 import assert from "node:assert/strict";
 import * as model from "../js/model.js";
 

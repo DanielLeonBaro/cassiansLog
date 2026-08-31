@@ -1,3 +1,4 @@
+// Handles themes API routing, validation, authorization, and D1 persistence.
 import { json } from "../http.js";
 import { loadThemeCatalog } from "../themes.js";
 

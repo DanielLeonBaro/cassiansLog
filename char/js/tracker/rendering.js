@@ -1,3 +1,4 @@
+// Exports safe text helpers and shared tracker class tokens.
 export { escapeHTML } from "../../../shared/js/text.js";
 
 export const trackerUI = {

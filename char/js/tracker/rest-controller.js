@@ -1,3 +1,4 @@
+// Coordinates rest confirmation, resource resets, refresh, and save timing.
 import { resetDeathSaves } from "./death-saves.js";
 import { getRestDetails } from "./rest.js";
 

@@ -1,3 +1,4 @@
+// Verifies combat dialog controller.
 import assert from "node:assert/strict";
 import { createCombatDialogController } from "../js/dialog-controller.js";
 

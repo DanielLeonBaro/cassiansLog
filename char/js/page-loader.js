@@ -1,3 +1,4 @@
+// Resolves routed character data, injects the tracker shell, and starts editor and tracker code.
 import { readJSON, removeStored, writeJSON } from "../../shared/js/storage.js";
 import { readCloudJSON } from "../../shared/js/cloud-store.js";
 import { runtimeSettingsReady } from "../../shared/js/settings.js";

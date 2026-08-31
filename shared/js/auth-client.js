@@ -1,3 +1,4 @@
+// Wraps browser authentication requests, session lookup, and logout behavior.
 import { isLocalRuntimeHost } from "./runtime-host.js";
 
 let sessionPromise;

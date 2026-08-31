@@ -1,3 +1,4 @@
+// Builds canonical Wiki URLs and reads canonical or legacy route state.
 export function wikiPageURL(id) {
   return `/wiki/${encodeURIComponent(id)}`;
 }

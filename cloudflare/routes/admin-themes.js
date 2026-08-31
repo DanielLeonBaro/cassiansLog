@@ -1,3 +1,4 @@
+// Handles admin themes API routing, validation, authorization, and D1 persistence.
 import { bodyJSON, error, json, safeId } from "../http.js";
 import { normalizeThemeInput } from "../../shared/js/theme-catalog.js";
 import { themeFromRow } from "../themes.js";

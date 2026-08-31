@@ -1,3 +1,4 @@
+// Verifies character tracker inventory state.
 import assert from "node:assert/strict";
 import { createTrackerState } from "../js/tracker/state.js";
 

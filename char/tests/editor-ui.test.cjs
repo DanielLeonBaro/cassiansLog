@@ -1,5 +1,8 @@
+// Verifies character archive shortcuts and editor UI.
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+
+// Character archive and Quick Setup contracts.
 
 const archive = fs.readFileSync("char/index.html", "utf8");
 for (const id of [
@@ -12,6 +15,22 @@ for (const id of [
 ]) assert.ok(archive.includes(`id="${id}"`), `Quick Setup should include ${id}.`);
 assert.match(archive, /name="starterMode" value="starter" checked/);
 assert.match(archive, /name="starterMode" value="blank"/);
+const shortcuts = [...archive.matchAll(/<a href="([^"]+)" target="_blank" rel="noopener" aria-label="[^"]+ in a new tab" data-section-link="([^"]+)" data-role-link="\2"/g)];
+assert.deepEqual(
+  shortcuts.map(([, href, section]) => [href, section]),
+  [
+    ["player-screen/", "player-screen"],
+    ["dm-screen/", "dm-screen"],
+    ["wiki/", "wiki"],
+    ["compendium/", "compendium"],
+    ["combat-loot/", "combat-loot"],
+    ["public-initiative/", "public-initiative"],
+    ["music/", "music"],
+  ],
+  "Character archive shortcuts should open every public component in a new tab.",
+);
+assert.match(archive, /<nav aria-label="Open another page" class="[^"]*justify-center/, "Shortcuts should be centered above character selection.");
+assert.match(archive, /px-3 py-1 text-xs/, "Shortcuts should use slim badge sizing.");
 
 const editor = fs.readFileSync("char/js/editor/index.js", "utf8");
 const fieldSchema = fs.readFileSync("char/js/editor/field-schema.js", "utf8");

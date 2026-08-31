@@ -1,3 +1,4 @@
+// Owns HTML escaping, identifier sanitizing, normalization, and JSON cloning.
 export function escapeHTML(value) {
   return String(value ?? "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;",

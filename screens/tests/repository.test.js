@@ -1,3 +1,4 @@
+// Verifies screen repository.
 import assert from "node:assert/strict";
 import {
   addCalculatorHistory,

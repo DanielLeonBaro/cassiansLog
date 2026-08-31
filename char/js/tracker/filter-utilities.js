@@ -1,3 +1,4 @@
+// Provides shared pure helpers for tracker filter state and option lists.
 export function hasActiveFilters(state) {
   return Object.values(state).some((value) => String(value).trim());
 }

@@ -1,3 +1,4 @@
+// Verifies screen calculator parser.
 import assert from "node:assert/strict";
 import { calculateExpression, formatCalculatorResult } from "../js/calculator.js";
 

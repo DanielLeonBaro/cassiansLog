@@ -1,3 +1,4 @@
+// Verifies music library view.
 import assert from "node:assert/strict";
 import {
   allMusicTags,

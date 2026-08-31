@@ -1,3 +1,4 @@
+// Imports Markdown files into normalized deterministic Wiki page JSON.
 const fs = require("node:fs");
 const path = require("node:path");
 const Y = require("yjs");

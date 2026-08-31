@@ -1,3 +1,4 @@
+// Tokenizes and evaluates bounded calculator expressions without eval().
 const MAX_EXPRESSION_LENGTH = 200;
 
 function tokenize(source) {

@@ -1,3 +1,4 @@
+// Extracts an ordered public combatant list from a shared initiative snapshot.
 export function initiativeNamesFromSnapshot(snapshot) {
   const tables = snapshot?.draft?.currentDocument?.tables;
   if (!Array.isArray(tables)) return [];

@@ -1,3 +1,4 @@
+// Provides bounded JSON parsing, safe IDs, stored JSON parsing, and JSON responses.
 const JSON_HEADERS = {
   "content-type": "application/json; charset=utf-8",
   "cache-control": "no-store",

@@ -1,3 +1,4 @@
+// Builds deterministic downloadable Wiki backups.
 export function createWikiBackup(pages, now = () => new Date()) {
   return {
     version: 1,

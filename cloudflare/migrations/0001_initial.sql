@@ -1,3 +1,4 @@
+-- Creates initial metadata, Compendium, Character, Combat, and Wiki storage.
 CREATE TABLE IF NOT EXISTS app_meta (
   key TEXT PRIMARY KEY,
   value_json TEXT NOT NULL,

@@ -1,3 +1,4 @@
+// Normalizes spellcasting profiles, preparation limits, and legacy spell data.
 export function normalizeSpellcastingData(target) {
   if (!target.spellcasting) target.spellcasting = { enabled: false, profiles: [], slots: [] };
   const profiles = Array.isArray(target.spellcasting.profiles) ? target.spellcasting.profiles : [];

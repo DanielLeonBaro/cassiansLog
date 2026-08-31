@@ -1,3 +1,4 @@
+// Defines the stable registration boundary for optional character-editor integrations.
 const extensions = new Map();
 const listeners = new Set();
 

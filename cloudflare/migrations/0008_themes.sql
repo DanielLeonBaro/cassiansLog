@@ -1,3 +1,4 @@
+-- Adds reusable themes and per-user theme preferences.
 CREATE TABLE IF NOT EXISTS themes (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL COLLATE NOCASE UNIQUE,

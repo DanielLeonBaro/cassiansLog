@@ -1,3 +1,4 @@
+// Loads normalized runtime settings with localhost and deployment fallbacks.
 import { writeCloudJSON } from "./cloud-store.js";
 import { isLocalRuntimeHost } from "./runtime-host.js";
 

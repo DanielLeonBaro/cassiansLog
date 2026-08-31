@@ -1,3 +1,4 @@
+// Declares editable character sections, paths, labels, and field types.
 export const EDITOR_SECTION_DEFINITIONS = [
   { id: "basics", label: "Basics", icon: "bi-person-fill" },
   { id: "combat", label: "Abilities & Combat", icon: "bi-shield-fill" },

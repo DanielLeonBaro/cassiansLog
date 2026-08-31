@@ -1,3 +1,4 @@
+// Verifies Cloudflare Worker helper modules.
 import assert from "node:assert/strict";
 import { secureEqual, tokenAuthorized } from "../auth.js";
 import { bodyJSON, parseStored, safeId } from "../http.js";

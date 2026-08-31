@@ -1,3 +1,4 @@
+// Enforces ordinary-write and Admin authorization without mixing their privileges.
 import { loadSettings } from "./settings.js";
 import { userFromRequest } from "./user-auth.js";
 

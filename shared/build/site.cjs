@@ -1,3 +1,4 @@
+// Copies only deployable static assets into the Cloudflare build directory.
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -20,7 +21,14 @@ const publicEntries = [
   "shared",
   "wiki",
 ];
-const privateDirectories = new Set(["build", "config", "scripts", "styles", "tests"]);
+const privateDirectories = new Set([
+  "build",
+  "config",
+  "dataFullBackup",
+  "scripts",
+  "styles",
+  "tests",
+]);
 
 function includePublicFile(source) {
   const relative = path.relative(root, source);

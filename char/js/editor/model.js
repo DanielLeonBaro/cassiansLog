@@ -1,3 +1,4 @@
+// Creates editor drafts and applies safe nested-field and collection mutations.
 import { cloneJSON } from "../../../shared/js/text.js";
 
 let generatedIdSequence = 0;

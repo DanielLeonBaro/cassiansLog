@@ -1,3 +1,4 @@
+// Boots the Wiki page and mounts its shared chrome and controllers.
 import { initializeWiki } from "./page.js";
 import { mountSiteHeader } from "../../shared/js/site-header.js";
 import { initializeTheme } from "../../shared/js/theme.js";

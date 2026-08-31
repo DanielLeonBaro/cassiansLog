@@ -1,3 +1,4 @@
+// Renders tracker cards, spell slots, prepared profiles, and inventory items.
 import { escapeHTML, sanitizeIdentifier, trackerUI as ui } from "./rendering.js";
 
 export function createTrackerViews({

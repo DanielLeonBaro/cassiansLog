@@ -1,3 +1,4 @@
+// Verifies combat action dispatcher.
 import assert from "node:assert/strict";
 import {
   columnHasData,

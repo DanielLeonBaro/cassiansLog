@@ -1,3 +1,4 @@
+// Handles characters API routing, validation, authorization, and D1 persistence.
 import { authorized } from "../auth.js";
 import { bodyJSON, error, json, parseStored, safeId } from "../http.js";
 import { CHARACTER_SHEET_STYLES, loadSettings, saveSettings } from "../settings.js";

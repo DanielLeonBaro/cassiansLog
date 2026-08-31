@@ -1,3 +1,4 @@
+// Owns password hashing, sessions, OAuth identities, user roles, and primary Admin bootstrap.
 import { parseStored } from "./http.js";
 
 export const PRIMARY_ADMIN_EMAIL = "dleonbaro@gmail.com";

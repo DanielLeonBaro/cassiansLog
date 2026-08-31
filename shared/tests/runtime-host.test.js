@@ -1,3 +1,4 @@
+// Verifies local runtime host detection.
 import assert from "node:assert/strict";
 import { isLocalRuntimeHost } from "../js/runtime-host.js";
 

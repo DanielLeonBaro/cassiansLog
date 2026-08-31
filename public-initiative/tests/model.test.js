@@ -1,3 +1,4 @@
+// Verifies Public Initiative model behavior.
 import assert from "node:assert/strict";
 import { initiativeNamesFromSnapshot as namesFrom } from "../js/model.js";
 

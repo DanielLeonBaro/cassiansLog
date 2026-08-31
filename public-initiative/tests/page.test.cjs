@@ -1,3 +1,4 @@
+// Verifies Public Initiative page structure.
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 

@@ -1,3 +1,4 @@
+// Replaces a failed character shell with a safe, actionable error state.
 export function renderCharacterLoadError(message, {
   documentRoot = document,
   showBackLink = false,

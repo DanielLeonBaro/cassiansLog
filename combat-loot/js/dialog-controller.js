@@ -1,3 +1,4 @@
+// Coordinates reusable Combat and Loot dialog open, close, and focus behavior.
 export function createCombatDialogController({
   dialogs,
   documentRoot = document,

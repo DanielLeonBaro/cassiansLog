@@ -1,3 +1,4 @@
+// Owns Player and DM Screen serialization, persistence, and fallback precedence.
 import { cloneJSON } from "../../shared/js/text.js";
 import { createEmptyScreen, MAX_SCREEN_DOCUMENT_BYTES, normalizeScreenDocument, screenDocumentBytes } from "./model.js";
 

@@ -1,3 +1,4 @@
+// Verifies runtime settings and fallbacks.
 const assert = require("node:assert/strict");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");

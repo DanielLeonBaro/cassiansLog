@@ -1,3 +1,4 @@
+// Verifies wiki backup export.
 import assert from "node:assert/strict";
 import {
   createWikiBackup,

@@ -1,3 +1,4 @@
+// Provides accessible modal lifecycle, focus trapping, and focus restoration.
 export function createDialogController(element, {
   form,
   initialFocus,

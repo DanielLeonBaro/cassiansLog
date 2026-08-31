@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- Character archive shell: quick page shortcuts, character cards, and Quick Setup dialog. -->
 <html lang="en" data-theme="dark">
 
 <head>
@@ -16,7 +17,17 @@
 <body class="flex min-h-screen flex-col bg-parchment font-sans text-stone-900 antialiased transition-colors dark:bg-ink dark:text-stone-100">
     <nav data-site-header></nav>
 
-    <main class="relative mx-auto w-full max-w-7xl grow px-4 py-12 sm:px-6 lg:px-8">
+    <main class="relative mx-auto w-full max-w-7xl grow px-4 py-8 sm:px-6 lg:px-8">
+        <nav aria-label="Open another page" class="mb-8 flex flex-wrap justify-center gap-2">
+            <a href="player-screen/" target="_blank" rel="noopener" aria-label="Open Player Screen in a new tab" data-section-link="player-screen" data-role-link="player-screen" class="inline-flex items-center gap-1.5 rounded-full border border-stone-300 bg-white/70 px-3 py-1 text-xs font-bold text-stone-700 transition hover:border-blood-500 hover:text-blood-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/15 dark:bg-white/5 dark:text-stone-200"><i class="bi bi-grid-fill" aria-hidden="true"></i>Player Screen</a>
+            <a href="dm-screen/" target="_blank" rel="noopener" aria-label="Open DM Screen in a new tab" data-section-link="dm-screen" data-role-link="dm-screen" class="inline-flex items-center gap-1.5 rounded-full border border-stone-300 bg-white/70 px-3 py-1 text-xs font-bold text-stone-700 transition hover:border-blood-500 hover:text-blood-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/15 dark:bg-white/5 dark:text-stone-200"><i class="bi bi-shield-shaded" aria-hidden="true"></i>DM Screen</a>
+            <a href="wiki/" target="_blank" rel="noopener" aria-label="Open Wiki in a new tab" data-section-link="wiki" data-role-link="wiki" class="inline-flex items-center gap-1.5 rounded-full border border-stone-300 bg-white/70 px-3 py-1 text-xs font-bold text-stone-700 transition hover:border-blood-500 hover:text-blood-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/15 dark:bg-white/5 dark:text-stone-200"><i class="bi bi-book-half" aria-hidden="true"></i>Wiki</a>
+            <a href="compendium/" target="_blank" rel="noopener" aria-label="Open Compendium in a new tab" data-section-link="compendium" data-role-link="compendium" class="inline-flex items-center gap-1.5 rounded-full border border-stone-300 bg-white/70 px-3 py-1 text-xs font-bold text-stone-700 transition hover:border-blood-500 hover:text-blood-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/15 dark:bg-white/5 dark:text-stone-200"><i class="bi bi-journals" aria-hidden="true"></i>Compendium</a>
+            <a href="combat-loot/" target="_blank" rel="noopener" aria-label="Open Combat and Loot in a new tab" data-section-link="combat-loot" data-role-link="combat-loot" class="inline-flex items-center gap-1.5 rounded-full border border-stone-300 bg-white/70 px-3 py-1 text-xs font-bold text-stone-700 transition hover:border-blood-500 hover:text-blood-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/15 dark:bg-white/5 dark:text-stone-200"><i class="bi bi-shield-shaded" aria-hidden="true"></i>Combat &amp; Loot</a>
+            <a href="public-initiative/" target="_blank" rel="noopener" aria-label="Open Public Initiative in a new tab" data-section-link="public-initiative" data-role-link="public-initiative" class="inline-flex items-center gap-1.5 rounded-full border border-stone-300 bg-white/70 px-3 py-1 text-xs font-bold text-stone-700 transition hover:border-blood-500 hover:text-blood-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/15 dark:bg-white/5 dark:text-stone-200"><i class="bi bi-list-ol" aria-hidden="true"></i>Initiative</a>
+            <a href="music/" target="_blank" rel="noopener" aria-label="Open Music in a new tab" data-section-link="music" data-role-link="music" class="inline-flex items-center gap-1.5 rounded-full border border-stone-300 bg-white/70 px-3 py-1 text-xs font-bold text-stone-700 transition hover:border-blood-500 hover:text-blood-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/15 dark:bg-white/5 dark:text-stone-200"><i class="bi bi-music-note-beamed" aria-hidden="true"></i>Music</a>
+        </nav>
+
         <header class="mx-auto mb-10 max-w-2xl text-center">
             <span class="mb-4 inline-flex items-center rounded-full bg-blood-500 px-3 py-1 text-xs font-bold text-white">
                 <i class="bi bi-dice-20-fill mr-1"></i> Character archive

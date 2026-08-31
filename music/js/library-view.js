@@ -1,3 +1,4 @@
+// Renders Music library rows, tag filters, and edit or playback controls.
 import { escapeHTML } from "../../shared/js/text.js";
 import { formatTag, normalizeTags } from "./model.js";
 

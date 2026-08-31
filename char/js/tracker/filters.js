@@ -1,3 +1,4 @@
+// Defines combat and possibility filter defaults, labels, and matching rules.
 import { normalizeFilterText } from "./filter-utilities.js";
 
 export const FILTER_FOCUS_OPTIONS = [

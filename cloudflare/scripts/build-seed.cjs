@@ -1,3 +1,4 @@
+// Builds deterministic D1 seed SQL from bundled characters, Wiki pages, and settings.
 const fs = require("node:fs");
 const path = require("node:path");
 

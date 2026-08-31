@@ -1,3 +1,4 @@
+// Renders Wiki Markdown through the shared escaped rich-text boundary.
 import { renderRichText } from "../../shared/js/rich-text.js";
 import { escapeAttribute, escapeHTML } from "../../shared/js/text.js";
 

@@ -1,3 +1,4 @@
+// Provides localhost service-worker fallback for canonical character routes.
 const CHARACTER_ROUTE = /^\/char\/[a-z0-9][a-z0-9-]{0,127}\/?$/i;
 
 self.addEventListener("install", (event) => {

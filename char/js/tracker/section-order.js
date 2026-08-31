@@ -1,3 +1,4 @@
+// Defines and normalizes the persistent V1 tracker section order.
 export const V1_SECTION_DEFINITIONS = Object.freeze([
   Object.freeze({ id: "character-overview", label: "Character Overview", elementIds: ["characterDescription"] }),
   Object.freeze({ id: "character-stats", label: "Quick Stats & Skills", elementIds: ["quickStatsCard", "combatAccordion"] }),

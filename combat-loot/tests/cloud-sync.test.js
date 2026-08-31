@@ -1,3 +1,4 @@
+// Verifies combat cloud synchronization.
 import assert from "node:assert/strict";
 import { createCombatCloudSync } from "../js/cloud-sync.js";
 

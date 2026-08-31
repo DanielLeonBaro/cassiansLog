@@ -1,31 +1,36 @@
-#To do:
-5. Sound effects soundboard
-    5.1. Make it so button shortcuts do it too
-11. Depure Compendium entries, useless information like ability score improvements, basic movement speed.
-                            
-# Done
+#Topics
 
-1. Music Module
-2. Character Module v2, similar to D&D Beyond
-3. Live public combat tracker
-4. Combat tracker
-    4.1 When sending to combat, if combat has no rows, remove the blank row automatically
-    4.2. Damage, HP, and AC are default to 0 when adding new line or sending characters to combat
-6. Character Tracker URL shows template and /char/template/?character=cassian, and I just want it to be /char/cassian only for Cassian and Elaria / DONE
-7. Wiki Rework
-    7.1. I want that if I click an image, it opens in a modal so I can see the full picture
-    7.2. URL shows https://cassianslog.urhyse.workers.dev/wiki/#page=a4901fbc-0a6f-45dd-ad3f-f82f76e04007 and I want it to be https://cassianslog.urhyse.workers.dev/wiki/fiora
-8. Let's make Character Edit and New Character more user friendly
-9. item attunement
-12. Facebook login removed
-10. Loopable songs on Music component
+##To do:
+- Sound effects soundboard. Make it so button shortcuts do it too
+- Columns to V1 in Character Tracker
+- Make V2 better
+- Some checkboxes don't respect accent color in theme, in admin for instance
+- Make selectable background, default grid, but then make dotted grid, vertical horizontal and diagonla lines, pixels, animated backgrounds, etc
 
----------------------------------------------------------------
+##Done
+- Music Module
+- Character Module v2, similar to D&D Beyond
+- Live public combat tracker
+- Combat tracker
+    - When sending to combat, if combat has no rows, remove the blank row automatically
+    - Damage, HP, and AC are default to 0 when adding new line or sending characters to combat
+- Character Tracker URL shows template and /char/template/?character=cassian, and I just want it to be /char/cassian only for Cassian and Elaria / DONE
+- Wiki Rework
+    - I want that if I click an image, it opens in a modal so I can see the full picture
+    - URL shows https://cassianslog.urhyse.workers.dev/wiki/#page=a4901fbc-0a6f-45dd-ad3f-f82f76e04007 and I want it to be https://cassianslog.urhyse.workers.dev/wiki/fiora
+- Let's make Character Edit and New Character more user friendly
+- Item attunement
+- Facebook login removed
+- Loopable songs on Music component
+- Comment Code base
+- Added buttons into the main index for ease of navigation
+- Depure Compendium entries, useless information like ability score improvements, basic movement speed.
+
+---
 
 #Themes
 
 select * from themes;
-
 id	name	background_name	background_hex	accent_name	accent_hex	protected	created_at	updated_at
 cassians-classic	Cassian’s Classic	Charcoal Gray	#18181B	Brick Red	#B83B35	1	1970-01-01T00:00:00.000Z	1970-01-01T00:00:00.000Z
 evil-cassian	Evil Cassian	Pearl Gray	#F4F4F5	Brick Red	#B83B35	1	1970-01-01T00:00:00.000Z	1970-01-01T00:00:00.000Z

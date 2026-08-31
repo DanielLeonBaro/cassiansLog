@@ -1,3 +1,4 @@
+// Loads and normalizes the D1 theme catalog with bundled fallback behavior.
 import {
   BASE_THEME_ID,
   BUILT_IN_THEMES,

@@ -1,3 +1,4 @@
+// Calculates and mutates current, temporary, and maximum hit points.
 export function totalHitPoints(character) {
   return Number(character.hp.current) + Number(character.hp.temp);
 }

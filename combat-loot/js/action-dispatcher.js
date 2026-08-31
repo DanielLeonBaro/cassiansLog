@@ -1,3 +1,4 @@
+// Maps delegated UI actions to focused combat mutations and dialog workflows.
 import {
   addCombatRound,
   deleteCustomTracker,
