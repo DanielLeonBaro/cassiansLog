@@ -38,6 +38,25 @@
     background-size: 20px 10px;
   }
 
+  :is(html[data-background="argyle"] body, [data-background-preview="argyle"]) {
+    background-image:
+      repeating-linear-gradient(120deg, rgb(var(--theme-text) / 0.08) 0 1px, transparent 1px 60px),
+      repeating-linear-gradient(60deg, rgb(var(--theme-text) / 0.08) 0 1px, transparent 1px 60px),
+      linear-gradient(60deg, rgb(var(--theme-accent) / 0.16) 25%, transparent 25% 75%, rgb(var(--theme-accent) / 0.16) 75%),
+      linear-gradient(120deg, rgb(var(--theme-accent) / 0.16) 25%, transparent 25% 75%, rgb(var(--theme-accent) / 0.16) 75%);
+    background-size: 70px 120px;
+  }
+
+  :is(html[data-background="carbon-fiber"] body, [data-background-preview="carbon-fiber"]) {
+    background-image:
+      linear-gradient(27deg, rgb(var(--theme-text) / 0.14) 5px, transparent 5px),
+      linear-gradient(207deg, rgb(var(--theme-text) / 0.14) 5px, transparent 5px),
+      linear-gradient(27deg, rgb(var(--theme-accent) / 0.14) 5px, transparent 5px),
+      linear-gradient(207deg, rgb(var(--theme-accent) / 0.14) 5px, transparent 5px);
+    background-position: 0 5px, 10px 0, 0 10px, 10px 5px;
+    background-size: 20px 20px;
+  }
+
   :is(html[data-background="checkerboard"] body, [data-background-preview="checkerboard"]) {
     background-image:
       linear-gradient(45deg, rgb(var(--theme-accent) / 0.24) 25%, transparent 25% 75%, rgb(var(--theme-accent) / 0.24) 75%),
@@ -54,6 +73,15 @@
       linear-gradient(45deg, rgb(var(--theme-accent) / 0.28) 25%, transparent 25%);
     background-position: -10px 0, -10px 0, 0 0, 0 0;
     background-size: 20px 20px;
+  }
+
+  :is(html[data-background="cicada-stripes"] body, [data-background-preview="cicada-stripes"]) {
+    background-image:
+      linear-gradient(90deg, rgb(var(--theme-accent) / 0.09) 50%, transparent 50%),
+      linear-gradient(90deg, rgb(var(--theme-accent) / 0.13) 50%, transparent 50%),
+      linear-gradient(90deg, transparent 50%, rgb(var(--theme-text) / 0.09) 50%),
+      linear-gradient(90deg, transparent 50%, rgb(var(--theme-text) / 0.13) 50%);
+    background-size: 13px 100%, 29px 100%, 37px 100%, 53px 100%;
   }
 
   :is(html[data-background="circuit-grid"] body, [data-background-preview="circuit-grid"]) {
@@ -143,6 +171,25 @@
     background-size: 40px 30px;
   }
 
+  :is(html[data-background="honeycomb"] body, [data-background-preview="honeycomb"]) {
+    background-image:
+      radial-gradient(circle farthest-side at 0 50%, rgb(var(--theme-accent) / 0.2) 23.5%, transparent 24%),
+      radial-gradient(circle farthest-side at 0 50%, rgb(var(--theme-text) / 0.1) 23.5%, transparent 24%),
+      linear-gradient(30deg, rgb(var(--theme-accent) / 0.15) 24%, transparent 24% 76%, rgb(var(--theme-accent) / 0.15) 76%),
+      linear-gradient(150deg, rgb(var(--theme-accent) / 0.15) 24%, transparent 24% 76%, rgb(var(--theme-accent) / 0.15) 76%);
+    background-position: 21px 30px, 19px 30px, 0 0, 0 0;
+    background-size: 40px 60px;
+  }
+
+  :is(html[data-background="houndstooth"] body, [data-background-preview="houndstooth"]) {
+    background-image:
+      linear-gradient(-45deg, rgb(var(--theme-accent) / 0.2) 25%, transparent 25% 75%, rgb(var(--theme-text) / 0.12) 75%),
+      linear-gradient(-45deg, rgb(var(--theme-text) / 0.12) 25%, transparent 25% 75%, rgb(var(--theme-accent) / 0.2) 75%),
+      linear-gradient(45deg, rgb(var(--theme-accent) / 0.18) 17%, transparent 17% 25%, rgb(var(--theme-accent) / 0.18) 25% 36%, transparent 36% 64%, rgb(var(--theme-accent) / 0.18) 64% 75%, transparent 75% 83%, rgb(var(--theme-accent) / 0.18) 83%);
+    background-position: 0 0, 1em 1em, 1em 1em;
+    background-size: 2em 2em;
+  }
+
   :is(html[data-background="infinite-circles"] body, [data-background-preview="infinite-circles"]) {
     background-image:
       radial-gradient(circle at center, rgb(var(--theme-accent) / 0.34), transparent 58%),
@@ -166,6 +213,13 @@
     background-size: 20px 35px;
   }
 
+  :is(html[data-background="marrakesh"] body, [data-background-preview="marrakesh"]) {
+    background-image:
+      radial-gradient(rgb(var(--theme-accent) / 0.24) 8px, transparent 9px),
+      repeating-radial-gradient(rgb(var(--theme-accent) / 0.18) 0 3px, transparent 4px 18px, rgb(var(--theme-text) / 0.1) 19px 22px, transparent 23px 45px);
+    background-size: 30px 30px, 90px 90px;
+  }
+
   :is(html[data-background="paper"] body, [data-background-preview="paper"]) {
     background-image:
       linear-gradient(rgb(var(--theme-accent) / 0.32) 2px, transparent 2px),
@@ -186,6 +240,13 @@
     background-size: 50px 50px, 50px 50px, 10px 10px, 10px 10px;
   }
 
+  :is(html[data-background="plaid"] body, [data-background-preview="plaid"]) {
+    background-image:
+      repeating-linear-gradient(0deg, transparent 0 18px, rgb(var(--theme-accent) / 0.14) 18px 22px, transparent 22px 42px, rgb(var(--theme-text) / 0.08) 42px 44px),
+      repeating-linear-gradient(90deg, transparent 0 18px, rgb(var(--theme-accent) / 0.14) 18px 22px, transparent 22px 42px, rgb(var(--theme-text) / 0.08) 42px 44px);
+    background-size: 44px 44px;
+  }
+
   :is(html[data-background="polka-halftone"] body, [data-background-preview="polka-halftone"]) {
     background-image:
       radial-gradient(rgb(var(--theme-accent) / 0.5) 1.5px, transparent 1.5px),
@@ -197,6 +258,16 @@
   :is(html[data-background="polka-pin"] body, [data-background-preview="polka-pin"]) {
     background-image: radial-gradient(rgb(var(--theme-accent) / 0.48) 1px, transparent 1px);
     background-size: 10px 10px;
+  }
+
+  :is(html[data-background="pyramid"] body, [data-background-preview="pyramid"]) {
+    background-image:
+      linear-gradient(315deg, transparent 75%, rgb(var(--theme-accent) / 0.2) 75%),
+      linear-gradient(45deg, transparent 75%, rgb(var(--theme-accent) / 0.2) 75%),
+      linear-gradient(135deg, rgb(var(--theme-text) / 0.1) 50%, transparent 50%),
+      linear-gradient(45deg, rgb(var(--theme-accent) / 0.1) 50%, transparent 50%);
+    background-position: -10px 0, -10px 0, 0 0, 0 0;
+    background-size: 20px 20px;
   }
 
   :is(html[data-background="rhombus"] body, [data-background-preview="rhombus"]) {
@@ -211,6 +282,11 @@
 
   :is(html[data-background="ripple"] body, [data-background-preview="ripple"]) {
     background-image: repeating-radial-gradient(circle at 50% 50%, transparent 0 4px, rgb(var(--theme-accent) / 0.36) 4px 5px, transparent 5px 10px);
+  }
+
+  :is(html[data-background="starburst"] body, [data-background-preview="starburst"]) {
+    background-image: repeating-conic-gradient(from 3deg at 25% 25%, rgb(var(--theme-accent) / 0.1) 0deg 15deg, rgb(var(--theme-accent) / 0.2) 15deg 30deg);
+    background-size: 160px 160px;
   }
 
   :is(html[data-background="vertical-lines"] body, [data-background-preview="vertical-lines"]) {
@@ -229,6 +305,14 @@
       radial-gradient(circle at 0 50%, transparent 20%, rgb(var(--theme-accent) / 0.32) 21% 34%, transparent 35%);
     background-position: 0 0, 0 -20px;
     background-size: 30px 40px;
+  }
+
+  :is(html[data-background="weave"] body, [data-background-preview="weave"]) {
+    background-image:
+      linear-gradient(135deg, rgb(var(--theme-accent) / 0.2) 21px, rgb(var(--theme-text) / 0.08) 22px 24px, transparent 24px 67px, rgb(var(--theme-text) / 0.08) 67px 69px, transparent 69px),
+      linear-gradient(225deg, rgb(var(--theme-accent) / 0.2) 21px, rgb(var(--theme-text) / 0.08) 22px 24px, transparent 24px 67px, rgb(var(--theme-text) / 0.08) 67px 69px, transparent 69px);
+    background-position: 0 0, 0 64px;
+    background-size: 64px 128px;
   }
 
   :is(html[data-background="wide-diagonal"] body, [data-background-preview="wide-diagonal"]) {
@@ -258,8 +342,8 @@
   html[data-background] body,
   .theme-background-preview {
     box-shadow:
-      inset 0 0 clamp(2.5rem, 12vw, 12rem) rgb(0 0 0 / 0.12),
-      inset 0 0 0 100vmax rgb(var(--theme-background) / 0.12);
+      inset 0 0 clamp(2.5rem, 12vw, 12rem) rgb(0 0 0 / 0.18),
+      inset 0 0 0 100vmax rgb(var(--theme-background) / 0.18);
   }
 
   ::selection {

@@ -197,6 +197,11 @@ async function main() {
       document.querySelector('[data-theme-card="peach-and-lime"]').click();
       document.querySelector('[data-theme-reverse="true"]').click();
       document.querySelector('[data-theme-font="black"]').click();
+      const invalidBackgrounds = backgroundCards.map((card) => card.dataset.backgroundCard).filter((id) => {
+        document.querySelector('[data-background-card="' + id + '"]').click();
+        const style = getComputedStyle(document.body);
+        return style.backgroundImage === "none" || style.animationName !== "none";
+      });
       document.querySelector('[data-background-card="graph-paper"]').click();
       const result = {
         count: cards.length,
@@ -204,14 +209,15 @@ async function main() {
         backgroundCount: backgroundCards.length,
         backgroundGroups: [...document.querySelectorAll("[data-background-groups] h4")].map((heading) => heading.textContent),
         firstBackgrounds: backgroundCards.slice(0, 4).map((card) => card.textContent.trim()),
+        invalidBackgrounds,
         theme: document.documentElement.dataset.themePalette,
         reversed: document.documentElement.dataset.themeReversed,
         background: document.documentElement.dataset.background,
         backgroundToken: getComputedStyle(document.documentElement).getPropertyValue("--theme-background").trim(),
         accent: getComputedStyle(document.documentElement).getPropertyValue("--theme-accent").trim(),
         hasPattern: getComputedStyle(document.body).backgroundImage.includes("linear-gradient"),
-        hasVignette: getComputedStyle(document.body).boxShadow.includes("rgba(0, 0, 0, 0.12)"),
-        hasSoftener: getComputedStyle(document.body).boxShadow.includes("rgba(154, 118, 0, 0.12)"),
+        hasVignette: getComputedStyle(document.body).boxShadow.includes("rgba(0, 0, 0, 0.18)"),
+        hasSoftener: getComputedStyle(document.body).boxShadow.includes("rgba(154, 118, 0, 0.18)"),
         storedTheme: localStorage.getItem("dnd-theme"),
         storedFont: localStorage.getItem("dnd-theme-font"),
         storedBackground: localStorage.getItem("dnd-theme-background"),
@@ -222,9 +228,10 @@ async function main() {
     assert.deepEqual(themePicker, {
       count: 28,
       firstThemes: ["Cassian’s Classic", "Evil Cassian", "Black and White", "Aloe"],
-      backgroundCount: 32,
+      backgroundCount: 42,
       backgroundGroups: ["Static backgrounds"],
-      firstBackgrounds: ["Arcs", "Checkerboard", "Chevron", "Circuit Grid"],
+      firstBackgrounds: ["Default Squared", "Arcs", "Argyle", "Carbon Fiber"],
+      invalidBackgrounds: [],
       theme: "peach-and-lime",
       reversed: "true",
       background: "graph-paper",

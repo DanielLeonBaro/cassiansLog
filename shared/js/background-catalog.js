@@ -17,9 +17,12 @@ function background(id, name, type) {
 }
 
 export const BACKGROUNDS = Object.freeze([
+  background("argyle", "Argyle", "static"),
   background("arcs", "Arcs", "static"),
+  background("carbon-fiber", "Carbon Fiber", "static"),
   background("checkerboard", "Checkerboard", "static"),
   background("chevron", "Chevron", "static"),
+  background("cicada-stripes", "Cicada Stripes", "static"),
   background("circuit-grid", "Circuit Grid", "static"),
   background("cross", "Cross", "static"),
   background("default-squared", "Default Squared", "static"),
@@ -34,22 +37,30 @@ export const BACKGROUNDS = Object.freeze([
   background("horizontal-lines", "Horizontal Lines", "static"),
   background("horizontal-slim-lines", "Horizontal Slim Lines", "static"),
   background("horizontal-wavy-lines", "Horizontal Wavy Lines", "static"),
+  background("honeycomb", "Honeycomb", "static"),
+  background("houndstooth", "Houndstooth", "static"),
   background("infinite-circles", "Infinite Circles", "static"),
   background("infinite-wave", "Infinite Wave", "static"),
   background("isometric", "Isometric", "static"),
+  background("marrakesh", "Marrakesh", "static"),
   background("paper", "Paper", "static"),
   background("paper-thin", "Paper Thin", "static"),
   background("polka-halftone", "Polka Halftone", "static"),
   background("polka-pin", "Polka Pin", "static"),
+  background("plaid", "Plaid", "static"),
+  background("pyramid", "Pyramid", "static"),
   background("rhombus", "Rhombus", "static"),
   background("ripple", "Ripple", "static"),
+  background("starburst", "Starburst", "static"),
   background("vertical-lines", "Vertical Lines", "static"),
   background("vertical-slim-lines", "Vertical Slim Lines", "static"),
   background("vertical-wavy-lines", "Vertical Wavy Lines", "static"),
   background("wide-diagonal", "Wide Diagonal", "static"),
+  background("weave", "Weave", "static"),
   background("zigzag", "ZigZag", "static"),
   background("zigzag-3d", "ZigZag 3D", "static"),
-].sort((left, right) => left.type.localeCompare(right.type)
+].sort((left, right) => Number(right.id === DEFAULT_BACKGROUND_ID) - Number(left.id === DEFAULT_BACKGROUND_ID)
+  || left.type.localeCompare(right.type)
   || left.name.localeCompare(right.name, undefined, { sensitivity: "base" })));
 
 export const BACKGROUND_IDS = Object.freeze(BACKGROUNDS.map(({ id }) => id));

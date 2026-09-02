@@ -32,12 +32,12 @@
     zuriel: ["#F4F4F5", "#C69224"],
   };
   const backgroundIds = new Set([
-    "arcs", "checkerboard", "chevron", "circuit-grid", "cross", "default-squared",
+    "argyle", "arcs", "carbon-fiber", "checkerboard", "chevron", "cicada-stripes", "circuit-grid", "cross", "default-squared",
     "diagonal-1", "diagonal-2", "diagonal-3", "diamond", "dots-grid", "flower", "graph-paper", "graph-paper-dotted",
-    "horizontal-lines", "horizontal-slim-lines", "horizontal-wavy-lines", "infinite-circles",
-    "infinite-wave", "isometric", "paper", "paper-thin", "polka-halftone", "polka-pin",
-    "rhombus", "ripple", "vertical-lines", "vertical-slim-lines",
-    "vertical-wavy-lines", "wide-diagonal", "zigzag", "zigzag-3d",
+    "horizontal-lines", "horizontal-slim-lines", "horizontal-wavy-lines", "honeycomb", "houndstooth", "infinite-circles",
+    "infinite-wave", "isometric", "marrakesh", "paper", "paper-thin", "plaid", "polka-halftone", "polka-pin",
+    "pyramid", "rhombus", "ripple", "starburst", "vertical-lines", "vertical-slim-lines",
+    "vertical-wavy-lines", "weave", "wide-diagonal", "zigzag", "zigzag-3d",
   ]);
 
   const hexPattern = /^#[0-9A-F]{6}$/i;

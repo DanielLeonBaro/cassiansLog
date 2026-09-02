@@ -64,13 +64,14 @@ assert.deepEqual(
   [...BUILT_IN_THEMES.slice(3).map((theme) => theme.name)].sort((left, right) => left.localeCompare(right)),
 );
 assert.equal(sortThemes([...BUILT_IN_THEMES].reverse())[0].id, BASE_THEME_ID);
-assert.equal(BACKGROUNDS.length, 32);
+assert.equal(BACKGROUNDS.length, 42);
 assert.deepEqual(BACKGROUND_GROUPS.map(({ name }) => name), ["Static backgrounds"]);
 for (const group of BACKGROUND_GROUPS) {
+  assert.equal(group.backgrounds[0].id, DEFAULT_BACKGROUND_ID, "Default Squared must remain first.");
   assert.deepEqual(
-    group.backgrounds.map(({ name }) => name),
-    [...group.backgrounds.map(({ name }) => name)].sort((left, right) => left.localeCompare(right)),
-    `${group.name} must remain alphabetical.`,
+    group.backgrounds.slice(1).map(({ name }) => name),
+    [...group.backgrounds.slice(1).map(({ name }) => name)].sort((left, right) => left.localeCompare(right)),
+    `${group.name} after Default Squared must remain alphabetical.`,
   );
 }
 assert.equal(REMOVED_BACKGROUND_IDS.length, 9);
@@ -88,8 +89,8 @@ for (const removedId of REMOVED_BACKGROUND_IDS) {
   assert.equal(bootstrapped.root.dataset.background, DEFAULT_BACKGROUND_ID);
   assert.ok(!themeStyles.includes(`data-background="${removedId}"`));
 }
-assert.match(themeStyles, /inset 0 0 clamp\(2\.5rem, 12vw, 12rem\) rgb\(0 0 0 \/ 0\.12\)/);
-assert.match(themeStyles, /inset 0 0 0 100vmax rgb\(var\(--theme-background\) \/ 0\.12\)/);
+assert.match(themeStyles, /inset 0 0 clamp\(2\.5rem, 12vw, 12rem\) rgb\(0 0 0 \/ 0\.18\)/);
+assert.match(themeStyles, /inset 0 0 0 100vmax rgb\(var\(--theme-background\) \/ 0\.18\)/);
 
 assert.equal(normalizeHex(" #b83b35 "), "#B83B35");
 assert.equal(normalizeHex("#12345"), null);
