@@ -7,4 +7,4 @@ import { initializeMusic } from "./page.js";
 mountSiteHeader({ activePage: "music" });
 initializeTheme();
 initializeDiceRoller();
-initializeMusic();
+await initializeMusic();

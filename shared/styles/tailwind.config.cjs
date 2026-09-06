@@ -7,6 +7,7 @@ module.exports = {
     "./index.html",
     "./admin/**/*.{html,js}",
     "./char/**/*.{html,js}",
+    "./campaigns/**/*.{html,js}",
     "./combat-loot/**/*.{html,js}",
     "./compendium/**/*.{html,js}",
     "./dm-screen/**/*.{html,js}",

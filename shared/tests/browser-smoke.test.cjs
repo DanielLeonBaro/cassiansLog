@@ -40,6 +40,24 @@ function contentType(file) {
 function staticServer() {
   return http.createServer((request, response) => {
     const url = new URL(request.url, "http://127.0.0.1");
+    if (request.method === "GET" && url.pathname === "/api/campaigns") {
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify({ campaigns: [
+        { id: "one", name: "Joined Campaign", description: "A joined adventure.", banner: "", slug: "joined", joined: true, role: "dm", joinEnabled: true },
+        { id: "two", name: "Open Campaign", description: "A campaign waiting for you.", banner: "", slug: "open", joined: false, role: null, joinEnabled: true },
+      ] }));
+      return;
+    }
+    if (request.method === "GET" && url.pathname === "/api/campaigns/joined") {
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end('{"campaign":{"id":"one","name":"Joined Campaign","description":"A joined adventure.","banner":"","slug":"joined","joined":true,"role":"dm","joinEnabled":true}}');
+      return;
+    }
+    if (request.method === "GET" && url.pathname === "/api/campaigns/joined/characters") {
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end('{"characters":[],"authoritative":true}');
+      return;
+    }
     if (url.pathname.startsWith("/api/")) {
       response.writeHead(404, { "content-type": "application/json; charset=utf-8" });
       response.end('{"error":"Local browser smoke test has no D1 API."}');
@@ -171,6 +189,20 @@ async function main() {
       assert.equal(result, true, `${label} browser contract failed.`);
       console.log(`Browser smoke passed: ${label}`);
     }
+
+    await smoke(
+      "Campaign discovery hub",
+      "/campaigns/",
+      'return document.querySelectorAll("#campaign-list article").length === 2;',
+      'return Boolean(document.querySelector("a[href=\'/c/joined/char/\']") && document.querySelector("a[href=\'/c/joined/manage/\']") && document.querySelector("form[data-join=\'open\']") && document.body.textContent.includes("A joined adventure.") && document.querySelector("#campaign-create input[name=\'password\']") && document.getElementById("campaign-create-banner"));',
+    );
+    await waitFor('return Boolean(navigator.serviceWorker.controller);', "Local campaign-route fallback did not activate");
+    await smoke(
+      "Campaign Character deep link",
+      "/c/joined/char/",
+      'return document.querySelector("#characters")?.children.length === 0 && document.getElementById("site-campaign")?.textContent === "Joined Campaign";',
+      'return document.getElementById("site-campaign")?.textContent === "Joined Campaign" && location.pathname === "/c/joined/char/";',
+    );
 
     await smoke(
       "Character archive and Quick Setup",

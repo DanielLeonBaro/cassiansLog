@@ -24,7 +24,7 @@ export function currentSession() {
 
 export async function logout() {
   if (isLocalRuntimeHost()) {
-    location.replace("char/");
+    location.replace("/campaigns/");
     return;
   }
   await fetch("api/auth/logout", { method: "POST", headers: { accept: "application/json" } });

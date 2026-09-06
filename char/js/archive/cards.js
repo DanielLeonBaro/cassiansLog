@@ -1,5 +1,7 @@
+import { campaignPagePath } from "../../../shared/js/campaign-context.js";
+
 // Builds accessible character cards and their open, edit, and remove actions.
-export function createCharacterCard(character, { onRemove }) {
+export function createCharacterCard(character, { onRemove, canRemove = true }) {
   const card = document.createElement("article");
   card.className = "group relative flex h-full flex-col overflow-hidden rounded-2xl border border-stone-300/80 bg-white/75 shadow-card backdrop-blur-sm transition hover:-translate-y-1 hover:border-blood-500/40 hover:shadow-xl dark:border-white/10 dark:bg-white/[.055]";
   const portrait = document.createElement("img");
@@ -19,7 +21,7 @@ export function createCharacterCard(character, { onRemove }) {
   description.textContent = character.description || "Open character tracker.";
   text.append(name, description);
 
-  const route = `char/${encodeURIComponent(character.id)}/`;
+  const route = `${campaignPagePath("char")}${encodeURIComponent(character.id)}/`;
   const actions = document.createElement("div");
   actions.className = "relative z-10 flex shrink-0 flex-wrap gap-2 pt-5";
   const open = document.createElement("a");
@@ -37,7 +39,9 @@ export function createCharacterCard(character, { onRemove }) {
   remove.setAttribute("aria-label", `Remove ${character.name}`);
   remove.innerHTML = '<i class="bi bi-trash-fill"></i>';
   remove.addEventListener("click", () => onRemove(character));
-  actions.append(open, edit, remove);
+  actions.append(open);
+  if (character.canEdit !== false) actions.append(edit);
+  if (canRemove) actions.append(remove);
   body.append(text, actions);
   card.append(portrait, body);
   return card;

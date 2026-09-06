@@ -6,6 +6,7 @@ const vm = require("node:vm");
 const modelCode = fs.readFileSync("char/js/tracker/spellcasting-model.js", "utf8")
   .replace(/export /g, "");
 const storageCode = fs.readFileSync("shared/js/storage.js", "utf8")
+  .replace(/^import[\s\S]*?;\r?\n/gm, "")
   .replace(/export /g, "");
 const storageKeyCode = fs.readFileSync("char/js/storage-keys.js", "utf8")
   .replace(/export /g, "");
@@ -80,6 +81,7 @@ function loadCharacter(source) {
     },
   };
   context.window = context;
+  context.campaignStorageKey = (key) => key;
   vm.createContext(context);
   vm.runInContext(
     `${source}\n${modelCode}\n${storageCode}\n${storageKeyCode}\n${hitPointCode}\n${filterCode}\n${filtersCode}\n${deathSaveCode}\n${restCode}\n${restControllerCode}\n${sharedEscapeCode}\n${renderingCode}\nconst ui = trackerUI;\n${viewsCode}\n${notesCode}\n${stateCode}\n${appCode}\nglobalThis.testAPI = { character, getPreparedCount, togglePreparedSpell, toggleCharacterFlag, isAlwaysPreparedSpell, isSpellAvailableInCombat, getCombatItemRecords, renderAbilityCard, saveState, loadState, applyDamage, applyTemporaryHitPoints, toggleDeathSave, toggleStable, healHP, shortRest, longRest, getRestDetails };`,

@@ -3,7 +3,9 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
 
-const storageCode = fs.readFileSync("shared/js/storage.js", "utf8").replace(/export /g, "");
+const storageCode = fs.readFileSync("shared/js/storage.js", "utf8")
+  .replace(/^import[\s\S]*?;\r?\n/gm, "")
+  .replace(/export /g, "");
 const textCode = fs.readFileSync("shared/js/text.js", "utf8").replace(/export /g, "");
 const storageKeyCode = fs.readFileSync("char/js/storage-keys.js", "utf8").replace(/export /g, "");
 const repositoryCode = fs.readFileSync("char/js/archive/repository.js", "utf8")
@@ -33,6 +35,7 @@ const context = {
     setItem: (key, value) => values.set(key, value),
   },
 };
+context.campaignStorageKey = (key) => key;
 vm.createContext(context);
 vm.runInContext(`${storageCode}\n${textCode}\n${storageKeyCode}\n${repositoryCode}\nglobalThis.api = { storedCharacters, migrateLegacyPortrait, isBundledCharacter, applyNewCharacterSetup, createCharacter };`, context);
 

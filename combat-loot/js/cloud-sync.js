@@ -15,7 +15,7 @@ export function createCombatCloudSync({
     const cloud = await readCloud("api/combat-loot", { fallback: null });
     if (!cloud) return;
     const cloudPresets = Array.isArray(cloud.presets) ? cloud.presets : [];
-    if (!cloudPresets.length && !cloud.draft && !cloud.partyLibrary) {
+    if (!cloud.authoritative && !cloudPresets.length && !cloud.draft && !cloud.partyLibrary) {
       const localPresets = getLocalPresets();
       const localDraft = getLocalDraft();
       const localPartyLibrary = getLocalPartyLibrary();

@@ -7,17 +7,17 @@ function source(file) {
 }
 
 const pageBases = new Map([
-  ["admin/index.html", "../"],
-  ["login/index.html", "../"],
-  ["char/index.html", "../"],
+  ["admin/index.html", "/"],
+  ["login/index.html", "/"],
+  ["char/index.html", "/"],
   ["char/tracker.html", "../"],
-  ["combat-loot/index.html", "../"],
-  ["compendium/index.html", "../"],
-  ["dm-screen/index.html", "../"],
-  ["music/index.html", "../"],
-  ["public-initiative/index.html", "../"],
-  ["player-screen/index.html", "../"],
-  ["wiki/index.html", "../"],
+  ["combat-loot/index.html", "/"],
+  ["compendium/index.html", "/"],
+  ["dm-screen/index.html", "/"],
+  ["music/index.html", "/"],
+  ["public-initiative/index.html", "/"],
+  ["player-screen/index.html", "/"],
+  ["wiki/index.html", "/"],
 ]);
 
 for (const [file, base] of pageBases) {
@@ -27,7 +27,8 @@ for (const [file, base] of pageBases) {
 const catalog = JSON.parse(source("char/catalog.json"));
 for (const id of [...catalog.characters, "template"]) {
   const file = `char/${id}/index.html`;
-  assert.match(source(file), /<base href=["']\.\.\/\.\.\/["']>/, `${file} must resolve from the site root.`);
+  const basePattern = id === "template" ? /<base href=["']\/["']>/ : /<base href=["']\.\.\/\.\.\/["']>/;
+  assert.match(source(file), basePattern, `${file} must resolve from the site root.`);
   const integration = source(file).indexOf('src="integrations/character-compendium/index.js"');
   const characterPage = source(file).indexOf('src="char/js/entries/character-page.js"');
   assert.ok(integration >= 0 && integration < characterPage, `${file} must load the optional integration before the Character page.`);

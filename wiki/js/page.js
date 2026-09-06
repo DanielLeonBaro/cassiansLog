@@ -6,6 +6,7 @@ import { wikiPageId, wikiPageURL } from "./routing.js";
 import { renderWikiMarkdown } from "./markdown.js";
 import { createWikiImageModalController } from "./image-modal.js";
 import { createWikiBackup, parseWikiBackup, wikiBackupFilename } from "./backup.js";
+import { campaignPagePath, currentCampaign, currentCampaignSlug } from "../../shared/js/campaign-context.js";
 import {
   filterWikiPages,
   findWikiPageByName,
@@ -15,6 +16,9 @@ import {
 } from "./view-model.js";
 
 export async function initializeWiki() {
+  const campaign = currentCampaignSlug() ? await currentCampaign() : null;
+  const canEdit = campaign ? ["dm", "admin"].includes(campaign.role) : true;
+  const campaignName = campaign?.name || "Apotheosis of the Rings";
   let pages = await loadPages();
   let currentPageId = null;
   let toastTimer = null;
@@ -136,11 +140,11 @@ export async function initializeWiki() {
         ${breugaire?.banner ? `<img src="${escapeAttribute(breugaire.banner)}" alt="" class="absolute inset-0 h-full w-full object-cover opacity-45">` : ""}
         <div class="absolute inset-0 bg-gradient-to-r from-ink via-ink/90 to-ink/30"></div>
         <div class="relative max-w-3xl px-6 py-12 text-white sm:px-10 sm:py-16">
-          <span class="mb-4 inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-bold backdrop-blur-sm"><i class="bi bi-stars mr-1.5 text-gold"></i> Breugaire campaign notes</span>
+          <span class="mb-4 inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-bold backdrop-blur-sm"><i class="bi bi-stars mr-1.5 text-gold"></i> ${escapeHTML(campaignName)} campaign notes</span>
           <h1 id="wiki-title" class="font-display text-4xl font-bold sm:text-6xl">Campaign Wiki</h1>
-          <p class="mt-4 max-w-2xl text-lg leading-relaxed text-stone-200">Read the DM's campaign notes or add your own.</p>
+          <p class="mt-4 max-w-2xl text-lg leading-relaxed text-stone-200">${canEdit ? "Read or edit the campaign's shared notes." : "Read the campaign notes shared by its DMs."}</p>
           <div class="mt-7 flex flex-wrap gap-3">
-            <button type="button" data-action="new" class="inline-flex items-center gap-2 rounded-xl bg-blood-500 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-blood-600"><i class="bi bi-file-earmark-plus-fill"></i> New page</button>
+            ${canEdit ? '<button type="button" data-action="new" class="inline-flex items-center gap-2 rounded-xl bg-blood-500 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-blood-600"><i class="bi bi-file-earmark-plus-fill"></i> New page</button>' : ""}
             ${breugaire ? `<a href="${pageURL(breugaire.id)}" class="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-5 py-2.5 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/20">Enter Breugaire <i class="bi bi-arrow-right"></i></a>` : ""}
           </div>
         </div>
@@ -158,7 +162,7 @@ export async function initializeWiki() {
           </label>
           <div class="flex items-end gap-2 md:col-span-2">
             <button type="button" data-action="export" class="inline-flex h-[2.875rem] grow items-center justify-center rounded-xl border border-stone-300 transition hover:border-blood-500 hover:text-blood-500 dark:border-white/15" aria-label="Export wiki backup" title="Export backup"><i class="bi bi-download"></i></button>
-            <button type="button" data-action="import" class="inline-flex h-[2.875rem] grow items-center justify-center rounded-xl border border-stone-300 transition hover:border-blood-500 hover:text-blood-500 dark:border-white/15" aria-label="Import wiki backup" title="Import backup"><i class="bi bi-upload"></i></button>
+            ${canEdit ? '<button type="button" data-action="import" class="inline-flex h-[2.875rem] grow items-center justify-center rounded-xl border border-stone-300 transition hover:border-blood-500 hover:text-blood-500 dark:border-white/15" aria-label="Import wiki backup" title="Import backup"><i class="bi bi-upload"></i></button>' : ""}
           </div>
         </div>
         <p id="wiki-result-summary" class="mt-3 text-sm text-stone-500 dark:text-stone-400" aria-live="polite"></p>
@@ -204,7 +208,7 @@ export async function initializeWiki() {
     elements.page.innerHTML = `
       <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <button type="button" data-action="home" class="inline-flex items-center gap-2 text-sm font-bold text-stone-500 transition hover:text-blood-500 dark:text-stone-400"><i class="bi bi-arrow-left"></i> Wiki home</button>
-        <div class="flex gap-2"><button type="button" data-action="copy-link" class="inline-flex h-10 items-center gap-2 rounded-xl border border-stone-300 px-3 text-sm font-bold transition hover:border-blood-500 hover:text-blood-500 dark:border-white/15"><i class="bi bi-link-45deg"></i><span class="hidden sm:inline">Copy link</span></button><button type="button" data-action="edit" data-page-id="${escapeAttribute(page.id)}" class="inline-flex h-10 items-center gap-2 rounded-xl bg-blood-500 px-4 text-sm font-bold text-white transition hover:bg-blood-600"><i class="bi bi-pencil-fill"></i> Edit page</button></div>
+        <div class="flex gap-2"><button type="button" data-action="copy-link" class="inline-flex h-10 items-center gap-2 rounded-xl border border-stone-300 px-3 text-sm font-bold transition hover:border-blood-500 hover:text-blood-500 dark:border-white/15"><i class="bi bi-link-45deg"></i><span class="hidden sm:inline">Copy link</span></button>${canEdit ? `<button type="button" data-action="edit" data-page-id="${escapeAttribute(page.id)}" class="inline-flex h-10 items-center gap-2 rounded-xl bg-blood-500 px-4 text-sm font-bold text-white transition hover:bg-blood-600"><i class="bi bi-pencil-fill"></i> Edit page</button>` : ""}</div>
       </div>
       <header class="relative overflow-hidden rounded-3xl border border-stone-300/80 bg-ink shadow-card dark:border-white/10">
         ${page.banner ? `<img src="${escapeAttribute(page.banner)}" alt="${escapeAttribute(page.name)} banner" class="h-[18rem] w-full cursor-zoom-in object-cover sm:h-[25rem]" data-wiki-image role="button" tabindex="0" aria-label="View ${escapeAttribute(page.name)} banner full size">` : `<div class="flex h-[18rem] items-center justify-center sm:h-[25rem]"><i class="bi ${iconForType(page.type)} text-7xl text-stone-500"></i></div>`}
@@ -244,7 +248,7 @@ export async function initializeWiki() {
   }
 
   function navigateHome() {
-    history.pushState(null, "", "/wiki/");
+    history.pushState(null, "", campaignPagePath("wiki"));
     renderRoute();
   }
 
@@ -440,7 +444,7 @@ export async function initializeWiki() {
       imageModalController.open(image);
       return;
     }
-    const wikiLink = event.target.closest('a[href^="/wiki/"]');
+    const wikiLink = event.target.closest('a[href*="/wiki/"]');
     if (
       wikiLink
       && event.button === 0
@@ -457,11 +461,11 @@ export async function initializeWiki() {
       return;
     }
     const action = event.target.closest("[data-action]")?.dataset.action;
-    if (action === "new") openEditor(null);
-    else if (action === "edit") openEditor(pageById(event.target.closest("[data-page-id]").dataset.pageId));
+    if (action === "new" && canEdit) openEditor(null);
+    else if (action === "edit" && canEdit) openEditor(pageById(event.target.closest("[data-page-id]").dataset.pageId));
     else if (action === "home") navigateHome();
     else if (action === "export") exportWiki();
-    else if (action === "import") elements.importFile.click();
+    else if (action === "import" && canEdit) elements.importFile.click();
     else if (action === "copy-link") copyPageLink();
     else if (action === "clear-filters") {
       filters.search = "";

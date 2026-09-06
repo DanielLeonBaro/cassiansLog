@@ -2,6 +2,8 @@
 import { applySectionVisibility, sectionConfigReady } from "./sections.js";
 import { currentSession, logout } from "./auth-client.js";
 import { mountAccountMenu } from "./account-menu.js";
+import { campaignPagePath, currentCampaign, currentCampaignSlug } from "./campaign-context.js";
+import { enableLocalRoutes } from "./local-routes.js";
 
 const linkClass = "inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-bold shadow-sm transition";
 const idleClass = "border-stone-400 bg-white/70 text-stone-700 hover:border-blood-500 hover:text-blood-500 dark:border-white/20 dark:bg-white/5 dark:text-stone-200";
@@ -9,6 +11,7 @@ const activeClass = "border-blood-500 bg-blood-500 text-white";
 const menuItemClass = "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-blood-500 transition hover:bg-blood-500/10";
 
 const pages = [
+  { id: "campaigns", href: "campaigns", icon: "bi-collection-fill", label: "Campaigns" },
   { id: "characters", href: "char/", icon: "bi-people-fill", label: "Characters" },
   { id: "player-screen", href: "player-screen/", icon: "bi-grid-fill", label: "Player Screen" },
   { id: "dm-screen", href: "dm-screen/", icon: "bi-shield-shaded", label: "DM Screen" },
@@ -18,12 +21,14 @@ const pages = [
   { id: "public-initiative", href: "public-initiative/", icon: "bi-list-ol", label: "Public Initiative" },
   { id: "music", href: "music/", icon: "bi-music-note-beamed", label: "Music" },
   { id: "admin", href: "admin/", icon: "bi-shield-lock-fill", label: "Admin" },
+  { id: "campaign-manage", href: "manage", icon: "bi-gear-fill", label: "Manage Campaign" },
 ];
 
 const trackerPageOrder = ["characters", "player-screen", "dm-screen", "compendium", "wiki", "combat-loot", "public-initiative", "music", "admin"];
 
 function pageMenuLink(page) {
-  return `<a class="${menuItemClass}" href="${page.href}" data-section-link="${page.id}" data-role-link="${page.id}">
+  const href = ["campaigns", "admin"].includes(page.id) ? `/${page.href.replace(/^\/+/, "")}` : campaignPagePath(page.href);
+  return `<a class="${menuItemClass}" href="${href}" data-section-link="${page.id}" data-role-link="${page.id}">
     <i class="bi ${page.icon}"></i>${page.label}
   </a>`;
 }
@@ -65,6 +70,7 @@ function initializePageMenu(mount) {
 }
 
 export function mountSiteHeader({ activePage, actions = "", tracker = false } = {}) {
+  enableLocalRoutes();
   const mount = document.querySelector("[data-site-header]");
   if (!mount) return;
   const orderedPages = tracker
@@ -78,19 +84,21 @@ export function mountSiteHeader({ activePage, actions = "", tracker = false } = 
     <button id="site-pages-menu-button" type="button" class="${linkClass} ${activeClass}" aria-expanded="false" aria-controls="site-pages-menu"><i class="bi bi-grid-fill"></i><span class="hidden sm:inline">Pages</span></button>
     <div id="site-pages-menu" class="absolute left-0 z-50 mt-2 hidden min-w-56 rounded-2xl border border-stone-200 bg-white p-2 shadow-2xl dark:border-white/10 dark:bg-stone-900" aria-labelledby="site-pages-menu-button">${menuItems}</div>
   </div>`;
-  const home = `<a class="flex h-10 shrink-0 items-center gap-2 font-display text-lg font-semibold hover:text-blood-500" href="char/" aria-label="Cassian's Log home"><i class="bi bi-journal-bookmark-fill text-blood-500"></i><span class="hidden sm:inline">Cassian's Log</span></a>`;
+  const slug = currentCampaignSlug();
+  const homeHref = slug ? campaignPagePath("char") : "/campaigns/";
+  const home = `<a class="flex h-10 shrink-0 items-center gap-2 font-display text-lg font-semibold hover:text-blood-500" href="${homeHref}" aria-label="Cassian's Log home"><i class="bi bi-journal-bookmark-fill text-blood-500"></i><span class="hidden sm:inline">Cassian's Log</span></a>`;
   mount.className = "sticky top-0 z-30 border-b border-stone-300/70 bg-parchment/90 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-ink/90";
   mount.setAttribute("aria-label", tracker ? "Character tools" : "Site navigation");
   const startActions = typeof actions === "string" ? actions : actions.start || "";
   const endActions = typeof actions === "string" ? "" : actions.end || "";
   mount.innerHTML = `<div class="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-2 sm:flex-nowrap sm:gap-3 sm:px-6 lg:px-8">
-    <div class="flex min-w-0 flex-wrap items-center gap-2">${home}${pagesMenu}${startActions}</div>
+    <div class="flex min-w-0 flex-wrap items-center gap-2">${home}${pagesMenu}<a id="site-campaign" href="/campaigns/" class="hidden max-w-48 truncate text-sm font-bold text-blood-500"></a>${startActions}</div>
     <div class="flex shrink-0 items-center gap-2">${endActions}<div id="page-header-actions"></div><button id="site-account" type="button" class="${linkClass} ${idleClass}" aria-label="Open my account settings"><i class="bi bi-person-circle"></i><span>Me</span></button><button id="site-logout" type="button" class="${linkClass} ${idleClass}" aria-label="Sign out"><i class="bi bi-box-arrow-right"></i><span class="hidden md:inline">Sign out</span></button><button id="theme-toggle" type="button" class="${linkClass} ${idleClass}" aria-label="Switch theme"><i id="theme-icon" class="bi bi-sun-fill"></i></button></div>
   </div>`;
   applySectionVisibility(mount);
   initializePageMenu(mount);
   mount.querySelector("#site-logout")?.addEventListener("click", logout);
-  currentSession().then(({ user }) => {
+  Promise.all([currentSession(), currentCampaign().catch(() => null)]).then(([{ user }, campaign]) => {
     if (!user) return;
     const account = mount.querySelector("#site-account");
     mountAccountMenu(account, user);
@@ -99,8 +107,22 @@ export function mountSiteHeader({ activePage, actions = "", tracker = false } = 
     });
     account.title = user.email;
     // Page-level shortcuts use the same role contract as links inside the header.
+    const campaignRole = campaign?.role;
+    const campaignLabel = mount.querySelector("#site-campaign");
+    if (campaign && campaignLabel) {
+      campaignLabel.textContent = campaign.name;
+      campaignLabel.title = `Switch from ${campaign.name}`;
+      campaignLabel.classList.remove("hidden");
+    }
     document.querySelectorAll("[data-role-link]").forEach((link) => {
-      const allowed = user.roles.includes(link.dataset.roleLink);
+      const id = link.dataset.roleLink;
+      const allowed = campaign
+        ? id === "admin" ? user.isPrimaryAdmin
+          : id === "campaign-manage" ? ["dm", "admin"].includes(campaignRole)
+            : id !== "dm-screen" || ["dm", "admin"].includes(campaignRole)
+        : id === "campaign-manage" ? false
+          : id === "admin" ? user.isPrimaryAdmin
+            : id === "campaigns" || user.roles.includes(id);
       link.hidden = !allowed;
       if (!allowed) link.style.setProperty("display", "none", "important");
     });

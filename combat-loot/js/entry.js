@@ -7,4 +7,4 @@ import { initializeCombatLoot } from "./page.js";
 mountSiteHeader({ activePage: "combat-loot" });
 initializeTheme();
 initializeDiceRoller();
-initializeCombatLoot();
+await initializeCombatLoot();

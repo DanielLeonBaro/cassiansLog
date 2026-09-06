@@ -1,6 +1,7 @@
 // Loads normalized runtime settings with localhost and deployment fallbacks.
 import { writeCloudJSON } from "./cloud-store.js";
 import { isLocalRuntimeHost } from "./runtime-host.js";
+import { campaignApiPath, campaignStorageKey, currentCampaignSlug } from "./campaign-context.js";
 
 export { isLocalRuntimeHost } from "./runtime-host.js";
 
@@ -48,7 +49,7 @@ export function normalizeRuntimeSettings(config) {
 
 function localSettings(storage = globalThis.localStorage) {
   try {
-    const stored = JSON.parse(storage?.getItem(LOCAL_RUNTIME_SETTINGS_KEY) || "null");
+    const stored = JSON.parse(storage?.getItem(campaignStorageKey(LOCAL_RUNTIME_SETTINGS_KEY, storage)) || "null");
     return stored && typeof stored === "object" && !Array.isArray(stored) ? stored : null;
   } catch (error) {
     console.warn("Local runtime settings could not be read; using bundled settings.", error);
@@ -62,7 +63,7 @@ export function persistLocalRuntimeSettings(config, storage = globalThis.localSt
     ...config,
     updatedAt: new Date().toISOString(),
   });
-  storage.setItem(LOCAL_RUNTIME_SETTINGS_KEY, JSON.stringify({
+  storage.setItem(campaignStorageKey(LOCAL_RUNTIME_SETTINGS_KEY, storage), JSON.stringify({
     sections: settings.sections,
     characterSheetStyle: settings.characterSheetStyle,
     characterSheetStyleOverrides: settings.characterSheetStyleOverrides,
@@ -90,9 +91,10 @@ async function localRuntimeSettings() {
 
 async function remoteRuntimeSettings() {
   try {
-    const response = await fetch("api/settings", { headers: { accept: "application/json" } });
+    const response = await fetch(campaignApiPath("api/settings"), { headers: { accept: "application/json" } });
     if (!response.ok) throw new Error(`Could not load dynamic settings (${response.status}).`);
-    return normalizeRuntimeSettings(await response.json());
+    const body = await response.json();
+    return normalizeRuntimeSettings(body.settings || body);
   } catch (error) {
     console.warn("Dynamic settings are unavailable; loading bundled settings.", error);
     try {
@@ -104,7 +106,7 @@ async function remoteRuntimeSettings() {
   }
 }
 
-export const runtimeSettingsReady = isLocalRuntimeHost()
+export const runtimeSettingsReady = isLocalRuntimeHost() && !currentCampaignSlug()
   ? localRuntimeSettings()
   : remoteRuntimeSettings();
 

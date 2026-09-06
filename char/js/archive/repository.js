@@ -68,14 +68,17 @@ export async function listCharacters() {
     getJSON(new URL(`../../${encodeURIComponent(id)}/character.json`, import.meta.url)),
   ));
   const cloud = await readCloudJSON("api/characters", { fallback: null });
-  const bundled = Array.isArray(cloud?.characters) && cloud.characters.length
-    ? cloud.characters.map(({ document }) => ({
+  const cloudIsAuthoritative = cloud?.authoritative === true
+    || Boolean(Array.isArray(cloud?.characters) && cloud.characters.length);
+  const bundled = cloudIsAuthoritative
+    ? cloud.characters.map(({ document, canEdit, canManage }) => ({
       ...document,
       custom: !isBundledCharacter(document.id, catalog),
+      canEdit,
+      canManage,
     }))
     : staticBundled.map((character) => ({ ...character, custom: false }));
   const saved = storedCharacters();
-  const cloudIsAuthoritative = Array.isArray(cloud?.characters) && cloud.characters.length;
   const deleted = new Set(readJSON(DELETED_KEY, []));
   const bundledIds = new Set(bundled.map((character) => character.id));
   const characters = bundled

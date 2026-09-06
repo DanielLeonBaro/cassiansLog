@@ -5,8 +5,9 @@ import { mountSiteHeader } from "../../../shared/js/site-header.js";
 import { createCharacterCard } from "./cards.js";
 import { createCharacter, listCharacters, removeCharacter } from "./repository.js";
 import { initializeDiceRoller } from "../../../shared/js/dice/index.js";
+import { campaignCanManage, campaignPagePath, currentCampaignSlug } from "../../../shared/js/campaign-context.js";
 
-export function initializeCharacterArchive() {
+export async function initializeCharacterArchive() {
   mountSiteHeader({ activePage: "characters" });
   initializeTheme();
   initializeDiceRoller();
@@ -21,6 +22,7 @@ export function initializeCharacterArchive() {
   const fallbackPortrait = "shared/assets/bat.ico";
   let portrait = fallbackPortrait;
   let creating = false;
+  const canManage = currentCampaignSlug() ? await campaignCanManage() : true;
   const controller = createDialogController(dialog, {
     form,
     initialFocus: nameInput,
@@ -41,6 +43,7 @@ export function initializeCharacterArchive() {
     try {
       const characters = await listCharacters();
       container.replaceChildren(...characters.map((character) => createCharacterCard(character, {
+        canRemove: canManage,
         async onRemove(item) {
           if (!confirm(`Remove ${item.name}? The character will be hidden from the shared cloud list.`)) return;
           try {
@@ -96,7 +99,7 @@ export function initializeCharacterArchive() {
         alert("The character was created in this browser, but could not be saved to the shared cloud database. Save it again from the editor to retry.");
       }
       const id = result.character.id;
-      location.href = `char/${encodeURIComponent(id)}/?new=1&edit=1`;
+      location.href = `${campaignPagePath("char")}${encodeURIComponent(id)}/?new=1&edit=1`;
     } catch (error) {
       console.error("Could not create character:", error);
       creating = false;

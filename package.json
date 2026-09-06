@@ -12,6 +12,7 @@
     "build:compendium-cleanup-sql": "node compendium/scripts/build-d1-cleanup.cjs",
     "clean:compendium": "node compendium/scripts/clean-data.cjs",
     "import:wiki": "node wiki/scripts/import.cjs",
+    "diff:wiki": "node wiki/scripts/content-diff/check-new-content.cjs",
     "test:browser": "node shared/tests/browser-smoke.test.cjs",
     "test": "node shared/tests/run.cjs"
   },

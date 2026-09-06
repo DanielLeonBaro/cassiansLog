@@ -50,7 +50,7 @@ async function userWithProviders(request, env) {
 }
 
 function accountRedirect(origin, message, failed = false) {
-  const target = new URL("/char/", origin);
+  const target = new URL("/campaigns/", origin);
   target.searchParams.set(failed ? "account_error" : "account", message);
   return Response.redirect(target.toString(), 302);
 }
@@ -164,7 +164,7 @@ async function finishOAuth(request, provider, env) {
         "INSERT OR IGNORE INTO oauth_accounts (provider, provider_user_id, user_id, created_at) VALUES (?, ?, ?, ?)",
       ).bind(provider, identity.providerUserId, user.id, new Date().toISOString()).run();
       const cookie = await createSession(user.id, env);
-      return new Response(null, { status: 302, headers: { location: `${origin}/char/`, "set-cookie": cookie } });
+      return new Response(null, { status: 302, headers: { location: `${origin}/campaigns/`, "set-cookie": cookie } });
     }
     const signupToken = await createOpaqueState("social-signup", { ...identity, provider }, env, 15);
     return Response.redirect(`${origin}/login/?social=${encodeURIComponent(signupToken)}&email=${encodeURIComponent(identity.email)}`, 302);

@@ -1,4 +1,5 @@
-// Wraps authenticated JSON reads and writes with write-token compatibility.
+// Wraps authenticated JSON reads and writes with campaign and write-token compatibility.
+import { campaignApiPath, currentCampaignSlug } from "./campaign-context.js";
 const TOKEN_KEY = "cassianslog-write-token";
 
 export class CloudStoreError extends Error {
@@ -20,7 +21,7 @@ async function responseError(response) {
 
 export async function readCloudJSON(path, { fallback = null } = {}) {
   try {
-    const response = await fetch(path, { headers: { accept: "application/json" } });
+    const response = await fetch(campaignApiPath(path), { headers: { accept: "application/json" } });
     if (response.status === 404 || response.status === 503) return fallback;
     if (!response.ok) throw new CloudStoreError(await responseError(response), { status: response.status });
     return response.json();
@@ -45,6 +46,16 @@ export function clearCloudEditToken() {
 }
 
 export async function writeCloudJSON(path, value, { method = "PUT" } = {}) {
+  const requestPath = campaignApiPath(path);
+  if (currentCampaignSlug()) {
+    const response = await fetch(requestPath, {
+      method,
+      headers: { accept: "application/json", "content-type": "application/json" },
+      body: value === undefined ? undefined : JSON.stringify(value),
+    });
+    if (!response.ok) throw new CloudStoreError(await responseError(response), { status: response.status });
+    return response.json();
+  }
   let token = editToken();
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -53,7 +64,7 @@ export async function writeCloudJSON(path, value, { method = "PUT" } = {}) {
       "content-type": "application/json",
     };
     if (token) headers.authorization = `Bearer ${token}`;
-    const response = await fetch(path, {
+    const response = await fetch(requestPath, {
       method,
       headers,
       body: value === undefined ? undefined : JSON.stringify(value),

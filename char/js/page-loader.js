@@ -10,12 +10,13 @@ import {
   PENDING_CHARACTER_STORAGE_KEY,
 } from "./storage-keys.js";
 import { applyCharacterSheetLayout } from "./tracker/layout.js";
+import { currentCampaignSlug } from "../../shared/js/campaign-context.js";
 
 export function initializeCharacterPage() {
   const loaderScript = document.querySelector("script[data-character]");
   const bundledCharacter = loaderScript?.dataset.character;
   const params = new URLSearchParams(window.location.search);
-  const routeMatch = window.location.pathname.match(/\/char\/([^/]+)\/?$/i);
+  const routeMatch = window.location.pathname.match(/(?:\/c\/[a-z]{2,48})?\/char\/([^/]+)\/?$/i);
   const routeCharacter = routeMatch ? decodeURIComponent(routeMatch[1]) : "";
   const requestedCharacter = params.get("character") || (
     bundledCharacter === "template" && routeCharacter !== "template"
@@ -112,6 +113,12 @@ export function initializeCharacterPage() {
         `api/characters/${encodeURIComponent(characterName)}`,
         { fallback: null },
       );
+      if (currentCampaignSlug() && !cloudCharacter?.document) {
+        throw new Error("This character is not active in this campaign.");
+      }
+      document.body.dataset.characterCanEdit = String(cloudCharacter?.canEdit !== false);
+      document.body.dataset.characterCanManage = String(cloudCharacter?.canManage !== false);
+      if (cloudCharacter?.canEdit === false) document.getElementById("notesSection")?.remove();
       const characterDataURL = characterShell === "template"
         ? new URL("../template/character.json", import.meta.url)
         : new URL(`../${encodeURIComponent(characterShell)}/character.json`, import.meta.url);

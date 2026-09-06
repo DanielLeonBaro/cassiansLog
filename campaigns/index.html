@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<!-- Campaign discovery, joining, and creation hub. -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <base href="/">
+  <title>Campaigns | Cassian's Log</title>
+  <script src="shared/js/theme-bootstrap.js"></script>
+  <link rel="stylesheet" href="shared/assets/icons/bootstrap-icons.css">
+  <link rel="stylesheet" href="shared/assets/tailwind.css">
+  <link rel="icon" href="shared/assets/bat.ico">
+</head>
+<body class="flex min-h-screen flex-col bg-parchment font-sans text-stone-900 antialiased dark:bg-ink dark:text-stone-100">
+  <nav data-site-header></nav>
+  <main class="mx-auto w-full max-w-7xl grow px-4 py-8 sm:px-6 lg:px-8">
+    <header class="mb-8">
+      <span class="inline-flex rounded-full bg-blood-500 px-3 py-1 text-xs font-bold text-white">Campaign archive</span>
+      <h1 class="mt-3 font-display text-4xl font-bold sm:text-5xl">Choose your campaign</h1>
+      <p class="mt-2 max-w-2xl text-stone-500 dark:text-stone-400">Open campaigns you joined, enter another campaign's password once, or create a new campaign.</p>
+    </header>
+    <p id="campaign-status" class="mb-5 min-h-6 text-sm text-stone-500" role="status" aria-live="polite"></p>
+    <section id="campaign-list" class="grid gap-5 md:grid-cols-2 xl:grid-cols-3" aria-label="Campaigns"></section>
+    <section class="mt-10 rounded-2xl border border-stone-300 bg-white/70 p-5 shadow-card dark:border-white/10 dark:bg-white/[.05]">
+      <h2 class="font-display text-2xl font-bold">Create campaign</h2>
+      <p class="mt-1 text-sm text-stone-500">You become its first DM. New campaigns start empty except for default settings and the character template.</p>
+      <form id="campaign-create" class="mt-5 grid gap-4 md:grid-cols-2">
+        <label><span class="mb-1 block text-sm font-bold">Campaign name</span><input name="name" required maxlength="80" class="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 dark:border-white/15 dark:bg-white/5"></label>
+        <label><span class="mb-1 block text-sm font-bold">URL slug</span><input name="slug" pattern="[a-z]{2,48}" maxlength="48" class="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 font-mono lowercase dark:border-white/15 dark:bg-white/5" placeholder="generatedfromname"><small class="mt-1 block text-stone-500">Optional. Lowercase a-z only; permanent unless the site Admin changes it.</small></label>
+        <label class="md:col-span-2"><span class="mb-1 block text-sm font-bold">Short description</span><textarea name="description" maxlength="280" rows="3" class="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 dark:border-white/15 dark:bg-white/5" placeholder="What is this campaign about?"></textarea></label>
+        <label><span class="mb-1 block text-sm font-bold">Banner image</span><input id="campaign-create-banner" type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="block w-full text-sm"><small class="mt-1 block text-stone-500">Optional. Maximum 500 KB.</small></label>
+        <label><span class="mb-1 block text-sm font-bold">Join password</span><input name="password" required minlength="6" maxlength="128" type="password" autocomplete="new-password" class="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 dark:border-white/15 dark:bg-white/5"><small class="mt-1 block text-stone-500">6 or more characters.</small></label>
+        <img id="campaign-create-banner-preview" alt="Campaign banner preview" class="hidden max-h-48 w-full rounded-xl object-cover md:col-span-2">
+        <div class="md:col-span-2"><button class="rounded-xl bg-blood-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-blood-600" type="submit"><i class="bi bi-plus-circle mr-2"></i>Create campaign</button></div>
+      </form>
+    </section>
+  </main>
+  <script type="module" src="campaigns/js/hub.js"></script>
+</body>
+</html>

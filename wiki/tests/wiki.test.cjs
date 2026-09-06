@@ -84,7 +84,7 @@ const { pathToFileURL } = require("node:url");
   const wikiMarkdown = fs.readFileSync("wiki/js/markdown.js", "utf8");
   const wikiHTML = fs.readFileSync("wiki/index.html", "utf8");
   assert.ok(!wikiScript.includes('href="#page='), "Wiki links must remain under the wiki base path");
-  assert.match(wikiRouting, /`\/wiki\/\$\{encodeURIComponent\(id\)\}`/, "Wiki links should use clean paths");
+  assert.match(wikiRouting, /campaignPagePath\("wiki"\)/, "Wiki links should use campaign-aware clean paths");
   assert.match(wikiScript, /history\.replaceState/, "Legacy links should be canonicalized in place");
   assert.match(wikiScript, /compactWikiPageId\(name\)/, "Editor saves should derive IDs from titles");
   assert.match(wikiHTML, /Formatting guide/, "The page editor should include its formatting guide");

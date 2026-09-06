@@ -4,6 +4,7 @@ import { createDialogController } from "../../shared/js/dialog.js";
 import { createImageModalController } from "../../shared/js/image-modal.js";
 import { isLocalRuntimeHost } from "../../shared/js/runtime-host.js";
 import { cloneJSON, escapeAttribute, escapeHTML, normalizeText } from "../../shared/js/text.js";
+import { currentCampaign, currentCampaignSlug } from "../../shared/js/campaign-context.js";
 import {
   compendiumReferenceSnapshot,
   filterScreenCompendium,
@@ -42,10 +43,13 @@ import {
 const TYPE_ORDER = ["character", "party", "manual", "compendium", "note", "initiative", "calculator"];
 
 export async function initializeScreen(kind) {
-  const local = isLocalRuntimeHost();
+  const local = isLocalRuntimeHost() && !currentCampaignSlug();
   const { user } = await currentSession();
   if (!user) return;
-  const roles = user.roles || [];
+  const campaign = currentCampaignSlug() ? await currentCampaign() : null;
+  const roles = campaign
+    ? ["characters", "player-screen", "combat-loot", "public-initiative", "music", "compendium", "wiki", ...(["dm", "admin"].includes(campaign.role) ? ["dm-screen"] : [])]
+    : user.roles || [];
   let documentValue = createEmptyScreen();
   let characters = [];
   let initiative = [];

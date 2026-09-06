@@ -4,6 +4,7 @@ import { publicSettings } from "./settings.js";
 import { adminRoute } from "./routes/admin.js";
 import { characterRoute, listCharacters } from "./routes/characters.js";
 import { combatRoute } from "./routes/combat-loot.js";
+import { campaignRoute } from "./routes/campaigns.js";
 import { compendiumCatalog, compendiumCategory } from "./routes/compendium.js";
 import { musicRoute } from "./routes/music.js";
 import { publicInitiativeRoute } from "./routes/public-initiative.js";
@@ -12,6 +13,7 @@ import { wikiRoute } from "./routes/wiki.js";
 import { authRoute } from "./routes/auth.js";
 import { themeCatalogRoute } from "./routes/themes.js";
 import { ensurePrimaryAdmin, hasRole, isLocalRequest, userFromRequest } from "./user-auth.js";
+import { campaignAccess, canManageCampaign, LEGACY_CAMPAIGN_SLUG } from "./campaigns.js";
 
 const PUBLIC_ASSET_PATTERN = /\.(?:css|js|mjs|png|jpe?g|gif|webp|svg|ico|woff2?|map)$/i;
 const PAGE_ROLES = [
@@ -59,7 +61,8 @@ async function staticAsset(request, env, url) {
     const user = await userFromRequest(request, env);
     if (!user) return loginRedirect(url);
     const role = requiredPageRole(url.pathname);
-    if (role && !hasRole(user, role)) {
+    const campaignsReady = await campaignStorageReady(env);
+    if (role && (role === "admin" || !campaignsReady) && !hasRole(user, role)) {
       const fallback = new URL("/char/", url);
       fallback.searchParams.set("access", "denied");
       return Response.redirect(fallback.toString(), 302);
@@ -68,7 +71,57 @@ async function staticAsset(request, env, url) {
     return Response.redirect(new URL("/char/", url).toString(), 302);
   } else if ((url.pathname === "/login" || url.pathname === "/login/") && env.DB) {
     await ensurePrimaryAdmin(env);
-    if (await userFromRequest(request, env)) return Response.redirect(new URL("/char/", url).toString(), 302);
+    if (await userFromRequest(request, env)) {
+      const destination = await campaignStorageReady(env) ? "/campaigns/" : "/char/";
+      return Response.redirect(new URL(destination, url).toString(), 302);
+    }
+  }
+
+  if (await campaignStorageReady(env)) {
+    if (url.pathname === "/") return Response.redirect(new URL("/campaigns/", url).toString(), 302);
+    const campaignMatch = /^\/c\/([a-z]{2,48})(?:\/(.*))?$/.exec(url.pathname);
+    if (campaignMatch) {
+      const access = await campaignAccess(request, env, campaignMatch[1]);
+      if (access.response) {
+        const destination = new URL("/campaigns/", url);
+        if (access.response.status === 403) destination.searchParams.set("join", campaignMatch[1]);
+        return access.response.status === 401 ? loginRedirect(url) : Response.redirect(destination.toString(), 302);
+      }
+      const tail = campaignMatch[2] || "";
+      if (access.canonicalSlug !== campaignMatch[1]) {
+        return Response.redirect(new URL(`/c/${access.canonicalSlug}/${tail}`, url).toString(), 301);
+      }
+      if (!tail) return Response.redirect(new URL(`/c/${access.canonicalSlug}/char/`, url).toString(), 302);
+      const segments = tail.split("/").filter(Boolean);
+      const feature = segments[0];
+      if (["dm-screen", "manage"].includes(feature) && !canManageCampaign(access)) {
+        return Response.redirect(new URL(`/c/${access.canonicalSlug}/char/?access=denied`, url).toString(), 302);
+      }
+      const shells = {
+        "combat-loot": "/combat-loot/",
+        compendium: "/compendium/",
+        "dm-screen": "/dm-screen/",
+        manage: "/campaigns/manage.html",
+        music: "/music/",
+        "player-screen": "/player-screen/",
+        "public-initiative": "/public-initiative/",
+        wiki: "/wiki/",
+      };
+      const shell = feature === "char"
+        ? (segments.length > 1 ? "/char/template/" : "/char/")
+        : shells[feature];
+      if (!shell) return error("Campaign page not found.", 404);
+      const shellURL = new URL(shell, url);
+      shellURL.search = url.search;
+      return env.ASSETS.fetch(new Request(shellURL.toString(), request));
+    }
+
+    const legacyMatch = /^\/(char|wiki|music|combat-loot|public-initiative|player-screen|dm-screen)(?:\/|$)/.test(url.pathname);
+    if (legacyMatch) {
+      const access = await campaignAccess(request, env, LEGACY_CAMPAIGN_SLUG);
+      if (!access.response) return Response.redirect(new URL(`/c/${LEGACY_CAMPAIGN_SLUG}${url.pathname}${url.search}`, url).toString(), 302);
+      return Response.redirect(new URL(`/campaigns/?join=${LEGACY_CAMPAIGN_SLUG}`, url).toString(), 302);
+    }
   }
   const response = await env.ASSETS.fetch(request);
   if (response.status !== 404 || request.method !== "GET") return response;
@@ -83,6 +136,31 @@ async function staticAsset(request, env, url) {
     return env.ASSETS.fetch(new Request(wikiURL.toString(), request));
   }
   return response;
+}
+
+async function campaignStorageReady(env) {
+  try {
+    return Boolean(await env.DB.prepare("SELECT id FROM campaigns WHERE id = 'campaign-breugaire'").first());
+  } catch {
+    return false;
+  }
+}
+
+async function legacyCampaignApi(request, env, url) {
+  if (!await campaignStorageReady(env)) return null;
+  const routes = [
+    ["/api/characters", "characters"],
+    ["/api/combat-loot", "combat-loot"],
+    ["/api/public-initiative", "public-initiative"],
+    ["/api/screens", "screens"],
+    ["/api/settings", "settings"],
+    ["/api/music", "music"],
+    ["/api/wiki", "wiki"],
+  ];
+  const match = routes.find(([prefix]) => url.pathname === prefix || url.pathname.startsWith(`${prefix}/`));
+  if (!match) return null;
+  const tail = url.pathname.slice(match[0].length).split("/").filter(Boolean).map(decodeURIComponent);
+  return campaignRoute(request, env, [LEGACY_CAMPAIGN_SLUG, match[1], ...tail]);
 }
 
 export async function handleRequest(request, env) {
@@ -109,18 +187,24 @@ export async function handleRequest(request, env) {
       const parts = url.pathname.slice("/api/auth".length).split("/").filter(Boolean).map(decodeURIComponent);
       return authRoute(request, env, parts);
     }
+    if (url.pathname === "/api/campaigns" || url.pathname.startsWith("/api/campaigns/")) {
+      const parts = url.pathname.slice("/api/campaigns".length).split("/").filter(Boolean).map(decodeURIComponent);
+      return campaignRoute(request, env, parts);
+    }
     if (!isLocalRequest(request) && env.AUTH_REQUIRED !== "false" && !url.pathname.startsWith("/api/admin")) {
       const user = await userFromRequest(request, env);
       if (!user) return error("Sign in required.", 401);
       const role = requiredApiRole(url.pathname);
-      if (role && !hasRole(user, role)) return error("Your account cannot access this resource.", 403);
+      if (role && !await campaignStorageReady(env) && !hasRole(user, role)) return error("Your account cannot access this resource.", 403);
     }
-    if (url.pathname === "/api/settings" && request.method === "GET") return publicSettings(env);
     if (url.pathname === "/api/themes" && request.method === "GET") return themeCatalogRoute(env);
     if (url.pathname === "/api/admin" || url.pathname.startsWith("/api/admin/")) {
       const parts = url.pathname.slice("/api/admin".length).split("/").filter(Boolean).map(decodeURIComponent);
       return adminRoute(request, env, parts);
     }
+    const legacyCampaignResponse = await legacyCampaignApi(request, env, url);
+    if (legacyCampaignResponse) return legacyCampaignResponse;
+    if (url.pathname === "/api/settings" && request.method === "GET") return publicSettings(env);
     if (url.pathname === "/api/compendium/catalog" && request.method === "GET") {
       return compendiumCatalog(env);
     }

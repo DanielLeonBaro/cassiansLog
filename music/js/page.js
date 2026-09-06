@@ -19,8 +19,10 @@ import {
   suggestedMusicTags,
   visibleMusicTracks,
 } from "./library-view.js";
+import { campaignCanManage, currentCampaignSlug } from "../../shared/js/campaign-context.js";
 
-export function initializeMusic() {
+export async function initializeMusic() {
+  const canEdit = currentCampaignSlug() ? await campaignCanManage() : true;
   const form = document.getElementById("track-form");
   const list = document.getElementById("track-list");
   const empty = document.getElementById("empty-library");
@@ -146,7 +148,7 @@ export function initializeMusic() {
     tagFilters.innerHTML = renderMusicTagFilters(allMusicTags(tracks), activeTag);
     const visible = visibleMusicTracks(tracks, { activeTag, search: search.value });
     empty.classList.toggle("hidden", visible.length > 0);
-    list.innerHTML = renderMusicTrackCards(visible, cloudReady);
+    list.innerHTML = renderMusicTrackCards(visible, cloudReady && canEdit);
   }
 
   form.addEventListener("submit", (event) => {
@@ -237,7 +239,7 @@ export function initializeMusic() {
     showNotice("Using this browser's Music data because D1 could not be reached.", true);
   }).finally(() => {
     cloudReady = true;
-    setEditingDisabled(false);
+    setEditingDisabled(!canEdit);
     render();
   });
 }

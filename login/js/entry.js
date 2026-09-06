@@ -69,7 +69,7 @@ form.addEventListener("submit", async (event) => {
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(body.error || "Authentication failed.");
     const returnTo = params.get("return");
-    location.replace(returnTo?.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "char/");
+    location.replace(returnTo?.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/campaigns/");
   } catch (caught) {
     status.textContent = caught.message;
   } finally {

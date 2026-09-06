@@ -32,6 +32,7 @@ import {
   fieldTitle as title,
 } from "./field-schema.js";
 import { createCharacterFieldRenderer } from "./field-renderer.js";
+import { currentCampaignSlug } from "../../../shared/js/campaign-context.js";
 
 export function initializeCharacterEditor({ character, normalizeSpellcastingData, refreshUI }) {
   const params = new URLSearchParams(location.search);
@@ -118,12 +119,13 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
   }
 
   function renderAdvanced() {
+    const canManage = document.body.dataset.characterCanManage !== "false";
     const metadataKeys = ["bundledUpdate", "bundledUpdateVersions"].filter((key) => draft[key] !== undefined);
     const customKeys = Object.keys(draft).filter((key) => !sectionTopLevelKeys.has(key));
     return `<div class="space-y-6">
       <div class="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-stone-700 dark:text-stone-200"><strong class="block">Advanced character data</strong><span class="mt-1 block">Technical IDs are read-only. Custom fields remain editable so homebrew data is never discarded.</span></div>
-      <section class="${classes.panel}"><h3 class="font-display text-lg font-bold">Character tracker layout</h3><p class="mt-1 text-sm text-stone-500 dark:text-stone-400">This choice applies only to ${escapeHTML(draft.name || "this character")}.</p><label class="mt-4 block"><span class="mb-1 block text-xs font-bold text-stone-500 dark:text-stone-400">Style</span><select id="editor-character-sheet-style" class="${classes.field}"><option value="v1" ${draftStyle === "v1" ? "selected" : ""}>Style v1</option><option value="v2" ${draftStyle === "v2" ? "selected" : ""}>Style v2</option></select></label>${renderV1SectionOrder()}</section>
-      <section class="${classes.panel}"><h3 class="mb-4 font-display text-lg font-bold">Character ID</h3>${renderPrimitive(draft.id, ["id"], "id")}</section>
+      ${canManage ? `<section class="${classes.panel}"><h3 class="font-display text-lg font-bold">Character tracker layout</h3><p class="mt-1 text-sm text-stone-500 dark:text-stone-400">This choice applies only to ${escapeHTML(draft.name || "this character")}.</p><label class="mt-4 block"><span class="mb-1 block text-xs font-bold text-stone-500 dark:text-stone-400">Style</span><select id="editor-character-sheet-style" class="${classes.field}"><option value="v1" ${draftStyle === "v1" ? "selected" : ""}>Style v1</option><option value="v2" ${draftStyle === "v2" ? "selected" : ""}>Style v2</option></select></label>${renderV1SectionOrder()}</section>` : ""}
+      <section class="${classes.panel}"><h3 class="mb-4 font-display text-lg font-bold">Character ID</h3>${renderPrimitive(draft.id, ["id"], "id", { readOnly: !canManage })}</section>
       ${metadataKeys.length ? `<section class="${classes.panel}"><h3 class="mb-4 font-display text-lg font-bold">System metadata</h3><div class="space-y-4">${metadataKeys.map((key) => renderPrimitive(JSON.stringify(draft[key], null, 2), [key], key, { readOnly: true })).join("")}</div></section>` : ""}
       <section class="${classes.panel}"><h3 class="mb-1 font-display text-lg font-bold">Custom fields</h3><p class="mb-4 text-sm text-stone-500 dark:text-stone-400">Fields outside the standard character schema appear here.</p>${customKeys.length ? `<div class="space-y-4">${customKeys.map((key) => renderNode(draft[key], [key], key)).join("")}</div>` : '<p class="rounded-xl border border-dashed border-stone-300 px-4 py-6 text-center text-sm text-stone-500 dark:border-white/15">No custom fields on this character.</p>'}</section>
     </div>`;
@@ -465,11 +467,14 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     refreshUI();
     try {
       const bundledId = document.body.dataset.characterShell;
+      if (oldId !== character.id && currentCampaignSlug()) {
+        await writeCloudJSON(`api/characters/${encodeURIComponent(oldId)}/id`, { id: character.id });
+      }
       await writeCloudJSON(`api/characters/${encodeURIComponent(character.id)}`, {
         document: clone(character),
         source: bundledId && bundledId !== "template" ? "bundled" : "custom",
       });
-      if (oldId !== character.id) {
+      if (oldId !== character.id && !currentCampaignSlug()) {
         await writeCloudJSON(`api/characters/${encodeURIComponent(oldId)}`, undefined, { method: "DELETE" });
       }
     } catch (error) {

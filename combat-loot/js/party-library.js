@@ -2,6 +2,7 @@
 import { readJSON, writeJSON } from "../../shared/js/storage.js";
 import { cloneJSON } from "../../shared/js/text.js";
 import { normalizeCharacterName } from "./model.js";
+import { campaignStorageKey } from "../../shared/js/campaign-context.js";
 
 export const PARTY_LIBRARY_VERSION = 1;
 export const PARTY_LIBRARY_STORAGE_KEY = "dnd-combat-loot-party-library-v1";
@@ -75,7 +76,7 @@ export function normalizePartyLibrary(value) {
 function readStored(storage) {
   if (!storage) return readJSON(PARTY_LIBRARY_STORAGE_KEY, null);
   try {
-    const value = storage.getItem(PARTY_LIBRARY_STORAGE_KEY);
+    const value = storage.getItem(campaignStorageKey(PARTY_LIBRARY_STORAGE_KEY, storage));
     return value === null ? null : JSON.parse(value);
   } catch {
     return null;
@@ -83,7 +84,7 @@ function readStored(storage) {
 }
 
 function writeStored(value, storage) {
-  if (storage) storage.setItem(PARTY_LIBRARY_STORAGE_KEY, JSON.stringify(value));
+  if (storage) storage.setItem(campaignStorageKey(PARTY_LIBRARY_STORAGE_KEY, storage), JSON.stringify(value));
   else writeJSON(PARTY_LIBRARY_STORAGE_KEY, value);
 }
 

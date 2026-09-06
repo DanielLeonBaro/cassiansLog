@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<!-- Shared campaign management surface for DMs and the primary site Admin. -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <base href="/">
+  <title>Manage Campaign | Cassian's Log</title>
+  <script src="shared/js/theme-bootstrap.js"></script>
+  <link rel="stylesheet" href="shared/assets/icons/bootstrap-icons.css">
+  <link rel="stylesheet" href="shared/assets/tailwind.css">
+  <link rel="icon" href="shared/assets/bat.ico">
+</head>
+<body class="flex min-h-screen flex-col bg-parchment font-sans text-stone-900 antialiased dark:bg-ink dark:text-stone-100">
+  <nav data-site-header></nav>
+  <main class="mx-auto w-full max-w-6xl grow space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+    <header><p class="text-xs font-bold uppercase tracking-[.18em] text-blood-500">Campaign management</p><h1 id="manage-title" class="mt-2 font-display text-4xl font-bold">Campaign</h1><p id="manage-status" class="mt-2 min-h-6 text-sm text-stone-500" role="status" aria-live="polite"></p></header>
+    <section class="grid gap-5 lg:grid-cols-2">
+      <form id="campaign-details" class="rounded-2xl border border-stone-300 bg-white/70 p-5 dark:border-white/10 dark:bg-white/[.05]"><h2 class="font-display text-2xl font-bold">Details</h2><label class="mt-4 block"><span class="mb-1 block text-sm font-bold">Display name</span><input name="name" required maxlength="80" class="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 dark:border-white/15 dark:bg-white/5"></label><label class="mt-4 block"><span class="mb-1 block text-sm font-bold">Short description</span><textarea name="description" maxlength="280" rows="3" class="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 dark:border-white/15 dark:bg-white/5"></textarea></label><label class="mt-4 block"><span class="mb-1 block text-sm font-bold">Banner image</span><input id="campaign-banner-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="block w-full text-sm"><small class="mt-1 block text-stone-500">Optional. Maximum 500 KB.</small></label><img id="campaign-banner-preview" alt="Campaign banner preview" class="mt-3 hidden max-h-56 w-full rounded-xl object-cover"><label class="mt-3 inline-flex items-center gap-2 text-sm"><input id="campaign-banner-clear" type="checkbox"> Remove current banner</label><button class="mt-4 block rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-white" type="submit">Save details</button></form>
+      <form id="campaign-password" class="rounded-2xl border border-stone-300 bg-white/70 p-5 dark:border-white/10 dark:bg-white/[.05]"><h2 class="font-display text-2xl font-bold">Join password</h2><p class="mt-1 text-sm text-stone-500">Changing it does not remove current members.</p><label class="mt-4 block"><span class="mb-1 block text-sm font-bold">New password</span><input name="password" required minlength="6" maxlength="128" type="password" autocomplete="new-password" class="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 dark:border-white/15 dark:bg-white/5"></label><button class="mt-4 rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-white" type="submit">Set password</button></form>
+      <form id="campaign-slug" class="hidden rounded-2xl border border-stone-300 bg-white/70 p-5 dark:border-white/10 dark:bg-white/[.05]"><h2 class="font-display text-2xl font-bold">URL slug</h2><p class="mt-1 text-sm text-stone-500">Primary Admin only. Old URLs will redirect permanently.</p><label class="mt-4 block"><span class="mb-1 block text-sm font-bold">Slug</span><input name="slug" required pattern="[a-z]{2,48}" maxlength="48" class="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 font-mono lowercase dark:border-white/15 dark:bg-white/5"></label><button class="mt-4 rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-white" type="submit">Change URL</button></form>
+    </section>
+    <section class="rounded-2xl border border-stone-300 bg-white/70 p-5 dark:border-white/10 dark:bg-white/[.05]"><h2 class="font-display text-2xl font-bold">Members</h2><p class="mt-1 text-sm text-stone-500">DMs may promote, demote, or remove members. One DM must always remain.</p><div id="campaign-members" class="mt-4 space-y-3"></div></section>
+    <section class="rounded-2xl border border-stone-300 bg-white/70 p-5 dark:border-white/10 dark:bg-white/[.05]"><h2 class="font-display text-2xl font-bold">Character editors</h2><p class="mt-1 text-sm text-stone-500">Assign any number of players to each character.</p><div id="campaign-characters" class="mt-4 space-y-4"></div></section>
+    <section class="rounded-2xl border border-stone-300 bg-white/70 p-5 dark:border-white/10 dark:bg-white/[.05]"><h2 class="font-display text-2xl font-bold">Visibility and character layout</h2><form id="campaign-settings"><div id="campaign-sections" class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3"></div><fieldset class="mt-5"><legend class="font-bold">Default character layout</legend><label class="mr-5 mt-2 inline-flex gap-2"><input name="characterSheetStyle" value="v1" type="radio"> Style v1</label><label class="mt-2 inline-flex gap-2"><input name="characterSheetStyle" value="v2" type="radio"> Style v2</label></fieldset><div id="campaign-character-styles" class="mt-5 grid gap-2 sm:grid-cols-2"></div><button class="mt-5 rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-white" type="submit">Save campaign settings</button></form></section>
+    <section id="leave-section" class="rounded-2xl border border-danger-500/30 bg-danger-500/5 p-5"><h2 class="font-display text-xl font-bold">Leave campaign</h2><p class="mt-1 text-sm text-stone-500">Your private Screen data stays stored. Character assignments are removed.</p><button id="leave-campaign" class="mt-4 rounded-xl border border-danger-500 px-4 py-2 text-sm font-bold text-danger-500" type="button">Leave campaign</button></section>
+  </main>
+  <script type="module" src="campaigns/js/manage.js"></script>
+</body>
+</html>

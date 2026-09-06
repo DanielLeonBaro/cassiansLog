@@ -4,10 +4,11 @@ import {
   loadCompendiumCatalog,
   loadCompendiumCategory,
 } from "../../compendium/js/api.js";
+import { campaignApiPath } from "../../shared/js/campaign-context.js";
 
 async function optionalJSON(url) {
   try {
-    const response = await fetch(url, { headers: { accept: "application/json" } });
+    const response = await fetch(campaignApiPath(url), { headers: { accept: "application/json" } });
     return response.ok ? response.json() : null;
   } catch {
     return null;

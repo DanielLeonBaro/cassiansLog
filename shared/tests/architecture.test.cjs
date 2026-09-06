@@ -4,8 +4,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = process.cwd();
-const features = new Set(["char", "combat-loot", "compendium", "music", "public-initiative", "screens", "wiki"]);
-const workerRouteFiles = ["admin", "characters", "combat-loot", "compendium", "music", "public-initiative", "screens", "themes", "wiki"]
+const features = new Set(["campaigns", "char", "combat-loot", "compendium", "music", "public-initiative", "screens", "wiki"]);
+const workerRouteFiles = ["admin", "campaigns", "characters", "combat-loot", "compendium", "music", "public-initiative", "screens", "themes", "wiki"]
   .map((name) => `cloudflare/routes/${name}.js`);
 const removedRoots = ["data", "js", "scripts", "tests", "config", "bootstrap", "src", "dist", "stuffToParse"];
 
@@ -107,6 +107,8 @@ assert.ok(tailwindConfig.includes('./login/**/*.{html,js}'), "Login must be incl
 assert.ok(siteBuild.includes('"character-route-worker.js"'), "The localhost character-route fallback must be deployed.");
 
 const pageShells = new Map([
+  ["campaigns/index.html", "campaigns/js/hub.js"],
+  ["campaigns/manage.html", "campaigns/js/manage.js"],
   ["char/index.html", "char/js/entries/characters.js"],
   ["char/tracker.html", "char/js/entries/tracker-standalone.js"],
   ["combat-loot/index.html", "combat-loot/js/entry.js"],
@@ -144,8 +146,8 @@ const characterCards = fs.readFileSync("char/js/archive/cards.js", "utf8");
 const characterArchive = fs.readFileSync("char/js/archive/index.js", "utf8");
 assert.ok(!characterCards.includes("template/?character="), "Character cards must never generate template query routes.");
 assert.ok(!characterArchive.includes("template/?character="), "New characters must never generate template query routes.");
-assert.ok(characterCards.includes("char/${encodeURIComponent(character.id)}/"), "Every character card should use /char/id/.");
-assert.ok(characterArchive.includes("char/${encodeURIComponent(id)}/?new=1&edit=1"), "New characters should open through /char/id/.");
+assert.ok(characterCards.includes('campaignPagePath("char")'), "Every character card should preserve campaign URL context.");
+assert.ok(characterArchive.includes('campaignPagePath("char")'), "New characters should preserve campaign URL context.");
 assert.ok(fs.readFileSync("character-route-worker.js", "utf8").includes("/char/template/"), "Localhost should fall back to the shared template shell behind clean character URLs.");
 const trackerState = fs.readFileSync("char/js/tracker/state.js", "utf8");
 const trackerNotes = fs.readFileSync("char/js/tracker/notes.js", "utf8");

@@ -2,6 +2,7 @@ node_modules/
 .cloudflare/
 .wrangler/
 compendium/source/
+wiki/scripts/content-diff/output/
 .agents
 skills-lock.json
 googleSecret.md

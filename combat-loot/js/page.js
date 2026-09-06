@@ -42,6 +42,7 @@ import {
   setPresetActive,
 } from "./repository.js";
 import { renderWorkspace } from "./view.js";
+import { campaignCanManage, currentCampaignSlug } from "../../shared/js/campaign-context.js";
 
 const MAX_PRESET_UPLOAD_BYTES = 5 * 1024 * 1024;
 const VALID_HEALTH_INPUT_CLASSES = [
@@ -118,7 +119,8 @@ function migrateLegacyPartyLibrary(parties, sources) {
   return { changed, parties: migrated };
 }
 
-export function initializeCombatLoot() {
+export async function initializeCombatLoot() {
+  const canEdit = currentCampaignSlug() ? await campaignCanManage() : true;
   const elements = {
     trackers: document.getElementById("tracker-list"),
     workspaceName: document.getElementById("workspace-name"),
@@ -308,6 +310,10 @@ export function initializeCombatLoot() {
   function render() {
     elements.trackers.innerHTML = renderWorkspace(workspace, tableViews);
     updateChrome();
+    if (!canEdit) {
+      document.querySelectorAll("main button, main input, main select, main textarea").forEach((control) => { control.disabled = true; });
+      elements.workspaceStatus.textContent = "Read only";
+    }
   }
 
   function toggleTableView(tableId, key) {
@@ -1158,16 +1164,16 @@ export function initializeCombatLoot() {
           parties: partyLibrary,
         }).catch((error) => console.error("Could not save migrated parties to D1:", error));
       }
-      if (cloud.draft?.currentDocument?.tables) {
-        workspace = prepareWorkspaceDocument(cloud.draft.currentDocument);
-        activePresetId = presets.some((preset) => preset.active && preset.id === cloud.draft.activePresetId)
-          ? cloud.draft.activePresetId
-          : null;
-        baselineDocument = cloud.draft.baselineDocument?.tables
-          ? prepareWorkspaceDocument(cloud.draft.baselineDocument)
-          : null;
-        saveDraft({ activePresetId, baselineDocument, currentDocument: workspace });
-      }
+      workspace = cloud.draft?.currentDocument?.tables
+        ? prepareWorkspaceDocument(cloud.draft.currentDocument)
+        : createCombatLootDocument();
+      activePresetId = presets.some((preset) => preset.active && preset.id === cloud.draft?.activePresetId)
+        ? cloud.draft.activePresetId
+        : null;
+      baselineDocument = cloud.draft?.baselineDocument?.tables
+        ? prepareWorkspaceDocument(cloud.draft.baselineDocument)
+        : cloneJSON(workspace);
+      saveDraft({ activePresetId, baselineDocument, currentDocument: workspace });
       renderPresetOptions(activePresetId || "");
       render();
     },

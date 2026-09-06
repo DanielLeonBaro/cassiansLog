@@ -3,7 +3,9 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
 
-const storageCode = fs.readFileSync("shared/js/storage.js", "utf8").replace(/export /g, "");
+const storageCode = fs.readFileSync("shared/js/storage.js", "utf8")
+  .replace(/^import[\s\S]*?;\r?\n/gm, "")
+  .replace(/export /g, "");
 const textCode = fs.readFileSync("shared/js/text.js", "utf8").replace(/export /g, "");
 const repositoryCode = fs.readFileSync("combat-loot/js/repository.js", "utf8")
   .replace(/^import .*\r?\n/gm, "")
@@ -36,6 +38,7 @@ const defaultStorage = createStorage();
 const context = {
   console,
   localStorage: defaultStorage,
+  campaignStorageKey: (key) => key,
 };
 vm.createContext(context);
 vm.runInContext(`

@@ -1,11 +1,12 @@
 // Owns Player and DM Screen serialization, persistence, and fallback precedence.
 import { cloneJSON } from "../../shared/js/text.js";
 import { createEmptyScreen, MAX_SCREEN_DOCUMENT_BYTES, normalizeScreenDocument, screenDocumentBytes } from "./model.js";
+import { campaignApiPath, campaignStorageKey } from "../../shared/js/campaign-context.js";
 
 export const MAX_SCREEN_BYTES = MAX_SCREEN_DOCUMENT_BYTES;
 
 export function screenStorageKey(userId, kind) {
-  return `cassianslog-screen-v1:${encodeURIComponent(userId)}:${kind}`;
+  return campaignStorageKey(`cassianslog-screen-v1:${encodeURIComponent(userId)}:${kind}`);
 }
 
 export function calculatorHistoryStorageKey(userId, kind, widgetId) {
@@ -26,7 +27,7 @@ function writeStored(key, value, storage = localStorage) {
 }
 
 async function requestJSON(path, options = {}) {
-  const response = await fetch(path, {
+  const response = await fetch(campaignApiPath(path), {
     ...options,
     headers: {
       accept: "application/json",

@@ -9,6 +9,7 @@ const publicEntries = [
   "character-route-worker.js",
   "admin",
   "char",
+  "campaigns",
   "combat-loot",
   "compendium",
   "dm-screen",

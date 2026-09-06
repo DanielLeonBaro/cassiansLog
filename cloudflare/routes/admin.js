@@ -3,6 +3,7 @@ import { adminAuthorized } from "../auth.js";
 import { bodyJSON, error, json, parseStored, safeId } from "../http.js";
 import { loadSettings, updateSettings } from "../settings.js";
 import { adminThemeRoute } from "./admin-themes.js";
+import { validCampaignSlug } from "../campaigns.js";
 import {
   assignUserTheme,
   loadThemeCatalog,
@@ -26,6 +27,7 @@ export async function adminRoute(request, env, parts) {
       loadThemeCatalog(env, { includeUsage: true }),
     ]);
     let users = { results: [] };
+    let campaigns = { results: [] };
     try {
       users = await env.DB.prepare(
         `SELECT users.id, users.email, users.roles_json, users.created_at, users.updated_at,
@@ -43,6 +45,17 @@ export async function adminRoute(request, env, parts) {
         console.warn("User accounts could not be listed. Apply migration 0006.", fallbackCaught);
       }
     }
+    try {
+      campaigns = await env.DB.prepare(
+        `SELECT campaigns.id, campaigns.name, campaigns.description, campaigns.banner, campaigns.join_enabled, campaigns.created_at, campaigns.updated_at,
+          current.slug
+        FROM campaigns
+        JOIN campaign_slugs AS current ON current.campaign_id = campaigns.id AND current.is_current = 1
+        ORDER BY campaigns.name COLLATE NOCASE`,
+      ).all();
+    } catch (caught) {
+      console.warn("Campaigns could not be listed. Apply migration 0012.", caught);
+    }
     return json({
       settings,
       themes: themeCatalog.themes,
@@ -52,6 +65,16 @@ export async function adminRoute(request, env, parts) {
         name: parseStored(row.document_json, {})?.name || row.id,
         source: row.source,
         active: Boolean(row.active),
+        updatedAt: row.updated_at,
+      })),
+      campaigns: campaigns.results.map((row) => ({
+        id: row.id,
+        name: row.name,
+        description: row.description || "",
+        banner: row.banner || "",
+        slug: row.slug,
+        joinEnabled: Boolean(row.join_enabled),
+        createdAt: row.created_at,
         updatedAt: row.updated_at,
       })),
       users: users.results.map((row) => ({
@@ -134,6 +157,27 @@ export async function adminRoute(request, env, parts) {
     ).bind(credentials.hash, credentials.salt, credentials.iterations, new Date().toISOString(), parts[1]).run();
     await env.DB.prepare("DELETE FROM user_sessions WHERE user_id = ?").bind(parts[1]).run();
     return json({ ok: true });
+  }
+  if (request.method === "PUT" && parts[0] === "campaigns" && parts[1] && parts[2] === "slug" && parts.length === 3) {
+    const body = await bodyJSON(request);
+    const slug = String(body?.slug || "");
+    if (!validCampaignSlug(slug)) return error("Campaign slug must contain 2-48 lowercase letters from a to z.");
+    const campaign = await env.DB.prepare(
+      `SELECT campaigns.id, current.slug
+      FROM campaigns JOIN campaign_slugs AS current ON current.campaign_id = campaigns.id AND current.is_current = 1
+      WHERE campaigns.id = ?`,
+    ).bind(parts[1]).first();
+    if (!campaign) return error("Campaign not found.", 404);
+    if (campaign.slug === slug) return json({ ok: true, slug });
+    const occupied = await env.DB.prepare("SELECT campaign_id FROM campaign_slugs WHERE slug = ?").bind(slug).first();
+    if (occupied) return error("That campaign slug is already reserved.", 409);
+    const now = new Date().toISOString();
+    await env.DB.batch([
+      env.DB.prepare("UPDATE campaign_slugs SET is_current = 0 WHERE campaign_id = ? AND is_current = 1").bind(parts[1]),
+      env.DB.prepare("INSERT INTO campaign_slugs (slug, campaign_id, is_current, created_at) VALUES (?, ?, 1, ?)").bind(slug, parts[1], now),
+      env.DB.prepare("UPDATE campaigns SET updated_at = ? WHERE id = ?").bind(now, parts[1]),
+    ]);
+    return json({ ok: true, slug, previousSlug: campaign.slug, updatedAt: now });
   }
   return error("Method not allowed.", 405);
 }

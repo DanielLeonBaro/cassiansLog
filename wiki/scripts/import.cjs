@@ -5,7 +5,7 @@ const Y = require("yjs");
 const { writeJSON } = require("../../shared/build/output.cjs");
 
 const SOURCE_URL = "https://apotheosisoftherings.vvd.world";
-const OUTPUT_PATH = path.join(__dirname, "..", "data", "pages.json");
+const DEFAULT_OUTPUT_PATH = path.join(__dirname, "..", "data", "pages.json");
 const MEDIA_BASE = "https://vvd-public-media.zied-8e7.workers.dev";
 const REQUEST_TIMEOUT_MS = 30_000;
 const REQUEST_ATTEMPTS = 3;
@@ -44,9 +44,7 @@ function parseBalancedObject(source, start, label = "object") {
   throw new Error(`Could not parse ${label}`);
 }
 
-function extractEnclosingObject(source, marker) {
-  const markerIndex = source.indexOf(marker);
-  if (markerIndex < 0) throw new Error(`Could not find ${marker}`);
+function extractEnclosingObjectAt(source, markerIndex, marker) {
   const stack = [];
   let inString = false;
   let escaped = false;
@@ -70,13 +68,30 @@ function extractEnclosingObject(source, marker) {
   throw new Error(`Could not parse the object containing ${marker}`);
 }
 
+function extractEnclosingObjects(source, marker) {
+  const objects = [];
+  let markerIndex = -1;
+  while ((markerIndex = source.indexOf(marker, markerIndex + 1)) >= 0) {
+    try {
+      objects.push(extractEnclosingObjectAt(source, markerIndex, marker));
+    } catch {
+      // Some marker appearances can be string references rather than complete bundles.
+    }
+  }
+  if (!objects.length) throw new Error(`Could not find ${marker}`);
+  return objects;
+}
+
 function getPublishedContent(html) {
   const payload = flightStrings(html).join("\n");
   if (!payload) throw new Error("The site returned no readable published data");
   if (payload.includes('"content":{"maps":')) {
     return { format: "legacy", content: extractBalancedObject(payload, '"content":{"maps":') };
   }
-  const bundle = extractEnclosingObject(payload, '"appId":"wiki"');
+  const bundles = extractEnclosingObjects(payload, '"appId":"wiki"');
+  // Published document routes now include an empty site bundle before the requested page bundle.
+  const bundle = bundles.find((candidate) => candidate.docId && candidate.snapshot?.embeds?.[candidate.docId])
+    || bundles.find((candidate) => candidate.snapshot?.documents);
   if (!bundle.snapshot?.documents) throw new Error("The current published snapshot has no documents");
   return { format: "snapshot", bundle };
 }
@@ -274,6 +289,15 @@ function sleep(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+// Lets maintenance tools capture an import without replacing the live Wiki data.
+function outputPathFromArguments(argumentsList) {
+  const optionIndex = argumentsList.indexOf("--output");
+  if (optionIndex < 0) return DEFAULT_OUTPUT_PATH;
+  const value = argumentsList[optionIndex + 1];
+  if (!value || value.startsWith("--")) throw new Error("--output requires a file path");
+  return path.resolve(process.cwd(), value);
+}
+
 async function fetchText(url) {
   let lastError;
   for (let attempt = 1; attempt <= REQUEST_ATTEMPTS; attempt += 1) {
@@ -395,14 +419,18 @@ async function importSnapshotPages(bundle) {
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
+  const outputPath = outputPathFromArguments(process.argv.slice(2));
   const { normalizeWikiPages } = await import("../js/model.js");
   console.log(`Importing published wiki from ${SOURCE_URL}`);
   const home = await fetchText(`${SOURCE_URL}/`);
   const published = getPublishedContent(home);
   if (published.format === "snapshot") {
     const pages = await importSnapshotPages(published.bundle);
-    if (!dryRun) writeJSON(OUTPUT_PATH, normalizeWikiPages(pages), true);
-    console.log(dryRun ? `Dry run passed with ${pages.length} pages; pages.json was not changed` : `Wrote ${pages.length} pages to ${OUTPUT_PATH}`);
+    if (!dryRun) {
+      fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+      writeJSON(outputPath, normalizeWikiPages(pages), true);
+    }
+    console.log(dryRun ? `Dry run passed with ${pages.length} pages; no file was changed` : `Wrote ${pages.length} pages to ${outputPath}`);
     return;
   }
   const content = published.content;
@@ -487,11 +515,18 @@ async function main() {
     });
   }
 
-  if (!dryRun) writeJSON(OUTPUT_PATH, normalizeWikiPages(pages), true);
-  console.log(dryRun ? `Dry run passed with ${pages.length} pages; pages.json was not changed` : `Wrote ${pages.length} pages to ${OUTPUT_PATH}`);
+  if (!dryRun) {
+    fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+    writeJSON(outputPath, normalizeWikiPages(pages), true);
+  }
+  console.log(dryRun ? `Dry run passed with ${pages.length} pages; no file was changed` : `Wrote ${pages.length} pages to ${outputPath}`);
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { getPublishedContent };
