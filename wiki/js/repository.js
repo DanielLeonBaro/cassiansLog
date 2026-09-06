@@ -3,6 +3,7 @@ import { cloneJSON } from "../../shared/js/text.js";
 import { readJSON, writeJSON } from "../../shared/js/storage.js";
 import { readCloudJSON, writeCloudJSON } from "../../shared/js/cloud-store.js";
 import { normalizeWikiPages } from "./model.js";
+import { currentCampaignSlug } from "../../shared/js/campaign-context.js";
 
 export const WIKI_STORAGE_KEY = "dnd-wiki-pages-v1";
 
@@ -19,6 +20,8 @@ export async function loadWikiPages() {
     writeJSON(WIKI_STORAGE_KEY, pages);
     return pages;
   }
+  const slug = currentCampaignSlug();
+  if (slug && slug !== "aotr") return [];
   const response = await fetch(new URL("../data/pages.json", import.meta.url));
   if (!response.ok) throw new Error(`Could not load the Wiki seed (${response.status}).`);
   return cloneJSON(normalizeWikiPages(await response.json()));

@@ -106,6 +106,15 @@ assert.equal(aotr.joinEnabled, false);
 assert.equal(visible.joined, false);
 assert.equal(visible.name, "Curse of Strahd");
 assert.equal(visible.description, "Fog, vampires, and bad choices.");
+
+result = await call(env, cookies.admin, ["aotr"]);
+assert.equal(result.body.campaign.role, "admin", "The primary site Admin must receive campaign-manager authority.");
+for (const parts of [["aotr", "members"], ["aotr", "characters"], ["aotr", "settings"], ["aotr", "wiki"]]) {
+  result = await call(env, cookies.admin, parts);
+  assert.equal(result.response.status, 200, `Primary Admin should have DM access to ${parts.at(-1)}.`);
+}
+assert.equal(result.body.canEdit, true, "Primary Admin should be able to edit shared campaign content.");
+
 result = await call(env, cookies.bob, ["curseofstrahd", "wiki"]);
 assert.equal(result.response.status, 403, "Visible metadata must not grant content access.");
 

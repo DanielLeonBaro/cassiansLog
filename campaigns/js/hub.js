@@ -2,6 +2,8 @@
 import { normalizeText, escapeAttribute, escapeHTML } from "../../shared/js/text.js";
 import { mountSiteHeader } from "../../shared/js/site-header.js";
 import { initializeTheme } from "../../shared/js/theme.js";
+import { isLocalRuntimeHost } from "../../shared/js/runtime-host.js";
+import { localCampaigns, saveLocalCampaign } from "../../shared/js/campaign-context.js";
 
 mountSiteHeader({ activePage: "campaigns" });
 initializeTheme();
@@ -67,6 +69,11 @@ async function load() {
     const requested = new URLSearchParams(location.search).get("join");
     if (requested) root.querySelector(`[data-join="${CSS.escape(normalizeText(requested).replace(/[^a-z]/g, ""))}"] input`)?.focus();
   } catch (error) {
+    if (isLocalRuntimeHost()) {
+      root.innerHTML = localCampaigns().map(card).join("");
+      setStatus("Local campaign mode: changes stay in this browser.");
+      return;
+    }
     setStatus(error.message, true);
   }
 }
@@ -92,6 +99,23 @@ createForm.addEventListener("submit", async (event) => {
   const submit = createForm.querySelector("button");
   submit.disabled = true;
   try {
+    if (isLocalRuntimeHost()) {
+      const name = String(data.get("name") || "").trim();
+      const generated = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z]/g, "").slice(0, 48);
+      const slug = String(data.get("slug") || generated);
+      if (!/^[a-z]{2,48}$/.test(slug)) throw new Error("Campaign slug must contain 2-48 lowercase letters from a to z.");
+      if (localCampaigns().some((campaign) => campaign.slug === slug)) throw new Error("That campaign slug is already reserved.");
+      saveLocalCampaign(slug, {
+        id: crypto.randomUUID(),
+        name,
+        description: String(data.get("description") || "").trim(),
+        banner: createBanner,
+        joinEnabled: true,
+        createdAt: new Date().toISOString(),
+      });
+      location.assign(`/c/${encodeURIComponent(slug)}/char/`);
+      return;
+    }
     const result = await requestJSON("/api/campaigns", { method: "POST", body: JSON.stringify({ name: data.get("name"), slug: data.get("slug") || undefined, description: data.get("description"), banner: createBanner, password: data.get("password") }) });
     location.assign(`/c/${encodeURIComponent(result.campaign.slug)}/char/`);
   } catch (error) {

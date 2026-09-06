@@ -2,6 +2,7 @@
 import { readJSON, writeJSON } from "../../../shared/js/storage.js";
 import { readCloudJSON, writeCloudJSON } from "../../../shared/js/cloud-store.js";
 import { cloneJSON } from "../../../shared/js/text.js";
+import { currentCampaignSlug } from "../../../shared/js/campaign-context.js";
 import {
   CHARACTERS_STORAGE_KEY,
   DELETED_CHARACTERS_STORAGE_KEY,
@@ -63,10 +64,12 @@ async function getJSON(url) {
 }
 
 export async function listCharacters() {
-  const catalog = await getJSON(new URL("../../catalog.json", import.meta.url));
-  const staticBundled = await Promise.all(catalog.characters.map((id) =>
-    getJSON(new URL(`../../${encodeURIComponent(id)}/character.json`, import.meta.url)),
-  ));
+  const campaignSlug = currentCampaignSlug();
+  const staticBundled = campaignSlug && campaignSlug !== "aotr"
+    ? []
+    : await getJSON(new URL("../../catalog.json", import.meta.url)).then((catalog) => Promise.all(catalog.characters.map((id) =>
+      getJSON(new URL(`../../${encodeURIComponent(id)}/character.json`, import.meta.url)),
+    )));
   const cloud = await readCloudJSON("api/characters", { fallback: null });
   const cloudIsAuthoritative = cloud?.authoritative === true
     || Boolean(Array.isArray(cloud?.characters) && cloud.characters.length);
@@ -77,7 +80,9 @@ export async function listCharacters() {
       canEdit,
       canManage,
     }))
-    : staticBundled.map((character) => ({ ...character, custom: false }));
+    : !campaignSlug || campaignSlug === "aotr"
+      ? staticBundled.map((character) => ({ ...character, custom: false }))
+      : [];
   const saved = storedCharacters();
   const deleted = new Set(readJSON(DELETED_KEY, []));
   const bundledIds = new Set(bundled.map((character) => character.id));

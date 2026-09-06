@@ -58,6 +58,32 @@ function staticServer() {
       response.end('{"characters":[],"authoritative":true}');
       return;
     }
+    if (request.method === "GET" && url.pathname === "/api/campaigns/joined/wiki") {
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end('{"pages":[{"id":"home","name":"Local Campaign Home","type":"Lore","summary":"Loaded through the campaign API.","body":"Local campaign wiki."}],"canEdit":true}');
+      return;
+    }
+    if (request.method === "GET" && url.pathname === "/api/campaigns/joined/members") {
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end('{"members":[{"id":"localhost","email":"localhost@cassianslog.local","role":"dm"}]}');
+      return;
+    }
+    if (request.method === "GET" && url.pathname === "/api/campaigns/joined/settings") {
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end('{"settings":{"sections":{"characters":true,"wiki":true,"dm-screen":true},"characterSheetStyle":"v1","characterSheetStyleOverrides":{}},"canEdit":true}');
+      return;
+    }
+    if (request.method === "GET" && url.pathname === "/api/campaigns/joined/characters/cassian") {
+      const document = JSON.parse(fs.readFileSync(path.join(root, "char/cassian/character.json"), "utf8"));
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify({ id: "cassian", document, canEdit: true, canManage: true }));
+      return;
+    }
+    if (request.method === "GET" && /^\/api\/campaigns\/joined\/characters\/cassian\/(?:state|notes)$/.test(url.pathname)) {
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end('{"value":null,"canEdit":true}');
+      return;
+    }
     if (url.pathname.startsWith("/api/")) {
       response.writeHead(404, { "content-type": "application/json; charset=utf-8" });
       response.end('{"error":"Local browser smoke test has no D1 API."}');
@@ -202,6 +228,24 @@ async function main() {
       "/c/joined/char/",
       'return document.querySelector("#characters")?.children.length === 0 && document.getElementById("site-campaign")?.textContent === "Joined Campaign";',
       'return document.getElementById("site-campaign")?.textContent === "Joined Campaign" && location.pathname === "/c/joined/char/";',
+    );
+    await smoke(
+      "Campaign Wiki localhost route",
+      "/c/joined/wiki/",
+      'return document.querySelectorAll("#wiki-grid article").length === 1;',
+      'return document.body.textContent.includes("Local Campaign Home") && document.getElementById("site-campaign")?.textContent === "Joined Campaign";',
+    );
+    await smoke(
+      "Campaign management localhost route",
+      "/c/joined/manage/",
+      'return document.querySelector("#campaign-details [name=name]")?.value === "Joined Campaign";',
+      'return document.querySelector("#campaign-details [name=description]")?.value === "A joined adventure." && document.body.textContent.includes("localhost@cassianslog.local");',
+    );
+    await smoke(
+      "Campaign character tracker localhost route",
+      "/c/joined/char/cassian/",
+      'return window.character?.id === "cassian" && document.getElementById("character-name")?.textContent.startsWith("Cassian");',
+      'return document.body.dataset.characterCanManage === "true" && document.body.dataset.characterCanEdit === "true";',
     );
 
     await smoke(

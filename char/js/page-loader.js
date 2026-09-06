@@ -27,7 +27,10 @@ export function initializeCharacterPage() {
     ? requestedCharacter
     : bundledCharacter;
   let characterShell = bundledCharacter;
-  const trackerURL = new URL("../tracker.html", window.location.href);
+  // Campaign character routes are deeper than the shared tracker shell. Resolve
+  // from the document base so /c/<slug>/char/<id>/ never requests a fake nested
+  // /c/<slug>/char/tracker.html route.
+  const trackerURL = new URL("char/tracker.html", document.baseURI);
 
   async function useCanonicalCharacterRoute() {
     if (bundledCharacter !== "template" || !params.has("character")) return;
@@ -37,6 +40,7 @@ export function initializeCharacterPage() {
     window.history.replaceState(null, "", canonical);
 
     try {
+      if (currentCampaignSlug() && currentCampaignSlug() !== "aotr") return;
       const response = await fetch(new URL("../catalog.json", import.meta.url));
       if (!response.ok) return;
       const catalog = await response.json();
@@ -119,14 +123,17 @@ export function initializeCharacterPage() {
       document.body.dataset.characterCanEdit = String(cloudCharacter?.canEdit !== false);
       document.body.dataset.characterCanManage = String(cloudCharacter?.canManage !== false);
       if (cloudCharacter?.canEdit === false) document.getElementById("notesSection")?.remove();
-      const characterDataURL = characterShell === "template"
-        ? new URL("../template/character.json", import.meta.url)
-        : new URL(`../${encodeURIComponent(characterShell)}/character.json`, import.meta.url);
-      const characterResponse = await fetch(characterDataURL);
-      if (!characterResponse.ok) {
-        throw new Error(`Could not load the character data (${characterResponse.status}).`);
+      let bundledData = cloudCharacter?.document;
+      if (!bundledData) {
+        const characterDataURL = characterShell === "template"
+          ? new URL("../template/character.json", import.meta.url)
+          : new URL(`../${encodeURIComponent(characterShell)}/character.json`, import.meta.url);
+        const characterResponse = await fetch(characterDataURL);
+        if (!characterResponse.ok) {
+          throw new Error(`Could not load the character data (${characterResponse.status}).`);
+        }
+        bundledData = await characterResponse.json();
       }
-      const bundledData = await characterResponse.json();
       window.character = cloudCharacter?.document || bundledData;
       if (!cloudCharacter?.document && savedCharacter) {
         const migrated = migrateLegacyPortrait(savedCharacter);

@@ -25,7 +25,7 @@ This file is the durable implementation log for campaign support. Update it when
 
 ## In Progress
 
-- Nothing. Local implementation and verification are complete; remote rollout awaits approval.
+- None.
 
 ## Done
 
@@ -43,6 +43,11 @@ This file is the durable implementation log for campaign support. Update it when
 - [x] Added focused migration, discovery, password throttle/rotation, membership, isolation, notes, assignment, Screen preservation, slug, redirect, and static-route tests.
 - [x] Added character-style campaign cards with optional banner uploads, descriptions, Enter/Join actions, and DM/Admin edit shortcuts.
 - [x] Ran final full verification gates and inspected the complete diff.
+- [x] Diagnosed the deployed blank/loading pages: Worker legacy-route redirects intercepted feature JavaScript and authenticated JSON assets.
+- [x] Routed feature assets before legacy page redirects, fixed the campaign character tracker-shell URL, and retained membership protection for legacy AOTR JSON.
+- [x] Added browser-only localhost campaign discovery, creation, management, settings, Wiki isolation, and character isolation without requiring D1.
+- [x] Proved the primary site Admin receives campaign `admin` authority and every DM management/read-write endpoint.
+- [x] Deployed the Worker/assets-only repair to Cloudflare as version `51799509-63c8-4134-a2e4-772c91dbe38e`.
 
 ## Verification Log
 
@@ -55,6 +60,12 @@ This file is the durable implementation log for campaign support. Update it when
 - Final `npm run build:site`: passed with campaign assets present in `.cloudflare/public`.
 - Final `npm run test:browser`: passed, including campaign discovery cards and a campaign Character deep link through the localhost fallback.
 - Final `git diff --check`: passed.
+- 2026-09-06 regression `npm test`: passed after asset routing, localhost fallback, and Admin access repairs.
+- 2026-09-06 regression `npm run build:site`: passed; 195 static files built.
+- 2026-09-06 regression `npm run test:browser`: passed all campaign Wiki, management, character tracker, Screen, and Admin scenarios.
+- Remote D1 inspection was read-only: AOTR campaign Wiki, six character documents, settings, memberships, and DM roles remain present; no migration or data write is required for this repair.
+- Live smoke: health returned 200; Wiki, Character, Music, Screen, campaign-management, and campaign-context modules returned 200 and matched the built files byte-for-byte.
+- Live access smoke: unauthenticated legacy Wiki JSON redirects to login instead of exposing AOTR content.
 - Pre-existing user changes: `.gitignore`, `package.json`, `shared/tests/run.cjs`, `wiki/scripts/import.cjs`, `wiki/scripts/content-diff/`, and `wiki/tests/content-diff.test.cjs`.
 
 ## Rollback Notes
@@ -63,6 +74,7 @@ This file is the durable implementation log for campaign support. Update it when
 - AOTR writes must mirror legacy tables during the compatibility window.
 - Before any remote migration, export D1 or verify a Time Travel recovery point and obtain explicit user approval.
 - Rolling back application code restores the old Worker/assets; legacy AOTR data remains available through mirrored tables. New campaign rows remain preserved in campaign tables.
+- This production regression repair changes only Worker/assets. It does not mutate D1.
 
 ## Non-Goals
 
