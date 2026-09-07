@@ -69,9 +69,7 @@ async function staticAsset(request, env, url) {
       fallback.searchParams.set("access", "denied");
       return Response.redirect(fallback.toString(), 302);
     }
-  } else if ((url.pathname === "/login" || url.pathname === "/login/") && localBypass) {
-    return Response.redirect(new URL("/char/", url).toString(), 302);
-  } else if ((url.pathname === "/login" || url.pathname === "/login/") && env.DB) {
+  } else if ((url.pathname === "/login" || url.pathname === "/login/") && env.DB && !localBypass) {
     await ensurePrimaryAdmin(env);
     if (await userFromRequest(request, env)) {
       const destination = await campaignStorageReady(env) ? "/campaigns/" : "/char/";

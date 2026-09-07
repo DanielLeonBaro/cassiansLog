@@ -10,7 +10,8 @@ import {
   PENDING_CHARACTER_STORAGE_KEY,
 } from "./storage-keys.js";
 import { applyCharacterSheetLayout } from "./tracker/layout.js";
-import { currentCampaignSlug } from "../../shared/js/campaign-context.js";
+import { currentCampaignSlug, localCampaign, localCharacterAccess } from "../../shared/js/campaign-context.js";
+import { isLocalRuntimeHost } from "../../shared/js/runtime-host.js";
 
 export function initializeCharacterPage() {
   const loaderScript = document.querySelector("script[data-character]");
@@ -32,12 +33,14 @@ export function initializeCharacterPage() {
   // /c/<slug>/char/tracker.html route.
   const trackerURL = new URL("char/tracker.html", document.baseURI);
 
-  async function useCanonicalCharacterRoute() {
-    if (bundledCharacter !== "template" || !params.has("character")) return;
-    const canonical = new URL(`char/${encodeURIComponent(characterName)}/`, document.baseURI);
-    params.delete("character");
-    canonical.search = params.toString();
-    window.history.replaceState(null, "", canonical);
+  async function resolveCharacterShell() {
+    if (bundledCharacter !== "template") return;
+    if (params.has("character")) {
+      const canonical = new URL(`char/${encodeURIComponent(characterName)}/`, document.baseURI);
+      params.delete("character");
+      canonical.search = params.toString();
+      window.history.replaceState(null, "", canonical);
+    }
 
     try {
       if (currentCampaignSlug() && currentCampaignSlug() !== "aotr") return;
@@ -92,7 +95,7 @@ export function initializeCharacterPage() {
     }
 
     try {
-      await useCanonicalCharacterRoute();
+      await resolveCharacterShell();
       const [response, settings] = await Promise.all([
         fetch(trackerURL),
         runtimeSettingsReady,
@@ -113,18 +116,29 @@ export function initializeCharacterPage() {
 
       const savedCharacters = readJSON(CHARACTERS_STORAGE_KEY, {});
       const savedCharacter = savedCharacters[characterName];
-      const cloudCharacter = await readCloudJSON(
-        `api/characters/${encodeURIComponent(characterName)}`,
-        { fallback: null },
-      );
-      if (currentCampaignSlug() && !cloudCharacter?.document) {
+      const campaignSlug = currentCampaignSlug();
+      const localCampaignMode = isLocalRuntimeHost() && Boolean(campaignSlug);
+      const localContext = localCampaignMode ? localCampaign(campaignSlug) : null;
+      if (localCampaignMode && !localContext?.joined) {
+        throw new Error("Join this campaign before opening its characters.");
+      }
+      const cloudCharacter = localCampaignMode
+        ? null
+        : await readCloudJSON(`api/characters/${encodeURIComponent(characterName)}`, { fallback: null });
+      if (campaignSlug && !localCampaignMode && !cloudCharacter?.document) {
         throw new Error("This character is not active in this campaign.");
       }
-      document.body.dataset.characterCanEdit = String(cloudCharacter?.canEdit !== false);
-      document.body.dataset.characterCanManage = String(cloudCharacter?.canManage !== false);
-      if (cloudCharacter?.canEdit === false) document.getElementById("notesSection")?.remove();
+      const access = localCampaignMode
+        ? localCharacterAccess(campaignSlug, characterName)
+        : { canEdit: cloudCharacter?.canEdit !== false, canManage: cloudCharacter?.canManage !== false };
+      document.body.dataset.characterCanEdit = String(access.canEdit);
+      document.body.dataset.characterCanManage = String(access.canManage);
+      if (!access.canEdit) document.getElementById("notesSection")?.remove();
       let bundledData = cloudCharacter?.document;
       if (!bundledData) {
+        if (localCampaignMode && !savedCharacter && characterShell === "template" && characterName !== "template" && params.get("new") !== "1") {
+          throw new Error("This character is not active in this campaign.");
+        }
         const characterDataURL = characterShell === "template"
           ? new URL("../template/character.json", import.meta.url)
           : new URL(`../${encodeURIComponent(characterShell)}/character.json`, import.meta.url);

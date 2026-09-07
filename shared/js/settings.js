@@ -106,7 +106,7 @@ async function remoteRuntimeSettings() {
   }
 }
 
-export const runtimeSettingsReady = isLocalRuntimeHost() && !currentCampaignSlug()
+export const runtimeSettingsReady = isLocalRuntimeHost()
   ? localRuntimeSettings()
   : remoteRuntimeSettings();
 

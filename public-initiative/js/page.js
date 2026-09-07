@@ -1,5 +1,7 @@
 // Loads and renders the shared read-only Public Initiative snapshot.
 import { readCloudJSON } from "../../shared/js/cloud-store.js";
+import { isLocalRuntimeHost } from "../../shared/js/runtime-host.js";
+import { localInitiativeNames } from "./api.js";
 
 function renderNames(list, names) {
   list.replaceChildren(...names.map((name) => {
@@ -16,7 +18,9 @@ export async function initializePublicInitiative() {
   if (!list || !status) return;
 
   try {
-    const snapshot = await readCloudJSON("api/public-initiative", { fallback: null });
+    const snapshot = isLocalRuntimeHost()
+      ? { names: localInitiativeNames() }
+      : await readCloudJSON("api/public-initiative", { fallback: null });
     if (!snapshot || !Array.isArray(snapshot.names)) throw new Error("The shared initiative is unavailable.");
 
     const names = snapshot.names;

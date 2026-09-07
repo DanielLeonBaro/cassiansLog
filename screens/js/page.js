@@ -43,10 +43,19 @@ import {
 const TYPE_ORDER = ["character", "party", "manual", "compendium", "note", "initiative", "calculator"];
 
 export async function initializeScreen(kind) {
-  const local = isLocalRuntimeHost() && !currentCampaignSlug();
+  const local = isLocalRuntimeHost();
   const { user } = await currentSession();
   if (!user) return;
   const campaign = currentCampaignSlug() ? await currentCampaign() : null;
+  if (currentCampaignSlug() && !campaign?.joined) {
+    document.getElementById("screen-status").textContent = "Join this campaign before opening its Screen.";
+    return;
+  }
+  if (kind === "dm" && campaign && !["dm", "admin"].includes(campaign.role)) {
+    document.getElementById("screen-status").textContent = "Campaign DM access required.";
+    document.getElementById("screen-refresh").disabled = true;
+    return;
+  }
   const roles = campaign
     ? ["characters", "player-screen", "combat-loot", "public-initiative", "music", "compendium", "wiki", ...(["dm", "admin"].includes(campaign.role) ? ["dm-screen"] : [])]
     : user.roles || [];

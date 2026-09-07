@@ -1,11 +1,21 @@
 // Coordinates campaign details, membership, assignments, password, and settings management.
-import { currentCampaign, currentCampaignSlug, saveLocalCampaign } from "../../shared/js/campaign-context.js";
+import {
+  currentCampaign,
+  currentCampaignSlug,
+  localCampaignMembers,
+  localCharacterEditors,
+  removeLocalCampaignMember,
+  saveLocalCampaign,
+  saveLocalCharacterEditors,
+  updateLocalCampaignMember,
+} from "../../shared/js/campaign-context.js";
 import { escapeAttribute, escapeHTML } from "../../shared/js/text.js";
 import { mountSiteHeader } from "../../shared/js/site-header.js";
 import { initializeTheme } from "../../shared/js/theme.js";
 import { isLocalRuntimeHost } from "../../shared/js/runtime-host.js";
 import { persistLocalRuntimeSettings, runtimeSettingsReady } from "../../shared/js/settings.js";
-import { readJSON } from "../../shared/js/storage.js";
+import { currentLocalUser } from "../../shared/js/local-users.js";
+import { loadCampaignCharacterRecords } from "../../integrations/campaign-characters/index.js";
 
 mountSiteHeader({ activePage: "campaign-manage" });
 initializeTheme();
@@ -40,7 +50,7 @@ async function renderCharacters() {
   const root = document.getElementById("campaign-characters");
   const playerMembers = members.filter((member) => member.role === "player");
   const assignments = localFallback
-    ? characters.map(() => ({ editors: [] }))
+    ? characters.map((character) => ({ editors: localCharacterEditors(slug, character.id) }))
     : await Promise.all(characters.map((character) => requestJSON(`${api}/characters/${encodeURIComponent(character.id)}/assignments`)));
   root.innerHTML = characters.map((character, index) => `<fieldset data-character="${escapeAttribute(character.id)}" class="rounded-xl border border-stone-300 p-3 dark:border-white/10"><legend class="px-2 font-bold">${escapeHTML(character.document?.name || character.id)}</legend><div class="mt-2 flex flex-wrap gap-3">${playerMembers.map((member) => `<label class="inline-flex items-center gap-2"><input type="checkbox" value="${escapeAttribute(member.id)}"${assignments[index].editors.some((editor) => editor.id === member.id) ? " checked" : ""}> ${escapeHTML(member.email)}</label>`).join("") || '<span class="text-sm text-stone-500">No players to assign.</span>'}</div><button data-save-editors class="mt-3 rounded-lg border border-blood-500 px-3 py-2 text-sm font-bold text-blood-500" type="button">Save editors</button></fieldset>`).join("") || '<p class="text-sm text-stone-500">No campaign characters yet.</p>';
 }
@@ -55,20 +65,19 @@ async function load() {
   try {
     campaign = await currentCampaign();
     if (!campaign || !["dm", "admin"].includes(campaign.role)) throw new Error("Campaign DM access required.");
-    try {
+    if (isLocalRuntimeHost()) {
+      localFallback = true;
+      members = localCampaignMembers(slug);
+      characters = await loadCampaignCharacterRecords();
+      settings = await runtimeSettingsReady;
+      setStatus("Local campaign mode: changes stay in this browser.");
+    } else {
       const [memberResult, characterResult, settingsResult] = await Promise.all([
         requestJSON(`${api}/members`), requestJSON(`${api}/characters`), requestJSON(`${api}/settings`),
       ]);
       members = memberResult.members;
       characters = characterResult.characters;
       settings = settingsResult.settings;
-    } catch (error) {
-      if (!isLocalRuntimeHost()) throw error;
-      localFallback = true;
-      members = [{ id: "localhost", email: "localhost@cassianslog.local", role: "dm" }];
-      characters = Object.values(readJSON("dnd-characters", {})).map((document) => ({ id: document.id, document }));
-      settings = await runtimeSettingsReady;
-      setStatus("Local campaign mode: changes stay in this browser.");
     }
     document.title = `Manage ${campaign.name} | Cassian's Log`;
     document.getElementById("manage-title").textContent = campaign.name;
@@ -162,7 +171,18 @@ document.getElementById("campaign-members").addEventListener("click", async (eve
   const card = event.target.closest("[data-member]");
   if (!card) return;
   if (localFallback) {
-    setStatus("Local mode has one automatic Admin/DM account.");
+    try {
+      if (event.target.closest("[data-save-role]")) {
+        updateLocalCampaignMember(slug, card.dataset.member, card.querySelector("[data-role]").value);
+      } else if (event.target.closest("[data-remove-member]")) {
+        if (!confirm("Remove this member from the campaign?")) return;
+        removeLocalCampaignMember(slug, card.dataset.member);
+      } else return;
+      members = localCampaignMembers(slug);
+      renderMembers();
+      await renderCharacters();
+      setStatus("Local membership saved.");
+    } catch (error) { setStatus(error.message, true); }
     return;
   }
   try {
@@ -180,7 +200,11 @@ document.getElementById("campaign-characters").addEventListener("click", async (
   const fieldset = event.target.closest("[data-character]");
   if (!fieldset || !event.target.closest("[data-save-editors]")) return;
   if (localFallback) {
-    setStatus("Local mode gives this browser Admin/DM character access.");
+    try {
+      const userIds = [...fieldset.querySelectorAll('input[type="checkbox"]:checked')].map((input) => input.value);
+      saveLocalCharacterEditors(slug, fieldset.dataset.character, userIds);
+      setStatus("Local character editors saved.");
+    } catch (error) { setStatus(error.message, true); }
     return;
   }
   try {
@@ -207,6 +231,11 @@ document.getElementById("campaign-settings").addEventListener("submit", async (e
 document.getElementById("leave-campaign").addEventListener("click", async () => {
   if (!confirm("Leave this campaign?")) return;
   try {
+    if (localFallback) {
+      removeLocalCampaignMember(slug, currentLocalUser().id);
+      location.assign("/campaigns/");
+      return;
+    }
     await requestJSON(`${api}/membership/me`, { method: "DELETE" });
     location.assign("/campaigns/");
   } catch (error) { setStatus(error.message, true); }

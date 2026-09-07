@@ -48,6 +48,11 @@ const { pathToFileURL } = require("node:url");
   });
   assert.equal(localAsset.status, 200, "Localhost page requests should bypass login without a database.");
   assert.equal(await localAsset.text(), "local asset");
+  const localLogin = await handleRequest(new Request("http://localhost:8787/login/"), {
+    ASSETS: { fetch: async () => new Response("local login") },
+  });
+  assert.equal(localLogin.status, 200, "Localhost should expose the test-user login page.");
+  assert.equal(await localLogin.text(), "local login");
 
   const failedBootstrap = await handleRequest(new Request("https://example.test/char/"), {
     ASSETS: env.ASSETS,

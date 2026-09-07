@@ -22,6 +22,12 @@ const template = JSON.parse(fs.readFileSync("char/template/character.json", "utf
 const cloudWrites = [];
 let failCloudWrite = false;
 const context = {
+  assignLocalCharacterEditor: () => [],
+  currentCampaignSlug: () => "",
+  currentLocalUser: () => ({ id: "localhost-admin" }),
+  isLocalRuntimeHost: () => false,
+  localCampaign: () => null,
+  localCharacterAccess: () => ({ canEdit: true, canManage: true }),
   readCloudJSON: async () => null,
   writeCloudJSON: async (url, value) => {
     cloudWrites.push({ url, value });

@@ -48,6 +48,12 @@ This file is the durable implementation log for campaign support. Update it when
 - [x] Added browser-only localhost campaign discovery, creation, management, settings, Wiki isolation, and character isolation without requiring D1.
 - [x] Proved the primary site Admin receives campaign `admin` authority and every DM management/read-write endpoint.
 - [x] Deployed the Worker/assets-only repair to Cloudflare as version `51799509-63c8-4134-a2e4-772c91dbe38e`.
+- [x] Fixed direct localhost AOTR character routes so bundled character shells resolve correctly without campaign D1.
+- [x] Made AOTR archive and campaign management use the same complete Character list.
+- [x] Added one localhost Admin plus 20 selectable test-player identities, persistent local login, membership controls, and character assignments.
+- [x] Replaced the separate campaign creation section with a Screen-style dashed placeholder card and creation dialog.
+- [x] Made localhost Screens, settings, Character state/notes, Wiki, Music, Combat, and initiative caches campaign-scoped; empty campaigns no longer inherit AOTR Screen references.
+- [x] Added browser coverage for AOTR Cassian, 21 local identities, character assignment, empty campaign characters, campaign navigation, and AOTR/Sita Screen isolation.
 
 ## Verification Log
 
@@ -66,6 +72,11 @@ This file is the durable implementation log for campaign support. Update it when
 - Remote D1 inspection was read-only: AOTR campaign Wiki, six character documents, settings, memberships, and DM roles remain present; no migration or data write is required for this repair.
 - Live smoke: health returned 200; Wiki, Character, Music, Screen, campaign-management, and campaign-context modules returned 200 and matched the built files byte-for-byte.
 - Live access smoke: unauthenticated legacy Wiki JSON redirects to login instead of exposing AOTR content.
+- 2026-09-07 refinement focused tests: passed for campaign context, Character repository, Screens, Public Initiative, Worker routing, and architecture boundaries.
+- 2026-09-07 refinement `npm test`: passed.
+- 2026-09-07 refinement `npm run build:site`: passed.
+- 2026-09-07 refinement `npm run test:browser`: passed all 17 scenarios, including 21 local identities, AOTR Cassian, assignments, empty Sita characters, and AOTR/Sita Screen isolation.
+- 2026-09-07 refinement `git diff --check`: passed.
 - Pre-existing user changes: `.gitignore`, `package.json`, `shared/tests/run.cjs`, `wiki/scripts/import.cjs`, `wiki/scripts/content-diff/`, and `wiki/tests/content-diff.test.cjs`.
 
 ## Rollback Notes

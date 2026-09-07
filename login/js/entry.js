@@ -1,5 +1,7 @@
 // Coordinates email and Google sign-in while preserving safe return routes.
 import { initializeTheme } from "../../shared/js/theme.js";
+import { isLocalRuntimeHost } from "../../shared/js/runtime-host.js";
+import { currentLocalUser, LOCAL_USERS, selectLocalUser } from "../../shared/js/local-users.js";
 
 initializeTheme();
 
@@ -13,6 +15,29 @@ const status = document.getElementById("auth-status");
 const submit = document.getElementById("submit");
 const submitLabel = submit.querySelector("span");
 const toggle = document.getElementById("toggle-mode");
+
+function safeReturnPath() {
+  const returnTo = params.get("return");
+  return returnTo?.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/campaigns/";
+}
+
+if (isLocalRuntimeHost()) {
+  document.getElementById("form-title").textContent = "Local test login";
+  document.getElementById("form-description").textContent = "Choose a deterministic browser-only identity.";
+  document.getElementById("social-actions").classList.add("hidden");
+  document.getElementById("divider").classList.add("hidden");
+  document.getElementById("mode-switch").classList.add("hidden");
+  form.classList.add("hidden");
+  const localLogin = document.getElementById("local-test-login");
+  const localUser = document.getElementById("local-test-user");
+  localLogin.classList.remove("hidden");
+  localUser.innerHTML = LOCAL_USERS.map((user) => `<option value="${user.id}">${user.label} — ${user.email}</option>`).join("");
+  localUser.value = currentLocalUser().id;
+  document.getElementById("local-test-submit").addEventListener("click", () => {
+    selectLocalUser(localUser.value);
+    location.replace(safeReturnPath());
+  });
+}
 
 function passwordProblem(value) {
   if (value.length < 10) return "Password must contain at least 10 characters.";
@@ -68,8 +93,7 @@ form.addEventListener("submit", async (event) => {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(body.error || "Authentication failed.");
-    const returnTo = params.get("return");
-    location.replace(returnTo?.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/campaigns/");
+    location.replace(safeReturnPath());
   } catch (caught) {
     status.textContent = caught.message;
   } finally {
@@ -77,6 +101,6 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
-renderMode();
+if (!isLocalRuntimeHost()) renderMode();
 const initialError = params.get("error");
 if (initialError) status.textContent = initialError;

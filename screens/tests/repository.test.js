@@ -26,6 +26,15 @@ assert.equal((await loadScreen({ userId: "user-a", kind: "player", local: true, 
 assert.equal((await loadScreen({ userId: "user-b", kind: "player", local: true, storage })).widgets.length, 0);
 assert.notEqual(screenStorageKey("user-a", "player"), screenStorageKey("user-a", "dm"));
 
+const originalLocation = globalThis.location;
+globalThis.location = { pathname: "/c/aotr/player-screen/" };
+const aotrScreenKey = screenStorageKey("user-a", "player");
+globalThis.location = { pathname: "/c/sita/player-screen/" };
+const sitaScreenKey = screenStorageKey("user-a", "player");
+assert.notEqual(aotrScreenKey, sitaScreenKey, "The same user's Screen must be isolated by campaign.");
+if (originalLocation === undefined) delete globalThis.location;
+else globalThis.location = originalLocation;
+
 const originalFetch = globalThis.fetch;
 let requests = [];
 globalThis.fetch = async (url, options = {}) => {

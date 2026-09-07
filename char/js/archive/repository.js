@@ -2,7 +2,14 @@
 import { readJSON, writeJSON } from "../../../shared/js/storage.js";
 import { readCloudJSON, writeCloudJSON } from "../../../shared/js/cloud-store.js";
 import { cloneJSON } from "../../../shared/js/text.js";
-import { currentCampaignSlug } from "../../../shared/js/campaign-context.js";
+import {
+  assignLocalCharacterEditor,
+  currentCampaignSlug,
+  localCampaign,
+  localCharacterAccess,
+} from "../../../shared/js/campaign-context.js";
+import { currentLocalUser } from "../../../shared/js/local-users.js";
+import { isLocalRuntimeHost } from "../../../shared/js/runtime-host.js";
 import {
   CHARACTERS_STORAGE_KEY,
   DELETED_CHARACTERS_STORAGE_KEY,
@@ -65,12 +72,16 @@ async function getJSON(url) {
 
 export async function listCharacters() {
   const campaignSlug = currentCampaignSlug();
-  const staticBundled = campaignSlug && campaignSlug !== "aotr"
-    ? []
-    : await getJSON(new URL("../../catalog.json", import.meta.url)).then((catalog) => Promise.all(catalog.characters.map((id) =>
+  if (campaignSlug && isLocalRuntimeHost() && !localCampaign(campaignSlug)?.joined) return [];
+  const catalog = campaignSlug && campaignSlug !== "aotr"
+    ? { characters: [] }
+    : await getJSON(new URL("../../catalog.json", import.meta.url));
+  const staticBundled = await Promise.all(catalog.characters.map((id) =>
       getJSON(new URL(`../../${encodeURIComponent(id)}/character.json`, import.meta.url)),
-    )));
-  const cloud = await readCloudJSON("api/characters", { fallback: null });
+    ));
+  const cloud = isLocalRuntimeHost()
+    ? null
+    : await readCloudJSON("api/characters", { fallback: null });
   const cloudIsAuthoritative = cloud?.authoritative === true
     || Boolean(Array.isArray(cloud?.characters) && cloud.characters.length);
   const bundled = cloudIsAuthoritative
@@ -103,11 +114,17 @@ export async function listCharacters() {
       characters.push({ ...character, custom: true, description: characterDescription(character) });
     }
   });
-  return characters;
+  if (!campaignSlug || !isLocalRuntimeHost()) return characters;
+  return characters.map((character) => ({
+    ...character,
+    ...localCharacterAccess(campaignSlug, character.id),
+  }));
 }
 
 export async function removeCharacter(character) {
-  await writeCloudJSON(`api/characters/${encodeURIComponent(character.id)}`, undefined, { method: "DELETE" });
+  if (!isLocalRuntimeHost()) {
+    await writeCloudJSON(`api/characters/${encodeURIComponent(character.id)}`, undefined, { method: "DELETE" });
+  }
   const stored = storedCharacters();
   delete stored[character.id];
   writeJSON(CHARACTERS_KEY, stored);
@@ -165,6 +182,15 @@ export async function createCharacter(setup) {
   const stored = storedCharacters();
   stored[id] = cloneJSON(character);
   writeJSON(CHARACTERS_KEY, stored);
+
+  const campaignSlug = currentCampaignSlug();
+  if (isLocalRuntimeHost()) {
+    const user = currentLocalUser();
+    if (campaignSlug && localCampaign(campaignSlug)?.role === "player") {
+      assignLocalCharacterEditor(campaignSlug, id, user.id);
+    }
+    return { character, cloudSaved: true, cloudError: null, local: true };
+  }
 
   try {
     await writeCloudJSON(`api/characters/${encodeURIComponent(id)}`, {
