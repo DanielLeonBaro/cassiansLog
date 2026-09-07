@@ -5,8 +5,13 @@ import {
   loadCompendiumCategory,
 } from "../../compendium/js/api.js";
 import { campaignApiPath } from "../../shared/js/campaign-context.js";
+import { isLocalRuntimeHost } from "../../shared/js/runtime-host.js";
+import { readJSON } from "../../shared/js/storage.js";
+import { listCharacters } from "../../char/js/archive/api.js";
+import { localInitiativeNames } from "../../public-initiative/js/api.js";
 
 async function optionalJSON(url) {
+  if (isLocalRuntimeHost() && String(url).startsWith("api/")) return null;
   try {
     const response = await fetch(campaignApiPath(url), { headers: { accept: "application/json" } });
     return response.ok ? response.json() : null;
@@ -16,14 +21,7 @@ async function optionalJSON(url) {
 }
 
 export async function loadScreenCharacters() {
-  const cloud = await optionalJSON("api/characters");
-  if (Array.isArray(cloud?.characters) && cloud.characters.length) {
-    return cloud.characters.map((record) => record.document).filter(Boolean);
-  }
-  const catalog = await optionalJSON("char/catalog.json");
-  if (!Array.isArray(catalog?.characters)) return [];
-  return Promise.all(catalog.characters.map((id) => optionalJSON(`char/${encodeURIComponent(id)}/character.json`)))
-    .then((characters) => characters.filter(Boolean));
+  return (await listCharacters()).map(({ canEdit, canManage, custom, description, ...character }) => character);
 }
 
 export async function refreshCharacterRuntime(characters) {
@@ -44,13 +42,14 @@ export async function refreshCharacterRuntime(characters) {
 }
 
 export async function loadScreenInitiative() {
+  if (isLocalRuntimeHost()) return localInitiativeNames();
   const snapshot = await optionalJSON("api/public-initiative");
   return Array.isArray(snapshot?.names) ? snapshot.names : [];
 }
 
 export async function loadWikiMentions() {
   const wiki = await optionalJSON("api/wiki");
-  return Array.isArray(wiki?.pages) ? wiki.pages : [];
+  return Array.isArray(wiki?.pages) ? wiki.pages : isLocalRuntimeHost() ? readJSON("dnd-wiki-pages-v1", []) : [];
 }
 
 export async function screenCompendiumCatalog() {

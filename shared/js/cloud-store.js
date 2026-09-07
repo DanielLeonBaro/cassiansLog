@@ -1,5 +1,6 @@
 // Wraps authenticated JSON reads and writes with campaign and write-token compatibility.
 import { campaignApiPath, currentCampaignSlug } from "./campaign-context.js";
+import { isLocalRuntimeHost } from "./runtime-host.js";
 const TOKEN_KEY = "cassianslog-write-token";
 
 export class CloudStoreError extends Error {
@@ -20,6 +21,7 @@ async function responseError(response) {
 }
 
 export async function readCloudJSON(path, { fallback = null } = {}) {
+  if (isLocalRuntimeHost()) return fallback;
   try {
     const response = await fetch(campaignApiPath(path), { headers: { accept: "application/json" } });
     if (response.status === 404 || response.status === 503) return fallback;
@@ -46,6 +48,9 @@ export function clearCloudEditToken() {
 }
 
 export async function writeCloudJSON(path, value, { method = "PUT" } = {}) {
+  if (isLocalRuntimeHost()) {
+    return { ok: true, local: true, method, updatedAt: new Date().toISOString() };
+  }
   const requestPath = campaignApiPath(path);
   if (currentCampaignSlug()) {
     const response = await fetch(requestPath, {

@@ -37,7 +37,7 @@ for (const feature of features) {
     for (const specifier of imports(file)) {
       const dependency = targetRoot(file, specifier);
       assert.ok(
-        dependency === feature || dependency === "shared" || dependency === "external" || (feature === "screens" && dependency === "integrations"),
+        dependency === feature || dependency === "shared" || dependency === "external" || (["campaigns", "screens"].includes(feature) && dependency === "integrations"),
         `${file} must not import ${dependency}: ${specifier}`,
       );
     }
@@ -57,8 +57,10 @@ for (const file of workerRouteFiles) {
 }
 
 const allowedIntegrationEntrypoints = new Set([
+  path.normalize("char/js/archive/api.js"),
   path.normalize("char/js/editor/extensions.js"),
   path.normalize("compendium/js/api.js"),
+  path.normalize("public-initiative/js/api.js"),
 ]);
 for (const file of javascriptFiles("integrations")) {
   for (const specifier of imports(file)) {

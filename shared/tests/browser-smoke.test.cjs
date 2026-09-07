@@ -58,6 +58,32 @@ function staticServer() {
       response.end('{"characters":[],"authoritative":true}');
       return;
     }
+    if (request.method === "GET" && url.pathname === "/api/campaigns/joined/wiki") {
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end('{"pages":[{"id":"home","name":"Local Campaign Home","type":"Lore","summary":"Loaded through the campaign API.","body":"Local campaign wiki."}],"canEdit":true}');
+      return;
+    }
+    if (request.method === "GET" && url.pathname === "/api/campaigns/joined/members") {
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end('{"members":[{"id":"localhost","email":"localhost@cassianslog.local","role":"dm"}]}');
+      return;
+    }
+    if (request.method === "GET" && url.pathname === "/api/campaigns/joined/settings") {
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end('{"settings":{"sections":{"characters":true,"wiki":true,"dm-screen":true},"characterSheetStyle":"v1","characterSheetStyleOverrides":{}},"canEdit":true}');
+      return;
+    }
+    if (request.method === "GET" && url.pathname === "/api/campaigns/joined/characters/cassian") {
+      const document = JSON.parse(fs.readFileSync(path.join(root, "char/cassian/character.json"), "utf8"));
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify({ id: "cassian", document, canEdit: true, canManage: true }));
+      return;
+    }
+    if (request.method === "GET" && /^\/api\/campaigns\/joined\/characters\/cassian\/(?:state|notes)$/.test(url.pathname)) {
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end('{"value":null,"canEdit":true}');
+      return;
+    }
     if (url.pathname.startsWith("/api/")) {
       response.writeHead(404, { "content-type": "application/json; charset=utf-8" });
       response.end('{"error":"Local browser smoke test has no D1 API."}');
@@ -191,17 +217,109 @@ async function main() {
     }
 
     await smoke(
-      "Campaign discovery hub",
-      "/campaigns/",
-      'return document.querySelectorAll("#campaign-list article").length === 2;',
-      'return Boolean(document.querySelector("a[href=\'/c/joined/char/\']") && document.querySelector("a[href=\'/c/joined/manage/\']") && document.querySelector("form[data-join=\'open\']") && document.body.textContent.includes("A joined adventure.") && document.querySelector("#campaign-create input[name=\'password\']") && document.getElementById("campaign-create-banner"));',
+      "Local test-user login",
+      "/login/",
+      'return document.querySelectorAll("#local-test-user option").length === 21;',
+      'return !document.getElementById("local-test-login").classList.contains("hidden") && document.getElementById("local-test-user").value === "localhost-admin";',
     );
+    await smoke(
+      "Campaign discovery placeholder",
+      "/campaigns/",
+      'return document.querySelectorAll("#campaign-list article").length === 1 && Boolean(document.querySelector("[data-create-campaign]"));',
+      `
+        const create = document.querySelector("[data-create-campaign]");
+        create.click();
+        return Boolean(document.getElementById("campaign-create-dialog").classList.contains("flex")
+          && document.querySelector("a[href='/c/aotr/char/']")
+          && document.querySelector("a[href='/c/aotr/manage/']"));
+      `,
+    );
+    await execute(`
+      const form = document.getElementById("campaign-create");
+      form.elements.name.value = "Sita Campaign";
+      form.elements.slug.value = "sita";
+      form.elements.description.value = "Screen isolation test.";
+      form.elements.password.value = "secret";
+      form.requestSubmit();
+      return true;
+    `);
     await waitFor('return Boolean(navigator.serviceWorker.controller);', "Local campaign-route fallback did not activate");
     await smoke(
-      "Campaign Character deep link",
-      "/c/joined/char/",
-      'return document.querySelector("#characters")?.children.length === 0 && document.getElementById("site-campaign")?.textContent === "Joined Campaign";',
-      'return document.getElementById("site-campaign")?.textContent === "Joined Campaign" && location.pathname === "/c/joined/char/";',
+      "Empty new campaign Character list",
+      "/c/sita/char/",
+      'return document.querySelector("#characters")?.children.length === 0 && document.getElementById("site-campaign")?.textContent === "Sita Campaign";',
+      'return location.pathname === "/c/sita/char/";',
+    );
+    await smoke(
+      "AOTR Character archive",
+      "/c/aotr/char/",
+      'return document.querySelectorAll("#characters article").length === 5;',
+      'return document.getElementById("site-campaign")?.textContent === "Apotheosis of the Rings";',
+    );
+    await smoke(
+      "AOTR Cassian localhost tracker",
+      "/c/aotr/char/cassian/",
+      'return window.character?.id === "cassian" && document.getElementById("character-name")?.textContent.startsWith("Cassian");',
+      'return document.body.dataset.characterCanManage === "true" && document.body.dataset.characterCanEdit === "true";',
+    );
+    await smoke(
+      "AOTR localhost members and characters",
+      "/c/aotr/manage/",
+      'return document.querySelectorAll("#campaign-members [data-member]").length === 21 && document.querySelectorAll("#campaign-characters [data-character]").length === 5;',
+      `
+        const cassian = document.querySelector('[data-character="cassian"]');
+        const player = cassian?.querySelector('input[value="localhost-player-01"]');
+        if (!player) return false;
+        player.checked = true;
+        cassian.querySelector("[data-save-editors]").click();
+        return true;
+      `,
+    );
+    await waitFor('return document.getElementById("manage-status").textContent === "Local character editors saved.";', "Local character assignment did not save");
+    await navigate("/login/?return=/c/aotr/char/cassian/");
+    await waitFor('return document.querySelectorAll("#local-test-user option").length === 21;', "Local test login did not reopen");
+    await execute(`
+      const select = document.getElementById("local-test-user");
+      select.value = "localhost-player-01";
+      document.getElementById("local-test-submit").click();
+      return true;
+    `);
+    await waitFor('return window.character?.id === "cassian";', "Assigned test player could not open Cassian");
+    assert.equal(await execute('return document.body.dataset.characterCanEdit === "true" && document.body.dataset.characterCanManage === "false";'), true, "Assigned local player should edit but not manage Cassian.");
+    console.log("Browser smoke passed: Local test-user character assignment");
+
+    await navigate("/campaigns/");
+    await waitFor('return Boolean(document.querySelector("form[data-join=sita]"));', "Sita join form was not shown to the test player");
+    await execute(`
+      const form = document.querySelector("form[data-join=sita]");
+      form.elements.password.value = "secret";
+      form.requestSubmit();
+      return true;
+    `);
+    await waitFor('return location.pathname === "/c/sita/char/";', "Test player did not join Sita");
+
+    await execute(`
+      const screen = (title) => JSON.stringify({ document: { version: 1, widgets: [{ id: title.toLowerCase().replaceAll(" ", "-"), type: "note", title, body: "Campaign-specific" }] }, pending: false });
+      localStorage.setItem("cassianslog-screen-v1:localhost-player-01:player:campaign:aotr", screen("AOTR Screen"));
+      localStorage.setItem("cassianslog-screen-v1:localhost-player-01:player:campaign:sita", screen("Sita Screen"));
+      return true;
+    `);
+    await smoke(
+      "AOTR Player Screen isolation",
+      "/c/aotr/player-screen/",
+      'return document.getElementById("screen-grid")?.textContent.includes("AOTR Screen");',
+      'return !document.body.textContent.includes("Sita Screen") && location.pathname === "/c/aotr/player-screen/";',
+    );
+    await smoke(
+      "Sita Player Screen isolation",
+      "/c/sita/player-screen/",
+      'return document.getElementById("screen-grid")?.textContent.includes("Sita Screen");',
+      `
+        const campaignLinks = [...document.querySelectorAll('[data-role-link]:not([data-role-link="campaigns"]):not([data-role-link="admin"])')];
+        return !document.body.textContent.includes("AOTR Screen")
+          && location.pathname === "/c/sita/player-screen/"
+          && campaignLinks.every((link) => link.getAttribute("href").startsWith("/c/sita/"));
+      `,
     );
 
     await smoke(

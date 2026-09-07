@@ -1,10 +1,195 @@
 // Derives campaign context from URLs and builds scoped links, APIs, and browser keys.
+import { isLocalRuntimeHost } from "./runtime-host.js";
+import { currentLocalUser, LOCAL_ADMIN_USER, LOCAL_TEST_USERS, LOCAL_USERS } from "./local-users.js";
+
 const CAMPAIGN_PATH = /^\/c\/([a-z]{2,48})(?:\/|$)/;
 const CAMPAIGN_API_RESOURCES = new Set([
   "characters", "wiki", "music", "combat-loot", "public-initiative", "screens", "settings",
 ]);
 
 let contextPromise;
+const LOCAL_CAMPAIGNS_KEY = "cassianslog-local-campaigns-v1";
+
+function defaultLocalMembers() {
+  return [
+    { userId: LOCAL_ADMIN_USER.id, role: "dm" },
+    ...LOCAL_TEST_USERS.map((user) => ({ userId: user.id, role: "player" })),
+  ];
+}
+
+function defaultLocalCampaign() {
+  return {
+    id: "campaign-breugaire",
+    name: "Apotheosis of the Rings",
+    description: "",
+    banner: "",
+    slug: "aotr",
+    joinEnabled: false,
+    createdAt: null,
+    updatedAt: null,
+    members: defaultLocalMembers(),
+    characterEditors: {},
+  };
+}
+
+function localCampaignRecords(storage = globalThis.localStorage) {
+  let stored = [];
+  try {
+    const value = JSON.parse(storage?.getItem(LOCAL_CAMPAIGNS_KEY) || "[]");
+    if (Array.isArray(value)) stored = value.filter((campaign) => campaign?.slug && campaign?.name);
+  } catch {
+    // A malformed local catalog should not stop localhost pages from opening.
+  }
+  return stored.some((campaign) => campaign.slug === "aotr")
+    ? stored
+    : [defaultLocalCampaign(), ...stored];
+}
+
+function normalizedLocalCampaign(campaign) {
+  const fallbackMembers = campaign.slug === "aotr"
+    ? defaultLocalMembers()
+    : [{ userId: LOCAL_ADMIN_USER.id, role: "dm" }];
+  return {
+    ...defaultLocalCampaign(),
+    ...campaign,
+    members: Array.isArray(campaign.members) ? campaign.members : fallbackMembers,
+    characterEditors: campaign.characterEditors && typeof campaign.characterEditors === "object"
+      ? campaign.characterEditors
+      : {},
+  };
+}
+
+function publicLocalCampaign(campaign, user) {
+  const membership = campaign.members.find((member) => member.userId === user.id);
+  return {
+    ...campaign,
+    joined: user.isPrimaryAdmin || Boolean(membership),
+    role: user.isPrimaryAdmin ? "admin" : membership?.role || null,
+  };
+}
+
+function writeLocalCampaigns(campaigns, storage = globalThis.localStorage) {
+  storage?.setItem(LOCAL_CAMPAIGNS_KEY, JSON.stringify(campaigns));
+}
+
+export function localCampaigns(storage = globalThis.localStorage, user = currentLocalUser(storage)) {
+  return localCampaignRecords(storage)
+    .map(normalizedLocalCampaign)
+    .map((campaign) => publicLocalCampaign(campaign, user));
+}
+
+export function localCampaign(slug, storage = globalThis.localStorage, user = currentLocalUser(storage)) {
+  return localCampaigns(storage, user).find((campaign) => campaign.slug === slug) || null;
+}
+
+export function saveLocalCampaign(slug, changes, storage = globalThis.localStorage) {
+  const user = currentLocalUser(storage);
+  const campaigns = localCampaignRecords(storage).map(normalizedLocalCampaign);
+  const index = campaigns.findIndex((campaign) => campaign.slug === slug);
+  const campaign = {
+    ...(index >= 0 ? campaigns[index] : {
+      ...defaultLocalCampaign(),
+      id: `local-${slug}`,
+      name: slug,
+      slug,
+      members: [{ userId: user.id, role: "dm" }],
+    }),
+    ...changes,
+    slug,
+    updatedAt: new Date().toISOString(),
+  };
+  if (index >= 0) campaigns.splice(index, 1, campaign);
+  else campaigns.push(campaign);
+  writeLocalCampaigns(campaigns, storage);
+  return publicLocalCampaign(campaign, user);
+}
+
+export function joinLocalCampaign(slug, storage = globalThis.localStorage, user = currentLocalUser(storage)) {
+  const campaigns = localCampaignRecords(storage).map(normalizedLocalCampaign);
+  const campaign = campaigns.find((candidate) => candidate.slug === slug);
+  if (!campaign) throw new Error("Campaign not found.");
+  if (!user.isPrimaryAdmin && !campaign.members.some((member) => member.userId === user.id)) {
+    campaign.members.push({ userId: user.id, role: "player" });
+    campaign.updatedAt = new Date().toISOString();
+    writeLocalCampaigns(campaigns, storage);
+  }
+  return publicLocalCampaign(campaign, user);
+}
+
+export function localCampaignMembers(slug, storage = globalThis.localStorage) {
+  const campaign = localCampaignRecords(storage).map(normalizedLocalCampaign)
+    .find((candidate) => candidate.slug === slug);
+  if (!campaign) return [];
+  return campaign.members.map((member) => {
+    const user = LOCAL_USERS.find((candidate) => candidate.id === member.userId);
+    return user ? { id: user.id, email: user.email, label: user.label, role: member.role } : null;
+  }).filter(Boolean);
+}
+
+export function updateLocalCampaignMember(slug, userId, role, storage = globalThis.localStorage) {
+  if (!["player", "dm"].includes(role)) throw new Error("Member role must be player or dm.");
+  const campaigns = localCampaignRecords(storage).map(normalizedLocalCampaign);
+  const campaign = campaigns.find((candidate) => candidate.slug === slug);
+  const member = campaign?.members.find((candidate) => candidate.userId === userId);
+  if (!campaign || !member) throw new Error("Member not found.");
+  const dmCount = campaign.members.filter((candidate) => candidate.role === "dm").length;
+  if (member.role === "dm" && role !== "dm" && dmCount <= 1) throw new Error("Assign another DM before demoting the final DM.");
+  member.role = role;
+  campaign.updatedAt = new Date().toISOString();
+  writeLocalCampaigns(campaigns, storage);
+  return member;
+}
+
+export function removeLocalCampaignMember(slug, userId, storage = globalThis.localStorage) {
+  const campaigns = localCampaignRecords(storage).map(normalizedLocalCampaign);
+  const campaign = campaigns.find((candidate) => candidate.slug === slug);
+  const member = campaign?.members.find((candidate) => candidate.userId === userId);
+  if (!campaign || !member) throw new Error("Member not found.");
+  const dmCount = campaign.members.filter((candidate) => candidate.role === "dm").length;
+  if (member.role === "dm" && dmCount <= 1) throw new Error("Assign another DM before removing the final DM.");
+  campaign.members = campaign.members.filter((candidate) => candidate.userId !== userId);
+  Object.keys(campaign.characterEditors).forEach((characterId) => {
+    campaign.characterEditors[characterId] = campaign.characterEditors[characterId]
+      .filter((candidate) => candidate !== userId);
+  });
+  campaign.updatedAt = new Date().toISOString();
+  writeLocalCampaigns(campaigns, storage);
+  return true;
+}
+
+export function localCharacterEditors(slug, characterId, storage = globalThis.localStorage) {
+  const campaign = localCampaignRecords(storage).map(normalizedLocalCampaign)
+    .find((candidate) => candidate.slug === slug);
+  const ids = Array.isArray(campaign?.characterEditors?.[characterId])
+    ? campaign.characterEditors[characterId]
+    : [];
+  return ids.map((id) => LOCAL_USERS.find((user) => user.id === id)).filter(Boolean);
+}
+
+export function saveLocalCharacterEditors(slug, characterId, userIds, storage = globalThis.localStorage) {
+  const campaigns = localCampaignRecords(storage).map(normalizedLocalCampaign);
+  const campaign = campaigns.find((candidate) => candidate.slug === slug);
+  if (!campaign) throw new Error("Campaign not found.");
+  const players = new Set(campaign.members.filter((member) => member.role === "player").map((member) => member.userId));
+  const editors = [...new Set(userIds)];
+  if (editors.some((userId) => !players.has(userId))) throw new Error("Every character editor must be a campaign player.");
+  campaign.characterEditors[characterId] = editors;
+  campaign.updatedAt = new Date().toISOString();
+  writeLocalCampaigns(campaigns, storage);
+  return editors;
+}
+
+export function assignLocalCharacterEditor(slug, characterId, userId, storage = globalThis.localStorage) {
+  const current = localCharacterEditors(slug, characterId, storage).map((user) => user.id);
+  return saveLocalCharacterEditors(slug, characterId, [...current, userId], storage);
+}
+
+export function localCharacterAccess(slug, characterId, storage = globalThis.localStorage, user = currentLocalUser(storage)) {
+  const campaign = localCampaign(slug, storage, user);
+  const canManage = campaign?.role === "dm" || campaign?.role === "admin";
+  const canEdit = canManage || localCharacterEditors(slug, characterId, storage).some((editor) => editor.id === user.id);
+  return { canEdit, canManage };
+}
 
 export function campaignSlugFromPath(pathname = globalThis.location?.pathname || "") {
   return CAMPAIGN_PATH.exec(pathname)?.[1] || "";
@@ -45,13 +230,15 @@ export function campaignStorageKey(key, storage = globalThis.localStorage) {
 export function currentCampaign({ refresh = false } = {}) {
   const slug = currentCampaignSlug();
   if (!slug) return Promise.resolve(null);
+  if (isLocalRuntimeHost()) return Promise.resolve(localCampaign(slug));
   if (refresh || !contextPromise) {
     contextPromise = fetch(`/api/campaigns/${encodeURIComponent(slug)}`, { headers: { accept: "application/json" } })
       .then(async (response) => {
         const body = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(body.error || `Could not load campaign (${response.status}).`);
         return body.campaign;
-      });
+      })
+      .catch((error) => { throw error; });
   }
   return contextPromise;
 }

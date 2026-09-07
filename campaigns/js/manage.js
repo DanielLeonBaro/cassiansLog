@@ -1,8 +1,21 @@
 // Coordinates campaign details, membership, assignments, password, and settings management.
-import { currentCampaign, currentCampaignSlug } from "../../shared/js/campaign-context.js";
+import {
+  currentCampaign,
+  currentCampaignSlug,
+  localCampaignMembers,
+  localCharacterEditors,
+  removeLocalCampaignMember,
+  saveLocalCampaign,
+  saveLocalCharacterEditors,
+  updateLocalCampaignMember,
+} from "../../shared/js/campaign-context.js";
 import { escapeAttribute, escapeHTML } from "../../shared/js/text.js";
 import { mountSiteHeader } from "../../shared/js/site-header.js";
 import { initializeTheme } from "../../shared/js/theme.js";
+import { isLocalRuntimeHost } from "../../shared/js/runtime-host.js";
+import { persistLocalRuntimeSettings, runtimeSettingsReady } from "../../shared/js/settings.js";
+import { currentLocalUser } from "../../shared/js/local-users.js";
+import { loadCampaignCharacterRecords } from "../../integrations/campaign-characters/index.js";
 
 mountSiteHeader({ activePage: "campaign-manage" });
 initializeTheme();
@@ -15,6 +28,7 @@ let members = [];
 let characters = [];
 let settings;
 let pendingBanner = null;
+let localFallback = false;
 
 function setStatus(message, error = false) {
   status.textContent = message;
@@ -35,7 +49,9 @@ function renderMembers() {
 async function renderCharacters() {
   const root = document.getElementById("campaign-characters");
   const playerMembers = members.filter((member) => member.role === "player");
-  const assignments = await Promise.all(characters.map((character) => requestJSON(`${api}/characters/${encodeURIComponent(character.id)}/assignments`)));
+  const assignments = localFallback
+    ? characters.map((character) => ({ editors: localCharacterEditors(slug, character.id) }))
+    : await Promise.all(characters.map((character) => requestJSON(`${api}/characters/${encodeURIComponent(character.id)}/assignments`)));
   root.innerHTML = characters.map((character, index) => `<fieldset data-character="${escapeAttribute(character.id)}" class="rounded-xl border border-stone-300 p-3 dark:border-white/10"><legend class="px-2 font-bold">${escapeHTML(character.document?.name || character.id)}</legend><div class="mt-2 flex flex-wrap gap-3">${playerMembers.map((member) => `<label class="inline-flex items-center gap-2"><input type="checkbox" value="${escapeAttribute(member.id)}"${assignments[index].editors.some((editor) => editor.id === member.id) ? " checked" : ""}> ${escapeHTML(member.email)}</label>`).join("") || '<span class="text-sm text-stone-500">No players to assign.</span>'}</div><button data-save-editors class="mt-3 rounded-lg border border-blood-500 px-3 py-2 text-sm font-bold text-blood-500" type="button">Save editors</button></fieldset>`).join("") || '<p class="text-sm text-stone-500">No campaign characters yet.</p>';
 }
 
@@ -49,12 +65,20 @@ async function load() {
   try {
     campaign = await currentCampaign();
     if (!campaign || !["dm", "admin"].includes(campaign.role)) throw new Error("Campaign DM access required.");
-    const [memberResult, characterResult, settingsResult] = await Promise.all([
-      requestJSON(`${api}/members`), requestJSON(`${api}/characters`), requestJSON(`${api}/settings`),
-    ]);
-    members = memberResult.members;
-    characters = characterResult.characters;
-    settings = settingsResult.settings;
+    if (isLocalRuntimeHost()) {
+      localFallback = true;
+      members = localCampaignMembers(slug);
+      characters = await loadCampaignCharacterRecords();
+      settings = await runtimeSettingsReady;
+      setStatus("Local campaign mode: changes stay in this browser.");
+    } else {
+      const [memberResult, characterResult, settingsResult] = await Promise.all([
+        requestJSON(`${api}/members`), requestJSON(`${api}/characters`), requestJSON(`${api}/settings`),
+      ]);
+      members = memberResult.members;
+      characters = characterResult.characters;
+      settings = settingsResult.settings;
+    }
     document.title = `Manage ${campaign.name} | Cassian's Log`;
     document.getElementById("manage-title").textContent = campaign.name;
     document.querySelector('#campaign-details [name="name"]').value = campaign.name;
@@ -65,7 +89,7 @@ async function load() {
     renderMembers();
     await renderCharacters();
     renderSettings();
-    if (campaign.role === "admin") {
+    if (campaign.role === "admin" && !localFallback) {
       const form = document.getElementById("campaign-slug");
       form.classList.remove("hidden");
       form.elements.slug.value = campaign.slug;
@@ -81,7 +105,10 @@ document.getElementById("campaign-details").addEventListener("submit", async (ev
   try {
     const data = new FormData(event.currentTarget);
     const banner = document.getElementById("campaign-banner-clear").checked ? "" : pendingBanner ?? campaign.banner ?? "";
-    const result = await requestJSON(api, { method: "PATCH", body: JSON.stringify({ name: data.get("name"), description: data.get("description"), banner }) });
+    const details = { name: String(data.get("name") || "").trim(), description: String(data.get("description") || "").trim(), banner };
+    const result = localFallback
+      ? saveLocalCampaign(slug, details)
+      : await requestJSON(api, { method: "PATCH", body: JSON.stringify(details) });
     campaign.name = result.name;
     campaign.description = result.description;
     campaign.banner = result.banner;
@@ -121,6 +148,11 @@ document.getElementById("campaign-banner-clear").addEventListener("change", (eve
 document.getElementById("campaign-password").addEventListener("submit", async (event) => {
   event.preventDefault();
   try {
+    if (localFallback) {
+      event.currentTarget.reset();
+      setStatus("Local mode does not require a join password.");
+      return;
+    }
     await requestJSON(`${api}/password`, { method: "PUT", body: JSON.stringify({ password: new FormData(event.currentTarget).get("password") }) });
     event.currentTarget.reset();
     setStatus("Join password saved. Current members remain joined.");
@@ -138,6 +170,21 @@ document.getElementById("campaign-slug").addEventListener("submit", async (event
 document.getElementById("campaign-members").addEventListener("click", async (event) => {
   const card = event.target.closest("[data-member]");
   if (!card) return;
+  if (localFallback) {
+    try {
+      if (event.target.closest("[data-save-role]")) {
+        updateLocalCampaignMember(slug, card.dataset.member, card.querySelector("[data-role]").value);
+      } else if (event.target.closest("[data-remove-member]")) {
+        if (!confirm("Remove this member from the campaign?")) return;
+        removeLocalCampaignMember(slug, card.dataset.member);
+      } else return;
+      members = localCampaignMembers(slug);
+      renderMembers();
+      await renderCharacters();
+      setStatus("Local membership saved.");
+    } catch (error) { setStatus(error.message, true); }
+    return;
+  }
   try {
     if (event.target.closest("[data-save-role]")) await requestJSON(`${api}/members/${encodeURIComponent(card.dataset.member)}`, { method: "PATCH", body: JSON.stringify({ role: card.querySelector("[data-role]").value }) });
     else if (event.target.closest("[data-remove-member]")) {
@@ -152,6 +199,14 @@ document.getElementById("campaign-members").addEventListener("click", async (eve
 document.getElementById("campaign-characters").addEventListener("click", async (event) => {
   const fieldset = event.target.closest("[data-character]");
   if (!fieldset || !event.target.closest("[data-save-editors]")) return;
+  if (localFallback) {
+    try {
+      const userIds = [...fieldset.querySelectorAll('input[type="checkbox"]:checked')].map((input) => input.value);
+      saveLocalCharacterEditors(slug, fieldset.dataset.character, userIds);
+      setStatus("Local character editors saved.");
+    } catch (error) { setStatus(error.message, true); }
+    return;
+  }
   try {
     const userIds = [...fieldset.querySelectorAll('input[type="checkbox"]:checked')].map((input) => input.value);
     await requestJSON(`${api}/characters/${encodeURIComponent(fieldset.dataset.character)}/assignments`, { method: "PUT", body: JSON.stringify({ userIds }) });
@@ -164,7 +219,10 @@ document.getElementById("campaign-settings").addEventListener("submit", async (e
   const sections = Object.fromEntries([...document.querySelectorAll("[data-section]")].map((input) => [input.dataset.section, input.checked]));
   const overrides = Object.fromEntries([...document.querySelectorAll("[data-style]")].filter((select) => select.value).map((select) => [select.dataset.style, select.value]));
   try {
-    const result = await requestJSON(`${api}/settings`, { method: "PUT", body: JSON.stringify({ sections, characterSheetStyle: new FormData(event.currentTarget).get("characterSheetStyle"), characterSheetStyleOverrides: overrides }) });
+    const nextSettings = { sections, characterSheetStyle: new FormData(event.currentTarget).get("characterSheetStyle"), characterSheetStyleOverrides: overrides };
+    const result = localFallback
+      ? { settings: persistLocalRuntimeSettings(nextSettings) }
+      : await requestJSON(`${api}/settings`, { method: "PUT", body: JSON.stringify(nextSettings) });
     settings = result.settings;
     setStatus("Campaign settings saved.");
   } catch (error) { setStatus(error.message, true); }
@@ -173,6 +231,11 @@ document.getElementById("campaign-settings").addEventListener("submit", async (e
 document.getElementById("leave-campaign").addEventListener("click", async () => {
   if (!confirm("Leave this campaign?")) return;
   try {
+    if (localFallback) {
+      removeLocalCampaignMember(slug, currentLocalUser().id);
+      location.assign("/campaigns/");
+      return;
+    }
     await requestJSON(`${api}/membership/me`, { method: "DELETE" });
     location.assign("/campaigns/");
   } catch (error) { setStatus(error.message, true); }

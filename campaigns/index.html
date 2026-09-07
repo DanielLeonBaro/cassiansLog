@@ -21,18 +21,19 @@
     </header>
     <p id="campaign-status" class="mb-5 min-h-6 text-sm text-stone-500" role="status" aria-live="polite"></p>
     <section id="campaign-list" class="grid gap-5 md:grid-cols-2 xl:grid-cols-3" aria-label="Campaigns"></section>
-    <section class="mt-10 rounded-2xl border border-stone-300 bg-white/70 p-5 shadow-card dark:border-white/10 dark:bg-white/[.05]">
-      <h2 class="font-display text-2xl font-bold">Create campaign</h2>
-      <p class="mt-1 text-sm text-stone-500">You become its first DM. New campaigns start empty except for default settings and the character template.</p>
-      <form id="campaign-create" class="mt-5 grid gap-4 md:grid-cols-2">
+    <section id="campaign-create-dialog" class="fixed inset-0 z-50 hidden items-center justify-center bg-ink/80 p-3 backdrop-blur-sm sm:p-6" role="dialog" aria-modal="true" aria-labelledby="campaign-create-title">
+      <div class="max-h-full w-full max-w-2xl overflow-y-auto rounded-3xl border border-stone-300 bg-parchment p-5 shadow-2xl dark:border-white/15 dark:bg-ink sm:p-7">
+        <div class="flex items-start justify-between gap-4"><div><p class="text-xs font-bold uppercase tracking-[.18em] text-blood-500">New campaign</p><h2 id="campaign-create-title" class="mt-1 font-display text-3xl font-bold">Create campaign</h2><p class="mt-1 text-sm text-stone-500">You become its first DM. New campaigns start empty except for default settings and the character template.</p></div><button id="campaign-create-close" type="button" class="rounded-xl p-2 hover:bg-stone-200 dark:hover:bg-white/10" aria-label="Close campaign creation"><i class="bi bi-x-lg"></i></button></div>
+        <form id="campaign-create" class="mt-5 grid gap-4 md:grid-cols-2">
         <label><span class="mb-1 block text-sm font-bold">Campaign name</span><input name="name" required maxlength="80" class="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 dark:border-white/15 dark:bg-white/5"></label>
         <label><span class="mb-1 block text-sm font-bold">URL slug</span><input name="slug" pattern="[a-z]{2,48}" maxlength="48" class="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 font-mono lowercase dark:border-white/15 dark:bg-white/5" placeholder="generatedfromname"><small class="mt-1 block text-stone-500">Optional. Lowercase a-z only; permanent unless the site Admin changes it.</small></label>
         <label class="md:col-span-2"><span class="mb-1 block text-sm font-bold">Short description</span><textarea name="description" maxlength="280" rows="3" class="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 dark:border-white/15 dark:bg-white/5" placeholder="What is this campaign about?"></textarea></label>
         <label><span class="mb-1 block text-sm font-bold">Banner image</span><input id="campaign-create-banner" type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="block w-full text-sm"><small class="mt-1 block text-stone-500">Optional. Maximum 500 KB.</small></label>
         <label><span class="mb-1 block text-sm font-bold">Join password</span><input name="password" required minlength="6" maxlength="128" type="password" autocomplete="new-password" class="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 dark:border-white/15 dark:bg-white/5"><small class="mt-1 block text-stone-500">6 or more characters.</small></label>
         <img id="campaign-create-banner-preview" alt="Campaign banner preview" class="hidden max-h-48 w-full rounded-xl object-cover md:col-span-2">
-        <div class="md:col-span-2"><button class="rounded-xl bg-blood-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-blood-600" type="submit"><i class="bi bi-plus-circle mr-2"></i>Create campaign</button></div>
-      </form>
+          <div class="flex justify-end gap-3 md:col-span-2"><button id="campaign-create-cancel" class="rounded-xl border border-stone-400 px-5 py-2.5 text-sm font-bold" type="button">Cancel</button><button class="rounded-xl bg-blood-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-blood-600" type="submit"><i class="bi bi-plus-circle mr-2"></i>Create campaign</button></div>
+        </form>
+      </div>
     </section>
   </main>
   <script type="module" src="campaigns/js/hub.js"></script>

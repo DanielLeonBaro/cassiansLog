@@ -16,6 +16,8 @@ import { ensurePrimaryAdmin, hasRole, isLocalRequest, userFromRequest } from "./
 import { campaignAccess, canManageCampaign, LEGACY_CAMPAIGN_SLUG } from "./campaigns.js";
 
 const PUBLIC_ASSET_PATTERN = /\.(?:css|js|mjs|png|jpe?g|gif|webp|svg|ico|woff2?|map)$/i;
+const AUTHENTICATED_DATA_PATTERN = /\.json$/i;
+const LEGACY_CAMPAIGN_DATA_PATTERN = /^\/(?:wiki\/data\/pages\.json|char\/(?:catalog\.json|[a-z0-9-]+\/character\.json))$/i;
 const PAGE_ROLES = [
   [/^\/admin(?:\/|$)/, "admin"],
   [/^\/char(?:\/|$)/, "characters"],
@@ -67,14 +69,27 @@ async function staticAsset(request, env, url) {
       fallback.searchParams.set("access", "denied");
       return Response.redirect(fallback.toString(), 302);
     }
-  } else if ((url.pathname === "/login" || url.pathname === "/login/") && localBypass) {
-    return Response.redirect(new URL("/char/", url).toString(), 302);
-  } else if ((url.pathname === "/login" || url.pathname === "/login/") && env.DB) {
+  } else if ((url.pathname === "/login" || url.pathname === "/login/") && env.DB && !localBypass) {
     await ensurePrimaryAdmin(env);
     if (await userFromRequest(request, env)) {
       const destination = await campaignStorageReady(env) ? "/campaigns/" : "/char/";
       return Response.redirect(new URL(destination, url).toString(), 302);
     }
+  }
+
+  // Feature modules and images are public build assets. They must reach ASSETS
+  // before legacy page redirects inspect their feature prefix.
+  if (publicPath) return env.ASSETS.fetch(request);
+
+  // JSON is authenticated because some legacy files contain AOTR campaign data.
+  // Restrict those files to AOTR members while leaving shared configuration
+  // available to every signed-in user.
+  if (AUTHENTICATED_DATA_PATTERN.test(url.pathname)) {
+    if (!localBypass && LEGACY_CAMPAIGN_DATA_PATTERN.test(url.pathname) && await campaignStorageReady(env)) {
+      const access = await campaignAccess(request, env, LEGACY_CAMPAIGN_SLUG);
+      if (access.response) return access.response;
+    }
+    return env.ASSETS.fetch(request);
   }
 
   if (await campaignStorageReady(env)) {

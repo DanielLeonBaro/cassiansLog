@@ -48,6 +48,11 @@ const { pathToFileURL } = require("node:url");
   });
   assert.equal(localAsset.status, 200, "Localhost page requests should bypass login without a database.");
   assert.equal(await localAsset.text(), "local asset");
+  const localLogin = await handleRequest(new Request("http://localhost:8787/login/"), {
+    ASSETS: { fetch: async () => new Response("local login") },
+  });
+  assert.equal(localLogin.status, 200, "Localhost should expose the test-user login page.");
+  assert.equal(await localLogin.text(), "local login");
 
   const failedBootstrap = await handleRequest(new Request("https://example.test/char/"), {
     ASSETS: env.ASSETS,
@@ -104,6 +109,73 @@ const { pathToFileURL } = require("node:url");
     { ...env, ASSETS: { fetch: async () => new Response("missing", { status: 404 }) } },
   );
   assert.equal(nestedWikiAsset.status, 404, "Only wiki page routes should use the wiki shell.");
+
+  const campaignReadyAssetPaths = [];
+  const campaignReadyEnv = {
+    ...env,
+    ASSETS: { fetch: async (request) => {
+      campaignReadyAssetPaths.push(new URL(request.url).pathname);
+      return new Response("public feature asset");
+    } },
+    DB: {
+      prepare(sql) {
+        if (sql === "SELECT id FROM campaigns WHERE id = 'campaign-breugaire'") {
+          return { first: async () => ({ id: "campaign-breugaire" }) };
+        }
+        throw new Error(`Public assets must not query authenticated campaign data: ${sql}`);
+      },
+    },
+  };
+  for (const pathname of [
+    "/char/js/page-loader.js",
+    "/wiki/js/page.js",
+    "/music/js/entry.js",
+    "/screens/js/entry.js",
+  ]) {
+    const response = await handleRequest(new Request(`https://example.test${pathname}`), campaignReadyEnv);
+    assert.equal(response.status, 200, `${pathname} should remain a public static asset after campaign migration.`);
+    assert.equal(await response.text(), "public feature asset");
+  }
+  assert.deepEqual(campaignReadyAssetPaths, [
+    "/char/js/page-loader.js",
+    "/wiki/js/page.js",
+    "/music/js/entry.js",
+    "/screens/js/entry.js",
+  ]);
+
+  const campaignDataPaths = [];
+  const campaignDataEnv = {
+    ...campaignReadyEnv,
+    ASSETS: { fetch: async (request) => {
+      campaignDataPaths.push(new URL(request.url).pathname);
+      return new Response("authenticated campaign data");
+    } },
+    DB: {
+      prepare(sql) {
+        if (sql === "SELECT id FROM campaigns WHERE id = 'campaign-breugaire'") {
+          return { first: async () => ({ id: "campaign-breugaire" }) };
+        }
+        if (sql === "SELECT id FROM users WHERE email = ? COLLATE NOCASE") {
+          return { bind: () => ({ first: async () => ({ id: "primary-admin" }) }) };
+        }
+        if (sql.includes("FROM user_sessions JOIN users")) {
+          return { bind: () => ({ first: async () => ({ id: "primary-admin", email: "dleonbaro@gmail.com", roles_json: "[]" }) }) };
+        }
+        if (sql.includes("FROM campaign_slugs AS requested")) {
+          return { bind: () => ({ first: async () => ({ id: "campaign-breugaire", current_slug: "aotr" }) }) };
+        }
+        throw new Error(`Unexpected SQL in campaign data asset test: ${sql}`);
+      },
+    },
+  };
+  for (const pathname of ["/char/catalog.json", "/wiki/data/pages.json"]) {
+    const response = await handleRequest(new Request(`https://example.test${pathname}`, { headers: { cookie: "cassianslog_session=test" } }), campaignDataEnv);
+    assert.equal(response.status, 200, `${pathname} should load for an authenticated AOTR Admin.`);
+    assert.equal(await response.text(), "authenticated campaign data");
+  }
+  assert.deepEqual(campaignDataPaths, ["/char/catalog.json", "/wiki/data/pages.json"]);
+  const anonymousCampaignData = await handleRequest(new Request("https://example.test/wiki/data/pages.json"), campaignDataEnv);
+  assert.equal(anonymousCampaignData.status, 302, "Legacy campaign JSON must not become a public asset.");
 
   const health = await handleRequest(new Request("https://example.test/api/health"), env);
   assert.equal(health.status, 200);

@@ -140,9 +140,9 @@ export async function initializeWiki() {
         ${breugaire?.banner ? `<img src="${escapeAttribute(breugaire.banner)}" alt="" class="absolute inset-0 h-full w-full object-cover opacity-45">` : ""}
         <div class="absolute inset-0 bg-gradient-to-r from-ink via-ink/90 to-ink/30"></div>
         <div class="relative max-w-3xl px-6 py-12 text-white sm:px-10 sm:py-16">
-          <span class="mb-4 inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-bold backdrop-blur-sm"><i class="bi bi-stars mr-1.5 text-gold"></i> ${escapeHTML(campaignName)} campaign notes</span>
+          <span class="mb-4 inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-bold backdrop-blur-sm"><i class="bi bi-stars mr-1.5 text-gold"></i> ${escapeHTML(campaignName)} campaign's wiki</span>
           <h1 id="wiki-title" class="font-display text-4xl font-bold sm:text-6xl">Campaign Wiki</h1>
-          <p class="mt-4 max-w-2xl text-lg leading-relaxed text-stone-200">${canEdit ? "Read or edit the campaign's shared notes." : "Read the campaign notes shared by its DMs."}</p>
+          <p class="mt-4 max-w-2xl text-lg leading-relaxed text-stone-200">${canEdit ? "Read or edit the campaign's shared notes." : "Lore's wiki for ${escapeHTML(campaignName)}."}</p>
           <div class="mt-7 flex flex-wrap gap-3">
             ${canEdit ? '<button type="button" data-action="new" class="inline-flex items-center gap-2 rounded-xl bg-blood-500 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-blood-600"><i class="bi bi-file-earmark-plus-fill"></i> New page</button>' : ""}
             ${breugaire ? `<a href="${pageURL(breugaire.id)}" class="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-5 py-2.5 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/20">Enter Breugaire <i class="bi bi-arrow-right"></i></a>` : ""}

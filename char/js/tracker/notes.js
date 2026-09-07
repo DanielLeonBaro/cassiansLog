@@ -3,6 +3,7 @@ import { readJSON, writeJSON } from "../../../shared/js/storage.js";
 import { readCloudJSON, writeCloudJSON } from "../../../shared/js/cloud-store.js";
 import { characterNotesStorageKey } from "../storage-keys.js";
 import { currentCampaignSlug } from "../../../shared/js/campaign-context.js";
+import { isLocalRuntimeHost } from "../../../shared/js/runtime-host.js";
 
 export function createNotesController({ characterId, cardClasses, escapeHTML }) {
   const storageKey = characterNotesStorageKey(characterId);
@@ -33,7 +34,7 @@ export function createNotesController({ characterId, cardClasses, escapeHTML }) 
 
   return {
     load() {
-      notes = currentCampaignSlug() ? [] : readJSON(storageKey, []);
+      notes = currentCampaignSlug() && !isLocalRuntimeHost() ? [] : readJSON(storageKey, []);
     },
     async loadCloud() {
       const result = await readCloudJSON(`api/characters/${encodeURIComponent(characterId)}/notes`, { fallback: null });

@@ -1,19 +1,11 @@
 // Wraps browser authentication requests, session lookup, and logout behavior.
 import { isLocalRuntimeHost } from "./runtime-host.js";
+import { currentLocalUser } from "./local-users.js";
 
 let sessionPromise;
 
-const localhostUser = {
-  id: "localhost",
-  email: "localhost@cassianslog.local",
-  roles: ["characters", "player-screen", "dm-screen", "wiki", "compendium", "combat-loot", "public-initiative", "music", "admin"],
-  providers: [],
-  isPrimaryAdmin: true,
-  localBypass: true,
-};
-
 export function currentSession() {
-  if (isLocalRuntimeHost()) return Promise.resolve({ user: localhostUser });
+  if (isLocalRuntimeHost()) return Promise.resolve({ user: currentLocalUser() });
   if (!sessionPromise) {
     sessionPromise = fetch("api/auth/session", { headers: { accept: "application/json" } })
       .then((response) => response.ok ? response.json() : { user: null })
@@ -24,7 +16,7 @@ export function currentSession() {
 
 export async function logout() {
   if (isLocalRuntimeHost()) {
-    location.replace("/campaigns/");
+    location.replace("/login/");
     return;
   }
   await fetch("api/auth/logout", { method: "POST", headers: { accept: "application/json" } });

@@ -52,7 +52,7 @@ export function mountAccountMenu(button, user) {
       <button type="button" data-close-account class="rounded-xl p-2 hover:bg-stone-200 dark:hover:bg-white/10" aria-label="Close account settings"><i class="bi bi-x-lg"></i></button>
     </div>
     <div class="mt-5"><p data-account-status class="min-h-5 text-sm text-stone-500 dark:text-stone-400"></p></div>
-    ${user.localBypass ? `<div class="mt-4 rounded-2xl border border-gold/50 bg-gold/10 p-4 text-sm"><strong class="block">Localhost login bypass is active.</strong><span class="mt-1 block text-stone-500 dark:text-stone-400">Account, password, email, and provider changes are disabled locally. Use the deployed site to manage the real account.</span></div>` : `
+    ${user.localBypass ? `<div class="mt-4 rounded-2xl border border-gold/50 bg-gold/10 p-4 text-sm"><strong class="block">Localhost test account is active.</strong><span class="mt-1 block text-stone-500 dark:text-stone-400">Sign out to switch between the local Admin and 20 test players. Account changes remain disabled locally.</span></div>` : `
       <section class="mt-5 rounded-2xl border border-stone-300 p-4 dark:border-white/15">
         <h3 class="font-display text-xl font-bold">Email</h3>
         ${user.isPrimaryAdmin ? `<p class="mt-2 text-sm text-stone-500 dark:text-stone-400">The primary administrator email is fixed to ${escapeHTML(user.email)}.</p>` : `<form data-email-form class="mt-4 grid gap-3 sm:grid-cols-2">

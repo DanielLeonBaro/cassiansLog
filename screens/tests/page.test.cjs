@@ -24,6 +24,8 @@ for (const control of ["data-edit-widget", "data-remove-widget", "data-move-widg
 }
 const page = fs.readFileSync("screens/js/page.js", "utf8");
 assert.ok(page.includes("data-add-widget"), "An empty screen should still render the add placeholder.");
+assert.match(page, /const local = isLocalRuntimeHost\(\)/, "Campaign Screens should use campaign-scoped localhost storage.");
+assert.match(page, /Campaign DM access required/, "Local test players must not receive DM Screen access.");
 assert.ok(page.includes("reorderWidget"), "Desktop drag ordering should persist through the model.");
 assert.ok(page.includes("refreshShared"), "Shared references should have an explicit refresh path.");
 assert.ok(page.includes("Changing widget type discards fields"), "Type changes should warn before discarding incompatible fields.");
