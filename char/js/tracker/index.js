@@ -138,6 +138,7 @@ function loadHeader() {
     .join(" • ");
   const fields = {
     "character-name": character.name,
+    "character-status": String(character.status || "Active").trim() || "Active",
     "character-level": character.level,
     "character-experience": character.experience ?? 0,
     "character-race": character.race,

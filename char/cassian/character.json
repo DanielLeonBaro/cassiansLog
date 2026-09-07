@@ -2,6 +2,7 @@
   "id": "cassian",
   "portrait": "char/cassian/portrait.jpg",
   "name": "Cassian Aurelius von Bloodington III",
+  "status": "Active",
   "class": "Fighter",
   "subclass": "Echo Knight",
   "race": "Noctir",

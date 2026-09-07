@@ -1,6 +1,7 @@
 // Resolves campaign identity and enforces membership-based access for every scoped route.
 import { error, parseStored } from "./http.js";
 import { hashPassword, userFromRequest, verifyPassword } from "./user-auth.js";
+import { normalizeEntityStatus } from "../shared/js/status.js";
 
 export const LEGACY_CAMPAIGN_ID = "campaign-breugaire";
 export const LEGACY_CAMPAIGN_SLUG = "aotr";
@@ -81,10 +82,12 @@ export async function campaignFromSlug(slug, env) {
     `SELECT campaigns.id, campaigns.name, campaigns.description, campaigns.banner, campaigns.join_enabled, campaigns.created_by_user_id,
       campaigns.join_password_hash, campaigns.join_password_salt, campaigns.join_password_iterations,
       requested.slug AS requested_slug, requested.is_current AS requested_is_current,
-      current.slug AS current_slug, campaigns.created_at, campaigns.updated_at
+      current.slug AS current_slug, COALESCE(campaign_statuses.status, 'Active') AS status,
+      campaigns.created_at, campaigns.updated_at
     FROM campaign_slugs AS requested
     JOIN campaigns ON campaigns.id = requested.campaign_id
     JOIN campaign_slugs AS current ON current.campaign_id = campaigns.id AND current.is_current = 1
+    LEFT JOIN campaign_statuses ON campaign_statuses.campaign_id = campaigns.id
     WHERE requested.slug = ?`,
   ).bind(slug).first();
 }
@@ -95,6 +98,7 @@ export function publicCampaign(row, { role = null, joined = false } = {}) {
     name: row.name,
     description: row.description || "",
     banner: row.banner || "",
+    status: normalizeEntityStatus(row.status),
     slug: row.current_slug,
     joined,
     role,
@@ -150,6 +154,8 @@ export async function createCampaignRecord(user, input, env) {
   if (description === null) return { response: error(`Campaign description cannot exceed ${CAMPAIGN_DESCRIPTION_MAX} characters.`) };
   const banner = campaignBanner(input?.banner);
   if (banner === null) return { response: error("Campaign banner must be a supported image smaller than 500 KB.") };
+  const status = normalizeEntityStatus(input?.status);
+  if (!status) return { response: error("Campaign status cannot exceed 32 characters.") };
   const slug = input?.slug ? String(input.slug) : normalizeCampaignSlug(name);
   if (!validCampaignSlug(slug)) return { response: error("Campaign slug must contain 2-48 lowercase letters from a to z.") };
   const passwordProblem = campaignPasswordProblem(input?.password);
@@ -168,6 +174,8 @@ export async function createCampaignRecord(user, input, env) {
     ).bind(id, name, description, banner, credentials.hash, credentials.salt, credentials.iterations, user.localBypass ? null : user.id, now, now),
     env.DB.prepare("INSERT INTO campaign_slugs (slug, campaign_id, is_current, created_at) VALUES (?, ?, 1, ?)")
       .bind(slug, id, now),
+    env.DB.prepare("INSERT INTO campaign_statuses (campaign_id, status, updated_at) VALUES (?, ?, ?)")
+      .bind(id, status, now),
     env.DB.prepare("INSERT INTO campaign_settings (campaign_id, settings_json, updated_at) VALUES (?, ?, ?)")
       .bind(id, JSON.stringify(defaultCampaignSettings()), now),
     env.DB.prepare("INSERT INTO campaign_wiki_documents (campaign_id, pages_json, updated_at) VALUES (?, '[]', ?)")
@@ -185,22 +193,24 @@ export async function createCampaignRecord(user, input, env) {
     ).bind(id, user.id, now, now));
   }
   await env.DB.batch(statements);
-  return { campaign: { id, name, description, banner, current_slug: slug, join_enabled: 1, created_at: now, updated_at: now } };
+  return { campaign: { id, name, description, banner, status, current_slug: slug, join_enabled: 1, created_at: now, updated_at: now } };
 }
 
 export async function listCampaignRecords(user, env) {
   const rows = user.localBypass
     ? await env.DB.prepare(
       `SELECT campaigns.id, campaigns.name, campaigns.description, campaigns.banner, campaigns.join_enabled, campaigns.created_at, campaigns.updated_at,
-        current.slug AS current_slug, NULL AS member_role
+        current.slug AS current_slug, COALESCE(campaign_statuses.status, 'Active') AS status, NULL AS member_role
       FROM campaigns JOIN campaign_slugs AS current ON current.campaign_id = campaigns.id AND current.is_current = 1
+      LEFT JOIN campaign_statuses ON campaign_statuses.campaign_id = campaigns.id
       ORDER BY campaigns.name COLLATE NOCASE`,
     ).all()
     : await env.DB.prepare(
       `SELECT campaigns.id, campaigns.name, campaigns.description, campaigns.banner, campaigns.join_enabled, campaigns.created_at, campaigns.updated_at,
-        current.slug AS current_slug, campaign_memberships.role AS member_role
+        current.slug AS current_slug, COALESCE(campaign_statuses.status, 'Active') AS status, campaign_memberships.role AS member_role
       FROM campaigns
       JOIN campaign_slugs AS current ON current.campaign_id = campaigns.id AND current.is_current = 1
+      LEFT JOIN campaign_statuses ON campaign_statuses.campaign_id = campaigns.id
       LEFT JOIN campaign_memberships ON campaign_memberships.campaign_id = campaigns.id AND campaign_memberships.user_id = ?
       ORDER BY campaigns.name COLLATE NOCASE`,
     ).bind(user.id).all();

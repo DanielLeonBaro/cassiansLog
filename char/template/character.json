@@ -2,6 +2,7 @@
   "id": "template",
   "portrait": "shared/assets/bat.ico",
   "name": "Character Template",
+  "status": "Active",
   "class": "Any Class",
   "subclass": "",
   "race": "Any Core Race",

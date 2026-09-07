@@ -27,12 +27,14 @@
         <form id="campaign-create" class="mt-5 grid gap-4 md:grid-cols-2">
         <label><span class="mb-1 block text-sm font-bold">Campaign name</span><input name="name" required maxlength="80" class="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 dark:border-white/15 dark:bg-white/5"></label>
         <label><span class="mb-1 block text-sm font-bold">URL slug</span><input name="slug" pattern="[a-z]{2,48}" maxlength="48" class="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 font-mono lowercase dark:border-white/15 dark:bg-white/5" placeholder="generatedfromname"><small class="mt-1 block text-stone-500">Optional. Lowercase a-z only; permanent unless the site Admin changes it.</small></label>
+        <label><span class="mb-1 block text-sm font-bold">Status</span><input name="status" value="Active" maxlength="32" list="campaign-status-options" class="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 dark:border-white/15 dark:bg-white/5" placeholder="Active"></label>
         <label class="md:col-span-2"><span class="mb-1 block text-sm font-bold">Short description</span><textarea name="description" maxlength="280" rows="3" class="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 dark:border-white/15 dark:bg-white/5" placeholder="What is this campaign about?"></textarea></label>
         <label><span class="mb-1 block text-sm font-bold">Banner image</span><input id="campaign-create-banner" type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="block w-full text-sm"><small class="mt-1 block text-stone-500">Optional. Maximum 500 KB.</small></label>
         <label><span class="mb-1 block text-sm font-bold">Join password</span><input name="password" required minlength="6" maxlength="128" type="password" autocomplete="new-password" class="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 dark:border-white/15 dark:bg-white/5"><small class="mt-1 block text-stone-500">6 or more characters.</small></label>
         <img id="campaign-create-banner-preview" alt="Campaign banner preview" class="hidden max-h-48 w-full rounded-xl object-cover md:col-span-2">
           <div class="flex justify-end gap-3 md:col-span-2"><button id="campaign-create-cancel" class="rounded-xl border border-stone-400 px-5 py-2.5 text-sm font-bold" type="button">Cancel</button><button class="rounded-xl bg-blood-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-blood-600" type="submit"><i class="bi bi-plus-circle mr-2"></i>Create campaign</button></div>
         </form>
+        <datalist id="campaign-status-options"><option value="Active"><option value="Paused"><option value="Hiatus"><option value="Draft"><option value="Ended"></datalist>
       </div>
     </section>
   </main>

@@ -23,6 +23,7 @@ function defaultLocalCampaign() {
     name: "Apotheosis of the Rings",
     description: "",
     banner: "",
+    status: "Active",
     slug: "aotr",
     joinEnabled: false,
     createdAt: null,

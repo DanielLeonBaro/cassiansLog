@@ -1,4 +1,5 @@
 import { campaignPagePath } from "../../../shared/js/campaign-context.js";
+import { DEFAULT_ENTITY_STATUS, normalizeEntityStatus } from "../../../shared/js/status.js";
 
 // Builds accessible character cards and their open, edit, and remove actions.
 export function createCharacterCard(character, { onRemove, canRemove = true }) {
@@ -13,13 +14,16 @@ export function createCharacterCard(character, { onRemove, canRemove = true }) {
   const body = document.createElement("div");
   body.className = "flex grow flex-col justify-between p-5";
   const text = document.createElement("div");
+  const status = document.createElement("span");
+  status.className = "inline-flex rounded-full bg-blood-500 px-2.5 py-1 text-xs font-bold text-on-accent";
+  status.textContent = normalizeEntityStatus(character.status) || DEFAULT_ENTITY_STATUS;
   const name = document.createElement("h3");
-  name.className = "font-display text-2xl font-bold";
+  name.className = "mt-2 font-display text-2xl font-bold";
   name.textContent = character.name;
   const description = document.createElement("p");
   description.className = "mt-2 leading-relaxed text-stone-500 dark:text-stone-400";
   description.textContent = character.description || "Open character tracker.";
-  text.append(name, description);
+  text.append(status, name, description);
 
   const route = `${campaignPagePath("char")}${encodeURIComponent(character.id)}/`;
   const actions = document.createElement("div");

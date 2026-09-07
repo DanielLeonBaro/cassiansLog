@@ -2,6 +2,7 @@
   "id": "karma",
   "portrait": "char/karma/portrait.jpg",
   "name": "Karma Noragon",
+  "status": "Active",
   "class": "Cleric",
   "subclass": "Grave Domain",
   "race": "Tiefling",

@@ -2,13 +2,16 @@
 import { canEditCharacter, canManageCampaign, LEGACY_CAMPAIGN_ID } from "../campaigns.js";
 import { bodyJSON, error, json, parseStored, safeId } from "../http.js";
 import { CHARACTER_SHEET_STYLES, loadSettings } from "../settings.js";
+import { DEFAULT_ENTITY_STATUS, normalizeEntityStatus } from "../../shared/js/status.js";
 
 function record(row, access) {
+  const document = parseStored(row.document_json, {});
+  document.status = normalizeEntityStatus(document.status) || DEFAULT_ENTITY_STATUS;
   return {
     id: row.id,
     source: row.source,
     updatedAt: row.updated_at,
-    document: parseStored(row.document_json, {}),
+    document,
     canEdit: canManageCampaign(access) || Boolean(row.assigned),
     canManage: canManageCampaign(access),
   };
@@ -44,13 +47,15 @@ async function characterDocument(request, env, id, access) {
   if (request.method === "PUT") {
     const body = await bodyJSON(request);
     if (!body?.document || typeof body.document !== "object" || body.document.id !== id) return error("Character document and route IDs must match.");
+    const status = normalizeEntityStatus(body.document.status);
+    if (!status) return error("Character status cannot exceed 32 characters.");
     const existing = await env.DB.prepare("SELECT id FROM campaign_characters WHERE campaign_id = ? AND id = ?")
       .bind(campaignId, id).first();
     const manager = canManageCampaign(access);
     if (existing && !await canEditCharacter(access, id, env)) return error("You are not assigned to edit this character.", 403);
     const now = new Date().toISOString();
     const source = body.source === "bundled" ? "bundled" : "custom";
-    const documentJSON = JSON.stringify(body.document);
+    const documentJSON = JSON.stringify({ ...body.document, status });
     const statements = [env.DB.prepare(
       `INSERT INTO campaign_characters (campaign_id, id, document_json, source, active, created_at, updated_at)
       VALUES (?, ?, ?, ?, 1, ?, ?) ON CONFLICT(campaign_id, id) DO UPDATE SET

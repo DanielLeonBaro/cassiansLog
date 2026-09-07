@@ -91,12 +91,17 @@ assert.equal(validCampaignSlug("curse-of-strahd"), false);
 assert.match(campaignPasswordProblem("12345"), /at least 6/);
 assert.equal(campaignPasswordProblem("secret"), "");
 
-let result = await call(env, cookies.alice, [], { method: "POST", body: { name: "Curse of Strahd", description: "Fog, vampires, and bad choices.", banner: "data:image/png;base64,YmFubmVy", password: "secret" } });
+let result = await call(env, cookies.alice, [], { method: "POST", body: { name: "Curse of Strahd", description: "Fog, vampires, and bad choices.", banner: "data:image/png;base64,YmFubmVy", status: "Draft", password: "secret" } });
 assert.equal(result.response.status, 201);
 assert.equal(result.body.campaign.slug, "curseofstrahd");
 assert.equal(result.body.campaign.role, "dm");
 assert.equal(result.body.campaign.description, "Fog, vampires, and bad choices.");
 assert.equal(result.body.campaign.banner, "data:image/png;base64,YmFubmVy");
+assert.equal(result.body.campaign.status, "Draft");
+
+result = await call(env, cookies.alice, ["curseofstrahd"], { method: "PATCH", body: { name: "Curse of Strahd", description: "Fog, vampires, and bad choices.", banner: "data:image/png;base64,YmFubmVy", status: "Paused" } });
+assert.equal(result.response.status, 200);
+assert.equal(result.body.status, "Paused");
 
 result = await call(env, cookies.bob, []);
 const visible = result.body.campaigns.find((campaign) => campaign.slug === "curseofstrahd");
@@ -106,6 +111,7 @@ assert.equal(aotr.joinEnabled, false);
 assert.equal(visible.joined, false);
 assert.equal(visible.name, "Curse of Strahd");
 assert.equal(visible.description, "Fog, vampires, and bad choices.");
+assert.equal(visible.status, "Paused");
 
 result = await call(env, cookies.admin, ["aotr"]);
 assert.equal(result.body.campaign.role, "admin", "The primary site Admin must receive campaign-manager authority.");
@@ -131,7 +137,7 @@ assert.equal(result.response.status, 403, "Players cannot edit shared content.")
 result = await call(env, cookies.alice, ["curseofstrahd", "wiki"], { method: "PUT", body: { pages: [{ id: "home", name: "Home" }] } });
 assert.equal(result.response.status, 200);
 
-const hero = { id: "hero", name: "Hero" };
+const hero = { id: "hero", name: "Hero", status: "Hiatus" };
 result = await call(env, cookies.bob, ["curseofstrahd", "characters", "hero"], { method: "PUT", body: { document: hero, source: "custom" } });
 assert.equal(result.response.status, 200);
 assert.equal(result.body.created, true);
@@ -140,6 +146,7 @@ assert.equal(result.response.status, 200);
 result = await call(env, cookies.carol, ["curseofstrahd", "characters", "hero"]);
 assert.equal(result.response.status, 200);
 assert.equal(result.body.canEdit, false);
+assert.equal(result.body.document.status, "Hiatus");
 result = await call(env, cookies.carol, ["curseofstrahd", "characters", "hero", "notes"]);
 assert.equal(result.response.status, 403);
 result = await call(env, cookies.carol, ["curseofstrahd", "characters", "hero"], { method: "PUT", body: { document: hero } });

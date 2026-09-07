@@ -34,10 +34,11 @@ export function createCharacterFieldRenderer({ classes, expandedItems, getDraft 
       : key === "ability" ? "editor-ability-options"
         : key === "reset" ? "editor-reset-options" : "";
     const required = path.length === 1 && key === "name";
+    const maxLength = path.length === 1 && key === "status" ? 'maxlength="32" list="editor-status-options"' : "";
     const helper = systemField ? '<span class="mt-1 block text-xs text-stone-500">Preserved for links and saved-data compatibility.</span>' : "";
     return `<label class="block"><span class="mb-1 block text-xs font-bold text-stone-500 dark:text-stone-400">${fieldTitle(key)}${required ? ' <span class="text-blood-500">*</span>' : ""}</span>${multiline
       ? `<textarea id="${id}" data-path="${fieldPath}" class="${classes.field} ${systemField ? "opacity-70" : ""}" rows="3" ${systemField ? "readonly" : ""}>${escapeHTML(value)}</textarea>`
-      : `<input id="${id}" data-path="${fieldPath}" type="${type}" value="${escapeAttribute(value)}" ${list ? `list="${list}"` : ""} ${required ? "required" : ""} ${systemField ? "readonly" : ""} class="${classes.field} ${systemField ? "opacity-70" : ""}">`}${helper}</label>`;
+      : `<input id="${id}" data-path="${fieldPath}" type="${type}" value="${escapeAttribute(value)}" ${list ? `list="${list}"` : ""} ${maxLength} ${required ? "required" : ""} ${systemField ? "readonly" : ""} class="${classes.field} ${systemField ? "opacity-70" : ""}">`}${helper}</label>`;
   }
 
   function collectionSummary(item, key, index) {

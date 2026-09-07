@@ -10,7 +10,7 @@ export const EDITOR_SECTION_DEFINITIONS = [
 ];
 
 export const CHARACTER_SECTION_KEYS = new Set([
-  "portrait", "name", "class", "subclass", "race", "level", "experience", "background", "alignment", "gender",
+  "portrait", "name", "status", "class", "subclass", "race", "level", "experience", "background", "alignment", "gender",
   "hp", "ac", "initiative", "proficiency", "walk", "fly", "passivePerception", "darkvision", "stats",
   "actions", "trackers", "spellcasting", "spells", "features", "resources", "inventory", "currency",
   "id", "bundledUpdate", "bundledUpdateVersions", "v1SectionOrder",

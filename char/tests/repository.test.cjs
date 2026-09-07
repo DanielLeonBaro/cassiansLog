@@ -7,6 +7,7 @@ const storageCode = fs.readFileSync("shared/js/storage.js", "utf8")
   .replace(/^import[\s\S]*?;\r?\n/gm, "")
   .replace(/export /g, "");
 const textCode = fs.readFileSync("shared/js/text.js", "utf8").replace(/export /g, "");
+const statusCode = fs.readFileSync("shared/js/status.js", "utf8").replace(/export /g, "");
 const storageKeyCode = fs.readFileSync("char/js/storage-keys.js", "utf8").replace(/export /g, "");
 const repositoryCode = fs.readFileSync("char/js/archive/repository.js", "utf8")
   .replace(/^import[\s\S]*?;\r?\n/gm, "")
@@ -43,11 +44,12 @@ const context = {
 };
 context.campaignStorageKey = (key) => key;
 vm.createContext(context);
-vm.runInContext(`${storageCode}\n${textCode}\n${storageKeyCode}\n${repositoryCode}\nglobalThis.api = { storedCharacters, migrateLegacyPortrait, isBundledCharacter, applyNewCharacterSetup, createCharacter };`, context);
+vm.runInContext(`${storageCode}\n${textCode}\n${statusCode}\n${storageKeyCode}\n${repositoryCode}\nglobalThis.api = { storedCharacters, migrateLegacyPortrait, isBundledCharacter, applyNewCharacterSetup, createCharacter };`, context);
 
 const characters = context.api.storedCharacters();
 assert.equal(characters.cassian.portrait, "char/cassian/portrait.jpg");
 assert.equal(characters.custom.portrait, "data:image/png;base64,abc");
+assert.equal(characters.cassian.status, "Active");
 assert.equal(JSON.parse(values.get("dnd-characters")).cassian.portrait, "char/cassian/portrait.jpg");
 
 const catalog = JSON.parse(fs.readFileSync("char/catalog.json", "utf8"));
@@ -58,6 +60,7 @@ assert.equal(context.api.isBundledCharacter("custom", catalog), false);
 for (const id of [...catalog.characters, "template"]) {
   const character = JSON.parse(fs.readFileSync(`char/${id}/character.json`, "utf8"));
   assert.equal(character.id, id);
+  assert.equal(character.status, "Active");
 }
 
 const starter = context.api.applyNewCharacterSetup(template, {
@@ -66,6 +69,7 @@ const starter = context.api.applyNewCharacterSetup(template, {
   portrait: "data:image/png;base64,mira",
   class: "  Bard ",
   race: " Half-Elf ",
+  status: "Hiatus",
   level: "3",
   starterMode: "starter",
 });
@@ -73,6 +77,7 @@ assert.equal(starter.name, "Mira");
 assert.equal(starter.class, "Bard");
 assert.equal(starter.race, "Half-Elf");
 assert.equal(starter.level, 3);
+assert.equal(starter.status, "Hiatus");
 assert.equal(starter.actions.length, template.actions.length);
 
 const blank = context.api.applyNewCharacterSetup(template, {

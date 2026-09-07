@@ -15,6 +15,7 @@ import { hashPassword, userFromRequest, verifyPassword } from "../user-auth.js";
 import { campaignCharacterRoute, listCampaignCharacters } from "./campaign-characters.js";
 import { campaignContentRoute } from "./campaign-content.js";
 import { campaignScreenRoute } from "./campaign-screens.js";
+import { normalizeEntityStatus } from "../../shared/js/status.js";
 
 const JOIN_WINDOW_MS = 15 * 60_000;
 const JOIN_FAILURE_LIMIT = 5;
@@ -102,10 +103,17 @@ async function updateCampaign(request, env, access) {
   if (description === null) return error("Campaign description cannot exceed 280 characters.");
   const banner = campaignBanner(body?.banner ?? access.campaign.banner);
   if (banner === null) return error("Campaign banner must be a supported image smaller than 500 KB.");
+  const status = normalizeEntityStatus(body?.status ?? access.campaign.status);
+  if (!status) return error("Campaign status cannot exceed 32 characters.");
   const now = new Date().toISOString();
-  await env.DB.prepare("UPDATE campaigns SET name = ?, description = ?, banner = ?, updated_at = ? WHERE id = ?")
-    .bind(name, description, banner, now, access.campaign.id).run();
-  return json({ ok: true, name, description, banner, updatedAt: now });
+  await env.DB.batch([
+    env.DB.prepare("UPDATE campaigns SET name = ?, description = ?, banner = ?, updated_at = ? WHERE id = ?")
+      .bind(name, description, banner, now, access.campaign.id),
+    env.DB.prepare(`INSERT INTO campaign_statuses (campaign_id, status, updated_at) VALUES (?, ?, ?)
+      ON CONFLICT(campaign_id) DO UPDATE SET status = excluded.status, updated_at = excluded.updated_at`)
+      .bind(access.campaign.id, status, now),
+  ]);
+  return json({ ok: true, name, description, banner, status, updatedAt: now });
 }
 
 async function passwordRoute(request, env, access) {

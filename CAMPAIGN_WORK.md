@@ -55,6 +55,9 @@ This file is the durable implementation log for campaign support. Update it when
 - [x] Made localhost Screens, settings, Character state/notes, Wiki, Music, Combat, and initiative caches campaign-scoped; empty campaigns no longer inherit AOTR Screen references.
 - [x] Added browser coverage for AOTR Cassian, 21 local identities, character assignment, empty campaign characters, campaign navigation, and AOTR/Sita Screen isolation.
 - [x] Fixed Cloudflare HTML asset canonicalization so campaign Character tracker and management shells keep their campaign URL context.
+- [x] Added accent-colored campaign slug, membership-role, and free-text status badges; campaign create/manage now persist status.
+- [x] Added character status to bundled documents, Quick Setup, editor, selection cards, tracker header, campaign APIs, and legacy/local normalization.
+- [x] Added additive `campaign_statuses` storage and idempotent character JSON status migration without altering legacy tables.
 
 ## Verification Log
 
@@ -80,6 +83,7 @@ This file is the durable implementation log for campaign support. Update it when
 - 2026-09-07 refinement `git diff --check`: passed.
 - 2026-09-07 Cloudflare shell regression: reproduced `/char/tracker.html` and `/c/aotr/manage/` redirects locally, then verified both canonical shells return 200 without redirects.
 - 2026-09-07 Cloudflare shell repair: `npm test`, `npm run build:site`, `npm run test:browser`, and `git diff --check` passed.
+- 2026-09-07 status badges: `npm test`, `npm run build:site`, and `npm run test:browser` passed; browser coverage verifies campaign role/slug/status badges and character card/tracker status.
 - Pre-existing user changes: `.gitignore`, `package.json`, `shared/tests/run.cjs`, `wiki/scripts/import.cjs`, `wiki/scripts/content-diff/`, and `wiki/tests/content-diff.test.cjs`.
 
 ## Rollback Notes
@@ -89,6 +93,7 @@ This file is the durable implementation log for campaign support. Update it when
 - Before any remote migration, export D1 or verify a Time Travel recovery point and obtain explicit user approval.
 - Rolling back application code restores the old Worker/assets; legacy AOTR data remains available through mirrored tables. New campaign rows remain preserved in campaign tables.
 - This production regression repair changes only Worker/assets. It does not mutate D1.
+- Status rollout requires additive migration `0014_entity_statuses.sql` before deploying its Worker/assets; rollback preserves the sidecar rows and harmless extra character JSON field.
 
 ## Non-Goals
 

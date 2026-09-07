@@ -2,6 +2,7 @@
   "id": "elaria",
   "portrait": "shared/assets/bat.ico",
   "name": "Elaria Vaelmont",
+  "status": "Active",
   "class": "Bard",
   "subclass": "College of Lore",
   "race": "Variant Aasimar",

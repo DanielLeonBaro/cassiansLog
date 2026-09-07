@@ -11,6 +11,7 @@
   },
   "portrait": "char/leon/portrait.png",
   "name": "Leon Vein",
+  "status": "Active",
   "class": "Fighter",
   "subclass": "Gunslinger",
   "race": "High Elf",

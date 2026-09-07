@@ -228,10 +228,12 @@ async function main() {
       'return document.querySelectorAll("#campaign-list article").length === 1 && Boolean(document.querySelector("[data-create-campaign]"));',
       `
         const create = document.querySelector("[data-create-campaign]");
+        const badges = [...document.querySelectorAll("#campaign-list article span")].map((badge) => badge.textContent.trim());
         create.click();
         return Boolean(document.getElementById("campaign-create-dialog").classList.contains("flex")
           && document.querySelector("a[href='/c/aotr/char/']")
-          && document.querySelector("a[href='/c/aotr/manage/']"));
+          && document.querySelector("a[href='/c/aotr/manage/']")
+          && badges.includes("/aotr") && badges.includes("Admin") && badges.includes("Active"));
       `,
     );
     await execute(`
@@ -239,6 +241,7 @@ async function main() {
       form.elements.name.value = "Sita Campaign";
       form.elements.slug.value = "sita";
       form.elements.description.value = "Screen isolation test.";
+      form.elements.status.value = "Paused";
       form.elements.password.value = "secret";
       form.requestSubmit();
       return true;
@@ -254,13 +257,13 @@ async function main() {
       "AOTR Character archive",
       "/c/aotr/char/",
       'return document.querySelectorAll("#characters article").length === 5;',
-      'return document.getElementById("site-campaign")?.textContent === "Apotheosis of the Rings";',
+      'return document.getElementById("site-campaign")?.textContent === "Apotheosis of the Rings" && [...document.querySelectorAll("#characters article span")].filter((badge) => badge.textContent === "Active").length === 5;',
     );
     await smoke(
       "AOTR Cassian localhost tracker",
       "/c/aotr/char/cassian/",
       'return window.character?.id === "cassian" && document.getElementById("character-name")?.textContent.startsWith("Cassian");',
-      'return document.body.dataset.characterCanManage === "true" && document.body.dataset.characterCanEdit === "true";',
+      'return document.body.dataset.characterCanManage === "true" && document.body.dataset.characterCanEdit === "true" && document.getElementById("character-status")?.textContent === "Active";',
     );
     await smoke(
       "AOTR localhost members and characters",
@@ -289,7 +292,8 @@ async function main() {
     console.log("Browser smoke passed: Local test-user character assignment");
 
     await navigate("/campaigns/");
-    await waitFor('return Boolean(document.querySelector("form[data-join=sita]"));', "Sita join form was not shown to the test player");
+    await waitFor('return Boolean(document.querySelector("form[data-join=sita]") && [...document.querySelectorAll("form[data-join=sita] ~ *")]);', "Sita join form was not shown to the test player");
+    assert.equal(await execute('return [...document.querySelector("form[data-join=sita]").closest("article").querySelectorAll("span")].some((badge) => badge.textContent === "Paused");'), true, "Campaign status badge should survive local creation.");
     await execute(`
       const form = document.querySelector("form[data-join=sita]");
       form.elements.password.value = "secret";

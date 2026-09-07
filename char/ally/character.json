@@ -2,6 +2,7 @@
   "id": "ally",
   "portrait": "char/ally/portrait.png",
   "name": "Allium",
+  "status": "Active",
   "class": "Artificer",
   "subclass": "Battle Smith · Steelborn Amalgam",
   "race": "Plasmoid",

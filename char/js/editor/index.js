@@ -33,6 +33,7 @@ import {
 } from "./field-schema.js";
 import { createCharacterFieldRenderer } from "./field-renderer.js";
 import { currentCampaignSlug } from "../../../shared/js/campaign-context.js";
+import { DEFAULT_ENTITY_STATUS, normalizeEntityStatus } from "../../../shared/js/status.js";
 
 export function initializeCharacterEditor({ character, normalizeSpellcastingData, refreshUI }) {
   const params = new URLSearchParams(location.search);
@@ -66,7 +67,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
   function renderBasics() {
     return `<div class="space-y-6">
       <div class="${classes.panel}"><div class="flex flex-col gap-4 sm:flex-row sm:items-center"><button type="button" data-editor-portrait class="group relative h-28 w-28 shrink-0 overflow-hidden rounded-2xl border border-stone-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/15"><img data-editor-portrait-preview src="${escapeAttribute(draft.portrait || "shared/assets/bat.ico")}" alt="Character portrait preview" class="h-full w-full object-cover"><span class="absolute inset-x-0 bottom-0 bg-black/70 px-2 py-1.5 text-xs font-bold text-white"><i class="bi bi-camera-fill mr-1"></i> Change</span></button><div><h3 class="font-display text-lg font-bold">Character portrait</h3><p class="mt-1 text-sm text-stone-500 dark:text-stone-400">Choose an image from this device. It is saved with the character.</p></div></div></div>
-      ${renderFields(["name", "class", "subclass", "race", "level", "experience", "background", "alignment", "gender"])}
+      ${renderFields(["name", "status", "class", "subclass", "race", "level", "experience", "background", "alignment", "gender"])}
     </div>`;
   }
 
@@ -173,7 +174,8 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
       </div>
       <datalist id="editor-action-options"><option value="Action"><option value="Bonus Action"><option value="Reaction"><option value="Free Action"><option value="Other"></datalist>
       <datalist id="editor-ability-options"><option value="STR"><option value="DEX"><option value="CON"><option value="INT"><option value="WIS"><option value="CHA"></datalist>
-      <datalist id="editor-reset-options"><option value="short"><option value="long"><option value="dawn"><option value="none"></datalist>`;
+      <datalist id="editor-reset-options"><option value="short"><option value="long"><option value="dawn"><option value="none"></datalist>
+      <datalist id="editor-status-options"><option value="Active"><option value="Paused"><option value="Hiatus"><option value="Draft"><option value="Ended"></datalist>`;
     activateSection(activeSection);
     fields.scrollTop = scrollTop;
     const host = extensionHost();
@@ -438,13 +440,23 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
   }
 
   function validateDraft() {
-    if (String(draft.name || "").trim()) return true;
-    activateSection("basics");
     const nameInput = document.querySelector('[data-path="name"]');
-    nameInput?.setAttribute("aria-invalid", "true");
-    document.getElementById("editor-validation-status").textContent = "Character name is required.";
-    nameInput?.focus();
-    return false;
+    const statusInput = document.querySelector('[data-path="status"]');
+    if (!String(draft.name || "").trim()) {
+      activateSection("basics");
+      nameInput?.setAttribute("aria-invalid", "true");
+      document.getElementById("editor-validation-status").textContent = "Character name is required.";
+      nameInput?.focus();
+      return false;
+    }
+    if (!normalizeEntityStatus(draft.status)) {
+      activateSection("basics");
+      statusInput?.setAttribute("aria-invalid", "true");
+      document.getElementById("editor-validation-status").textContent = "Character status cannot exceed 32 characters.";
+      statusInput?.focus();
+      return false;
+    }
+    return true;
   }
 
   async function save() {
@@ -453,6 +465,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     const selectedStyle = draftStyle;
     const styleChanged = baselineStyle !== selectedStyle;
     draft.name = draft.name.trim();
+    draft.status = normalizeEntityStatus(draft.status) || DEFAULT_ENTITY_STATUS;
     if (typeof normalizeSpellcastingData === "function") normalizeSpellcastingData(draft);
     window.character = clone(draft);
     Object.keys(character).forEach((key) => delete character[key]);

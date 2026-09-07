@@ -10,6 +10,7 @@ import {
 } from "../../../shared/js/campaign-context.js";
 import { currentLocalUser } from "../../../shared/js/local-users.js";
 import { isLocalRuntimeHost } from "../../../shared/js/runtime-host.js";
+import { DEFAULT_ENTITY_STATUS, normalizeEntityStatus } from "../../../shared/js/status.js";
 import {
   CHARACTERS_STORAGE_KEY,
   DELETED_CHARACTERS_STORAGE_KEY,
@@ -46,6 +47,11 @@ export function storedCharacters() {
   let changed = false;
   Object.values(characters).forEach((character) => {
     changed = migrateLegacyPortrait(character) || changed;
+    const normalizedStatus = normalizeEntityStatus(character.status);
+    if (character.status !== normalizedStatus) {
+      character.status = normalizedStatus || DEFAULT_ENTITY_STATUS;
+      changed = true;
+    }
   });
   if (changed) writeJSON(CHARACTERS_KEY, characters);
   return characters;
@@ -106,12 +112,13 @@ export async function listCharacters() {
         name: override.name,
         portrait: override.portrait,
         description: characterDescription(override),
-      } : { ...character, description: characterDescription(character) };
+        status: normalizeEntityStatus(override.status),
+      } : { ...character, status: normalizeEntityStatus(character.status), description: characterDescription(character) };
     });
   Object.values(saved).forEach((character) => {
     if (cloudIsAuthoritative) return;
     if (!bundledIds.has(character.id)) {
-      characters.push({ ...character, custom: true, description: characterDescription(character) });
+      characters.push({ ...character, status: normalizeEntityStatus(character.status), custom: true, description: characterDescription(character) });
     }
   });
   if (!campaignSlug || !isLocalRuntimeHost()) return characters;
@@ -149,6 +156,7 @@ export function applyNewCharacterSetup(template, setup) {
   const character = cloneJSON(template);
   character.id = setup.id;
   character.name = String(setup.name || "").trim();
+  character.status = normalizeEntityStatus(setup.status) || DEFAULT_ENTITY_STATUS;
   character.portrait = setup.portrait || fallbackPortrait;
   character.class = String(setup.class || "").trim();
   character.race = String(setup.race || "").trim();

@@ -82,6 +82,7 @@ async function load() {
     document.title = `Manage ${campaign.name} | Cassian's Log`;
     document.getElementById("manage-title").textContent = campaign.name;
     document.querySelector('#campaign-details [name="name"]').value = campaign.name;
+    document.querySelector('#campaign-details [name="status"]').value = campaign.status || "Active";
     document.querySelector('#campaign-details [name="description"]').value = campaign.description || "";
     const bannerPreview = document.getElementById("campaign-banner-preview");
     bannerPreview.src = campaign.banner || "";
@@ -105,13 +106,14 @@ document.getElementById("campaign-details").addEventListener("submit", async (ev
   try {
     const data = new FormData(event.currentTarget);
     const banner = document.getElementById("campaign-banner-clear").checked ? "" : pendingBanner ?? campaign.banner ?? "";
-    const details = { name: String(data.get("name") || "").trim(), description: String(data.get("description") || "").trim(), banner };
+    const details = { name: String(data.get("name") || "").trim(), status: String(data.get("status") || "").trim() || "Active", description: String(data.get("description") || "").trim(), banner };
     const result = localFallback
       ? saveLocalCampaign(slug, details)
       : await requestJSON(api, { method: "PATCH", body: JSON.stringify(details) });
     campaign.name = result.name;
     campaign.description = result.description;
     campaign.banner = result.banner;
+    campaign.status = result.status;
     pendingBanner = null;
     document.getElementById("campaign-banner-clear").checked = false;
     const preview = document.getElementById("campaign-banner-preview");

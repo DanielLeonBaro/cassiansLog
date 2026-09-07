@@ -8,6 +8,7 @@ const archive = fs.readFileSync("char/index.html", "utf8");
 for (const id of [
   "new-character-portrait-button",
   "new-character-name",
+  "new-character-status",
   "new-character-class",
   "new-character-race",
   "new-character-level",
@@ -46,6 +47,9 @@ assert.match(fieldRenderer, /data-duplicate/);
 assert.match(fieldRenderer, /Additional fields/);
 assert.match(editor, /Discard your unsaved character changes/);
 assert.match(editor, /Character name is required/);
+assert.match(editor, /Character status cannot exceed 32 characters/);
+assert.match(fieldSchema, /"status"/, "Status should be part of the editable character document.");
+assert.match(fieldRenderer, /editor-status-options/, "Status should offer common values without restricting custom text.");
 assert.match(editor, /createDialogController/);
 assert.match(editor, /id="editor-character-sheet-style"/, "Advanced should include a per-character V1\/V2 selector.");
 assert.match(editor, /data-v1-section-drag/, "V1 ordering should include drag handles.");
@@ -57,6 +61,10 @@ assert.match(editor, /data-character-editor-section/, "Editor should accept focu
 assert.match(editor, /return \{ open \};/, "Editor should expose its focused open action.");
 
 const tracker = fs.readFileSync("char/js/tracker/index.js", "utf8");
+const trackerHTML = fs.readFileSync("char/tracker.html", "utf8");
+const cards = fs.readFileSync("char/js/archive/cards.js", "utf8");
+assert.match(trackerHTML, /id="character-status"[^>]*bg-blood-500[^>]*text-on-accent/, "Tracker status badge should use the theme accent.");
+assert.match(cards, /bg-blood-500[^\n]*text-on-accent/, "Character-card status badge should use the theme accent.");
 assert.match(tracker, /data-character-editor-section="inventory"/, "Currency should link directly to inventory editing.");
 assert.match(tracker, />Edit Inventory<\/button>/, "Currency should show an Edit Inventory button.");
 

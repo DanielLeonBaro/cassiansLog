@@ -61,7 +61,8 @@ assert.deepEqual(
     { userId: "player", role: "player" },
   ],
 );
-assert.equal(database.prepare("SELECT document_json FROM campaign_characters WHERE campaign_id = 'campaign-breugaire' AND id = 'hero'").get().document_json, '{"id":"hero","name":"Hero"}');
+assert.equal(database.prepare("SELECT document_json FROM campaign_characters WHERE campaign_id = 'campaign-breugaire' AND id = 'hero'").get().document_json, '{"id":"hero","name":"Hero","status":"Active"}');
+assert.equal(database.prepare("SELECT status FROM campaign_statuses WHERE campaign_id = 'campaign-breugaire'").get().status, "Active");
 assert.equal(database.prepare("SELECT notes_json FROM campaign_character_runtime WHERE campaign_id = 'campaign-breugaire' AND character_id = 'hero'").get().notes_json, '[{"title":"Secret"}]');
 assert.equal(database.prepare("SELECT pages_json FROM campaign_wiki_documents WHERE campaign_id = 'campaign-breugaire'").get().pages_json, '[{"id":"home","name":"Home"}]');
 assert.equal(database.prepare("SELECT COUNT(*) AS count FROM campaign_user_screens").get().count, 1);

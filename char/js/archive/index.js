@@ -89,6 +89,7 @@ export async function initializeCharacterArchive() {
     try {
       const result = await createCharacter({
         name,
+        status: document.getElementById("new-character-status").value,
         portrait,
         class: document.getElementById("new-character-class").value,
         race: document.getElementById("new-character-race").value,

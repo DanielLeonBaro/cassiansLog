@@ -84,6 +84,10 @@
                         <input id="new-character-name" required maxlength="80" autocomplete="off" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="New adventurer">
                     </label>
                     <label>
+                        <span class="mb-1 block text-sm font-bold">Status</span>
+                        <input id="new-character-status" value="Active" maxlength="32" list="character-status-options" autocomplete="off" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="Active">
+                    </label>
+                    <label>
                         <span class="mb-1 block text-sm font-bold">Class</span>
                         <input id="new-character-class" autocomplete="off" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="Fighter">
                     </label>
@@ -97,6 +101,7 @@
                     </label>
                 </div>
             </div>
+            <datalist id="character-status-options"><option value="Active"><option value="Paused"><option value="Hiatus"><option value="Draft"><option value="Ended"></datalist>
 
             <fieldset class="mt-6">
                 <legend class="text-sm font-bold">Starting content</legend>
