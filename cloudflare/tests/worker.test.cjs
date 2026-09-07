@@ -127,6 +127,7 @@ const { pathToFileURL } = require("node:url");
     },
   };
   for (const pathname of [
+    "/char/tracker",
     "/char/js/page-loader.js",
     "/wiki/js/page.js",
     "/music/js/entry.js",
@@ -137,6 +138,7 @@ const { pathToFileURL } = require("node:url");
     assert.equal(await response.text(), "public feature asset");
   }
   assert.deepEqual(campaignReadyAssetPaths, [
+    "/char/tracker",
     "/char/js/page-loader.js",
     "/wiki/js/page.js",
     "/music/js/entry.js",
@@ -176,6 +178,21 @@ const { pathToFileURL } = require("node:url");
   assert.deepEqual(campaignDataPaths, ["/char/catalog.json", "/wiki/data/pages.json"]);
   const anonymousCampaignData = await handleRequest(new Request("https://example.test/wiki/data/pages.json"), campaignDataEnv);
   assert.equal(anonymousCampaignData.status, 302, "Legacy campaign JSON must not become a public asset.");
+
+  const campaignShellPaths = [];
+  const campaignManage = await handleRequest(
+    new Request("https://example.test/c/aotr/manage/", { headers: { cookie: "cassianslog_session=test" } }),
+    {
+      ...campaignDataEnv,
+      ASSETS: { fetch: async (request) => {
+        campaignShellPaths.push(new URL(request.url).pathname);
+        return new Response("campaign management shell");
+      } },
+    },
+  );
+  assert.equal(campaignManage.status, 200);
+  assert.equal(await campaignManage.text(), "campaign management shell");
+  assert.deepEqual(campaignShellPaths, ["/campaigns/manage"], "Campaign management must use the canonical asset path without losing campaign context.");
 
   const health = await handleRequest(new Request("https://example.test/api/health"), env);
   assert.equal(health.status, 200);

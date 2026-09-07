@@ -31,7 +31,7 @@ export function initializeCharacterPage() {
   // Campaign character routes are deeper than the shared tracker shell. Resolve
   // from the document base so /c/<slug>/char/<id>/ never requests a fake nested
   // /c/<slug>/char/tracker.html route.
-  const trackerURL = new URL("char/tracker.html", document.baseURI);
+  const trackerURL = new URL(isLocalRuntimeHost() ? "char/tracker.html" : "char/tracker", document.baseURI);
 
   async function resolveCharacterShell() {
     if (bundledCharacter !== "template") return;

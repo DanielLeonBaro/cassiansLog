@@ -16,6 +16,7 @@ import { ensurePrimaryAdmin, hasRole, isLocalRequest, userFromRequest } from "./
 import { campaignAccess, canManageCampaign, LEGACY_CAMPAIGN_SLUG } from "./campaigns.js";
 
 const PUBLIC_ASSET_PATTERN = /\.(?:css|js|mjs|png|jpe?g|gif|webp|svg|ico|woff2?|map)$/i;
+const PUBLIC_SHELL_PATHS = new Set(["/char/tracker"]);
 const AUTHENTICATED_DATA_PATTERN = /\.json$/i;
 const LEGACY_CAMPAIGN_DATA_PATTERN = /^\/(?:wiki\/data\/pages\.json|char\/(?:catalog\.json|[a-z0-9-]+\/character\.json))$/i;
 const PAGE_ROLES = [
@@ -56,7 +57,8 @@ function loginRedirect(url, reason = "") {
 async function staticAsset(request, env, url) {
   if (url.pathname === "/login") return Response.redirect(new URL("/login/", url).toString(), 301);
   const localBypass = isLocalRequest(request);
-  const publicPath = url.pathname === "/login" || url.pathname.startsWith("/login/") || PUBLIC_ASSET_PATTERN.test(url.pathname);
+  const publicPath = url.pathname === "/login" || url.pathname.startsWith("/login/")
+    || PUBLIC_ASSET_PATTERN.test(url.pathname) || PUBLIC_SHELL_PATHS.has(url.pathname);
   if (!publicPath && !localBypass) {
     if (!env.DB) return loginRedirect(url, "Authentication storage is unavailable.");
     await ensurePrimaryAdmin(env);
@@ -116,7 +118,7 @@ async function staticAsset(request, env, url) {
         "combat-loot": "/combat-loot/",
         compendium: "/compendium/",
         "dm-screen": "/dm-screen/",
-        manage: "/campaigns/manage.html",
+        manage: "/campaigns/manage",
         music: "/music/",
         "player-screen": "/player-screen/",
         "public-initiative": "/public-initiative/",
