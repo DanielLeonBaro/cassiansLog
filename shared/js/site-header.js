@@ -2,8 +2,9 @@
 import { applySectionVisibility, sectionConfigReady } from "./sections.js";
 import { currentSession, logout } from "./auth-client.js";
 import { mountAccountMenu } from "./account-menu.js";
-import { campaignPagePath, currentCampaign, currentCampaignSlug } from "./campaign-context.js";
+import { availableCampaigns, campaignPagePath, campaignPath, currentCampaign, currentCampaignSlug } from "./campaign-context.js";
 import { enableLocalRoutes } from "./local-routes.js";
+import { escapeHTML } from "./text.js";
 
 const linkClass = "inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-bold shadow-sm transition";
 const idleClass = "border-stone-400 bg-white/70 text-stone-700 hover:border-blood-500 hover:text-blood-500 dark:border-white/20 dark:bg-white/5 dark:text-stone-200";
@@ -69,6 +70,53 @@ function initializePageMenu(mount) {
   sectionConfigReady.then(syncAvailability);
 }
 
+function scopeCampaignPageLinks(slug, root = document) {
+  if (!slug) return;
+  root.querySelectorAll("a[data-section-link]").forEach((link) => {
+    const page = pages.find((candidate) => candidate.id === link.dataset.sectionLink);
+    if (page && !["campaigns", "admin", "campaign-manage"].includes(page.id)) {
+      link.href = campaignPath(slug, page.href);
+    }
+  });
+}
+
+function initializeCampaignMenu(mount, { activePage, tracker, current }) {
+  const group = mount.querySelector("[data-site-campaigns]");
+  const button = mount.querySelector("#site-campaign");
+  const menu = mount.querySelector("#site-campaign-menu");
+  if (!group || !button || !menu || !current) return;
+  const close = ({ focus = false } = {}) => {
+    button.setAttribute("aria-expanded", "false");
+    menu.classList.add("hidden");
+    if (focus) button.focus();
+  };
+  button.addEventListener("click", () => {
+    const expanded = button.getAttribute("aria-expanded") === "true";
+    button.setAttribute("aria-expanded", String(!expanded));
+    menu.classList.toggle("hidden", expanded);
+  });
+  menu.addEventListener("click", (event) => { if (event.target.closest("a")) close(); });
+  document.addEventListener("click", (event) => { if (!group.contains(event.target)) close(); });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && button.getAttribute("aria-expanded") === "true") close({ focus: true });
+  });
+
+  const currentPage = !tracker && pages.find((page) => page.id === activePage && !["campaigns", "admin", "campaign-manage"].includes(page.id));
+  availableCampaigns().then((campaigns) => {
+    const choices = campaigns.filter((campaign) => campaign.joined);
+    menu.innerHTML = `${choices.map((campaign) => {
+      const destination = campaignPath(campaign.slug, currentPage?.href || "char");
+      const selected = campaign.slug === current.slug;
+      return `<a href="${destination}" class="${menuItemClass}"${selected ? ' aria-current="page"' : ""}><i class="bi ${selected ? "bi-check-circle-fill" : "bi-circle"}"></i><span class="truncate">${escapeHTML(campaign.name)}</span></a>`;
+    }).join("")}<a href="/campaigns/" class="${menuItemClass} border-t border-stone-200 dark:border-white/10"><i class="bi bi-collection-fill"></i>All campaigns</a>`;
+  }).catch(() => {
+    menu.innerHTML = `<a href="/campaigns/" class="${menuItemClass}"><i class="bi bi-collection-fill"></i>All campaigns</a>`;
+  });
+  button.textContent = current.name;
+  button.title = `Switch from ${current.name}`;
+  group.classList.remove("hidden");
+}
+
 export function mountSiteHeader({ activePage, actions = "", tracker = false } = {}) {
   enableLocalRoutes();
   const mount = document.querySelector("[data-site-header]");
@@ -92,10 +140,11 @@ export function mountSiteHeader({ activePage, actions = "", tracker = false } = 
   const startActions = typeof actions === "string" ? actions : actions.start || "";
   const endActions = typeof actions === "string" ? "" : actions.end || "";
   mount.innerHTML = `<div class="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-2 sm:flex-nowrap sm:gap-3 sm:px-6 lg:px-8">
-    <div class="flex min-w-0 flex-wrap items-center gap-2">${home}${pagesMenu}<a id="site-campaign" href="/campaigns/" class="hidden max-w-48 truncate text-sm font-bold text-blood-500"></a>${startActions}</div>
+    <div class="flex min-w-0 flex-wrap items-center gap-2">${home}${pagesMenu}<div data-site-campaigns class="relative hidden"><button id="site-campaign" type="button" class="max-w-48 truncate rounded-full bg-blood-500 px-3 py-1 text-sm font-bold text-on-accent" aria-expanded="false" aria-controls="site-campaign-menu"></button><div id="site-campaign-menu" class="absolute left-0 z-50 mt-2 hidden min-w-56 rounded-2xl border border-stone-200 bg-white p-2 shadow-2xl dark:border-white/10 dark:bg-stone-900"></div></div>${startActions}</div>
     <div class="flex shrink-0 items-center gap-2">${endActions}<div id="page-header-actions"></div><button id="site-account" type="button" class="${linkClass} ${idleClass}" aria-label="Open my account settings"><i class="bi bi-person-circle"></i><span>Me</span></button><button id="site-logout" type="button" class="${linkClass} ${idleClass}" aria-label="Sign out"><i class="bi bi-box-arrow-right"></i><span class="hidden md:inline">Sign out</span></button><button id="theme-toggle" type="button" class="${linkClass} ${idleClass}" aria-label="Switch theme"><i id="theme-icon" class="bi bi-sun-fill"></i></button></div>
   </div>`;
   applySectionVisibility(mount);
+  scopeCampaignPageLinks(slug);
   initializePageMenu(mount);
   mount.querySelector("#site-logout")?.addEventListener("click", logout);
   Promise.all([currentSession(), currentCampaign().catch(() => null)]).then(([{ user }, campaign]) => {
@@ -108,12 +157,7 @@ export function mountSiteHeader({ activePage, actions = "", tracker = false } = 
     account.title = user.email;
     // Page-level shortcuts use the same role contract as links inside the header.
     const campaignRole = campaign?.role;
-    const campaignLabel = mount.querySelector("#site-campaign");
-    if (campaign && campaignLabel) {
-      campaignLabel.textContent = campaign.name;
-      campaignLabel.title = `Switch from ${campaign.name}`;
-      campaignLabel.classList.remove("hidden");
-    }
+    initializeCampaignMenu(mount, { activePage, tracker, current: campaign });
     document.querySelectorAll("[data-role-link]").forEach((link) => {
       const id = link.dataset.roleLink;
       const allowed = campaign

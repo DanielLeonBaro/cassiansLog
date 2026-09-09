@@ -58,6 +58,9 @@ This file is the durable implementation log for campaign support. Update it when
 - [x] Added accent-colored campaign slug, membership-role, and free-text status badges; campaign create/manage now persist status.
 - [x] Added character status to bundled documents, Quick Setup, editor, selection cards, tracker header, campaign APIs, and legacy/local normalization.
 - [x] Added additive `campaign_statuses` storage and idempotent character JSON status migration without altering legacy tables.
+- [x] Made Character quick links, Screen widgets, Wiki mentions, Compendium shortcuts, Combat links, and load-error navigation preserve campaign URLs.
+- [x] Turned navbar campaign name into an accent badge with a joined-campaign quick selector.
+- [x] Kept Pages navigation click-only, with outside-click and Escape closing.
 
 ## Verification Log
 
@@ -84,6 +87,7 @@ This file is the durable implementation log for campaign support. Update it when
 - 2026-09-07 Cloudflare shell regression: reproduced `/char/tracker.html` and `/c/aotr/manage/` redirects locally, then verified both canonical shells return 200 without redirects.
 - 2026-09-07 Cloudflare shell repair: `npm test`, `npm run build:site`, `npm run test:browser`, and `git diff --check` passed.
 - 2026-09-07 status badges: `npm test`, `npm run build:site`, and `npm run test:browser` passed; browser coverage verifies campaign role/slug/status badges and character card/tracker status.
+- 2026-09-08 campaign navigation: `npm test`, `npm run build:site`, and `npm run test:browser` passed; browser coverage verifies scoped Character quick links, campaign switching, campaign badge styling, and Pages click behavior.
 - Pre-existing user changes: `.gitignore`, `package.json`, `shared/tests/run.cjs`, `wiki/scripts/import.cjs`, `wiki/scripts/content-diff/`, and `wiki/tests/content-diff.test.cjs`.
 
 ## Rollback Notes

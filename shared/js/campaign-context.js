@@ -200,6 +200,11 @@ export function currentCampaignSlug() {
   return campaignSlugFromPath();
 }
 
+export function campaignPath(slug, path = "") {
+  const normalized = String(path).replace(/^\/+|\/+$/g, "");
+  return `/c/${encodeURIComponent(slug)}/${normalized}${normalized ? "/" : ""}`;
+}
+
 export function campaignApiPath(path) {
   const normalized = String(path || "").replace(/^\//, "");
   const slug = currentCampaignSlug();
@@ -214,7 +219,15 @@ export function campaignApiPath(path) {
 export function campaignPagePath(path = "") {
   const normalized = String(path).replace(/^\/+|\/+$/g, "");
   const slug = currentCampaignSlug();
-  return slug ? `/c/${encodeURIComponent(slug)}/${normalized}${normalized ? "/" : ""}` : `/${normalized}${normalized ? "/" : ""}`;
+  return slug ? campaignPath(slug, normalized) : `/${normalized}${normalized ? "/" : ""}`;
+}
+
+export async function availableCampaigns() {
+  if (isLocalRuntimeHost()) return localCampaigns();
+  const response = await fetch("/api/campaigns", { headers: { accept: "application/json" } });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.error || `Could not load campaigns (${response.status}).`);
+  return Array.isArray(body.campaigns) ? body.campaigns : [];
 }
 
 export function campaignStorageKey(key, storage = globalThis.localStorage) {

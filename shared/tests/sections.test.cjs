@@ -44,6 +44,10 @@ assert.match(
 );
 assert.match(siteHeader, /data-section-link="\$\{page\.id\}"/, "Site links should expose their section IDs.");
 assert.match(siteHeader, /id="site-pages-menu-button"/, "Site navigation should use a Pages dropdown.");
+assert.doesNotMatch(siteHeader, /mouseenter|mouseleave/, "Pages should open only by click.");
+assert.match(siteHeader, /id="site-campaign"[^>]*rounded-full[^>]*bg-blood-500/, "Campaign name should be an accent badge.");
+assert.match(siteHeader, /availableCampaigns\(\)/, "Campaign badge should load a quick campaign selector.");
+assert.match(siteHeader, /scopeCampaignPageLinks\(slug\)/, "Page-level shortcuts should inherit campaign context.");
 assert.match(siteHeader, /sectionConfigReady\.then\(syncAvailability\)/, "The Pages dropdown should react to runtime section settings.");
 assert.match(siteHeader, /document\.querySelectorAll\("\[data-role-link\]"\)/, "Role visibility should include page-level shortcuts.");
 assert.doesNotMatch(

@@ -1,10 +1,12 @@
 // Replaces a failed character shell with a safe, actionable error state.
+import { campaignPagePath } from "../../shared/js/campaign-context.js";
+
 export function renderCharacterLoadError(message, {
   documentRoot = document,
   showBackLink = false,
 } = {}) {
   const backLink = showBackLink
-    ? '<a class="inline-flex items-center justify-center rounded-xl border border-stone-400 bg-white/60 px-4 py-2 text-sm font-bold text-stone-700 shadow-sm transition hover:border-blood-500 hover:text-blood-500 dark:border-white/20 dark:bg-white/5 dark:text-stone-200" href="char/">Back to characters</a>'
+    ? `<a class="inline-flex items-center justify-center rounded-xl border border-stone-400 bg-white/60 px-4 py-2 text-sm font-bold text-stone-700 shadow-sm transition hover:border-blood-500 hover:text-blood-500 dark:border-white/20 dark:bg-white/5 dark:text-stone-200" href="${campaignPagePath("char")}">Back to characters</a>`
     : "";
   const errorMargin = showBackLink ? "mb-4 " : "";
   documentRoot.body.innerHTML = `

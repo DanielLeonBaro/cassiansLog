@@ -256,8 +256,20 @@ async function main() {
     await smoke(
       "AOTR Character archive",
       "/c/aotr/char/",
-      'return document.querySelectorAll("#characters article").length === 5;',
-      'return document.getElementById("site-campaign")?.textContent === "Apotheosis of the Rings" && [...document.querySelectorAll("#characters article span")].filter((badge) => badge.textContent === "Active").length === 5;',
+      'return document.querySelectorAll("#characters article").length === 5 && Boolean(document.querySelector("#site-campaign-menu a[href=\'/c/sita/char/\']"));',
+      `
+        const quickLinks = [...document.querySelectorAll('main nav [data-section-link]')];
+        document.getElementById('site-pages-menu-button').click();
+        const clickOpened = !document.getElementById('site-pages-menu').classList.contains('hidden');
+        document.getElementById('site-pages-menu-button').click();
+        document.getElementById('site-campaign').click();
+        return document.getElementById("site-campaign")?.textContent === "Apotheosis of the Rings"
+          && document.getElementById("site-campaign").classList.contains("rounded-full")
+          && !document.getElementById("site-campaign-menu").classList.contains("hidden")
+          && clickOpened
+          && quickLinks.every((link) => link.getAttribute("href").startsWith("/c/aotr/"))
+          && [...document.querySelectorAll("#characters article span")].filter((badge) => badge.textContent === "Active").length === 5;
+      `,
     );
     await smoke(
       "AOTR Cassian localhost tracker",
@@ -677,8 +689,8 @@ async function main() {
       const initiative = [...document.querySelectorAll("[data-widget-id]")].find((card) => card.textContent.includes("Initiative Order"));
       initiative.querySelector('[data-move-widget="-1"]').click();
       return {
-        publicLink: Boolean(initiative.querySelector('a[href="public-initiative/"]')),
-        combatLink: Boolean(initiative.querySelector('a[href="combat-loot/"]')),
+        publicLink: Boolean(initiative.querySelector('a[href="/public-initiative/"]')),
+        combatLink: Boolean(initiative.querySelector('a[href="/combat-loot/"]')),
       };
     `);
     assert.deepEqual(playerActions, { publicLink: true, combatLink: false }, "Player Initiative should not expose Combat & Loot.");
@@ -714,7 +726,7 @@ async function main() {
       return true;
     `);
     await waitFor(
-      'return document.querySelector("[data-widget-id]")?.querySelector(\'a[href="combat-loot/"]\');',
+      'return document.querySelector("[data-widget-id]")?.querySelector(\'a[href="/combat-loot/"]\');',
       "DM Screen Initiative did not expose the authorized Combat & Loot action",
     );
     console.log("Browser smoke passed: Player Screen widgets and responsive layout");

@@ -1,6 +1,7 @@
 // Builds Player and DM Screen DOM and markup from prepared state.
 import { renderRichText } from "../../shared/js/rich-text.js";
 import { escapeAttribute, escapeHTML } from "../../shared/js/text.js";
+import { campaignPagePath } from "../../shared/js/campaign-context.js";
 
 export const widgetLabels = {
   character: "Character Quick Info",
@@ -25,7 +26,7 @@ function mentionRenderer(pageByName) {
     resolveMention(name, label) {
       const page = pageByName(name);
       return page
-        ? `<a href="/wiki/${encodeURIComponent(page.id)}" class="wiki-mention">${escapeHTML(label)}</a>`
+        ? `<a href="${campaignPagePath("wiki")}${encodeURIComponent(page.id)}/" class="wiki-mention">${escapeHTML(label)}</a>`
         : null;
     },
   };
@@ -77,7 +78,7 @@ function partyMember(character, fields) {
   if (!character) return "";
   const abilities = [...fields].filter((field) => abilityLabels[field]);
   return `<li class="rounded-xl border border-stone-200 p-3 dark:border-white/10">
-    <div class="flex items-center gap-3">${fields.includes("portrait") ? `<img src="${escapeAttribute(character.portrait || "shared/assets/bat.ico")}" alt="" class="h-11 w-11 rounded-lg object-cover">` : ""}<div class="min-w-0 grow"><a href="char/${encodeURIComponent(character.id)}/" class="font-display font-bold hover:text-blood-500">${escapeHTML(character.name)}</a>${fields.includes("classLevel") ? `<p class="text-xs text-stone-500">Level ${escapeHTML(character.level ?? "—")} · ${escapeHTML(characterClass(character))}</p>` : ""}</div>${fields.includes("hp") ? `<span class="text-sm"><strong>${escapeHTML(character.hp?.current ?? "—")}</strong>/${escapeHTML(character.hp?.max ?? "—")} HP</span>` : ""}${fields.includes("ac") ? `<span class="rounded-lg bg-gold/10 px-2 py-1 text-sm font-bold">AC ${escapeHTML(character.ac ?? "—")}</span>` : ""}</div>
+    <div class="flex items-center gap-3">${fields.includes("portrait") ? `<img src="${escapeAttribute(character.portrait || "shared/assets/bat.ico")}" alt="" class="h-11 w-11 rounded-lg object-cover">` : ""}<div class="min-w-0 grow"><a href="${campaignPagePath("char")}${encodeURIComponent(character.id)}/" class="font-display font-bold hover:text-blood-500">${escapeHTML(character.name)}</a>${fields.includes("classLevel") ? `<p class="text-xs text-stone-500">Level ${escapeHTML(character.level ?? "—")} · ${escapeHTML(characterClass(character))}</p>` : ""}</div>${fields.includes("hp") ? `<span class="text-sm"><strong>${escapeHTML(character.hp?.current ?? "—")}</strong>/${escapeHTML(character.hp?.max ?? "—")} HP</span>` : ""}${fields.includes("ac") ? `<span class="rounded-lg bg-gold/10 px-2 py-1 text-sm font-bold">AC ${escapeHTML(character.ac ?? "—")}</span>` : ""}</div>
     ${abilities.length ? `<div class="mt-3">${abilityGrid(character, abilities)}</div>` : ""}
   </li>`;
 }
@@ -104,7 +105,7 @@ export function renderWidgetCard(widget, index, total, context) {
   const characterMap = context.characterMap;
   if (widget.type === "character") {
     const character = characterMap.get(widget.characterId);
-    return shell(widget, index, total, character?.name || "Character unavailable", "bi-person-vcard-fill", characterSummary(character), character ? `<a href="char/${encodeURIComponent(character.id)}/" class="inline-flex grow items-center justify-center gap-2 rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-white">Open tracker <i class="bi bi-arrow-right"></i></a>` : "");
+    return shell(widget, index, total, character?.name || "Character unavailable", "bi-person-vcard-fill", characterSummary(character), character ? `<a href="${campaignPagePath("char")}${encodeURIComponent(character.id)}/" class="inline-flex grow items-center justify-center gap-2 rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-white">Open tracker <i class="bi bi-arrow-right"></i></a>` : "");
   }
   if (widget.type === "party") {
     const characters = widget.characterIds.map((id) => characterMap.get(id)).filter(Boolean);
@@ -118,8 +119,8 @@ export function renderWidgetCard(widget, index, total, context) {
   if (widget.type === "initiative") {
     const names = context.initiative;
     const body = names.length ? `<ol class="space-y-2">${names.map((name, itemIndex) => `<li class="flex items-center gap-3 rounded-xl border border-stone-200 px-3 py-2 dark:border-white/10"><span class="flex h-7 w-7 items-center justify-center rounded-full bg-blood-500 text-xs font-bold text-white">${itemIndex + 1}</span><strong>${escapeHTML(name)}</strong></li>`).join("")}</ol>` : '<p class="grow py-8 text-center text-sm text-stone-500">No initiative entries yet.</p>';
-    const combat = context.kind === "dm" && context.roles.includes("combat-loot") ? '<a href="combat-loot/" class="inline-flex grow items-center justify-center rounded-xl border border-sky-600 px-3 py-2 text-sm font-bold text-sky-600">Combat & Loot</a>' : "";
-    return shell(widget, index, total, "Initiative Order", "bi-list-ol", body, `<a href="public-initiative/" class="inline-flex grow items-center justify-center rounded-xl bg-blood-500 px-3 py-2 text-sm font-bold text-white">Public Initiative</a>${combat}`);
+    const combat = context.kind === "dm" && context.roles.includes("combat-loot") ? `<a href="${campaignPagePath("combat-loot")}" class="inline-flex grow items-center justify-center rounded-xl border border-sky-600 px-3 py-2 text-sm font-bold text-sky-600">Combat & Loot</a>` : "";
+    return shell(widget, index, total, "Initiative Order", "bi-list-ol", body, `<a href="${campaignPagePath("public-initiative")}" class="inline-flex grow items-center justify-center rounded-xl bg-blood-500 px-3 py-2 text-sm font-bold text-white">Public Initiative</a>${combat}`);
   }
   return shell(widget, index, total, "Calculator", "bi-calculator-fill", calculatorKeypad(widget), `<button type="button" data-view-widget class="inline-flex grow items-center justify-center gap-2 rounded-xl border border-blood-500 px-4 py-2 text-sm font-bold text-blood-500">History <i class="bi bi-clock-history"></i></button>`);
 }

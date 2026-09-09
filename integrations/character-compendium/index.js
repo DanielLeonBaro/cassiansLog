@@ -4,6 +4,7 @@ import { filterCompendiumEntries, loadCompendiumCatalog } from "../../compendium
 import { applySectionVisibility } from "../../shared/js/sections.js";
 import { escapeAttribute, escapeHTML } from "../../shared/js/text.js";
 import { addCompendiumEntry, hasCompendiumEntry } from "./mapping.js";
+import { campaignPagePath } from "../../shared/js/campaign-context.js";
 
 const categoryLabels = {
   classes: "Classes",
@@ -89,7 +90,7 @@ function mount(extensionHost) {
         <label class="md:col-span-3"><span class="mb-1 block text-xs font-bold uppercase tracking-wide text-stone-500">Category</span><select data-compendium-category class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2 text-stone-900 dark:border-white/15 dark:bg-white/5 dark:text-white"></select></label>
         <label class="md:col-span-4"><span class="mb-1 block text-xs font-bold uppercase tracking-wide text-stone-500">Publication</span><select data-compendium-publication class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2 text-stone-900 dark:border-white/15 dark:bg-white/5 dark:text-white"></select></label>
       </div>
-      <div class="mt-3 flex flex-wrap items-center justify-between gap-3"><p data-compendium-summary class="text-sm text-stone-500" aria-live="polite"></p><a href="compendium/" target="_blank" class="text-sm font-bold text-sky-600 hover:underline" data-section-link="compendium"><i class="bi bi-box-arrow-up-right mr-1"></i>Open full compendium</a></div>
+      <div class="mt-3 flex flex-wrap items-center justify-between gap-3"><p data-compendium-summary class="text-sm text-stone-500" aria-live="polite"></p><a href="${campaignPagePath("compendium")}" target="_blank" class="text-sm font-bold text-sky-600 hover:underline" data-section-link="compendium"><i class="bi bi-box-arrow-up-right mr-1"></i>Open full compendium</a></div>
     </div>
     <div data-compendium-results class="grid grow grid-cols-1 content-start gap-4 overflow-y-auto p-4 md:grid-cols-2 lg:grid-cols-3"></div>
     <footer class="flex justify-center border-t border-stone-300 p-3 dark:border-white/10"><button data-compendium-more type="button" class="hidden rounded-xl border border-sky-600 px-5 py-2 text-sm font-bold text-sky-600 hover:bg-sky-600 hover:text-white">Show more</button></footer>
