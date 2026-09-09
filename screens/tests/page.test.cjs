@@ -19,6 +19,7 @@ const view = fs.readFileSync("screens/js/view.js", "utf8");
 assert.match(view, /campaignPagePath\("char"\)/, "Character Screen links should preserve campaign context.");
 assert.match(view, /campaignPagePath\("wiki"\)/, "Wiki mentions should preserve campaign context.");
 assert.match(view, /campaignPagePath\("public-initiative"\)/, "Initiative links should preserve campaign context.");
+assert.match(view, /markdownToolbarMarkup/, "Formatted Screen widgets should use the shared formatting toolbar.");
 for (const label of ["Character Quick Info", "Party Overview", "Manual Reference", "Compendium Reference", "Note", "Public Initiative", "Calculator"]) {
   assert.ok(view.includes(label), `Widget picker should include ${label}.`);
 }

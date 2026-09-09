@@ -71,6 +71,12 @@ const { pathToFileURL } = require("node:url");
   assert.deepEqual(normalizeWikiPages(migrated), migrated, "Wiki migration should be idempotent");
   assert.equal(findWikiPageById(migrated, "fiora"), migrated[0]);
   assert.equal(findWikiPageById(migrated, "a4901fbc-0a6f-45dd-ad3f-f82f76e04007"), migrated[0]);
+  const homeBanner = { title: "Campaign Archive", image: "" };
+  assert.deepEqual(
+    normalizeWikiPages([{ id: "legacy-home", name: "Breugaire", homeBanner }])[0].homeBanner,
+    homeBanner,
+    "Page normalization should preserve rollback-safe Wiki home banner settings",
+  );
 
   const fiora = names.get("fiora");
   const bloodington = names.get("la casa von bloodington");
@@ -88,6 +94,9 @@ const { pathToFileURL } = require("node:url");
   assert.match(wikiScript, /history\.replaceState/, "Legacy links should be canonicalized in place");
   assert.match(wikiScript, /compactWikiPageId\(name\)/, "Editor saves should derive IDs from titles");
   assert.match(wikiHTML, /Formatting guide/, "The page editor should include its formatting guide");
+  assert.match(wikiHTML, /id="wiki-home-editor"/, "The Wiki home banner should have its own editor");
+  assert.match(wikiScript, /data-action="edit-home"/, "DMs should be able to open the Wiki home banner editor");
+  assert.match(wikiScript, /markdownToolbarMarkup/, "The Wiki editor should use the shared formatting toolbar");
   assert.match(wikiRepository, /readCloudJSON\("api\/wiki"/, "Wiki loads shared D1 data first");
   assert.match(wikiRepository, /writeCloudJSON\("api\/wiki"/, "Wiki saves edits to D1");
   assert.match(wikiHTML, /id="wiki-image-modal"/, "Wiki should include the full-image modal");

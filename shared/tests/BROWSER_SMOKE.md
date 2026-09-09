@@ -20,7 +20,7 @@ The suite covers:
 - routed Character tracker rendering and opening/closing the editor
 - Combat & Loot workspace rendering
 - Music local fallback and tag entry
-- Wiki local fallback and opening/closing its editor
+- Wiki local fallback, banner editor, and cursor-aware formatting toolbar
 - Compendium local fallback and search
 - Public Initiative read-only failure state without D1
 - Admin localhost mode without a password or D1

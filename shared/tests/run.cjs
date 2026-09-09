@@ -3,6 +3,7 @@ const { spawnSync } = require("node:child_process");
 
 const suites = [
   ["Shared text escaping and JSON cloning", "shared/tests/text.test.js"],
+  ["Shared Markdown toolbar editing", "shared/tests/markdown-toolbar.test.js"],
   ["Local runtime host detection", "shared/tests/runtime-host.test.js"],
   ["Campaign URL and browser-cache isolation", "shared/tests/campaign-context.test.js"],
   ["Theme catalog, normalization, and contrast", "shared/tests/theme.test.js"],

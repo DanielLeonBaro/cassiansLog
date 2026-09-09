@@ -576,6 +576,7 @@ const { pathToFileURL } = require("node:url");
     id: "a4901fbc-0a6f-45dd-ad3f-f82f76e04007",
     name: "Fiora",
     type: "Character",
+    homeBanner: { title: "Campaign Archive", image: "" },
   }];
   const wikiEnv = {
     ...env,
@@ -636,6 +637,7 @@ const { pathToFileURL } = require("node:url");
   assert.equal(savedWiki.status, 200);
   assert.equal(savedWikiPages[0].id, "fiora", "Every Wiki write should enforce title-derived IDs");
   assert.deepEqual(savedWikiPages[0].legacyIds, [legacyWikiPages[0].id]);
+  assert.deepEqual(savedWikiPages[0].homeBanner, legacyWikiPages[0].homeBanner, "Wiki writes should preserve home banner settings inside page records");
 
   const adminSource = fs.readFileSync("admin/js/entry.js", "utf8");
   sectionKeys.forEach((key) => assert.ok(adminSource.includes(`${key}:`) || adminSource.includes(`"${key}":`), `${key} needs an admin toggle`));

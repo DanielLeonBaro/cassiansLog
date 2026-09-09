@@ -7,6 +7,7 @@ import { renderWikiMarkdown } from "./markdown.js";
 import { createWikiImageModalController } from "./image-modal.js";
 import { createWikiBackup, parseWikiBackup, wikiBackupFilename } from "./backup.js";
 import { campaignPagePath, currentCampaign, currentCampaignSlug } from "../../shared/js/campaign-context.js";
+import { handleMarkdownToolbarClick, markdownToolbarMarkup } from "../../shared/js/markdown-toolbar.js";
 import {
   filterWikiPages,
   findWikiPageByName,
@@ -40,6 +41,7 @@ export async function initializeWiki() {
     banner: document.getElementById("wiki-page-banner"),
     upload: document.getElementById("wiki-page-upload"),
     body: document.getElementById("wiki-page-body"),
+    formatToolbar: document.getElementById("wiki-format-toolbar"),
     types: document.getElementById("wiki-types"),
     mentionTarget: document.getElementById("wiki-mention-target"),
     deletePage: document.getElementById("wiki-delete-page"),
@@ -49,6 +51,14 @@ export async function initializeWiki() {
     imageModal: document.getElementById("wiki-image-modal"),
     modalImage: document.getElementById("wiki-modal-image"),
     modalClose: document.getElementById("wiki-image-close"),
+    homeEditor: document.getElementById("wiki-home-editor"),
+    homeForm: document.getElementById("wiki-home-form"),
+    homeEyebrow: document.getElementById("wiki-home-eyebrow"),
+    homeTitle: document.getElementById("wiki-home-title"),
+    homeDescription: document.getElementById("wiki-home-description"),
+    homeLinkLabel: document.getElementById("wiki-home-link-label"),
+    homeImage: document.getElementById("wiki-home-image"),
+    homeUpload: document.getElementById("wiki-home-upload"),
   };
   const imageModalController = createWikiImageModalController({
     closeButton: elements.modalClose,
@@ -132,20 +142,42 @@ export async function initializeWiki() {
       .join("");
   }
 
+  function homeBannerValue(entryPage) {
+    const settings = entryPage?.homeBanner && typeof entryPage.homeBanner === "object"
+      ? entryPage.homeBanner : {};
+    return {
+      image: String(settings.image ?? entryPage?.banner ?? ""),
+      eyebrow: settings.eyebrow ?? `${campaignName} campaign notes`,
+      title: settings.title ?? "Campaign Wiki",
+      description: settings.description ?? (canEdit
+        ? "Read or edit the campaign's shared notes."
+        : "Read the campaign notes shared by its DMs."),
+      linkLabel: settings.linkLabel ?? `Enter ${entryPage?.name || "Wiki"}`,
+    };
+  }
+
+  function homeEntryPage() {
+    return pages.find((page) => page.homeBanner && typeof page.homeBanner === "object")
+      || pageByName("Breugaire")
+      || pages[0];
+  }
+
   function renderHomeShell() {
-    const breugaire = pageByName("Breugaire") || pages[0];
+    const breugaire = homeEntryPage();
+    const banner = homeBannerValue(breugaire);
     const types = [...new Set(pages.map((page) => page.type || "Lore"))].sort();
     elements.home.innerHTML = `
       <header class="relative mb-7 overflow-hidden rounded-3xl border border-stone-300/80 bg-ink shadow-card dark:border-white/10">
-        ${breugaire?.banner ? `<img src="${escapeAttribute(breugaire.banner)}" alt="" class="absolute inset-0 h-full w-full object-cover opacity-45">` : ""}
+        ${banner.image ? `<img src="${escapeAttribute(banner.image)}" alt="" class="absolute inset-0 h-full w-full object-cover opacity-45">` : ""}
         <div class="absolute inset-0 bg-gradient-to-r from-ink via-ink/90 to-ink/30"></div>
         <div class="relative max-w-3xl px-6 py-12 text-white sm:px-10 sm:py-16">
-          <span class="mb-4 inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-bold backdrop-blur-sm"><i class="bi bi-stars mr-1.5 text-gold"></i> ${escapeHTML(campaignName)} campaign notes</span>
-          <h1 id="wiki-title" class="font-display text-4xl font-bold sm:text-6xl">Campaign Wiki</h1>
-          <p class="mt-4 max-w-2xl text-lg leading-relaxed text-stone-200">${canEdit ? "Read or edit the campaign's shared notes." : "Read the campaign notes shared by its DMs."}</p>
+          <span class="mb-4 inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-bold backdrop-blur-sm"><i class="bi bi-stars mr-1.5 text-gold"></i> ${escapeHTML(banner.eyebrow)}</span>
+          <h1 id="wiki-title" class="font-display text-4xl font-bold sm:text-6xl">${escapeHTML(banner.title)}</h1>
+          <p class="mt-4 max-w-2xl text-lg leading-relaxed text-stone-200">${escapeHTML(banner.description)}</p>
           <div class="mt-7 flex flex-wrap gap-3">
             ${canEdit ? '<button type="button" data-action="new" class="inline-flex items-center gap-2 rounded-xl bg-blood-500 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-blood-600"><i class="bi bi-file-earmark-plus-fill"></i> New page</button>' : ""}
-            ${breugaire ? `<a href="${pageURL(breugaire.id)}" class="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-5 py-2.5 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/20">Enter Breugaire <i class="bi bi-arrow-right"></i></a>` : ""}
+            ${breugaire ? `<a href="${pageURL(breugaire.id)}" class="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-5 py-2.5 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/20">${escapeHTML(banner.linkLabel)} <i class="bi bi-arrow-right"></i></a>` : ""}
+            ${canEdit && breugaire ? '<button type="button" data-action="edit-home" class="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-black/20 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-white/15"><i class="bi bi-pencil-fill"></i> Edit banner</button>' : ""}
           </div>
         </div>
       </header>
@@ -291,6 +323,51 @@ export async function initializeWiki() {
     elements.banner.dataset.upload = "";
   }
 
+  function openHomeEditor() {
+    const banner = homeBannerValue(homeEntryPage());
+    elements.homeForm.reset();
+    elements.homeEyebrow.value = banner.eyebrow;
+    elements.homeTitle.value = banner.title;
+    elements.homeDescription.value = banner.description;
+    elements.homeLinkLabel.value = banner.linkLabel;
+    elements.homeImage.value = banner.image.startsWith("data:") ? "" : banner.image;
+    elements.homeImage.dataset.upload = banner.image.startsWith("data:") ? banner.image : "";
+    elements.homeEditor.classList.remove("hidden");
+    document.body.classList.add("overflow-hidden");
+    setTimeout(() => elements.homeEyebrow.focus(), 0);
+  }
+
+  function closeHomeEditor() {
+    elements.homeEditor.classList.add("hidden");
+    document.body.classList.remove("overflow-hidden");
+    elements.homeForm.reset();
+    elements.homeImage.dataset.upload = "";
+  }
+
+  async function saveHomeEditor(event) {
+    event.preventDefault();
+    const entryPage = homeEntryPage();
+    if (!entryPage) {
+      showToast("Create a Wiki page before editing the home banner.");
+      return;
+    }
+    const updated = {
+      ...entryPage,
+      homeBanner: {
+        eyebrow: elements.homeEyebrow.value.trim(),
+        title: elements.homeTitle.value.trim(),
+        description: elements.homeDescription.value.trim(),
+        linkLabel: elements.homeLinkLabel.value.trim(),
+        image: elements.homeImage.dataset.upload || elements.homeImage.value.trim(),
+      },
+      modifiedAt: new Date().toISOString(),
+    };
+    pages.splice(pages.findIndex((page) => page.id === entryPage.id), 1, updated);
+    if (!await savePages("Wiki banner saved.")) return;
+    closeHomeEditor();
+    renderRoute();
+  }
+
   async function saveEditor(event) {
     event.preventDefault();
     const previousId = elements.id.value;
@@ -370,11 +447,34 @@ export async function initializeWiki() {
     reader.readAsDataURL(file);
   }
 
+  function readHomeBannerUpload() {
+    const file = elements.homeUpload.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      showToast("Choose an image file for the banner.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      elements.homeImage.dataset.upload = String(reader.result || "");
+      elements.homeImage.value = "";
+      showToast("Banner ready. Save the banner to keep it.");
+    });
+    reader.readAsDataURL(file);
+  }
+
   function clearBanner() {
     elements.banner.value = "";
     elements.banner.dataset.upload = "";
     elements.upload.value = "";
     showToast("Banner removed. Save the page to keep this change.");
+  }
+
+  function clearHomeBanner() {
+    elements.homeImage.value = "";
+    elements.homeImage.dataset.upload = "";
+    elements.homeUpload.value = "";
+    showToast("Banner image removed. Save the banner to keep this change.");
   }
 
   function exportWiki() {
@@ -439,6 +539,7 @@ export async function initializeWiki() {
   }
 
   function handleClick(event) {
+    if (handleMarkdownToolbarClick(event)) return;
     const image = event.target.closest("[data-wiki-image]");
     if (image) {
       imageModalController.open(image);
@@ -463,6 +564,7 @@ export async function initializeWiki() {
     const action = event.target.closest("[data-action]")?.dataset.action;
     if (action === "new" && canEdit) openEditor(null);
     else if (action === "edit" && canEdit) openEditor(pageById(event.target.closest("[data-page-id]").dataset.pageId));
+    else if (action === "edit-home" && canEdit) openHomeEditor();
     else if (action === "home") navigateHome();
     else if (action === "export") exportWiki();
     else if (action === "import" && canEdit) elements.importFile.click();
@@ -475,6 +577,7 @@ export async function initializeWiki() {
   }
 
   function setupEvents() {
+    elements.formatToolbar.innerHTML = markdownToolbarMarkup("Wiki page formatting");
     document.getElementById("sidebar-home").addEventListener("click", navigateHome);
     document.addEventListener("click", handleClick);
     document.addEventListener("input", (event) => {
@@ -509,15 +612,23 @@ export async function initializeWiki() {
     window.addEventListener("hashchange", renderRoute);
     window.addEventListener("popstate", renderRoute);
     elements.form.addEventListener("submit", saveEditor);
+    elements.homeForm.addEventListener("submit", saveHomeEditor);
     elements.upload.addEventListener("change", readBannerUpload);
+    elements.homeUpload.addEventListener("change", readHomeBannerUpload);
     elements.banner.addEventListener("input", () => {
       if (elements.banner.value) elements.banner.dataset.upload = "";
+    });
+    elements.homeImage.addEventListener("input", () => {
+      if (elements.homeImage.value) elements.homeImage.dataset.upload = "";
     });
     elements.importFile.addEventListener("change", () => importWiki(elements.importFile.files?.[0]));
     document.getElementById("wiki-insert-mention").addEventListener("click", insertMention);
     document.getElementById("wiki-clear-banner").addEventListener("click", clearBanner);
+    document.getElementById("wiki-home-clear-image").addEventListener("click", clearHomeBanner);
     document.getElementById("wiki-editor-close").addEventListener("click", closeEditor);
     document.getElementById("wiki-editor-cancel").addEventListener("click", closeEditor);
+    document.getElementById("wiki-home-editor-close").addEventListener("click", closeHomeEditor);
+    document.getElementById("wiki-home-editor-cancel").addEventListener("click", closeHomeEditor);
     elements.deletePage.addEventListener("click", deleteCurrentEditorPage);
     elements.modalClose.addEventListener("click", imageModalController.close);
     elements.imageModal.addEventListener("click", (event) => {
@@ -528,12 +639,17 @@ export async function initializeWiki() {
     elements.editor.addEventListener("click", (event) => {
       if (event.target === elements.editor) closeEditor();
     });
+    elements.homeEditor.addEventListener("click", (event) => {
+      if (event.target === elements.homeEditor) closeHomeEditor();
+    });
     document.addEventListener("keydown", (event) => {
       if ((event.key === "Enter" || event.key === " ") && event.target.matches("[data-wiki-image]")) {
         event.preventDefault();
         imageModalController.open(event.target);
       } else if (event.key === "Escape" && !elements.imageModal.classList.contains("hidden")) {
         imageModalController.close();
+      } else if (event.key === "Escape" && !elements.homeEditor.classList.contains("hidden")) {
+        closeHomeEditor();
       } else if (event.key === "Escape" && !elements.editor.classList.contains("hidden")) {
         closeEditor();
       }

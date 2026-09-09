@@ -5,6 +5,7 @@ import { createImageModalController } from "../../shared/js/image-modal.js";
 import { isLocalRuntimeHost } from "../../shared/js/runtime-host.js";
 import { cloneJSON, escapeAttribute, escapeHTML, normalizeText } from "../../shared/js/text.js";
 import { currentCampaign, currentCampaignSlug } from "../../shared/js/campaign-context.js";
+import { handleMarkdownToolbarClick } from "../../shared/js/markdown-toolbar.js";
 import {
   compendiumReferenceSnapshot,
   filterScreenCompendium,
@@ -405,6 +406,7 @@ export async function initializeScreen(kind) {
     renderEditor();
   });
   elements.editorFields.addEventListener("click", (event) => {
+    if (handleMarkdownToolbarClick(event)) return;
     if (event.target.closest("[data-open-compendium]")) openCompendium();
     if (event.target.closest("[data-clear-editor-image]")) {
       elements.editorForm.elements.storedImage.value = "";

@@ -489,9 +489,26 @@ async function main() {
         if (!create) return false;
         create.click();
         const opened = !document.getElementById("wiki-editor").classList.contains("hidden");
+        const body = document.getElementById("wiki-page-body");
+        document.querySelector('[data-markdown-format="bold"]').click();
+        const formatted = body.value === "****" && body.selectionStart === 2 && body.selectionEnd === 2;
         document.getElementById("wiki-editor-cancel").click();
-        return opened;
+        document.querySelector('[data-action="edit-home"]').click();
+        const bannerOpened = !document.getElementById("wiki-home-editor").classList.contains("hidden")
+          && document.getElementById("wiki-home-title").value === "Campaign Wiki";
+        document.getElementById("wiki-home-title").value = "Campaign Archive";
+        document.getElementById("wiki-home-form").requestSubmit();
+        return opened && formatted && bannerOpened;
       `,
+    );
+    await waitFor(
+      `
+        const stored = JSON.parse(localStorage.getItem("dnd-wiki-pages-v1") || "[]");
+        return document.getElementById("wiki-home-editor").classList.contains("hidden")
+          && document.getElementById("wiki-title").textContent === "Campaign Archive"
+          && stored.some((page) => page.homeBanner?.title === "Campaign Archive");
+      `,
+      "Wiki home banner did not save and render",
     );
 
     await smoke(
@@ -566,7 +583,15 @@ async function main() {
       type.value = "note";
       type.dispatchEvent(new Event("change", { bubbles: true }));
       document.querySelector('[name="title"]').value = "Table note";
-      document.querySelector('[name="body"]').value = "## Reminder\\n\\nUse **cover**.";
+      const body = document.querySelector('[name="body"]');
+      body.value = "## Reminder\\n\\nUse ";
+      body.setSelectionRange(body.value.length, body.value.length);
+      document.querySelector('[data-markdown-format="bold"]').click();
+      if (!body.value.endsWith("****") || body.selectionStart !== body.value.length - 2) {
+        throw new Error("Screen Markdown toolbar did not place the cursor inside bold markers");
+      }
+      body.setRangeText("cover", body.selectionStart, body.selectionEnd, "end");
+      body.value += ".";
       document.getElementById("screen-editor-form").requestSubmit();
       return true;
     `);
