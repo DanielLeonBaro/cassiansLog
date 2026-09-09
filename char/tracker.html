@@ -260,11 +260,14 @@
         <section class="mb-4 overflow-hidden rounded-2xl border border-stone-300/80 bg-white/75 shadow-card backdrop-blur-sm dark:border-white/10 dark:bg-white/[.055]" id="notesSection">
             <div class="flex items-center border-b border-stone-200/80 bg-stone-100/70 px-5 py-4 font-bold leading-none tracking-wide dark:border-white/10 dark:bg-white/[.045]">Notes</div>
             <div class="p-5">
-                <div class="mb-4 grid grid-cols-1 gap-2 md:grid-cols-12">
-                    <div class="md:col-span-4"><input id="note-title" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 placeholder:text-stone-400 dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="Title"></div>
-                    <div class="md:col-span-6"><input id="note-body" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 placeholder:text-stone-400 dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="Note"></div>
-                    <div class="grid md:col-span-2"><button id="save-note-btn" type="button"
-                            class="inline-flex items-center justify-center rounded-xl border border-stone-800 bg-stone-800 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-stone-700 dark:border-stone-100 dark:bg-stone-100 dark:text-stone-950">Save</button></div>
+                <div class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+                    <div data-markdown-editor class="min-w-0 space-y-3">
+                        <input id="note-title" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 placeholder:text-stone-400 dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="Title">
+                        <div id="note-format-toolbar"></div>
+                        <textarea id="note-body" rows="5" class="w-full resize-y rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 placeholder:text-stone-400 dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="Note"></textarea>
+                    </div>
+                    <div class="grid"><button id="save-note-btn" type="button"
+                            class="inline-flex items-center justify-center rounded-xl border border-stone-800 bg-stone-800 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-stone-700 dark:border-stone-100 dark:bg-stone-100 dark:text-stone-950">Save</button></div>
                 </div>
                 <div id="notes-container" class="grid grid-cols-1 gap-4 md:grid-cols-2"></div>
             </div>

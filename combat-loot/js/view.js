@@ -1,5 +1,6 @@
 // Builds Combat and Loot DOM and markup from prepared state.
 import { escapeAttribute, escapeHTML } from "../../shared/js/text.js";
+import { renderRichText } from "../../shared/js/rich-text.js";
 import { calculateCurrentHP, evaluateArithmeticFormula } from "./model.js";
 
 const iconButton = "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-stone-300 bg-white/70 text-xs text-stone-600 transition hover:border-blood-500 hover:text-blood-500 disabled:cursor-not-allowed disabled:opacity-35 dark:border-white/15 dark:bg-white/5 dark:text-stone-300";
@@ -132,7 +133,10 @@ function inlineCell(table, row, column, health) {
 
 function modalCell(table, row, column) {
   const value = String(row.cells?.[column.id] || "");
-  return `<button type="button" data-action="open-cell-editor" data-table-id="${escapeAttribute(table.id)}" data-row-id="${escapeAttribute(row.id)}" data-column-id="${escapeAttribute(column.id)}" class="block min-h-12 w-full min-w-52 rounded-lg border border-transparent px-2 py-2 text-left text-sm transition hover:border-blood-500 hover:bg-blood-500/5"><span class="line-clamp-3 whitespace-pre-wrap ${value ? "" : "italic text-stone-400"}">${escapeHTML(value || "Add text…")}</span></button>`;
+  const content = value
+    ? `<div class="compact-rich max-h-20 overflow-hidden">${renderRichText(value)}</div>`
+    : '<span class="italic text-stone-400">Add text…</span>';
+  return `<button type="button" data-action="open-cell-editor" data-table-id="${escapeAttribute(table.id)}" data-row-id="${escapeAttribute(row.id)}" data-column-id="${escapeAttribute(column.id)}" class="block min-h-12 w-full min-w-52 rounded-lg border border-transparent px-2 py-2 text-left text-sm transition hover:border-blood-500 hover:bg-blood-500/5">${content}</button>`;
 }
 
 function damageCell(table, row, column, health) {

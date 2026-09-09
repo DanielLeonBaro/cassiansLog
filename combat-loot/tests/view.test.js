@@ -49,6 +49,12 @@ assert.match(
   html,
   new RegExp(`data-action="open-cell-editor"[^>]*data-column-id="${byRole("condition").id}"`),
 );
+document = updateTrackerCell(document, combat.id, row.id, byRole("condition").id, "**Poisoned** <script>alert(1)</script>");
+combat = document.tables.find((table) => table.type === "combat");
+html = renderTracker(combat);
+assert.match(html, /compact-rich[^>]*>[\s\S]*<strong>Poisoned<\/strong>/);
+assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+assert.doesNotMatch(html, /<script>alert\(1\)<\/script>/);
 assert.match(
   html,
   new RegExp(`data-inline-cell[^>]*data-column-id="${byRole("hp").id}"[^>]*class="[^"]*min-h-12[^"]*min-w-52`),
@@ -85,6 +91,7 @@ assert.match(pageHTML, /id="send-combat-dialog"/);
 assert.match(pageHTML, /id="bring-party-dialog"/);
 assert.match(pageHTML, /id="party-conflict-dialog"/);
 assert.match(pageHTML, /id="party-name"/);
+assert.match(pageHTML, /data-markdown-editor[\s\S]*id="editor-format-toolbar"[\s\S]*id="editor-value"/);
 assert.match(pageHTML, /id="sort-send-combat"[^>]*>Sort &amp; Send<\/button>/);
 assert.match(pageHTML, /id="send-combat-as-is"[^>]*>Send as they are<\/button>/);
 assert.match(pageHTML, /id="cancel-send-combat"[^>]*>Cancel<\/button>/);

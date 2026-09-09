@@ -1,6 +1,10 @@
 // Verifies cursor placement and selection wrapping for shared Markdown editors.
 import assert from "node:assert/strict";
-import { markdownEdit } from "../js/markdown-toolbar.js";
+import {
+  COMPACT_MARKDOWN_FORMATS,
+  markdownEdit,
+  markdownToolbarMarkup,
+} from "../js/markdown-toolbar.js";
 
 assert.deepEqual(markdownEdit("", 0, 0, "bold"), {
   value: "****",
@@ -37,5 +41,11 @@ assert.deepEqual(markdownEdit("", 0, 0, "divider"), {
   selectionStart: 4,
   selectionEnd: 4,
 });
+
+const compactToolbar = markdownToolbarMarkup("Cell formatting", COMPACT_MARKDOWN_FORMATS);
+assert.match(compactToolbar, /aria-label="Cell formatting"/);
+assert.match(compactToolbar, /data-markdown-format="bold"/);
+assert.doesNotMatch(compactToolbar, /data-markdown-format="image"/);
+assert.doesNotMatch(compactToolbar, /data-markdown-format="mention"/);
 
 console.log("Markdown toolbar editing tests passed.");

@@ -4,11 +4,22 @@ import { readCloudJSON, writeCloudJSON } from "../../../shared/js/cloud-store.js
 import { characterNotesStorageKey } from "../storage-keys.js";
 import { currentCampaignSlug } from "../../../shared/js/campaign-context.js";
 import { isLocalRuntimeHost } from "../../../shared/js/runtime-host.js";
+import {
+  handleMarkdownToolbarClick,
+  markdownToolbarMarkup,
+  STANDARD_MARKDOWN_FORMATS,
+} from "../../../shared/js/markdown-toolbar.js";
+import { renderRichText } from "../../../shared/js/rich-text.js";
 
 export function createNotesController({ characterId, cardClasses, escapeHTML }) {
   const storageKey = characterNotesStorageKey(characterId);
   let notes = [];
   let editingNote = null;
+  const toolbar = document.getElementById("note-format-toolbar");
+  if (toolbar) {
+    toolbar.innerHTML = markdownToolbarMarkup("Character note formatting", STANDARD_MARKDOWN_FORMATS);
+    toolbar.addEventListener("click", handleMarkdownToolbarClick);
+  }
 
   function clearInputs() {
     document.getElementById("note-title").value = "";
@@ -27,7 +38,7 @@ export function createNotesController({ characterId, cardClasses, escapeHTML }) 
     container.innerHTML = notes
       .map(
         (note, index) =>
-          `<div class="${cardClasses.card}"><div class="${cardClasses.cardHeader}"><strong>${escapeHTML(note.title)}</strong><div class="inline-flex"><button type="button" class="inline-flex items-center justify-center rounded-l-xl border border-sky-500 px-3 py-1.5 text-xs font-bold text-sky-600 transition hover:bg-sky-500 hover:text-white" data-tracker-action="edit-note" data-index="${index}"><i class="bi bi-pencil"></i></button><button type="button" class="inline-flex items-center justify-center rounded-r-xl border border-danger-500 px-3 py-1.5 text-xs font-bold text-danger-500 transition hover:bg-danger-500 hover:text-white" data-tracker-action="delete-note" data-index="${index}"><i class="bi bi-trash"></i></button></div></div><div class="${cardClasses.cardBody}">${escapeHTML(note.body)}</div></div>`,
+          `<div class="${cardClasses.card}"><div class="${cardClasses.cardHeader}"><strong>${escapeHTML(note.title)}</strong><div class="inline-flex"><button type="button" class="inline-flex items-center justify-center rounded-l-xl border border-sky-500 px-3 py-1.5 text-xs font-bold text-sky-600 transition hover:bg-sky-500 hover:text-white" data-tracker-action="edit-note" data-index="${index}"><i class="bi bi-pencil"></i></button><button type="button" class="inline-flex items-center justify-center rounded-r-xl border border-danger-500 px-3 py-1.5 text-xs font-bold text-danger-500 transition hover:bg-danger-500 hover:text-white" data-tracker-action="delete-note" data-index="${index}"><i class="bi bi-trash"></i></button></div></div><div class="${cardClasses.cardBody} wiki-rich">${renderRichText(note.body)}</div></div>`,
       )
       .join("");
   }

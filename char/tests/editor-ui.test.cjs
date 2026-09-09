@@ -63,8 +63,12 @@ assert.match(editor, /return \{ open \};/, "Editor should expose its focused ope
 const tracker = fs.readFileSync("char/js/tracker/index.js", "utf8");
 const trackerHTML = fs.readFileSync("char/tracker.html", "utf8");
 const cards = fs.readFileSync("char/js/archive/cards.js", "utf8");
+const notes = fs.readFileSync("char/js/tracker/notes.js", "utf8");
 assert.match(trackerHTML, /id="character-status"[^>]*bg-blood-500[^>]*text-on-accent/, "Tracker status badge should use the theme accent.");
 assert.match(cards, /bg-blood-500[^\n]*text-on-accent/, "Character-card status badge should use the theme accent.");
+assert.match(trackerHTML, /data-markdown-editor[\s\S]*id="note-format-toolbar"[\s\S]*<textarea id="note-body"/, "Character Notes should provide the shared formatting editor.");
+assert.match(notes, /markdownToolbarMarkup\("Character note formatting", STANDARD_MARKDOWN_FORMATS\)/);
+assert.match(notes, /wiki-rich"\>\$\{renderRichText\(note\.body\)\}/, "Saved Notes should safely render their formatting.");
 assert.match(tracker, /data-character-editor-section="inventory"/, "Currency should link directly to inventory editing.");
 assert.match(tracker, />Edit Inventory<\/button>/, "Currency should show an Edit Inventory button.");
 

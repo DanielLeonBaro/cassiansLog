@@ -91,6 +91,11 @@ for (const removedId of REMOVED_BACKGROUND_IDS) {
 }
 assert.match(themeStyles, /inset 0 0 clamp\(2\.5rem, 12vw, 12rem\) rgb\(0 0 0 \/ 0\.18\)/);
 assert.match(themeStyles, /inset 0 0 0 100vmax rgb\(var\(--theme-background\) \/ 0\.18\)/);
+assert.match(
+  themeStyles,
+  /input:is\(\[type="checkbox"\], \[type="radio"\]\)\s*\{\s*accent-color: rgb\(var\(--theme-accent, 184 59 53\)\);/,
+  "Native checkboxes and radio buttons should use the active theme accent.",
+);
 
 assert.equal(normalizeHex(" #b83b35 "), "#B83B35");
 assert.equal(normalizeHex("#12345"), null);

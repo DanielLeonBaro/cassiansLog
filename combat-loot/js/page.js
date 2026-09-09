@@ -43,6 +43,11 @@ import {
 } from "./repository.js";
 import { renderWorkspace } from "./view.js";
 import { campaignCanManage, currentCampaignSlug } from "../../shared/js/campaign-context.js";
+import {
+  COMPACT_MARKDOWN_FORMATS,
+  handleMarkdownToolbarClick,
+  markdownToolbarMarkup,
+} from "../../shared/js/markdown-toolbar.js";
 
 const MAX_PRESET_UPLOAD_BYTES = 5 * 1024 * 1024;
 const VALID_HEALTH_INPUT_CLASSES = [
@@ -135,6 +140,7 @@ export async function initializeCombatLoot() {
     editorTitle: document.getElementById("editor-dialog-title"),
     editorContext: document.getElementById("editor-dialog-context"),
     editorLabel: document.getElementById("editor-field-label"),
+    editorFormatToolbar: document.getElementById("editor-format-toolbar"),
     editorValue: document.getElementById("editor-value"),
     editorHelp: document.getElementById("editor-help"),
     editorError: document.getElementById("editor-error"),
@@ -163,6 +169,8 @@ export async function initializeCombatLoot() {
     confirmAccept: document.getElementById("accept-confirm"),
     toast: document.getElementById("combat-loot-toast"),
   };
+  elements.editorFormatToolbar.innerHTML = markdownToolbarMarkup("Combat cell formatting", COMPACT_MARKDOWN_FORMATS);
+  elements.editorFormatToolbar.addEventListener("click", handleMarkdownToolbarClick);
 
   let presets = loadPresetCollection();
   const recoveredDraft = loadDraft();
@@ -465,6 +473,7 @@ export async function initializeCombatLoot() {
     elements.editorLabel.textContent = column.title || "Text";
     const isDamage = table.type === "combat" && column.role === "damage";
     const storedValue = String(row.cells?.[column.id] || "");
+    elements.editorFormatToolbar.classList.toggle("hidden", isDamage);
     elements.editorValue.value = isDamage && storedValue.trim() === "0" ? "" : storedValue;
     elements.editorValue.rows = isDamage ? 3 : 7;
     elements.editorValue.placeholder = isDamage ? "5+10-2" : "";

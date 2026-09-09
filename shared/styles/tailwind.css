@@ -22,6 +22,10 @@
     color: rgb(var(--theme-text));
   }
 
+  input:is([type="checkbox"], [type="radio"]) {
+    accent-color: rgb(var(--theme-accent, 184 59 53));
+  }
+
   :is(html[data-background="default-squared"] body, [data-background-preview="default-squared"]) {
     background-image:
       radial-gradient(circle at center, rgb(var(--theme-accent) / 0.14), transparent 58%),
@@ -475,6 +479,34 @@
 
   .wiki-mention-missing {
     @apply cursor-help border-b border-dashed border-stone-400 bg-stone-200/70 text-stone-500 ring-0 dark:bg-white/10 dark:text-stone-400;
+  }
+
+  .compact-rich {
+    @apply text-sm leading-5 text-stone-700 dark:text-stone-200;
+  }
+
+  .compact-rich :is(h2, h3, h4) {
+    @apply mb-1 mt-2 font-display text-base font-bold first:mt-0;
+  }
+
+  .compact-rich p {
+    @apply my-1 first:mt-0 last:mb-0;
+  }
+
+  .compact-rich ul {
+    @apply my-1 list-disc pl-5;
+  }
+
+  .compact-rich ol {
+    @apply my-1 list-decimal pl-5;
+  }
+
+  .compact-rich blockquote {
+    @apply my-1 border-l-2 border-blood-500 bg-blood-500/10 px-2 py-1 italic;
+  }
+
+  .compact-rich a {
+    @apply font-semibold text-blood-500 underline underline-offset-2;
   }
 
   .compendium-rich table {

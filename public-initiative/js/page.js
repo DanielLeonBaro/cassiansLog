@@ -3,11 +3,17 @@ import { readCloudJSON } from "../../shared/js/cloud-store.js";
 import { isLocalRuntimeHost } from "../../shared/js/runtime-host.js";
 import { localInitiativeNames } from "./api.js";
 
-function renderNames(list, names) {
-  list.replaceChildren(...names.map((name) => {
+export function renderNames(list, names) {
+  list.replaceChildren(...names.map((name, index) => {
     const item = document.createElement("li");
-    item.className = "rounded-xl border border-stone-300 bg-parchment px-5 py-4 font-display text-2xl font-bold shadow-sm dark:border-white/10 dark:bg-stone-900";
-    item.textContent = name;
+    item.className = "flex items-center gap-4 rounded-xl border border-stone-300 bg-parchment px-5 py-4 font-display text-2xl font-bold shadow-sm dark:border-white/10 dark:bg-stone-900";
+    const badge = document.createElement("span");
+    badge.className = "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blood-500 font-sans text-base font-bold text-on-accent";
+    badge.textContent = String(index + 1);
+    badge.setAttribute("aria-hidden", "true");
+    const label = document.createElement("span");
+    label.textContent = name;
+    item.append(badge, label);
     return item;
   }));
 }

@@ -33,9 +33,35 @@ const BUTTONS = [
   ["divider", "bi-dash-lg", "Divider"],
 ];
 
-export function markdownToolbarMarkup(label = "Formatting") {
+export const STANDARD_MARKDOWN_FORMATS = [
+  "heading",
+  "heading3",
+  "heading4",
+  "bold",
+  "italic",
+  "bullets",
+  "numbered",
+  "quote",
+  "link",
+  "code",
+  "divider",
+];
+
+export const COMPACT_MARKDOWN_FORMATS = [
+  "bold",
+  "italic",
+  "bullets",
+  "numbered",
+  "quote",
+  "link",
+  "code",
+];
+
+export function markdownToolbarMarkup(label = "Formatting", formats = null) {
+  const allowed = formats ? new Set(formats) : null;
+  const buttons = allowed ? BUTTONS.filter(([format]) => allowed.has(format)) : BUTTONS;
   const buttonClass = "inline-flex h-9 items-center gap-1.5 rounded-lg border border-stone-300 bg-white/70 px-2.5 text-xs font-bold text-stone-700 transition hover:border-blood-500 hover:text-blood-500 dark:border-white/15 dark:bg-white/5 dark:text-stone-200";
-  return `<div class="flex flex-wrap items-center gap-1.5" role="toolbar" aria-label="${escapeAttribute(label)}">${BUTTONS.map(([format, icon, title]) => `<button type="button" data-markdown-format="${format}" class="${buttonClass}" title="${escapeAttribute(title)}" aria-label="${escapeAttribute(title)}"><i class="bi ${icon}" aria-hidden="true"></i><span class="hidden sm:inline">${title}</span></button>`).join("")}</div>`;
+  return `<div class="flex flex-wrap items-center gap-1.5" role="toolbar" aria-label="${escapeAttribute(label)}">${buttons.map(([format, icon, title]) => `<button type="button" data-markdown-format="${format}" class="${buttonClass}" title="${escapeAttribute(title)}" aria-label="${escapeAttribute(title)}"><i class="bi ${icon}" aria-hidden="true"></i><span class="hidden sm:inline">${title}</span></button>`).join("")}</div>`;
 }
 
 function wrapEdit(value, start, end, format) {

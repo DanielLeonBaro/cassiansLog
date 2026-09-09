@@ -460,6 +460,15 @@ async function main() {
       'return document.getElementById("character-editor").classList.contains("hidden");',
       "Character editor did not close",
     );
+    const characterNoteFormatting = await execute(`
+      const textarea = document.getElementById("note-body");
+      const bold = document.querySelector('#note-format-toolbar [data-markdown-format="bold"]');
+      textarea.value = "";
+      textarea.setSelectionRange(0, 0);
+      bold.click();
+      return { value: textarea.value, start: textarea.selectionStart, end: textarea.selectionEnd };
+    `);
+    assert.deepEqual(characterNoteFormatting, { value: "****", start: 2, end: 2 }, "Character Notes Bold should place the cursor inside the markers.");
 
     await smoke(
       "Combat & Loot",
@@ -467,6 +476,24 @@ async function main() {
       'return document.getElementById("tracker-list").children.length >= 3;',
       'return Boolean(document.getElementById("preset-select") && document.querySelector("[data-table-id]"));',
     );
+    const combatCellFormatting = await execute(`
+      const cell = [...document.querySelectorAll('[data-action="open-cell-editor"]')]
+        .find((candidate) => !candidate.hasAttribute("data-damage-cell"));
+      cell.click();
+      const textarea = document.getElementById("editor-value");
+      textarea.value = "";
+      textarea.setSelectionRange(0, 0);
+      document.querySelector('#editor-format-toolbar [data-markdown-format="bold"]').click();
+      const result = {
+        value: textarea.value,
+        start: textarea.selectionStart,
+        end: textarea.selectionEnd,
+        toolbarVisible: !document.getElementById("editor-format-toolbar").classList.contains("hidden"),
+      };
+      document.querySelector('#editor-dialog [data-close-dialog="editor-dialog"]').click();
+      return result;
+    `);
+    assert.deepEqual(combatCellFormatting, { value: "****", start: 2, end: 2, toolbarVisible: true }, "Combat text-cell Bold should place the cursor inside the markers.");
 
     await smoke(
       "Music",
