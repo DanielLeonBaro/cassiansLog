@@ -44,7 +44,7 @@ const context = {
 };
 context.campaignStorageKey = (key) => key;
 vm.createContext(context);
-vm.runInContext(`${storageCode}\n${textCode}\n${statusCode}\n${storageKeyCode}\n${repositoryCode}\nglobalThis.api = { storedCharacters, migrateLegacyPortrait, isBundledCharacter, applyNewCharacterSetup, createCharacter };`, context);
+vm.runInContext(`${storageCode}\n${textCode}\n${statusCode}\n${storageKeyCode}\n${repositoryCode}\nglobalThis.api = { storedCharacters, migrateLegacyPortrait, isBundledCharacter, applyNewCharacterSetup, applyImportedCharacterSetup, createCharacter };`, context);
 
 const characters = context.api.storedCharacters();
 assert.equal(characters.cassian.portrait, "char/cassian/portrait.jpg");
@@ -94,12 +94,44 @@ assert.equal(blank.spellcasting.profiles.length, 0);
 assert.equal(blank.spellcasting.slots.length, 0);
 assert.equal(blank.stats.str.skills[0].name, "Athletics", "Clean sheets must preserve skill scaffolding.");
 
+const imported = context.api.applyImportedCharacterSetup(template, {
+  id: "imported-hero",
+  name: " Imported Hero ",
+  status: "Active",
+  class: "Wizard",
+  race: "Elf",
+  level: 4,
+  importedCharacter: {
+    actions: [{ id: "fire-bolt", name: "Fire Bolt" }],
+    inventory: [{ name: "Spellbook", quantity: 1 }],
+    hp: { max: 22, current: 19, temp: 0 },
+  },
+});
+assert.equal(imported.id, "imported-hero");
+assert.equal(imported.name, "Imported Hero");
+assert.equal(imported.actions[0].name, "Fire Bolt");
+assert.equal(imported.inventory[0].name, "Spellbook");
+assert.equal(imported.hp.max, 22);
+assert.equal(imported.hp.current, 19);
+assert.equal(imported.hp.temp, 0);
+
 (async () => {
   const created = await context.api.createCharacter({ name: "Cloud Hero", level: 2, starterMode: "blank" });
   assert.equal(created.cloudSaved, true);
   assert.equal(cloudWrites.at(-1).url, "api/characters/cloud-hero");
   assert.equal(cloudWrites.at(-1).value.source, "custom");
   assert.equal(JSON.parse(values.get("dnd-characters"))["cloud-hero"].name, "Cloud Hero");
+
+  const importedCreated = await context.api.createCharacter({
+    name: "Beyond Hero",
+    level: 3,
+    status: "Active",
+    class: "Druid",
+    race: "Human",
+    importedCharacter: { actions: [{ id: "wild-shape", name: "Wild Shape" }] },
+  });
+  assert.equal(importedCreated.character.actions[0].name, "Wild Shape");
+  assert.equal(JSON.parse(values.get("dnd-characters"))["beyond-hero"].actions[0].name, "Wild Shape");
 
   failCloudWrite = true;
   const localOnly = await context.api.createCharacter({ name: "Local Hero", level: 1, starterMode: "starter" });

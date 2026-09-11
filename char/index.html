@@ -69,6 +69,29 @@
                 <button id="close-dialog" type="button" class="rounded-xl p-2 hover:bg-stone-200 dark:hover:bg-white/10" aria-label="Close"><i class="bi bi-x-lg"></i></button>
             </div>
 
+            <section class="mb-6 rounded-2xl border border-sky-600/30 bg-sky-500/10 p-4" aria-labelledby="dnd-beyond-import-title">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h3 id="dnd-beyond-import-title" class="text-sm font-bold">Already have a D&amp;D Beyond character?</h3>
+                        <p class="mt-1 text-xs text-stone-500 dark:text-stone-400">Import a public character page or a PDF exported by D&amp;D Beyond.</p>
+                    </div>
+                    <button id="dnd-beyond-import-toggle" type="button" aria-controls="dnd-beyond-import-panel" aria-expanded="false" class="inline-flex items-center justify-center gap-2 rounded-xl border border-sky-600 px-3 py-2 text-sm font-bold text-sky-700 hover:bg-sky-600 hover:text-white dark:text-sky-300">
+                        <i class="bi bi-box-arrow-in-down" aria-hidden="true"></i> Import from D&amp;D Beyond
+                    </button>
+                </div>
+                <div id="dnd-beyond-import-panel" class="mt-4 hidden border-t border-sky-600/20 pt-4">
+                    <label for="dnd-beyond-url" class="block text-sm font-bold">Character page URL</label>
+                    <div class="mt-1 flex flex-col gap-2 sm:flex-row">
+                        <input id="dnd-beyond-url" type="url" inputmode="url" autocomplete="url" class="min-w-0 grow rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="https://www.dndbeyond.com/characters/123456789">
+                        <button id="dnd-beyond-url-import" type="button" class="shrink-0 rounded-xl border border-sky-600 px-4 py-2 text-sm font-bold text-sky-700 hover:bg-sky-600 hover:text-white dark:text-sky-300">Read page</button>
+                    </div>
+                    <div class="my-3 flex items-center gap-3 text-xs font-bold uppercase tracking-wider text-stone-400"><span class="h-px grow bg-stone-300 dark:bg-white/15"></span>or<span class="h-px grow bg-stone-300 dark:bg-white/15"></span></div>
+                    <input id="dnd-beyond-pdf-input" type="file" accept="application/pdf,.pdf" class="sr-only">
+                    <button id="dnd-beyond-pdf-import" type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-sky-600 px-4 py-2 text-sm font-bold text-sky-700 hover:bg-sky-600 hover:text-white dark:text-sky-300"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> Choose D&amp;D Beyond PDF</button>
+                    <p id="dnd-beyond-import-status" class="mt-3 min-h-5 text-sm text-stone-600 dark:text-stone-300" role="status" aria-live="polite"></p>
+                </div>
+            </section>
+
             <div class="grid gap-6 sm:grid-cols-[9rem_1fr]">
                 <div>
                     <span class="mb-2 block text-sm font-bold">Portrait</span>
@@ -103,7 +126,7 @@
             </div>
             <datalist id="character-status-options"><option value="Active"><option value="Paused"><option value="Hiatus"><option value="Draft"><option value="Ended"></datalist>
 
-            <fieldset class="mt-6">
+            <fieldset id="new-character-starting-content" class="mt-6">
                 <legend class="text-sm font-bold">Starting content</legend>
                 <div class="mt-2 grid gap-3 sm:grid-cols-2">
                     <label class="flex cursor-pointer gap-3 rounded-xl border border-stone-300 bg-white/60 p-4 has-[:checked]:border-blood-500 has-[:checked]:ring-1 has-[:checked]:ring-blood-500 dark:border-white/15 dark:bg-white/5">
@@ -116,6 +139,7 @@
                     </label>
                 </div>
             </fieldset>
+            <p id="dnd-beyond-import-summary" class="mt-6 hidden rounded-xl border border-green-600/30 bg-green-500/10 p-3 text-sm text-green-700 dark:text-green-300"></p>
 
             <p id="character-form-status" class="mt-5 min-h-5 text-sm text-stone-500 dark:text-stone-400" role="status" aria-live="polite"></p>
             <div class="mt-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">

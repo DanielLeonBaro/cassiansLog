@@ -4,6 +4,7 @@ import {
   campaignApiPath,
   campaignPagePath,
   campaignPath,
+  campaignRouteForUnscopedPath,
   campaignSlugFromPath,
   campaignStorageKey,
   currentCampaign,
@@ -11,8 +12,11 @@ import {
   localCampaigns,
   localCampaignMembers,
   localCharacterAccess,
+  rememberedCampaignSlug,
+  rememberCampaignSlug,
   saveLocalCampaign,
   saveLocalCharacterEditors,
+  selectRememberedCampaign,
 } from "../js/campaign-context.js";
 import { currentLocalUser, LOCAL_TEST_USERS, selectLocalUser } from "../js/local-users.js";
 
@@ -24,6 +28,48 @@ globalThis.localStorage = {
   getItem: (key) => values.has(key) ? values.get(key) : null,
   setItem: (key, value) => values.set(key, value),
 };
+
+const cookieDocument = { cookie: "" };
+const joinedCampaigns = [
+  { id: "campaign-aotr", slug: "aotr", name: "Apotheosis", joined: true },
+  { id: "campaign-sita", slug: "sita", name: "Sita", joined: true },
+  { id: "campaign-hidden", slug: "hidden", name: "Hidden", joined: false },
+];
+assert.equal(rememberCampaignSlug("NOT-VALID", { storage: globalThis.localStorage, userId: "alice", cookieDocument }), false);
+assert.equal(rememberCampaignSlug("aotr/other", { storage: globalThis.localStorage, userId: "alice", cookieDocument }), false);
+assert.equal(selectRememberedCampaign(joinedCampaigns, {
+  preferredSlug: "sita",
+  storage: globalThis.localStorage,
+  userId: "alice",
+  cookieDocument,
+  protocol: "https:",
+}).slug, "sita");
+assert.equal(rememberedCampaignSlug({ storage: globalThis.localStorage, userId: "alice" }), "sita");
+assert.match(cookieDocument.cookie, /^cassianslog_campaign=alice%3Asita;/);
+assert.match(cookieDocument.cookie, /; Secure$/);
+assert.equal(selectRememberedCampaign(joinedCampaigns, {
+  storage: globalThis.localStorage,
+  userId: "alice",
+  cookieDocument,
+}).slug, "sita", "A user's last joined campaign should win over list order.");
+assert.equal(selectRememberedCampaign([
+  joinedCampaigns[0],
+  { ...joinedCampaigns[1], slug: "sitarenamed" },
+], {
+  storage: globalThis.localStorage,
+  userId: "alice",
+  cookieDocument,
+}).slug, "sitarenamed", "Stable campaign identity should preserve selection after a slug rename.");
+assert.equal(selectRememberedCampaign(joinedCampaigns, {
+  storage: globalThis.localStorage,
+  userId: "bob",
+  cookieDocument,
+}).slug, "aotr", "A user without history should receive the first joined campaign.");
+assert.equal(campaignRouteForUnscopedPath("sita", "/char/cassian/"), "/c/sita/char/cassian/");
+assert.equal(campaignRouteForUnscopedPath("sita", "/wiki/fiora"), "/c/sita/wiki/fiora");
+assert.equal(campaignRouteForUnscopedPath("sita", "/campaigns/manage"), "/c/sita/manage/");
+assert.equal(campaignRouteForUnscopedPath("sita", "/compendium/"), "", "Shared Compendium may stay on its global route.");
+assert.equal(campaignRouteForUnscopedPath("sita", "/c/aotr/wiki/"), "");
 
 assert.equal(campaignSlugFromPath("/c/aotr/wiki/fiora"), "aotr");
 assert.equal(campaignSlugFromPath("/compendium/"), "");

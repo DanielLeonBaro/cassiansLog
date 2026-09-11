@@ -32,21 +32,21 @@ export function createTrackerViews({
   function renderDetailBadges(item) {
     const badges = [];
     if (item.level !== undefined && item.level !== null)
-      badges.push(`<span class="${ui.badge} bg-stone-800 text-white">${formatSpellLevel(item.level)}</span>`);
+      badges.push(`<span class="${ui.badge} tracker-badge-neutral bg-stone-800 text-white">${formatSpellLevel(item.level)}</span>`);
     if (item.school)
-      badges.push(`<span class="${ui.badge} bg-stone-800 text-white">${escapeHTML(item.school)}</span>`);
+      badges.push(`<span class="${ui.badge} tracker-badge-neutral bg-stone-800 text-white">${escapeHTML(item.school)}</span>`);
     if (item.range)
-      badges.push(`<span class="${ui.badge} bg-stone-800 text-white">Range: ${escapeHTML(item.range)}</span>`);
+      badges.push(`<span class="${ui.badge} tracker-badge-neutral bg-stone-800 text-white">Range: ${escapeHTML(item.range)}</span>`);
     if (item.attack)
-      badges.push(`<span class="${ui.badge} bg-stone-800 text-white">${escapeHTML(item.attack)}</span>`);
+      badges.push(`<span class="${ui.badge} tracker-badge-neutral bg-stone-800 text-white">${escapeHTML(item.attack)}</span>`);
     if (item.damage)
-      badges.push(`<span class="${ui.badge} bg-stone-800 text-white">${escapeHTML(item.damage)}</span>`);
+      badges.push(`<span class="${ui.badge} tracker-badge-neutral bg-stone-800 text-white">${escapeHTML(item.damage)}</span>`);
     if (item.duration)
-      badges.push(`<span class="${ui.badge} bg-stone-800 text-white">Duration: ${escapeHTML(item.duration)}</span>`);
+      badges.push(`<span class="${ui.badge} tracker-badge-neutral bg-stone-800 text-white">Duration: ${escapeHTML(item.duration)}</span>`);
     if (item.components)
-      badges.push(`<span class="${ui.badge} bg-stone-800 text-white">${escapeHTML(item.components)}</span>`);
+      badges.push(`<span class="${ui.badge} tracker-badge-neutral bg-stone-800 text-white">${escapeHTML(item.components)}</span>`);
     if (item.spellcasting)
-      badges.push(`<span class="${ui.badge} bg-stone-800 text-white">${escapeHTML(item.spellcasting)}</span>`);
+      badges.push(`<span class="${ui.badge} tracker-badge-neutral bg-stone-800 text-white">${escapeHTML(item.spellcasting)}</span>`);
     if (item.source) {
       const profile = getSpellcastingProfile(item.source);
       badges.push(`<span class="${ui.badge} ${ui.badgePrimary}">${escapeHTML(profile?.name || item.source)}</span>`);

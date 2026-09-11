@@ -74,6 +74,10 @@ global.fetch = async () => ({ ok: true, json: async () => ({ characterSheetStyle
     assert.ok(layout.includes(`document.getElementById("${id}")`), `${id} should be moved into v2 by reference.`);
   }
   assert.doesNotMatch(layout, /cloneNode|outerHTML/, "V2 must not clone tracker controls.");
+  assert.match(layout, /export function applyV3CharacterSheetLayout/, "V3 should move the same tracker nodes into a personal grid.");
+  assert.match(layout, /v3Controller\.grid\.appendChild\(tile\)/, "V3 should reorder tile wrappers by reference.");
+  assert.match(styles, /grid-template-columns: repeat\(var\(--v3-columns, 2\)/, "V3 should use the selected desktop column count.");
+  assert.match(styles, /grid-column: span var\(--v3-span, 1\)/, "V3 tiles should use their selected span.");
   assert.doesNotMatch(trackerIndex, /v2-senses-card|<strong>Senses<\/strong>/, "V2 stats should not duplicate top-level senses.");
   assert.match(styles, /#characterDescription #character-portrait \{[\s\S]*?rounded-xl[\s\S]*?border-blood-500\/70/, "V2 portrait should stay square with the standard red accent.");
   assert.match(layout, /resolveCharacterSheetStyle\(settings, characterId\)/, "V2 should resolve the route's per-character style override.");

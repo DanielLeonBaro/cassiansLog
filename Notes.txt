@@ -2,13 +2,16 @@
 
 ##To do:
 - Sound effects soundboard. Make it so button shortcuts do it too
-- Columns to V1 in Character Tracker
-- Make V2 better
-- Some checkboxes don't respect accent color in theme, in admin for instance
-- Make selectable background, default grid, but then make dotted grid, vertical horizontal and diagonla lines, pixels, animated backgrounds, etc
+- Make V2 better (V4)
+- Show/Hide Characters to players but not to DM
+
+##In Progress (Out of Tokens)
+- Make Import Character from D&D Beyond script into "New Character"
 
 ##Done
 - Music Module
+- Some checkboxes don't respect accent color in theme, in admin for instance
+- Columns to V1 in Character Tracker
 - Character Module v2, similar to D&D Beyond
 - Live public combat tracker
 - Combat tracker
@@ -25,6 +28,7 @@
 - Comment Code base
 - Added buttons into the main index for ease of navigation
 - Depure Compendium entries, useless information like ability score improvements, basic movement speed.
+- Make selectable background, default grid, but then make dotted grid, vertical horizontal and diagonla lines, pixels, animated backgrounds, etc
 
 ---
 

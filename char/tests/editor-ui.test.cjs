@@ -12,8 +12,14 @@ for (const id of [
   "new-character-class",
   "new-character-race",
   "new-character-level",
+  "dnd-beyond-import-toggle",
+  "dnd-beyond-url",
+  "dnd-beyond-url-import",
+  "dnd-beyond-pdf-import",
+  "dnd-beyond-pdf-input",
   "create-character-submit",
 ]) assert.ok(archive.includes(`id="${id}"`), `Quick Setup should include ${id}.`);
+assert.match(archive, /> Import from D&amp;D Beyond\s*<\/button>/);
 assert.match(archive, /name="starterMode" value="starter" checked/);
 assert.match(archive, /name="starterMode" value="blank"/);
 const shortcuts = [...archive.matchAll(/<a href="([^"]+)" target="_blank" rel="noopener" aria-label="[^"]+ in a new tab" data-section-link="([^"]+)" data-role-link="\2"/g)];
@@ -51,11 +57,16 @@ assert.match(editor, /Character status cannot exceed 32 characters/);
 assert.match(fieldSchema, /"status"/, "Status should be part of the editable character document.");
 assert.match(fieldRenderer, /editor-status-options/, "Status should offer common values without restricting custom text.");
 assert.match(editor, /createDialogController/);
-assert.match(editor, /id="editor-character-sheet-style"/, "Advanced should include a per-character V1\/V2 selector.");
+assert.match(editor, /id="editor-character-sheet-style"/, "Advanced should include a per-character V1\/V2\/V3 selector.");
 assert.match(editor, /data-v1-section-drag/, "V1 ordering should include drag handles.");
 assert.match(editor, /data-v1-section-move/, "V1 ordering should include accessible move buttons.");
 assert.match(editor, /data-v1-section-reset/, "V1 ordering should include Reset.");
 assert.match(editor, /Style v2 uses a fixed tabbed layout/, "V2 should explain why ordering is unavailable.");
+for (const hook of ["editor-v3-columns", "data-v3-section-drag", "data-v3-section-move", "data-v3-section-span", "data-v3-layout-reset"]) {
+  assert.ok(editor.includes(hook), `V3 grid editing should include ${hook}.`);
+}
+assert.match(editor, /The campaign DM controls the style; this grid is personal to you/, "Assigned players should receive personal V3 controls without style authority.");
+assert.match(editor, /saveV3Layout/, "V3 changes should use personal layout persistence.");
 assert.match(editor, /saveCharacterSheetStyleOverride/, "Style changes should use shared persistence.");
 assert.match(editor, /data-character-editor-section/, "Editor should accept focused section triggers.");
 assert.match(editor, /return \{ open \};/, "Editor should expose its focused open action.");

@@ -183,10 +183,20 @@ export function applyNewCharacterSetup(template, setup) {
   return character;
 }
 
+export function applyImportedCharacterSetup(template, setup) {
+  const imported = setup.importedCharacter && typeof setup.importedCharacter === "object"
+    ? cloneJSON(setup.importedCharacter)
+    : {};
+  const character = { ...cloneJSON(template), ...imported };
+  return applyNewCharacterSetup(character, { ...setup, starterMode: "imported" });
+}
+
 export async function createCharacter(setup) {
   const id = createCharacterId(setup.name);
   const template = await getJSON(new URL("../../template/character.json", import.meta.url));
-  const character = applyNewCharacterSetup(template, { ...setup, id });
+  const character = setup.importedCharacter
+    ? applyImportedCharacterSetup(template, { ...setup, id })
+    : applyNewCharacterSetup(template, { ...setup, id });
   const stored = storedCharacters();
   stored[id] = cloneJSON(character);
   writeJSON(CHARACTERS_KEY, stored);

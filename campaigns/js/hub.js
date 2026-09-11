@@ -44,14 +44,14 @@ function card(campaign) {
     ? `<a href="/c/${slug}/manage/" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-sky-600 text-sky-600 transition hover:bg-sky-600 hover:text-white" aria-label="Edit ${escapeAttribute(campaign.name)}"><i class="bi bi-pencil-fill"></i></a>`
     : "";
   const action = campaign.joined
-    ? `<div class="flex items-center gap-2"><a href="/c/${slug}/char/" class="inline-flex rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-white">Enter</a>${manage}</div>`
+    ? `<div class="flex items-center gap-2"><a href="/c/${slug}/char/" class="inline-flex items-center justify-center rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-white">Enter</a>${manage}</div>`
     : campaign.joinEnabled
       ? `<form data-join="${slug}" class="flex gap-2"><input name="password" type="password" required minlength="6" maxlength="128" autocomplete="current-password" aria-label="${escapeAttribute(campaign.name)} password" class="min-w-0 grow rounded-xl border border-stone-300 bg-white px-3 py-2 dark:border-white/15 dark:bg-white/5" placeholder="Campaign password"><button class="rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-white">Join</button></form>`
       : '<p class="text-sm font-bold text-stone-500">Joining is not enabled yet.</p>';
   const banner = campaign.banner
     ? `<img src="${escapeAttribute(campaign.banner)}" alt="" class="h-44 w-full object-cover">`
     : '<div class="flex h-44 items-center justify-center bg-stone-200/80 dark:bg-white/5"><i class="bi bi-image text-5xl text-stone-400" aria-hidden="true"></i></div>';
-  const badge = (value) => `<span class="inline-flex rounded-full bg-blood-500 px-2.5 py-1 text-xs font-bold text-on-accent">${escapeHTML(value)}</span>`;
+  const badge = (value) => `<span class="inline-flex items-center rounded-full bg-blood-500 px-2.5 py-1 text-xs font-bold text-on-accent">${escapeHTML(value)}</span>`;
   const badges = [badge(`/${campaign.slug}`), campaign.role ? badge(campaign.role === "dm" ? "DM" : campaign.role === "admin" ? "Admin" : "Player") : "", badge(campaign.status || "Active")].join("");
   return `<article class="overflow-hidden rounded-2xl border border-stone-300 bg-white/70 shadow-card transition hover:-translate-y-1 hover:border-blood-500/40 hover:shadow-xl dark:border-white/10 dark:bg-white/[.05]">${banner}<div class="p-5"><div class="flex flex-wrap gap-2">${badges}</div><h2 class="mt-2 font-display text-2xl font-bold">${escapeHTML(campaign.name)}</h2><p class="mt-2 min-h-12 text-sm leading-relaxed text-stone-500 dark:text-stone-400">${escapeHTML(campaign.description || "No campaign description yet.")}</p><div class="mt-5 flex items-center justify-between gap-3">${action}</div></div></article>`;
 }

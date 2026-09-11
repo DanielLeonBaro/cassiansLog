@@ -2,7 +2,16 @@
 import { applySectionVisibility, sectionConfigReady } from "./sections.js";
 import { currentSession, logout } from "./auth-client.js";
 import { mountAccountMenu } from "./account-menu.js";
-import { availableCampaigns, campaignPagePath, campaignPath, currentCampaign, currentCampaignSlug } from "./campaign-context.js";
+import {
+  availableCampaigns,
+  campaignPagePath,
+  campaignPath,
+  campaignRouteForUnscopedPath,
+  currentCampaign,
+  currentCampaignSlug,
+  rememberCampaignSlug,
+  selectRememberedCampaign,
+} from "./campaign-context.js";
 import { enableLocalRoutes } from "./local-routes.js";
 import { escapeHTML } from "./text.js";
 
@@ -74,13 +83,13 @@ function scopeCampaignPageLinks(slug, root = document) {
   if (!slug) return;
   root.querySelectorAll("a[data-section-link]").forEach((link) => {
     const page = pages.find((candidate) => candidate.id === link.dataset.sectionLink);
-    if (page && !["campaigns", "admin", "campaign-manage"].includes(page.id)) {
+    if (page && !["campaigns", "admin"].includes(page.id)) {
       link.href = campaignPath(slug, page.href);
     }
   });
 }
 
-function initializeCampaignMenu(mount, { activePage, tracker, current }) {
+function initializeCampaignMenu(mount, { activePage, tracker, current, campaigns, userId }) {
   const group = mount.querySelector("[data-site-campaigns]");
   const button = mount.querySelector("#site-campaign");
   const menu = mount.querySelector("#site-campaign-menu");
@@ -95,23 +104,24 @@ function initializeCampaignMenu(mount, { activePage, tracker, current }) {
     button.setAttribute("aria-expanded", String(!expanded));
     menu.classList.toggle("hidden", expanded);
   });
-  menu.addEventListener("click", (event) => { if (event.target.closest("a")) close(); });
+  menu.addEventListener("click", (event) => {
+    const link = event.target.closest("a");
+    if (!link) return;
+    if (link.dataset.campaignSlug) rememberCampaignSlug(link.dataset.campaignSlug, { userId });
+    close();
+  });
   document.addEventListener("click", (event) => { if (!group.contains(event.target)) close(); });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && button.getAttribute("aria-expanded") === "true") close({ focus: true });
   });
 
   const currentPage = !tracker && pages.find((page) => page.id === activePage && !["campaigns", "admin", "campaign-manage"].includes(page.id));
-  availableCampaigns().then((campaigns) => {
-    const choices = campaigns.filter((campaign) => campaign.joined);
-    menu.innerHTML = `${choices.map((campaign) => {
+  const choices = campaigns.filter((campaign) => campaign.joined);
+  menu.innerHTML = `${choices.map((campaign) => {
       const destination = campaignPath(campaign.slug, currentPage?.href || "char");
       const selected = campaign.slug === current.slug;
-      return `<a href="${destination}" class="${menuItemClass}"${selected ? ' aria-current="page"' : ""}><i class="bi ${selected ? "bi-check-circle-fill" : "bi-circle"}"></i><span class="truncate">${escapeHTML(campaign.name)}</span></a>`;
+      return `<a href="${destination}" data-campaign-slug="${campaign.slug}" class="${menuItemClass}"${selected ? ' aria-current="page"' : ""}><i class="bi ${selected ? "bi-check-circle-fill" : "bi-circle"}"></i><span class="truncate">${escapeHTML(campaign.name)}</span></a>`;
     }).join("")}<a href="/campaigns/" class="${menuItemClass} border-t border-stone-200 dark:border-white/10"><i class="bi bi-collection-fill"></i>All campaigns</a>`;
-  }).catch(() => {
-    menu.innerHTML = `<a href="/campaigns/" class="${menuItemClass}"><i class="bi bi-collection-fill"></i>All campaigns</a>`;
-  });
   button.textContent = current.name;
   button.title = `Switch from ${current.name}`;
   group.classList.remove("hidden");
@@ -134,7 +144,7 @@ export function mountSiteHeader({ activePage, actions = "", tracker = false } = 
   </div>`;
   const slug = currentCampaignSlug();
   const homeHref = slug ? campaignPagePath("char") : "/campaigns/";
-  const home = `<a class="flex h-10 shrink-0 items-center gap-2 font-display text-lg font-semibold hover:text-blood-500" href="${homeHref}" aria-label="Cassian's Log home"><i class="bi bi-journal-bookmark-fill text-blood-500"></i><span class="hidden sm:inline">Cassian's Log</span></a>`;
+  const home = `<a data-site-home class="flex h-10 shrink-0 items-center gap-2 font-display text-lg font-semibold hover:text-blood-500" href="${homeHref}" aria-label="Cassian's Log home"><i class="bi bi-journal-bookmark-fill text-blood-500"></i><span class="hidden sm:inline">Cassian's Log</span></a>`;
   mount.className = "sticky top-0 z-30 border-b border-stone-300/70 bg-parchment/90 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-ink/90";
   mount.setAttribute("aria-label", tracker ? "Character tools" : "Site navigation");
   const startActions = typeof actions === "string" ? actions : actions.start || "";
@@ -147,8 +157,30 @@ export function mountSiteHeader({ activePage, actions = "", tracker = false } = 
   scopeCampaignPageLinks(slug);
   initializePageMenu(mount);
   mount.querySelector("#site-logout")?.addEventListener("click", logout);
-  Promise.all([currentSession(), currentCampaign().catch(() => null)]).then(([{ user }, campaign]) => {
+  Promise.all([
+    currentSession(),
+    currentCampaign().catch(() => null),
+    availableCampaigns().catch(() => []),
+  ]).then(([{ user }, campaign, campaigns]) => {
     if (!user) return;
+    const candidates = campaign && !campaigns.some((candidate) => candidate.slug === campaign.slug)
+      ? [campaign, ...campaigns]
+      : campaigns;
+    const selectedCampaign = selectRememberedCampaign(candidates, {
+      preferredSlug: campaign?.slug || slug,
+      userId: user.id,
+    });
+    if (!slug && selectedCampaign) {
+      const destination = campaignRouteForUnscopedPath(selectedCampaign.slug);
+      if (destination) {
+        location.replace(`${destination}${location.search}${location.hash}`);
+        return;
+      }
+    }
+    if (selectedCampaign) {
+      scopeCampaignPageLinks(selectedCampaign.slug);
+      mount.querySelector("[data-site-home]").href = campaignPath(selectedCampaign.slug, "char");
+    }
     const account = mount.querySelector("#site-account");
     mountAccountMenu(account, user);
     document.addEventListener("cassianslog:account-updated", (event) => {
@@ -156,11 +188,17 @@ export function mountSiteHeader({ activePage, actions = "", tracker = false } = 
     });
     account.title = user.email;
     // Page-level shortcuts use the same role contract as links inside the header.
-    const campaignRole = campaign?.role;
-    initializeCampaignMenu(mount, { activePage, tracker, current: campaign });
+    const campaignRole = selectedCampaign?.role;
+    initializeCampaignMenu(mount, {
+      activePage,
+      tracker,
+      current: selectedCampaign,
+      campaigns: candidates,
+      userId: user.id,
+    });
     document.querySelectorAll("[data-role-link]").forEach((link) => {
       const id = link.dataset.roleLink;
-      const allowed = campaign
+      const allowed = selectedCampaign
         ? id === "admin" ? user.isPrimaryAdmin
           : id === "campaign-manage" ? ["dm", "admin"].includes(campaignRole)
             : id !== "dm-screen" || ["dm", "admin"].includes(campaignRole)

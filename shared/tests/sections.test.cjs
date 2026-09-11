@@ -48,6 +48,9 @@ assert.doesNotMatch(siteHeader, /mouseenter|mouseleave/, "Pages should open only
 assert.match(siteHeader, /id="site-campaign"[^>]*rounded-full[^>]*bg-blood-500/, "Campaign name should be an accent badge.");
 assert.match(siteHeader, /availableCampaigns\(\)/, "Campaign badge should load a quick campaign selector.");
 assert.match(siteHeader, /scopeCampaignPageLinks\(slug\)/, "Page-level shortcuts should inherit campaign context.");
+assert.match(siteHeader, /selectRememberedCampaign/, "The header should restore each user's last valid campaign.");
+assert.match(siteHeader, /campaignRouteForUnscopedPath/, "Campaign pages should recover their remembered campaign URL.");
+assert.match(siteHeader, /data-site-home/, "The home link should follow the selected campaign from global pages.");
 assert.match(siteHeader, /sectionConfigReady\.then\(syncAvailability\)/, "The Pages dropdown should react to runtime section settings.");
 assert.match(siteHeader, /document\.querySelectorAll\("\[data-role-link\]"\)/, "Role visibility should include page-level shortcuts.");
 assert.doesNotMatch(

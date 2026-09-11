@@ -9,13 +9,13 @@ export const DEFAULT_CHARACTER_SHEET_STYLE = "v1";
 export const LOCAL_RUNTIME_SETTINGS_KEY = "cassianslog-runtime-settings";
 
 export function normalizeCharacterSheetStyle(value) {
-  return value === "v2" ? "v2" : DEFAULT_CHARACTER_SHEET_STYLE;
+  return ["v2", "v3"].includes(value) ? value : DEFAULT_CHARACTER_SHEET_STYLE;
 }
 
 export function normalizeCharacterSheetStyleOverrides(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   return Object.fromEntries(Object.entries(value).filter(([id, style]) => (
-    /^[a-z0-9][a-z0-9-]{0,127}$/i.test(id) && ["v1", "v2"].includes(style)
+    /^[a-z0-9][a-z0-9-]{0,127}$/i.test(id) && ["v1", "v2", "v3"].includes(style)
   )));
 }
 
@@ -114,8 +114,8 @@ export async function saveCharacterSheetStyleOverride(characterId, style) {
   if (!/^[a-z0-9][a-z0-9-]{0,127}$/i.test(characterId || "")) {
     throw new TypeError("Character ID is invalid.");
   }
-  if (!["v1", "v2"].includes(style)) {
-    throw new TypeError("Character sheet style must be v1 or v2.");
+  if (!["v1", "v2", "v3"].includes(style)) {
+    throw new TypeError("Character sheet style must be v1, v2, or v3.");
   }
   if (!isLocalRuntimeHost()) {
     return writeCloudJSON(`api/characters/${encodeURIComponent(characterId)}/style`, { style });

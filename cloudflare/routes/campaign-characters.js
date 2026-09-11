@@ -3,6 +3,11 @@ import { canEditCharacter, canManageCampaign, LEGACY_CAMPAIGN_ID } from "../camp
 import { bodyJSON, error, json, parseStored, safeId } from "../http.js";
 import { CHARACTER_SHEET_STYLES, loadSettings } from "../settings.js";
 import { DEFAULT_ENTITY_STATUS, normalizeEntityStatus } from "../../shared/js/status.js";
+import { normalizeV3Layout, validV3Layout } from "../../shared/js/v3-layout.js";
+
+function layoutStorageUnavailable(caught) {
+  return /no such table|user_character_layouts/i.test(String(caught?.message || caught));
+}
 
 function record(row, access) {
   const document = parseStored(row.document_json, {});
@@ -77,6 +82,13 @@ async function characterDocument(request, env, id, access) {
       .bind(now, campaignId, id)];
     if (campaignId === LEGACY_CAMPAIGN_ID) statements.push(env.DB.prepare("UPDATE characters SET active = 0, updated_at = ? WHERE id = ?").bind(now, id));
     await env.DB.batch(statements);
+    try {
+      const layoutDeletes = [env.DB.prepare("DELETE FROM campaign_user_character_layouts WHERE campaign_id = ? AND character_id = ?").bind(campaignId, id)];
+      if (campaignId === LEGACY_CAMPAIGN_ID) layoutDeletes.push(env.DB.prepare("DELETE FROM user_character_layouts WHERE character_id = ?").bind(id));
+      await env.DB.batch(layoutDeletes);
+    } catch (caught) {
+      if (!layoutStorageUnavailable(caught)) throw caught;
+    }
     return json({ ok: true });
   }
   return error("Method not allowed.", 405);
@@ -192,7 +204,7 @@ async function styleRoute(request, env, id, access) {
   if (request.method !== "PUT") return error("Method not allowed.", 405);
   if (!canManageCampaign(access)) return error("Campaign DM access required.", 403);
   const style = (await bodyJSON(request))?.style;
-  if (!CHARACTER_SHEET_STYLES.has(style)) return error("Character sheet style must be v1 or v2.");
+  if (!CHARACTER_SHEET_STYLES.has(style)) return error("Character sheet style must be v1, v2, or v3.");
   const row = await env.DB.prepare("SELECT settings_json FROM campaign_settings WHERE campaign_id = ?").bind(access.campaign.id).first();
   const settings = parseStored(row?.settings_json, {});
   settings.characterSheetStyleOverrides = { ...(settings.characterSheetStyleOverrides || {}), [id]: style };
@@ -209,6 +221,46 @@ async function styleRoute(request, env, id, access) {
   return json({ ok: true, style, updatedAt: now });
 }
 
+async function layoutRoute(request, env, id, access) {
+  const character = await env.DB.prepare(
+    "SELECT id FROM campaign_characters WHERE campaign_id = ? AND id = ? AND active = 1",
+  ).bind(access.campaign.id, id).first();
+  if (!character) return error("Character not found.", 404);
+  const editable = await canEditCharacter(access, id, env);
+  if (request.method === "GET" && !editable) return json({ layout: null, canEdit: false });
+  if (!editable) return error("You are not assigned to edit this character.", 403);
+  const campaignId = access.campaign.id;
+  try {
+    if (request.method === "GET") {
+      const row = await env.DB.prepare(
+        `SELECT layout_json, updated_at FROM campaign_user_character_layouts
+        WHERE campaign_id = ? AND user_id = ? AND character_id = ?`,
+      ).bind(campaignId, access.user.id, id).first();
+      return json({ layout: row ? normalizeV3Layout(parseStored(row.layout_json, {})) : null, updatedAt: row?.updated_at || null, canEdit: true });
+    }
+    if (request.method !== "PUT") return error("Method not allowed.", 405);
+    const layout = (await bodyJSON(request))?.layout;
+    if (!validV3Layout(layout)) return error("Invalid V3 character layout.");
+    const normalized = normalizeV3Layout(layout);
+    const now = new Date().toISOString();
+    const statements = [env.DB.prepare(
+      `INSERT INTO campaign_user_character_layouts (campaign_id, user_id, character_id, layout_json, updated_at)
+      VALUES (?, ?, ?, ?, ?) ON CONFLICT(campaign_id, user_id, character_id) DO UPDATE SET
+        layout_json = excluded.layout_json, updated_at = excluded.updated_at`,
+    ).bind(campaignId, access.user.id, id, JSON.stringify(normalized), now)];
+    if (campaignId === LEGACY_CAMPAIGN_ID) statements.push(env.DB.prepare(
+      `INSERT INTO user_character_layouts (user_id, character_id, layout_json, updated_at)
+      VALUES (?, ?, ?, ?) ON CONFLICT(user_id, character_id) DO UPDATE SET
+        layout_json = excluded.layout_json, updated_at = excluded.updated_at`,
+    ).bind(access.user.id, id, JSON.stringify(normalized), now));
+    await env.DB.batch(statements);
+    return json({ ok: true, layout: normalized, updatedAt: now, canEdit: true });
+  } catch (caught) {
+    if (layoutStorageUnavailable(caught)) return error("Character layout storage is unavailable. Apply migration 0015.", 503);
+    throw caught;
+  }
+}
+
 export async function campaignCharacterRoute(request, env, parts, access) {
   const id = safeId(parts[0]);
   if (!id) return error("Invalid character ID.");
@@ -218,5 +270,6 @@ export async function campaignCharacterRoute(request, env, parts, access) {
   if (tail === "assignments" && parts.length === 2) return assignmentsRoute(request, env, id, access);
   if (tail === "id" && parts.length === 2) return renameRoute(request, env, id, access);
   if (tail === "style" && parts.length === 2) return styleRoute(request, env, id, access);
+  if (tail === "layout" && parts.length === 2) return layoutRoute(request, env, id, access);
   return error("Character route not found.", 404);
 }

@@ -9,9 +9,11 @@ import {
   CHARACTERS_STORAGE_KEY,
   PENDING_CHARACTER_STORAGE_KEY,
 } from "./storage-keys.js";
-import { applyCharacterSheetLayout } from "./tracker/layout.js";
+import { applyCharacterSheetLayout, applyV3CharacterSheetLayout } from "./tracker/layout.js";
+import { loadV3Layout } from "./tracker/v3-layout-repository.js";
 import { currentCampaignSlug, localCampaign, localCharacterAccess } from "../../shared/js/campaign-context.js";
 import { isLocalRuntimeHost } from "../../shared/js/runtime-host.js";
+import { currentSession } from "../../shared/js/auth-client.js";
 
 export function initializeCharacterPage() {
   const loaderScript = document.querySelector("script[data-character]");
@@ -168,6 +170,15 @@ export function initializeCharacterPage() {
         savedCharacters[characterName] = window.character;
         writeJSON(CHARACTERS_STORAGE_KEY, savedCharacters);
         removeStored(PENDING_CHARACTER_STORAGE_KEY);
+      }
+      if (document.documentElement.dataset.characterSheetStyle === "v3") {
+        const session = await currentSession();
+        const layout = await loadV3Layout({
+          userId: session.user?.id,
+          characterId: characterName,
+          canEdit: access.canEdit,
+        });
+        applyV3CharacterSheetLayout(layout, settings);
       }
       await import("./entries/tracker.js");
     } catch (error) {

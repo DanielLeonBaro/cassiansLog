@@ -4,6 +4,11 @@ import {
   V1_SECTION_DEFINITIONS,
   normalizeV1SectionOrder,
 } from "./section-order.js";
+import {
+  DEFAULT_V3_LAYOUT,
+  V3_SECTION_DEFINITIONS,
+  normalizeV3Layout,
+} from "../../../shared/js/v3-layout.js";
 
 const desktopQuery = window.matchMedia("(min-width: 1024px)");
 const tabDefinitions = [
@@ -29,6 +34,7 @@ const sectionElements = Object.fromEntries(
 );
 
 let controller = null;
+let v3Controller = null;
 
 function createPanel(id) {
   const panel = document.createElement("section");
@@ -264,6 +270,69 @@ export function applyCharacterSheetLayout(settings = {}, characterId = "") {
   desktopQuery.addEventListener("change", renderActiveTab);
   refreshCharacterSheetTabs();
   return style;
+}
+
+function v3TileHasContent(tile) {
+  return [...tile.children].some((child) => (
+    child.dataset.sheetSectionDisabled !== "true" &&
+    !child.hidden &&
+    !child.classList.contains("hidden")
+  ));
+}
+
+export function applyV3CharacterSheetLayout(layout = DEFAULT_V3_LAYOUT, settings = {}) {
+  if (document.documentElement.dataset.characterSheetStyle !== "v3") return false;
+  const normalized = normalizeV3Layout(layout);
+  applyConfiguredSections(settings.sections || {});
+
+  if (!v3Controller) {
+    const combatPage = document.getElementById("combat-page");
+    if (!combatPage) return false;
+    const grid = document.createElement("div");
+    grid.id = "v3-sheet-grid";
+    grid.className = "v3-sheet-grid";
+    const tiles = new Map();
+    V3_SECTION_DEFINITIONS.forEach((definition) => {
+      const tile = document.createElement("section");
+      tile.className = "v3-sheet-tile";
+      tile.dataset.v3Section = definition.id;
+      tile.setAttribute("aria-label", definition.label);
+      definition.elementIds.forEach((elementId) => {
+        const element = document.getElementById(elementId);
+        if (element) tile.appendChild(element);
+      });
+      tile.hidden = !v3TileHasContent(tile);
+      tiles.set(definition.id, tile);
+    });
+    combatPage.replaceChildren(grid);
+    v3Controller = { grid, tiles, layout: normalized };
+  }
+
+  v3Controller.layout = normalized;
+  v3Controller.grid.style.setProperty("--v3-columns", String(normalized.columns));
+  normalized.sections.forEach(({ id, span }) => {
+    const tile = v3Controller.tiles.get(id);
+    if (!tile) return;
+    tile.style.setProperty("--v3-span", String(span));
+    tile.hidden = !v3TileHasContent(tile);
+    v3Controller.grid.appendChild(tile);
+  });
+  return true;
+}
+
+export function currentV3CharacterSheetLayout() {
+  return normalizeV3Layout(v3Controller?.layout || DEFAULT_V3_LAYOUT);
+}
+
+export function updateV3CharacterSheetLayout(layout) {
+  if (!v3Controller) return false;
+  return applyV3CharacterSheetLayout(layout);
+}
+
+export function refreshV3CharacterSheetLayout() {
+  if (!v3Controller) return false;
+  v3Controller.tiles.forEach((tile) => { tile.hidden = !v3TileHasContent(tile); });
+  return true;
 }
 
 export function applyV1CharacterSheetOrder(character = {}) {

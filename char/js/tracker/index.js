@@ -13,7 +13,7 @@ import { createTrackerViews } from "./views.js";
 import { createNotesController } from "./notes.js";
 import { createTrackerState, normalizeCharacterFlag } from "./state.js";
 import { escapeHTML, sanitizeIdentifier, setText, trackerUI as ui } from "./rendering.js";
-import { applyV1CharacterSheetOrder, refreshCharacterSheetTabs } from "./layout.js";
+import { applyV1CharacterSheetOrder, refreshCharacterSheetTabs, refreshV3CharacterSheetLayout } from "./layout.js";
 
 const character = window.character;
 character.inspiration = normalizeCharacterFlag(character.inspiration);
@@ -112,6 +112,7 @@ function refreshUI() {
   loadInventory();
   notesController.render();
   applyV1CharacterSheetOrder(character);
+  if (typeof refreshV3CharacterSheetLayout === "function") refreshV3CharacterSheetLayout();
   refreshCharacterSheetTabs();
 }
 function loadCharacterFlags() {

@@ -30,6 +30,7 @@ async function loadSettings(label, fetchImplementation) {
   });
   assert.equal(module.normalizeCharacterSheetStyle("v1"), "v1");
   assert.equal(module.normalizeCharacterSheetStyle("v2"), "v2");
+  assert.equal(module.normalizeCharacterSheetStyle("v3"), "v3");
   assert.equal(module.normalizeCharacterSheetStyle("unknown"), "v1");
   const remote = await module.runtimeSettingsReady;
   assert.equal(remote.characterSheetStyle, "v2");
@@ -37,6 +38,7 @@ async function loadSettings(label, fetchImplementation) {
   assert.equal(module.resolveCharacterSheetStyle(remote, "cassian"), "v1");
   assert.equal(module.resolveCharacterSheetStyle(remote, "ally"), "v2");
   assert.equal(module.resolveCharacterSheetStyle(remote, "karma"), "v2");
+  assert.equal(module.resolveCharacterSheetStyle({ characterSheetStyle: "v1", characterSheetStyleOverrides: { karma: "v3" } }, "karma"), "v3");
 
   module = await loadSettings("legacy", async (url) => {
     assert.equal(url, "api/settings");
@@ -103,6 +105,8 @@ async function loadSettings(label, fetchImplementation) {
     { cassian: "v2", ally: "v1" },
     "Local player changes should update the same override map used by local Admin.",
   );
+  const localV3Save = await module.saveCharacterSheetStyleOverride("ally", "v3");
+  assert.equal(localV3Save.style, "v3");
 
   if (originalLocation === undefined) delete global.location;
   else global.location = originalLocation;

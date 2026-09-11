@@ -32,8 +32,19 @@ import {
   fieldTitle as title,
 } from "./field-schema.js";
 import { createCharacterFieldRenderer } from "./field-renderer.js";
-import { currentCampaignSlug } from "../../../shared/js/campaign-context.js";
 import { DEFAULT_ENTITY_STATUS, normalizeEntityStatus } from "../../../shared/js/status.js";
+import { currentSession } from "../../../shared/js/auth-client.js";
+import {
+  DEFAULT_V3_LAYOUT,
+  V3_SECTION_DEFINITIONS,
+  moveV3SectionBefore,
+  moveV3SectionBy,
+  normalizeV3Layout,
+  setV3Columns,
+  setV3SectionSpan,
+} from "../../../shared/js/v3-layout.js";
+import { saveV3Layout } from "../tracker/v3-layout-repository.js";
+import { currentV3CharacterSheetLayout, updateV3CharacterSheetLayout } from "../tracker/layout.js";
 
 export function initializeCharacterEditor({ character, normalizeSpellcastingData, refreshUI }) {
   const params = new URLSearchParams(location.search);
@@ -45,6 +56,9 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
   let baselineStyle = "v1";
   let draftStyle = "v1";
   let draggedV1Section = null;
+  let baselineV3Layout = normalizeV3Layout(DEFAULT_V3_LAYOUT);
+  let draftV3Layout = normalizeV3Layout(DEFAULT_V3_LAYOUT);
+  let draggedV3Section = null;
   let activeSection = "basics";
   let returnFocusTarget = null;
   let controller;
@@ -97,9 +111,10 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
   }
 
   function renderV1SectionOrder() {
-    if (draftStyle !== "v1") {
+    if (draftStyle === "v2") {
       return '<div class="mt-4 rounded-xl border border-stone-300 bg-stone-100/70 p-4 text-sm text-stone-600 dark:border-white/15 dark:bg-white/5 dark:text-stone-300">Style v2 uses a fixed tabbed layout, so its sections cannot be rearranged.</div>';
     }
+    if (draftStyle !== "v1") return "";
     const order = normalizeV1SectionOrder(draft.v1SectionOrder);
     const definitions = new Map(V1_SECTION_DEFINITIONS.map((definition) => [definition.id, definition]));
     return `<div class="mt-5">
@@ -119,13 +134,34 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     </div>`;
   }
 
+  function renderV3LayoutBuilder() {
+    if (draftStyle !== "v3") return "";
+    const definitions = new Map(V3_SECTION_DEFINITIONS.map((definition) => [definition.id, definition]));
+    return `<div class="mt-5 border-t border-stone-300 pt-5 dark:border-white/10">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div><h4 class="font-display font-bold">Personal V3 grid</h4><p class="mt-1 text-sm text-stone-500 dark:text-stone-400">Drag tiles or use Earlier/Later. Phones always use this reading order in one column.</p></div>
+        <button type="button" data-v3-layout-reset class="rounded-xl border border-stone-400 px-3 py-2 text-sm font-bold transition hover:border-blood-500 hover:text-blood-500 dark:border-white/20"><i class="bi bi-arrow-counterclockwise mr-1"></i>Reset</button>
+      </div>
+      <label class="mt-4 block max-w-xs"><span class="mb-1 block text-xs font-bold text-stone-500 dark:text-stone-400">Desktop columns</span><select id="editor-v3-columns" class="${classes.field}"><option value="2"${draftV3Layout.columns === 2 ? " selected" : ""}>2 columns</option><option value="3"${draftV3Layout.columns === 3 ? " selected" : ""}>3 columns</option></select></label>
+      <div data-v3-section-list class="mt-4 grid items-start gap-2" style="grid-template-columns:repeat(${draftV3Layout.columns},minmax(0,1fr))">${draftV3Layout.sections.map((section, index) => {
+        const definition = definitions.get(section.id);
+        return `<div data-v3-section-row="${escapeAttribute(section.id)}" class="flex min-w-0 flex-wrap items-center gap-2 rounded-xl border border-stone-300 bg-white/70 p-2 transition dark:border-white/15 dark:bg-white/5" style="grid-column:span ${section.span} / span ${section.span}">
+          <button type="button" draggable="true" data-v3-section-drag="${escapeAttribute(section.id)}" class="inline-flex h-10 w-10 shrink-0 cursor-grab items-center justify-center rounded-lg border border-stone-300 text-stone-500 active:cursor-grabbing dark:border-white/15" aria-label="Drag ${escapeAttribute(definition.label)}" title="Drag tile"><i class="bi bi-grip-vertical"></i></button>
+          <strong class="min-w-32 grow break-words">${escapeHTML(definition.label)}</strong>
+          <label class="shrink-0 text-xs font-bold text-stone-500 dark:text-stone-400">Span <select data-v3-section-span="${escapeAttribute(section.id)}" class="ml-1 rounded-lg border border-stone-300 bg-white px-2 py-1.5 text-stone-900 dark:border-white/15 dark:bg-stone-900 dark:text-white">${Array.from({ length: draftV3Layout.columns }, (_, optionIndex) => `<option value="${optionIndex + 1}"${section.span === optionIndex + 1 ? " selected" : ""}>${optionIndex + 1}</option>`).join("")}</select></label>
+          <div class="flex shrink-0 gap-1"><button type="button" data-v3-section-move="${escapeAttribute(section.id)}" data-delta="-1"${index === 0 ? " disabled" : ""} class="rounded-lg border border-stone-300 px-2 py-1.5 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-35 dark:border-white/15" aria-label="Move ${escapeAttribute(definition.label)} earlier">Earlier</button><button type="button" data-v3-section-move="${escapeAttribute(section.id)}" data-delta="1"${index === draftV3Layout.sections.length - 1 ? " disabled" : ""} class="rounded-lg border border-stone-300 px-2 py-1.5 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-35 dark:border-white/15" aria-label="Move ${escapeAttribute(definition.label)} later">Later</button></div>
+        </div>`;
+      }).join("")}</div>
+    </div>`;
+  }
+
   function renderAdvanced() {
     const canManage = document.body.dataset.characterCanManage !== "false";
     const metadataKeys = ["bundledUpdate", "bundledUpdateVersions"].filter((key) => draft[key] !== undefined);
     const customKeys = Object.keys(draft).filter((key) => !sectionTopLevelKeys.has(key));
     return `<div class="space-y-6">
       <div class="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-stone-700 dark:text-stone-200"><strong class="block">Advanced character data</strong><span class="mt-1 block">Technical IDs are read-only. Custom fields remain editable so homebrew data is never discarded.</span></div>
-      ${canManage ? `<section class="${classes.panel}"><h3 class="font-display text-lg font-bold">Character tracker layout</h3><p class="mt-1 text-sm text-stone-500 dark:text-stone-400">This choice applies only to ${escapeHTML(draft.name || "this character")}.</p><label class="mt-4 block"><span class="mb-1 block text-xs font-bold text-stone-500 dark:text-stone-400">Style</span><select id="editor-character-sheet-style" class="${classes.field}"><option value="v1" ${draftStyle === "v1" ? "selected" : ""}>Style v1</option><option value="v2" ${draftStyle === "v2" ? "selected" : ""}>Style v2</option></select></label>${renderV1SectionOrder()}</section>` : ""}
+      ${(canManage || draftStyle === "v3") ? `<section class="${classes.panel}"><h3 class="font-display text-lg font-bold">Character tracker layout</h3><p class="mt-1 text-sm text-stone-500 dark:text-stone-400">${canManage ? `The style choice applies to ${escapeHTML(draft.name || "this character")}.` : "The campaign DM controls the style; this grid is personal to you."}</p>${canManage ? `<label class="mt-4 block"><span class="mb-1 block text-xs font-bold text-stone-500 dark:text-stone-400">Style</span><select id="editor-character-sheet-style" class="${classes.field}"><option value="v1" ${draftStyle === "v1" ? "selected" : ""}>Style v1</option><option value="v2" ${draftStyle === "v2" ? "selected" : ""}>Style v2</option><option value="v3" ${draftStyle === "v3" ? "selected" : ""}>Style v3</option></select></label>${renderV1SectionOrder()}` : ""}${renderV3LayoutBuilder()}</section>` : ""}
       <section class="${classes.panel}"><h3 class="mb-4 font-display text-lg font-bold">Character ID</h3>${renderPrimitive(draft.id, ["id"], "id", { readOnly: !canManage })}</section>
       ${metadataKeys.length ? `<section class="${classes.panel}"><h3 class="mb-4 font-display text-lg font-bold">System metadata</h3><div class="space-y-4">${metadataKeys.map((key) => renderPrimitive(JSON.stringify(draft[key], null, 2), [key], key, { readOnly: true })).join("")}</div></section>` : ""}
       <section class="${classes.panel}"><h3 class="mb-1 font-display text-lg font-bold">Custom fields</h3><p class="mb-4 text-sm text-stone-500 dark:text-stone-400">Fields outside the standard character schema appear here.</p>${customKeys.length ? `<div class="space-y-4">${customKeys.map((key) => renderNode(draft[key], [key], key)).join("")}</div>` : '<p class="rounded-xl border border-dashed border-stone-300 px-4 py-6 text-center text-sm text-stone-500 dark:border-white/15">No custom fields on this character.</p>'}</section>
@@ -235,7 +271,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
         : document.getElementById("editor-mobile-section"),
       returnFocus: () => returnFocusTarget || toggle,
       beforeClose() {
-        if (!draftsDiffer(baseline, draft) && baselineStyle === draftStyle) return true;
+        if (!draftsDiffer(baseline, draft) && baselineStyle === draftStyle && !draftsDiffer(baselineV3Layout, draftV3Layout)) return true;
         return confirm("Discard your unsaved character changes?");
       },
       onClose() {
@@ -247,6 +283,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
         baselineStyle = "v1";
         draftStyle = "v1";
         draggedV1Section = null;
+        draggedV3Section = null;
       },
     });
 
@@ -264,16 +301,29 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     document.getElementById("editor-fields").addEventListener("change", (event) => {
       if (event.target.id === "editor-mobile-section") activateSection(event.target.value);
       if (event.target.id === "editor-character-sheet-style") {
-        draftStyle = event.target.value === "v2" ? "v2" : "v1";
+        draftStyle = ["v1", "v2", "v3"].includes(event.target.value) ? event.target.value : "v1";
+        renderEditorFields();
+      }
+      if (event.target.id === "editor-v3-columns") {
+        draftV3Layout = setV3Columns(draftV3Layout, Number(event.target.value));
+        renderEditorFields();
+      }
+      if (event.target.matches("[data-v3-section-span]")) {
+        draftV3Layout = setV3SectionSpan(draftV3Layout, event.target.dataset.v3SectionSpan, Number(event.target.value));
         renderEditorFields();
       }
     });
     document.getElementById("editor-fields").addEventListener("keydown", handleSectionKeydown);
     document.getElementById("editor-fields").addEventListener("dragstart", handleV1SectionDragStart);
+    document.getElementById("editor-fields").addEventListener("dragstart", handleV3SectionDragStart);
     document.getElementById("editor-fields").addEventListener("dragover", handleV1SectionDragOver);
+    document.getElementById("editor-fields").addEventListener("dragover", handleV3SectionDragOver);
     document.getElementById("editor-fields").addEventListener("dragleave", handleV1SectionDragLeave);
+    document.getElementById("editor-fields").addEventListener("dragleave", handleV3SectionDragLeave);
     document.getElementById("editor-fields").addEventListener("drop", handleV1SectionDrop);
+    document.getElementById("editor-fields").addEventListener("drop", handleV3SectionDrop);
     document.getElementById("editor-fields").addEventListener("dragend", clearV1SectionDragState);
+    document.getElementById("editor-fields").addEventListener("dragend", clearV3SectionDragState);
     subscribeCharacterEditorExtensions((extension) => {
       if (mountedExtensions.has(extension.id)) return;
       mountedExtensions.set(extension.id, extension);
@@ -292,8 +342,10 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     editing = true;
     baseline = clone(window.character);
     draft = clone(window.character);
-    baselineStyle = document.documentElement.dataset.characterSheetStyle === "v2" ? "v2" : "v1";
+    baselineStyle = ["v1", "v2", "v3"].includes(document.documentElement.dataset.characterSheetStyle) ? document.documentElement.dataset.characterSheetStyle : "v1";
     draftStyle = baselineStyle;
+    baselineV3Layout = currentV3CharacterSheetLayout();
+    draftV3Layout = normalizeV3Layout(baselineV3Layout);
     activeSection = sectionRenderers[section] ? section : "basics";
     returnFocusTarget = trigger || document.activeElement || document.getElementById("edit-character-toggle");
     expandedItems.clear();
@@ -346,6 +398,17 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     }
     if (event.target.closest("[data-v1-section-reset]") && draftStyle === "v1") {
       delete draft.v1SectionOrder;
+      renderEditorFields();
+      return;
+    }
+    const v3Move = event.target.closest("[data-v3-section-move]");
+    if (v3Move && draftStyle === "v3") {
+      draftV3Layout = moveV3SectionBy(draftV3Layout, v3Move.dataset.v3SectionMove, v3Move.dataset.delta);
+      renderEditorFields();
+      return;
+    }
+    if (event.target.closest("[data-v3-layout-reset]") && draftStyle === "v3") {
+      draftV3Layout = normalizeV3Layout(DEFAULT_V3_LAYOUT);
       renderEditorFields();
       return;
     }
@@ -427,6 +490,42 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     renderEditorFields();
   }
 
+  function clearV3SectionDragState() {
+    draggedV3Section = null;
+    document.querySelectorAll("[data-v3-section-row]").forEach((row) => {
+      row.classList.remove("outline", "outline-2", "outline-blood-500");
+    });
+  }
+
+  function handleV3SectionDragStart(event) {
+    const handle = event.target.closest("[data-v3-section-drag]");
+    if (!handle || draftStyle !== "v3") return;
+    draggedV3Section = handle.dataset.v3SectionDrag;
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", draggedV3Section);
+  }
+
+  function handleV3SectionDragOver(event) {
+    const row = event.target.closest("[data-v3-section-row]");
+    if (!row || !draggedV3Section || draftStyle !== "v3") return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    row.classList.add("outline", "outline-2", "outline-blood-500");
+  }
+
+  function handleV3SectionDragLeave(event) {
+    event.target.closest("[data-v3-section-row]")?.classList.remove("outline", "outline-2", "outline-blood-500");
+  }
+
+  function handleV3SectionDrop(event) {
+    const row = event.target.closest("[data-v3-section-row]");
+    if (!row || !draggedV3Section || draftStyle !== "v3") return;
+    event.preventDefault();
+    draftV3Layout = moveV3SectionBefore(draftV3Layout, draggedV3Section, row.dataset.v3SectionRow);
+    clearV3SectionDragState();
+    renderEditorFields();
+  }
+
   function handleSectionKeydown(event) {
     const current = event.target.closest("[data-editor-section-button]");
     if (!current || !["ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
@@ -464,6 +563,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     const oldId = window.character.id;
     const selectedStyle = draftStyle;
     const styleChanged = baselineStyle !== selectedStyle;
+    const layoutChanged = draftsDiffer(baselineV3Layout, draftV3Layout);
     draft.name = draft.name.trim();
     draft.status = normalizeEntityStatus(draft.status) || DEFAULT_ENTITY_STATUS;
     if (typeof normalizeSpellcastingData === "function") normalizeSpellcastingData(draft);
@@ -476,22 +576,39 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     writeJSON(CHARACTERS_STORAGE_KEY, characters);
     removeStored(characterStateStorageKey(oldId));
     baseline = clone(draft);
+    if (document.documentElement.dataset.characterSheetStyle === "v3" && layoutChanged) {
+      updateV3CharacterSheetLayout(draftV3Layout);
+    }
     controller.forceClose("save");
     refreshUI();
+    let characterCloudError = null;
     try {
       const bundledId = document.body.dataset.characterShell;
-      if (oldId !== character.id && currentCampaignSlug()) {
+      if (oldId !== character.id) {
         await writeCloudJSON(`api/characters/${encodeURIComponent(oldId)}/id`, { id: character.id });
       }
       await writeCloudJSON(`api/characters/${encodeURIComponent(character.id)}`, {
         document: clone(character),
         source: bundledId && bundledId !== "template" ? "bundled" : "custom",
       });
-      if (oldId !== character.id && !currentCampaignSlug()) {
-        await writeCloudJSON(`api/characters/${encodeURIComponent(oldId)}`, undefined, { method: "DELETE" });
-      }
     } catch (error) {
       console.error("Could not save character to D1:", error);
+      characterCloudError = error;
+    }
+    if (layoutChanged || oldId !== character.id) {
+      try {
+        const session = await currentSession();
+        await saveV3Layout({
+          userId: session.user?.id,
+          characterId: character.id,
+          layout: draftV3Layout,
+        });
+      } catch (error) {
+        console.error("Could not sync the personal V3 layout:", error);
+        if (!characterCloudError) alert("Character changes were saved, but the personal layout is pending cloud sync.");
+      }
+    }
+    if (characterCloudError) {
       if (styleChanged && isLocalRuntimeHost()) {
         try {
           await saveCharacterSheetStyleOverride(character.id, selectedStyle);

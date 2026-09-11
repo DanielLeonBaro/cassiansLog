@@ -31,6 +31,7 @@ function contentType(file) {
     ".jpeg": "image/jpeg",
     ".js": "text/javascript; charset=utf-8",
     ".json": "application/json; charset=utf-8",
+    ".mjs": "text/javascript; charset=utf-8",
     ".png": "image/png",
     ".woff": "font/woff",
     ".woff2": "font/woff2",
@@ -82,6 +83,22 @@ function staticServer() {
     if (request.method === "GET" && /^\/api\/campaigns\/joined\/characters\/cassian\/(?:state|notes)$/.test(url.pathname)) {
       response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
       response.end('{"value":null,"canEdit":true}');
+      return;
+    }
+    if (request.method === "GET" && url.pathname === "/api/dnd-beyond/characters/123456789") {
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify({ success: true, data: {
+        name: "Imported Browser Hero",
+        classes: [{ level: 3, definition: { name: "Wizard", classFeatures: [] }, subclassDefinition: { name: "Evoker", classFeatures: [] } }],
+        race: { fullName: "High Elf", weightSpeeds: { normal: { walk: 30, fly: 0 } }, racialTraits: [] },
+        background: { definition: { name: "Sage" } },
+        stats: [
+          { id: 1, value: 8 }, { id: 2, value: 14 }, { id: 3, value: 12 },
+          { id: 4, value: 16 }, { id: 5, value: 10 }, { id: 6, value: 10 },
+        ],
+        bonusStats: [], overrideStats: [], modifiers: {}, baseHitPoints: 17,
+        inventory: [], actions: {}, feats: [], spells: {}, classSpells: [], spellSlots: [], pactMagic: [], currencies: {},
+      } }));
       return;
     }
     if (url.pathname.startsWith("/api/")) {
@@ -216,6 +233,46 @@ async function main() {
       console.log(`Browser smoke passed: ${label}`);
     }
 
+    async function auditCurrentLayout(label) {
+      const result = await execute(`
+        const visible = (element) => {
+          const style = getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+        };
+        const insideScroller = (element) => {
+          let ancestor = element.parentElement;
+          while (ancestor && ancestor !== document.body) {
+            if (["auto", "scroll"].includes(getComputedStyle(ancestor).overflowX)) return true;
+            ancestor = ancestor.parentElement;
+          }
+          return false;
+        };
+        const escapedControls = [...document.querySelectorAll("button, input, select, textarea, .tracker-badge")]
+          .filter(visible)
+          .filter((element) => !insideScroller(element))
+          .filter((element) => {
+            const rect = element.getBoundingClientRect();
+            return rect.left < -1 || rect.right > innerWidth + 1;
+          })
+          .map((element) => element.id || element.getAttribute("aria-label") || element.tagName)
+          .slice(0, 5);
+        const escapedHeaderBadges = [...document.querySelectorAll(".tracker-card-header .tracker-badge")]
+          .filter(visible)
+          .filter((badge) => {
+            const badgeRect = badge.getBoundingClientRect();
+            const headerRect = badge.closest(".tracker-card-header").getBoundingClientRect();
+            return badgeRect.left < headerRect.left - 1 || badgeRect.right > headerRect.right + 1;
+          }).length;
+        return {
+          overflow: document.documentElement.scrollWidth > innerWidth + 1,
+          escapedControls,
+          escapedHeaderBadges,
+        };
+      `);
+      assert.deepEqual(result, { overflow: false, escapedControls: [], escapedHeaderBadges: 0 }, `${label} alignment audit failed.`);
+    }
+
     await smoke(
       "Local test-user login",
       "/login/",
@@ -339,8 +396,28 @@ async function main() {
     );
 
     await smoke(
+      "Last campaign on global pages",
+      "/campaigns/",
+      'return document.getElementById("site-campaign")?.textContent === "Sita Campaign";',
+      `
+        return document.querySelector('[data-site-home]').getAttribute("href") === "/c/sita/char/"
+          && document.querySelector('[data-section-link="wiki"]').getAttribute("href") === "/c/sita/wiki/";
+      `,
+    );
+
+    await navigate("/login/?return=/c/aotr/char/");
+    await waitFor('return document.querySelectorAll("#local-test-user option").length === 21;', "Local Admin login did not reopen");
+    await execute(`
+      const select = document.getElementById("local-test-user");
+      select.value = "localhost-admin";
+      document.getElementById("local-test-submit").click();
+      return true;
+    `);
+    await waitFor('return location.pathname === "/c/aotr/char/";', "Local Admin did not return to AOTR");
+
+    await smoke(
       "Character archive and Quick Setup",
-      "/char/",
+      "/c/aotr/char/",
       'return document.querySelectorAll("#characters article").length >= 5;',
       `
         const open = document.getElementById("add-character");
@@ -355,6 +432,23 @@ async function main() {
       'return document.getElementById("character-dialog").classList.contains("hidden");',
       "Quick Setup did not close",
     );
+    await execute(`
+      document.getElementById("add-character").click();
+      document.getElementById("dnd-beyond-import-toggle").click();
+      document.getElementById("dnd-beyond-url").value = "https://www.dndbeyond.com/characters/123456789/browser";
+      document.getElementById("dnd-beyond-url-import").click();
+      return true;
+    `);
+    await waitFor(
+      'return document.getElementById("new-character-name").value === "Imported Browser Hero" && document.getElementById("new-character-class").value === "Wizard" && !document.getElementById("dnd-beyond-import-summary").classList.contains("hidden");',
+      "D&D Beyond page import did not populate Quick Setup",
+    );
+    await execute('document.getElementById("cancel-dialog").click(); return true;');
+    await waitFor(
+      'return document.getElementById("character-dialog").classList.contains("hidden");',
+      "Imported Quick Setup did not close",
+    );
+    console.log("Browser smoke passed: D&D Beyond page import");
     const themePicker = await execute(`
       const toggle = document.getElementById("theme-toggle");
       toggle.click();
@@ -470,6 +564,93 @@ async function main() {
     `);
     assert.deepEqual(characterNoteFormatting, { value: "****", start: 2, end: 2 }, "Character Notes Bold should place the cursor inside the markers.");
 
+    await execute(`
+      localStorage.setItem("cassianslog-runtime-settings", JSON.stringify({ characterSheetStyle: "v3", characterSheetStyleOverrides: { cassian: "v3" }, sections: {}, openWrites: true }));
+      const sections = [
+        ["character-overview", 2], ["quick-stats", 1], ["skills-and-saves", 3],
+        ["hit-points", 1], ["combat", 1], ["inventory", 1],
+        ["all-possibilities", 1], ["spellcasting", 1], ["notes", 1],
+      ].map(([id, span]) => ({ id, span }));
+      localStorage.setItem("cassianslog-character-layout-v3:localhost-admin:cassian", JSON.stringify({ layout: { version: 1, columns: 3, sections }, pending: false }));
+      return true;
+    `);
+    await navigate("/char/cassian/");
+    await waitFor('return document.documentElement.dataset.characterSheetStyle === "v3" && document.querySelectorAll("[data-v3-section]").length === 9;', "V3 tracker did not load");
+    const threeColumnLayout = await execute(`
+      const grid = document.getElementById("v3-sheet-grid");
+      const tile = (id) => document.querySelector('[data-v3-section="' + id + '"]').getBoundingClientRect();
+      const sameRow = (...ids) => ids.map((id) => Math.round(tile(id).top)).every((top, _, values) => top === values[0]);
+      return {
+        columns: getComputedStyle(grid).gridTemplateColumns.split(" ").length,
+        infoQuick: sameRow("character-overview", "quick-stats"),
+        savesFull: Math.abs(tile("skills-and-saves").width - grid.getBoundingClientRect().width) < 2,
+        rowThree: sameRow("hit-points", "combat", "inventory"),
+        rowFour: sameRow("all-possibilities", "spellcasting", "notes"),
+        overflow: document.documentElement.scrollWidth > innerWidth,
+      };
+    `);
+    assert.deepEqual(threeColumnLayout, {
+      columns: 3,
+      infoQuick: true,
+      savesFull: true,
+      rowThree: true,
+      rowFour: true,
+      overflow: false,
+    }, "V3 should render the requested three-column example exactly.");
+
+    await execute(`
+      document.getElementById("edit-character-toggle").click();
+      document.querySelector('[data-editor-section-button="advanced"]').click();
+      return true;
+    `);
+    await waitFor('return document.getElementById("editor-v3-columns")?.value === "3" && document.querySelectorAll("[data-v3-section-row]").length === 9;', "V3 grid editor did not open");
+    const v3Editor = await execute(`
+      const columns = document.getElementById("editor-v3-columns");
+      columns.value = "2";
+      columns.dispatchEvent(new Event("change", { bubbles: true }));
+      const clamped = document.querySelector('[data-v3-section-span="skills-and-saves"]').value;
+      document.querySelector('[data-v3-section-move="notes"][data-delta="-1"]').click();
+      const order = [...document.querySelectorAll("[data-v3-section-row]")].map((row) => row.dataset.v3SectionRow);
+      document.getElementById("editor-save").click();
+      return { clamped, notesBeforeSpellcasting: order.indexOf("notes") < order.indexOf("spellcasting") };
+    `);
+    assert.deepEqual(v3Editor, { clamped: "2", notesBeforeSpellcasting: true }, "V3 editor should clamp spans and support keyboard-accessible movement.");
+    await waitFor('return document.getElementById("character-editor").classList.contains("hidden");', "V3 editor did not save");
+    await navigate("/char/cassian/");
+    await waitFor('return document.documentElement.dataset.characterSheetStyle === "v3" && getComputedStyle(document.getElementById("v3-sheet-grid")).gridTemplateColumns.split(" ").length === 2;', "V3 layout did not persist after reload");
+
+    await command("POST", "/window/rect", { width: 375, height: 800 });
+    const mobileV3 = await execute(`
+      const grid = document.getElementById("v3-sheet-grid");
+      const tops = [...grid.children].map((tile) => Math.round(tile.getBoundingClientRect().top));
+      return {
+        columns: getComputedStyle(grid).gridTemplateColumns.split(" ").length,
+        readingOrder: tops.every((top, index) => index === 0 || top > tops[index - 1]),
+        overflow: document.documentElement.scrollWidth > innerWidth,
+      };
+    `);
+    assert.deepEqual(mobileV3, { columns: 1, readingOrder: true, overflow: false }, "V3 should collapse to one saved-order column on mobile.");
+    await command("POST", "/window/rect", { width: 1280, height: 900 });
+
+    await execute(`
+      const playerLayout = { version: 1, columns: 2, sections: JSON.parse(localStorage.getItem("cassianslog-character-layout-v3:localhost-admin:cassian")).layout.sections.map((section) => ({ ...section, span: Math.min(section.span, 2) })) };
+      const adminLayout = { ...playerLayout, columns: 3 };
+      localStorage.setItem("cassianslog-runtime-settings:campaign:aotr", JSON.stringify({ characterSheetStyle: "v3", characterSheetStyleOverrides: { cassian: "v3" }, sections: {}, openWrites: true }));
+      localStorage.setItem("cassianslog-character-layout-v3:localhost-player-01:cassian:campaign:aotr", JSON.stringify({ layout: playerLayout, pending: false }));
+      localStorage.setItem("cassianslog-character-layout-v3:localhost-admin:cassian:campaign:aotr", JSON.stringify({ layout: adminLayout, pending: false }));
+      localStorage.setItem("cassianslog-local-user-v1", "localhost-player-01");
+      return true;
+    `);
+    await navigate("/c/aotr/char/cassian/");
+    await waitFor('return document.documentElement.dataset.characterSheetStyle === "v3" && getComputedStyle(document.getElementById("v3-sheet-grid")).gridTemplateColumns.split(" ").length === 2;', "Second user's V3 layout did not load");
+    await execute(`
+      localStorage.setItem("cassianslog-local-user-v1", "localhost-admin");
+      return true;
+    `);
+    await navigate("/c/aotr/char/cassian/");
+    await waitFor('return getComputedStyle(document.getElementById("v3-sheet-grid")).gridTemplateColumns.split(" ").length === 3;', "First user's separate V3 layout did not return");
+    console.log("Browser smoke passed: configurable and user-isolated V3 tracker");
+
     await smoke(
       "Combat & Loot",
       "/combat-loot/",
@@ -530,7 +711,7 @@ async function main() {
     );
     await waitFor(
       `
-        const stored = JSON.parse(localStorage.getItem("dnd-wiki-pages-v1") || "[]");
+        const stored = JSON.parse(localStorage.getItem("dnd-wiki-pages-v1:campaign:aotr") || "[]");
         return document.getElementById("wiki-home-editor").classList.contains("hidden")
           && document.getElementById("wiki-title").textContent === "Campaign Archive"
           && stored.some((page) => page.homeBanner?.title === "Campaign Archive");
@@ -741,8 +922,8 @@ async function main() {
       const initiative = [...document.querySelectorAll("[data-widget-id]")].find((card) => card.textContent.includes("Initiative Order"));
       initiative.querySelector('[data-move-widget="-1"]').click();
       return {
-        publicLink: Boolean(initiative.querySelector('a[href="/public-initiative/"]')),
-        combatLink: Boolean(initiative.querySelector('a[href="/combat-loot/"]')),
+        publicLink: Boolean(initiative.querySelector('a[href="/c/aotr/public-initiative/"]')),
+        combatLink: Boolean(initiative.querySelector('a[href="/c/aotr/combat-loot/"]')),
       };
     `);
     assert.deepEqual(playerActions, { publicLink: true, combatLink: false }, "Player Initiative should not expose Combat & Loot.");
@@ -778,7 +959,7 @@ async function main() {
       return true;
     `);
     await waitFor(
-      'return document.querySelector("[data-widget-id]")?.querySelector(\'a[href="/combat-loot/"]\');',
+      'return document.querySelector("[data-widget-id]")?.querySelector(\'a[href="/c/aotr/combat-loot/"]\');',
       "DM Screen Initiative did not expose the authorized Combat & Loot action",
     );
     console.log("Browser smoke passed: Player Screen widgets and responsive layout");
@@ -791,6 +972,48 @@ async function main() {
       'return !document.getElementById("admin-content").classList.contains("hidden");',
       'return document.getElementById("admin-description").textContent.includes("localStorage") && document.getElementById("admin-lock").hidden && !document.getElementById("theme-admin-unavailable").classList.contains("hidden") && document.getElementById("add-theme").disabled;',
     );
+
+    const auditEntries = [
+      ["Login", "/login/", 'return document.querySelectorAll("#local-test-user option").length === 21;'],
+      ["Campaigns", "/campaigns/", 'return document.querySelectorAll("#campaign-list article").length > 0;'],
+      ["Campaign Manage", "/c/aotr/manage/", 'return Boolean(document.getElementById("campaign-settings"));'],
+      ["Characters", "/c/aotr/char/", 'return document.querySelectorAll("#characters article").length > 0;'],
+      ["Tracker V1", "/c/aotr/char/cassian/", 'return document.documentElement.dataset.characterSheetStyle === "v1" && Boolean(document.getElementById("edit-character-toggle"));', "v1"],
+      ["Tracker V2", "/c/aotr/char/cassian/", 'return document.documentElement.dataset.characterSheetStyle === "v2" && Boolean(document.getElementById("v2-sheet-layout"));', "v2"],
+      ["Tracker V3", "/c/aotr/char/cassian/", 'return document.documentElement.dataset.characterSheetStyle === "v3" && Boolean(document.getElementById("v3-sheet-grid"));', "v3"],
+      ["Player Screen", "/player-screen/", 'return Boolean(document.getElementById("screen-grid"));'],
+      ["DM Screen", "/dm-screen/", 'return Boolean(document.getElementById("screen-grid"));'],
+      ["Combat & Loot", "/combat-loot/", 'return document.getElementById("tracker-list").children.length > 0;'],
+      ["Public Initiative", "/public-initiative/", 'return document.getElementById("initiative-status").textContent !== "Loading initiative...";'],
+      ["Music", "/music/", 'return Boolean(document.getElementById("track-form"));'],
+      ["Wiki", "/wiki/", 'return document.querySelectorAll("#wiki-sidebar a").length > 0;'],
+      ["Compendium", "/compendium/", 'return document.querySelectorAll("#compendium-results article").length > 0;'],
+      ["Admin", "/admin/", 'return !document.getElementById("admin-content").classList.contains("hidden");'],
+    ];
+    for (const mode of [
+      { label: "Standard desktop", reversed: false, width: 1280, height: 900 },
+      { label: "Reversed mobile", reversed: true, width: 375, height: 800 },
+    ]) {
+      await command("POST", "/window/rect", { width: mode.width, height: mode.height });
+      for (const [label, route, ready, style] of auditEntries) {
+        await execute(`
+          localStorage.setItem("dnd-theme", "cassians-classic");
+          localStorage.setItem("dnd-theme-reversed", String(arguments[0]));
+          localStorage.setItem("dnd-theme-font", "auto");
+          if (arguments[1]) {
+            const settings = JSON.stringify({ characterSheetStyle: arguments[1], characterSheetStyleOverrides: { cassian: arguments[1] }, sections: {}, openWrites: true });
+            localStorage.setItem("cassianslog-runtime-settings", settings);
+            localStorage.setItem("cassianslog-runtime-settings:campaign:aotr", settings);
+          }
+          return true;
+        `, [mode.reversed, style || ""]);
+        await navigate(route);
+        await waitFor(ready, `${label} did not become ready for alignment audit`);
+        await auditCurrentLayout(`${mode.label}: ${label}`);
+      }
+    }
+    await command("POST", "/window/rect", { width: 1280, height: 900 });
+    console.log("Browser alignment audit passed: all shipped routes, tracker styles, desktop/mobile, Standard/Reversed");
 
     console.log("Headless Firefox browser smoke tests passed.");
   } catch (error) {

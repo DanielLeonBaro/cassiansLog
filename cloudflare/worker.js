@@ -12,6 +12,7 @@ import { screenRoute } from "./routes/screens.js";
 import { wikiRoute } from "./routes/wiki.js";
 import { authRoute } from "./routes/auth.js";
 import { themeCatalogRoute } from "./routes/themes.js";
+import { dndBeyondCharacterRoute } from "./routes/dnd-beyond.js";
 import { ensurePrimaryAdmin, hasRole, isLocalRequest, userFromRequest } from "./user-auth.js";
 import { campaignAccess, canManageCampaign, LEGACY_CAMPAIGN_SLUG } from "./campaigns.js";
 
@@ -30,12 +31,35 @@ const PAGE_ROLES = [
   [/^\/public-initiative(?:\/|$)/, "public-initiative"],
   [/^\/music(?:\/|$)/, "music"],
 ];
+const LAST_CAMPAIGN_COOKIE = "cassianslog_campaign";
+
+function cookieValue(request, name) {
+  const match = (request.headers.get("cookie") || "")
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${name}=`));
+  if (!match) return "";
+  try {
+    return decodeURIComponent(match.slice(name.length + 1));
+  } catch {
+    return "";
+  }
+}
+
+function rememberedCampaignSlug(request, userId) {
+  const value = cookieValue(request, LAST_CAMPAIGN_COOKIE);
+  const separator = value.lastIndexOf(":");
+  if (separator < 1 || value.slice(0, separator) !== String(userId || "")) return "";
+  const slug = value.slice(separator + 1);
+  return /^[a-z]{2,48}$/.test(slug) ? slug : "";
+}
 
 function requiredPageRole(pathname) {
   return PAGE_ROLES.find(([pattern]) => pattern.test(pathname))?.[1] || null;
 }
 
 function requiredApiRole(pathname) {
+  if (pathname.startsWith("/api/dnd-beyond/characters")) return "characters";
   if (pathname.startsWith("/api/characters")) return "characters";
   if (pathname.startsWith("/api/screens/player")) return "player-screen";
   if (pathname.startsWith("/api/screens/dm")) return "dm-screen";
@@ -59,14 +83,15 @@ async function staticAsset(request, env, url) {
   const localBypass = isLocalRequest(request);
   const publicPath = url.pathname === "/login" || url.pathname.startsWith("/login/")
     || PUBLIC_ASSET_PATTERN.test(url.pathname) || PUBLIC_SHELL_PATHS.has(url.pathname);
+  let pageUser = null;
   if (!publicPath && !localBypass) {
     if (!env.DB) return loginRedirect(url, "Authentication storage is unavailable.");
     await ensurePrimaryAdmin(env);
-    const user = await userFromRequest(request, env);
-    if (!user) return loginRedirect(url);
+    pageUser = await userFromRequest(request, env);
+    if (!pageUser) return loginRedirect(url);
     const role = requiredPageRole(url.pathname);
     const campaignsReady = await campaignStorageReady(env);
-    if (role && (role === "admin" || !campaignsReady) && !hasRole(user, role)) {
+    if (role && (role === "admin" || !campaignsReady) && !hasRole(pageUser, role)) {
       const fallback = new URL("/char/", url);
       fallback.searchParams.set("access", "denied");
       return Response.redirect(fallback.toString(), 302);
@@ -135,8 +160,12 @@ async function staticAsset(request, env, url) {
 
     const legacyMatch = /^\/(char|wiki|music|combat-loot|public-initiative|player-screen|dm-screen)(?:\/|$)/.test(url.pathname);
     if (legacyMatch) {
-      const access = await campaignAccess(request, env, LEGACY_CAMPAIGN_SLUG);
-      if (!access.response) return Response.redirect(new URL(`/c/${LEGACY_CAMPAIGN_SLUG}${url.pathname}${url.search}`, url).toString(), 302);
+      const rememberedSlug = rememberedCampaignSlug(request, pageUser?.id);
+      let access = await campaignAccess(request, env, rememberedSlug || LEGACY_CAMPAIGN_SLUG);
+      if (access.response && rememberedSlug && rememberedSlug !== LEGACY_CAMPAIGN_SLUG) {
+        access = await campaignAccess(request, env, LEGACY_CAMPAIGN_SLUG);
+      }
+      if (!access.response) return Response.redirect(new URL(`/c/${access.canonicalSlug}${url.pathname}${url.search}`, url).toString(), 302);
       return Response.redirect(new URL(`/campaigns/?join=${LEGACY_CAMPAIGN_SLUG}`, url).toString(), 302);
     }
   }
@@ -218,6 +247,10 @@ export async function handleRequest(request, env) {
     if (url.pathname === "/api/admin" || url.pathname.startsWith("/api/admin/")) {
       const parts = url.pathname.slice("/api/admin".length).split("/").filter(Boolean).map(decodeURIComponent);
       return adminRoute(request, env, parts);
+    }
+    if (url.pathname.startsWith("/api/dnd-beyond/characters/")) {
+      const id = decodeURIComponent(url.pathname.slice("/api/dnd-beyond/characters/".length));
+      return dndBeyondCharacterRoute(request, id);
     }
     const legacyCampaignResponse = await legacyCampaignApi(request, env, url);
     if (legacyCampaignResponse) return legacyCampaignResponse;

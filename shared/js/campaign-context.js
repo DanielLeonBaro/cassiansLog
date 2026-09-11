@@ -3,12 +3,91 @@ import { isLocalRuntimeHost } from "./runtime-host.js";
 import { currentLocalUser, LOCAL_ADMIN_USER, LOCAL_TEST_USERS, LOCAL_USERS } from "./local-users.js";
 
 const CAMPAIGN_PATH = /^\/c\/([a-z]{2,48})(?:\/|$)/;
+const CAMPAIGN_SLUG = /^[a-z]{2,48}$/;
 const CAMPAIGN_API_RESOURCES = new Set([
   "characters", "wiki", "music", "combat-loot", "public-initiative", "screens", "settings",
 ]);
 
 let contextPromise;
 const LOCAL_CAMPAIGNS_KEY = "cassianslog-local-campaigns-v1";
+const LAST_CAMPAIGN_KEY = "cassianslog-last-campaign-v1";
+const LAST_CAMPAIGN_COOKIE = "cassianslog_campaign";
+const UNSCOPED_CAMPAIGN_PAGE = /^\/(?:char|wiki|music|combat-loot|public-initiative|player-screen|dm-screen)(?:\/|$)/;
+
+function campaignSelectionKey(userId) {
+  return `${LAST_CAMPAIGN_KEY}:${String(userId || "anonymous")}`;
+}
+
+function storedCampaignSelection(storage, userId) {
+  const value = storage?.getItem(campaignSelectionKey(userId)) || "";
+  try {
+    const parsed = JSON.parse(value);
+    if (parsed && typeof parsed === "object") {
+      return {
+        id: String(parsed.id || ""),
+        slug: CAMPAIGN_SLUG.test(parsed.slug || "") ? parsed.slug : "",
+      };
+    }
+  } catch {
+    // Plain strings are the compatibility shape for early remembered selections.
+  }
+  return { id: "", slug: CAMPAIGN_SLUG.test(value) ? value : "" };
+}
+
+export function rememberedCampaignSlug({
+  storage = globalThis.localStorage,
+  userId = "",
+} = {}) {
+  return storedCampaignSelection(storage, userId).slug;
+}
+
+export function rememberCampaignSlug(slug, {
+  storage = globalThis.localStorage,
+  userId = "",
+  campaignId = "",
+  cookieDocument = globalThis.document,
+  protocol = globalThis.location?.protocol || "",
+} = {}) {
+  if (!CAMPAIGN_SLUG.test(slug)) return false;
+  storage?.setItem(campaignSelectionKey(userId), JSON.stringify({ id: String(campaignId || ""), slug }));
+  if (cookieDocument && userId) {
+    const value = encodeURIComponent(`${userId}:${slug}`);
+    const secure = protocol === "https:" ? "; Secure" : "";
+    cookieDocument.cookie = `${LAST_CAMPAIGN_COOKIE}=${value}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`;
+  }
+  return true;
+}
+
+export function selectRememberedCampaign(campaigns, {
+  preferredSlug = "",
+  storage = globalThis.localStorage,
+  userId = "",
+  cookieDocument = globalThis.document,
+  protocol = globalThis.location?.protocol || "",
+} = {}) {
+  const joined = Array.isArray(campaigns) ? campaigns.filter((campaign) => campaign?.joined) : [];
+  const remembered = storedCampaignSelection(storage, userId);
+  const selected = joined.find((campaign) => campaign.slug === preferredSlug)
+    || joined.find((campaign) => remembered.id && campaign.id === remembered.id)
+    || joined.find((campaign) => campaign.slug === remembered.slug)
+    || joined[0]
+    || null;
+  if (selected) rememberCampaignSlug(selected.slug, {
+    storage,
+    userId,
+    campaignId: selected.id,
+    cookieDocument,
+    protocol,
+  });
+  return selected;
+}
+
+export function campaignRouteForUnscopedPath(slug, pathname = globalThis.location?.pathname || "") {
+  if (!CAMPAIGN_SLUG.test(slug) || campaignSlugFromPath(pathname)) return "";
+  if (UNSCOPED_CAMPAIGN_PAGE.test(pathname)) return `/c/${encodeURIComponent(slug)}${pathname}`;
+  if (/^\/campaigns\/manage(?:\.html)?\/?$/.test(pathname)) return campaignPath(slug, "manage");
+  return "";
+}
 
 function defaultLocalMembers() {
   return [

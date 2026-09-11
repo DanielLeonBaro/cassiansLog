@@ -45,12 +45,18 @@
       <section class="rounded-2xl border border-stone-300 bg-white/70 p-5 shadow-card dark:border-white/10 dark:bg-white/[.05]">
         <h2 class="font-display text-2xl font-bold">Character sheet style</h2>
         <p class="mt-1 text-sm text-stone-500 dark:text-stone-400">Choose the default layout for all characters, then optionally override individual sheets.</p>
-        <fieldset class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <legend class="mb-3 font-bold sm:col-span-2">Default for all characters</legend>
+        <fieldset class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <legend class="mb-3 font-bold sm:col-span-3">Default for all characters</legend>
           <label class="cursor-pointer rounded-xl border border-stone-300 p-4 transition has-[:checked]:border-blood-500 has-[:checked]:bg-blood-500/10 dark:border-white/15">
             <span class="flex items-start gap-3">
               <input id="character-style-v1" name="character-sheet-style" value="v1" type="radio" class="mt-1 h-5 w-5 accent-red-700">
               <span><strong class="block">Style v1</strong><small class="text-stone-500 dark:text-stone-400">Current character tracker layout</small></span>
+            </span>
+          </label>
+          <label class="cursor-pointer rounded-xl border border-stone-300 p-4 transition has-[:checked]:border-blood-500 has-[:checked]:bg-blood-500/10 dark:border-white/15">
+            <span class="flex items-start gap-3">
+              <input id="character-style-v3" name="character-sheet-style" value="v3" type="radio" class="mt-1 h-5 w-5 accent-red-700">
+              <span><strong class="block">Style v3</strong><small class="text-stone-500 dark:text-stone-400">Personal configurable grid using v1 content</small></span>
             </span>
           </label>
           <label class="cursor-pointer rounded-xl border border-stone-300 p-4 transition has-[:checked]:border-blood-500 has-[:checked]:bg-blood-500/10 dark:border-white/15">

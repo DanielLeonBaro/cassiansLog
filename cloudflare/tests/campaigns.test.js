@@ -7,6 +7,7 @@ import { campaignPasswordProblem, normalizeCampaignSlug, validCampaignSlug } fro
 import { campaignRoute } from "../routes/campaigns.js";
 import { createSession } from "../user-auth.js";
 import { handleRequest } from "../worker.js";
+import { DEFAULT_V3_LAYOUT, normalizeV3Layout } from "../../shared/js/v3-layout.js";
 
 class D1Statement {
   constructor(database, sql, values = []) {
@@ -98,6 +99,7 @@ assert.equal(result.body.campaign.role, "dm");
 assert.equal(result.body.campaign.description, "Fog, vampires, and bad choices.");
 assert.equal(result.body.campaign.banner, "data:image/png;base64,YmFubmVy");
 assert.equal(result.body.campaign.status, "Draft");
+const curseCampaignId = database.prepare("SELECT campaign_id FROM campaign_slugs WHERE slug = 'curseofstrahd'").get().campaign_id;
 
 result = await call(env, cookies.alice, ["curseofstrahd"], { method: "PATCH", body: { name: "Curse of Strahd", description: "Fog, vampires, and bad choices.", banner: "data:image/png;base64,YmFubmVy", status: "Paused" } });
 assert.equal(result.response.status, 200);
@@ -149,11 +151,25 @@ assert.equal(result.body.canEdit, false);
 assert.equal(result.body.document.status, "Hiatus");
 result = await call(env, cookies.carol, ["curseofstrahd", "characters", "hero", "notes"]);
 assert.equal(result.response.status, 403);
+result = await call(env, cookies.carol, ["curseofstrahd", "characters", "hero", "layout"]);
+assert.equal(result.response.status, 200);
+assert.equal(result.body.layout, null, "Read-only viewers use the default layout without receiving an editor's private layout.");
 result = await call(env, cookies.carol, ["curseofstrahd", "characters", "hero"], { method: "PUT", body: { document: hero } });
 assert.equal(result.response.status, 403);
+const bobLayout = normalizeV3Layout(DEFAULT_V3_LAYOUT);
+result = await call(env, cookies.bob, ["curseofstrahd", "characters", "hero", "layout"], { method: "PUT", body: { layout: bobLayout } });
+assert.equal(result.response.status, 200);
 
 result = await call(env, cookies.alice, ["curseofstrahd", "characters", "hero", "assignments"], { method: "PUT", body: { userIds: ["carol"] } });
 assert.equal(result.response.status, 200);
+const carolLayout = normalizeV3Layout({ ...DEFAULT_V3_LAYOUT, columns: 3, sections: DEFAULT_V3_LAYOUT.sections.map((section) => ({ ...section, span: 1 })) });
+result = await call(env, cookies.carol, ["curseofstrahd", "characters", "hero", "layout"], { method: "PUT", body: { layout: carolLayout } });
+assert.equal(result.response.status, 200);
+assert.equal(JSON.parse(database.prepare("SELECT layout_json FROM campaign_user_character_layouts WHERE campaign_id = ? AND user_id = 'bob' AND character_id = 'hero'").get(curseCampaignId).layout_json).columns, 2);
+result = await call(env, cookies.carol, ["curseofstrahd", "characters", "hero", "layout"]);
+assert.equal(result.body.layout.columns, 3, "Personal layouts are isolated by user.");
+result = await call(env, cookies.carol, ["curseofstrahd", "characters", "hero", "layout"], { method: "PUT", body: { layout: { version: 1, columns: 4, sections: [] } } });
+assert.equal(result.response.status, 400, "Malformed layouts are rejected by the API.");
 result = await call(env, cookies.carol, ["curseofstrahd", "characters", "hero", "notes"]);
 assert.equal(result.response.status, 200, "Assigned players can read character notes.");
 const screen = { version: 1, widgets: [] };
@@ -191,6 +207,13 @@ result = await call(env, cookies.alice, ["other", "characters", "hero"], { metho
 assert.equal(result.response.status, 200);
 assert.equal(database.prepare("SELECT COUNT(*) AS count FROM campaign_characters WHERE id = 'hero'").get().count, 2);
 
+result = await call(env, cookies.alice, ["curseofstrahd", "characters", "hero", "id"], { method: "PUT", body: { id: "champion" } });
+assert.equal(result.response.status, 200);
+assert.equal(database.prepare("SELECT COUNT(*) AS count FROM campaign_user_character_layouts WHERE campaign_id = ? AND character_id = 'champion'").get(curseCampaignId).count, 2, "Character rename preserves personal layouts.");
+result = await call(env, cookies.alice, ["curseofstrahd", "characters", "champion"], { method: "DELETE" });
+assert.equal(result.response.status, 200);
+assert.equal(database.prepare("SELECT COUNT(*) AS count FROM campaign_user_character_layouts WHERE campaign_id = ?").get(curseCampaignId).count, 0, "Deleting a character clears personal layouts.");
+
 result = await call(env, cookies.alice, ["curseofstrahd", "members", "bob"], { method: "PATCH", body: { role: "dm" } });
 assert.equal(result.response.status, 200);
 result = await call(env, cookies.alice, ["curseofstrahd", "members", "alice"], { method: "PATCH", body: { role: "player" } });
@@ -225,6 +248,11 @@ assert.equal(result.response.headers.get("location"), "https://example.test/c/ao
 result.response = await handleRequest(new Request("https://example.test/wiki/home", { headers: { cookie: cookies.alice } }), env);
 assert.equal(result.response.status, 302);
 assert.equal(result.response.headers.get("location"), "https://example.test/c/aotr/wiki/home");
+result.response = await handleRequest(new Request("https://example.test/wiki/home", {
+  headers: { cookie: `${cookies.alice}; cassianslog_campaign=alice%3Aravenloft` },
+}), env);
+assert.equal(result.response.status, 302);
+assert.equal(result.response.headers.get("location"), "https://example.test/c/ravenloft/wiki/home", "Legacy links should reopen the user's last selected campaign.");
 result.response = await handleRequest(new Request("https://example.test/compendium/", { headers: { cookie: cookies.alice } }), env);
 assert.equal(result.response.status, 200);
 assert.equal(assetPath, "/compendium/", "The global Compendium remains unscoped.");
