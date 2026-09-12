@@ -29,6 +29,7 @@ const accountRoleLabels = {
 };
 const sectionLabels = {
   characters: "Characters navigation",
+  npcs: "NPCs navigation",
   "player-screen": "Player Screen navigation",
   "dm-screen": "DM Screen navigation",
   "combat-loot": "Combat & Loot navigation",

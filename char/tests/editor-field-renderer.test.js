@@ -20,4 +20,15 @@ const inventoryItem = renderer.renderNode({ name: "Ring", quantity: 1, descripti
 assert.match(inventoryItem, /data-path="inventory\.0\.attunement"[\s\S]*type="checkbox"/);
 assert.match(inventoryItem, /data-path="inventory\.0\.wearable"[\s\S]*type="checkbox"/);
 
+const npcRenderer = createCharacterFieldRenderer({
+  classes: { button: "button", field: "field" },
+  expandedItems,
+  getDraft: () => draft,
+  getVisibility: () => ({ name: true }),
+  showVisibilityControls: true,
+});
+assert.match(npcRenderer.renderPrimitive("Known Face", ["name"], "name"), /data-npc-field-visibility="name"[\s\S]*Shown/);
+assert.match(npcRenderer.renderPrimitive(12, ["stats", "dex", "score"], "score"), /data-npc-field-visibility="stats\.dex\.score"[\s\S]*Hidden/);
+assert.match(npcRenderer.renderPrimitive(true, ["spellcasting", "enabled"], "enabled"), /data-npc-field-visibility="spellcasting\.enabled"/);
+
 console.log("Character editor field-renderer tests passed.");

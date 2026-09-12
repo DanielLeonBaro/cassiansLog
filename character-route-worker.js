@@ -1,6 +1,6 @@
 // Provides localhost service-worker fallback for canonical character and campaign routes.
 const CHARACTER_ROUTE = /^\/char\/[a-z0-9][a-z0-9-]{0,127}\/?$/i;
-const CAMPAIGN_ROUTE = /^\/c\/[a-z]{2,48}\/(char|wiki|music|combat-loot|public-initiative|player-screen|dm-screen|compendium|manage)(?:\/.*)?$/i;
+const CAMPAIGN_ROUTE = /^\/c\/[a-z]{2,48}\/(char|npc|wiki|music|combat-loot|public-initiative|player-screen|dm-screen|compendium|manage)(?:\/.*)?$/i;
 
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
@@ -22,8 +22,10 @@ self.addEventListener("fetch", (event) => {
     const feature = campaign?.[1]?.toLowerCase();
     const shell = feature === "char"
       ? (url.pathname.split("/").filter(Boolean).length > 3 ? "/char/template/" : "/char/")
-      : feature === "manage" ? "/campaigns/manage.html"
-        : feature ? `/${feature}/` : "/char/template/";
+      : feature === "npc"
+        ? (url.pathname.split("/").filter(Boolean).length > 3 ? "/npc/template/" : "/npc/")
+        : feature === "manage" ? "/campaigns/manage.html"
+          : feature ? `/${feature}/` : "/char/template/";
     const templateURL = new URL(shell, url);
     templateURL.search = url.search;
     return fetch(templateURL.toString());

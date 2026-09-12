@@ -23,6 +23,7 @@ const LEGACY_CAMPAIGN_DATA_PATTERN = /^\/(?:wiki\/data\/pages\.json|char\/(?:cat
 const PAGE_ROLES = [
   [/^\/admin(?:\/|$)/, "admin"],
   [/^\/char(?:\/|$)/, "characters"],
+  [/^\/npc(?:\/|$)/, "characters"],
   [/^\/player-screen(?:\/|$)/, "player-screen"],
   [/^\/dm-screen(?:\/|$)/, "dm-screen"],
   [/^\/wiki(?:\/|$)/, "wiki"],
@@ -145,12 +146,15 @@ async function staticAsset(request, env, url) {
         "dm-screen": "/dm-screen/",
         manage: "/campaigns/manage",
         music: "/music/",
+        npc: "/npc/",
         "player-screen": "/player-screen/",
         "public-initiative": "/public-initiative/",
         wiki: "/wiki/",
       };
       const shell = feature === "char"
         ? (segments.length > 1 ? "/char/template/" : "/char/")
+        : feature === "npc"
+          ? (segments.length > 1 ? "/npc/template/" : "/npc/")
         : shells[feature];
       if (!shell) return error("Campaign page not found.", 404);
       const shellURL = new URL(shell, url);

@@ -16,6 +16,7 @@ const publicEntries = [
   "integrations",
   "login",
   "music",
+  "npc",
   "public-initiative",
   "player-screen",
   "screens",

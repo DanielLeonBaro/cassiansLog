@@ -4,6 +4,11 @@ import { readCloudJSON, writeCloudJSON } from "../../../shared/js/cloud-store.js
 import { normalizeDeathSaves, resetDeathSaves } from "./death-saves.js";
 import { characterStateStorageKey } from "../storage-keys.js";
 
+function runtimeApiPath(characterId, tail) {
+  const resource = globalThis.document?.body?.dataset.trackerKind === "npc" ? "npcs" : "characters";
+  return `api/${resource}/${encodeURIComponent(characterId)}/${tail}`;
+}
+
 export function normalizeCharacterFlag(value) {
   return value === true || Number(value) === 1 ? 1 : 0;
 }
@@ -127,14 +132,14 @@ export function createTrackerState({
     save() {
       const state = snapshot();
       writeJSON(storageKey, state);
-      writeCloudJSON(`api/characters/${encodeURIComponent(character.id)}/state`, { value: state })
+      writeCloudJSON(runtimeApiPath(character.id, "state"), { value: state })
         .catch((error) => console.error("Could not save tracker state to D1:", error));
     },
     load() {
       apply(readJSON(storageKey, null));
     },
     async loadCloud() {
-      const result = await readCloudJSON(`api/characters/${encodeURIComponent(character.id)}/state`, { fallback: null });
+      const result = await readCloudJSON(runtimeApiPath(character.id, "state"), { fallback: null });
       if (result?.value) {
         apply(result.value);
         writeJSON(storageKey, result.value);

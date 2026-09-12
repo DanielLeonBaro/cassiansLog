@@ -6,6 +6,7 @@ const suites = [
   ["Shared Markdown toolbar editing", "shared/tests/markdown-toolbar.test.js"],
   ["Local runtime host detection", "shared/tests/runtime-host.test.js"],
   ["Campaign URL and browser-cache isolation", "shared/tests/campaign-context.test.js"],
+  ["NPC field visibility projection", "shared/tests/npc-visibility.test.js"],
   ["Theme catalog, normalization, and contrast", "shared/tests/theme.test.js"],
   ["Character storage keys", "char/tests/storage-keys.test.js"],
   ["Character rendering helpers", "char/tests/rendering.test.js"],

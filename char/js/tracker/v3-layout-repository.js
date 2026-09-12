@@ -3,11 +3,13 @@ import { campaignApiPath, campaignStorageKey } from "../../../shared/js/campaign
 import { isLocalRuntimeHost } from "../../../shared/js/runtime-host.js";
 import { cloneJSON } from "../../../shared/js/text.js";
 import { DEFAULT_V3_LAYOUT, normalizeV3Layout } from "../../../shared/js/v3-layout.js";
+import { isNpcTracker, trackerApiPath } from "../entity-context.js";
 
 const STORAGE_PREFIX = "cassianslog-character-layout-v3";
 
 export function v3LayoutStorageKey(userId, characterId, storage = globalThis.localStorage) {
-  return campaignStorageKey(`${STORAGE_PREFIX}:${encodeURIComponent(userId)}:${encodeURIComponent(characterId)}`, storage);
+  const prefix = isNpcTracker() ? `${STORAGE_PREFIX}:npc` : STORAGE_PREFIX;
+  return campaignStorageKey(`${prefix}:${encodeURIComponent(userId)}:${encodeURIComponent(characterId)}`, storage);
 }
 
 function readSnapshot(userId, characterId, storage = globalThis.localStorage) {
@@ -33,7 +35,7 @@ function cacheSnapshot(userId, characterId, snapshot, storage = globalThis.local
 }
 
 async function requestLayout(characterId, options = {}) {
-  const response = await fetch(campaignApiPath(`api/characters/${encodeURIComponent(characterId)}/layout`), {
+  const response = await fetch(campaignApiPath(trackerApiPath(characterId, "layout")), {
     ...options,
     headers: {
       accept: "application/json",

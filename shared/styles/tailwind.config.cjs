@@ -12,6 +12,7 @@ module.exports = {
     "./compendium/**/*.{html,js}",
     "./dm-screen/**/*.{html,js}",
     "./music/**/*.{html,js}",
+    "./npc/**/*.{html,js}",
     "./public-initiative/**/*.{html,js}",
     "./player-screen/**/*.{html,js}",
     "./screens/**/*.{html,js}",

@@ -23,6 +23,7 @@ const menuItemClass = "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 tex
 const pages = [
   { id: "campaigns", href: "campaigns", icon: "bi-collection-fill", label: "Campaigns" },
   { id: "characters", href: "char/", icon: "bi-people-fill", label: "Characters" },
+  { id: "npcs", href: "npc/", icon: "bi-person-badge-fill", label: "NPCs" },
   { id: "player-screen", href: "player-screen/", icon: "bi-grid-fill", label: "Player Screen" },
   { id: "dm-screen", href: "dm-screen/", icon: "bi-shield-shaded", label: "DM Screen" },
   { id: "wiki", href: "wiki/", icon: "bi-book-half", label: "Wiki" },
@@ -34,7 +35,7 @@ const pages = [
   { id: "campaign-manage", href: "manage", icon: "bi-gear-fill", label: "Manage Campaign" },
 ];
 
-const trackerPageOrder = ["characters", "player-screen", "dm-screen", "compendium", "wiki", "combat-loot", "public-initiative", "music", "admin"];
+const trackerPageOrder = ["characters", "npcs", "player-screen", "dm-screen", "compendium", "wiki", "combat-loot", "public-initiative", "music", "admin"];
 
 function pageMenuLink(page) {
   const href = ["campaigns", "admin"].includes(page.id) ? `/${page.href.replace(/^\/+/, "")}` : campaignPagePath(page.href);
@@ -201,8 +202,10 @@ export function mountSiteHeader({ activePage, actions = "", tracker = false } = 
       const allowed = selectedCampaign
         ? id === "admin" ? user.isPrimaryAdmin
           : id === "campaign-manage" ? ["dm", "admin"].includes(campaignRole)
+          : id === "npcs" ? true
             : id !== "dm-screen" || ["dm", "admin"].includes(campaignRole)
         : id === "campaign-manage" ? false
+          : id === "npcs" ? false
           : id === "admin" ? user.isPrimaryAdmin
             : id === "campaigns" || user.roles.includes(id);
       link.hidden = !allowed;

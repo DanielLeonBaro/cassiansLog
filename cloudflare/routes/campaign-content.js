@@ -135,13 +135,24 @@ function normalizeCampaignSettings(body) {
   if (!body?.sections || typeof body.sections !== "object" || Array.isArray(body.sections)) return null;
   if (!CHARACTER_SHEET_STYLES.has(body.characterSheetStyle)) return null;
   if (!body.characterSheetStyleOverrides || typeof body.characterSheetStyleOverrides !== "object" || Array.isArray(body.characterSheetStyleOverrides)) return null;
+  const npcSheetStyleOverrides = body.npcSheetStyleOverrides ?? {};
+  if (!npcSheetStyleOverrides || typeof npcSheetStyleOverrides !== "object" || Array.isArray(npcSheetStyleOverrides)) return null;
   const sections = {};
   for (const key of Object.keys(defaults.sections)) {
-    if (typeof body.sections[key] !== "boolean") return null;
-    sections[key] = body.sections[key];
+    if (key === "npcs" && body.sections[key] === undefined) sections[key] = defaults.sections[key];
+    else {
+      if (typeof body.sections[key] !== "boolean") return null;
+      sections[key] = body.sections[key];
+    }
   }
   if (!Object.entries(body.characterSheetStyleOverrides).every(([id, style]) => safeId(id) && CHARACTER_SHEET_STYLES.has(style))) return null;
-  return { sections, characterSheetStyle: body.characterSheetStyle, characterSheetStyleOverrides: { ...body.characterSheetStyleOverrides } };
+  if (!Object.entries(npcSheetStyleOverrides).every(([id, style]) => safeId(id) && CHARACTER_SHEET_STYLES.has(style))) return null;
+  return {
+    sections,
+    characterSheetStyle: body.characterSheetStyle,
+    characterSheetStyleOverrides: { ...body.characterSheetStyleOverrides },
+    npcSheetStyleOverrides: { ...npcSheetStyleOverrides },
+  };
 }
 
 async function settingsRoute(request, env, access) {

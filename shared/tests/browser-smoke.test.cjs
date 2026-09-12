@@ -565,6 +565,49 @@ async function main() {
     assert.deepEqual(characterNoteFormatting, { value: "****", start: 2, end: 2 }, "Character Notes Bold should place the cursor inside the markers.");
 
     await execute(`
+      const template = JSON.parse(JSON.stringify(window.character));
+      const shown = { ...template, id: "known-npc", name: "Known NPC", ac: 19, background: "Player-hidden secret" };
+      const hidden = { ...template, id: "hidden-npc", name: "Hidden NPC" };
+      localStorage.setItem("dnd-npcs:campaign:aotr", JSON.stringify({
+        "known-npc": { document: shown, visibility: { name: true }, playerVisible: true },
+        "hidden-npc": { document: hidden, visibility: { name: true }, playerVisible: false },
+      }));
+      localStorage.setItem("cassianslog-local-user-v1", "localhost-admin");
+      return true;
+    `);
+    await smoke(
+      "NPC archive manager controls",
+      "/c/aotr/npc/",
+      'return document.querySelectorAll("#npcs article").length === 2;',
+      'return !document.getElementById("add-npc").classList.contains("hidden") && document.body.textContent.includes("Shown to players") && document.body.textContent.includes("Hidden from players");',
+    );
+    await smoke(
+      "NPC tracker field controls",
+      "/c/aotr/npc/known-npc/",
+      'return window.character?.id === "known-npc" && Boolean(document.getElementById("edit-character-toggle"));',
+      `
+        document.getElementById("edit-character-toggle").click();
+        return document.querySelector('[data-npc-field-visibility="name"]')?.textContent.includes("Shown")
+          && document.querySelector('[data-npc-field-visibility="ac"]')?.textContent.includes("Hidden")
+          && Boolean(document.querySelector("[data-npc-player-visible]:checked"));
+      `,
+    );
+    await execute('document.getElementById("editor-cancel").click(); localStorage.setItem("cassianslog-local-user-v1", "localhost-player-01"); return true;');
+    await smoke(
+      "NPC player privacy",
+      "/c/aotr/npc/",
+      'return document.querySelectorAll("#npcs article").length === 1;',
+      'return document.body.textContent.includes("Known NPC") && !document.body.textContent.includes("Hidden NPC") && document.getElementById("add-npc").classList.contains("hidden");',
+    );
+    await smoke(
+      "NPC player field redaction",
+      "/c/aotr/npc/known-npc/",
+      'return window.character?.id === "known-npc" && document.body.dataset.characterCanEdit === "false";',
+      'return document.getElementById("character-name").textContent.trim() === "Known NPC" && !document.body.textContent.includes("Player-hidden secret") && !document.getElementById("edit-character-toggle");',
+    );
+    await execute('localStorage.setItem("cassianslog-local-user-v1", "localhost-admin"); return true;');
+
+    await execute(`
       localStorage.setItem("cassianslog-runtime-settings", JSON.stringify({ characterSheetStyle: "v3", characterSheetStyleOverrides: { cassian: "v3" }, sections: {}, openWrites: true }));
       const sections = [
         ["character-overview", 2], ["quick-stats", 1], ["skills-and-saves", 3],

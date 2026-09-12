@@ -19,6 +19,11 @@ export function normalizeCharacterSheetStyleOverrides(value) {
   )));
 }
 
+export function resolveNpcSheetStyle(settings = {}, npcId = "") {
+  const overrides = normalizeCharacterSheetStyleOverrides(settings.npcSheetStyleOverrides);
+  return overrides[npcId] || normalizeCharacterSheetStyle(settings.characterSheetStyle);
+}
+
 export function resolveCharacterSheetStyle(settings = {}, characterId = "") {
   const overrides = normalizeCharacterSheetStyleOverrides(settings.characterSheetStyleOverrides);
   const override = Object.prototype.hasOwnProperty.call(overrides, characterId)
@@ -41,6 +46,7 @@ export function normalizeRuntimeSettings(config) {
     characterSheetStyleOverrides: normalizeCharacterSheetStyleOverrides(
       config?.characterSheetStyleOverrides,
     ),
+    npcSheetStyleOverrides: normalizeCharacterSheetStyleOverrides(config?.npcSheetStyleOverrides),
     openWrites,
     writeProtectionEnabled: !openWrites,
     updatedAt: config?.updatedAt || null,
@@ -67,6 +73,7 @@ export function persistLocalRuntimeSettings(config, storage = globalThis.localSt
     sections: settings.sections,
     characterSheetStyle: settings.characterSheetStyle,
     characterSheetStyleOverrides: settings.characterSheetStyleOverrides,
+    npcSheetStyleOverrides: settings.npcSheetStyleOverrides,
     openWrites: settings.openWrites,
     updatedAt: settings.updatedAt,
   }));
@@ -110,7 +117,7 @@ export const runtimeSettingsReady = isLocalRuntimeHost()
   ? localRuntimeSettings()
   : remoteRuntimeSettings();
 
-export async function saveCharacterSheetStyleOverride(characterId, style) {
+export async function saveCharacterSheetStyleOverride(characterId, style, { kind = globalThis.document?.body?.dataset.trackerKind } = {}) {
   if (!/^[a-z0-9][a-z0-9-]{0,127}$/i.test(characterId || "")) {
     throw new TypeError("Character ID is invalid.");
   }
@@ -118,7 +125,8 @@ export async function saveCharacterSheetStyleOverride(characterId, style) {
     throw new TypeError("Character sheet style must be v1, v2, or v3.");
   }
   if (!isLocalRuntimeHost()) {
-    return writeCloudJSON(`api/characters/${encodeURIComponent(characterId)}/style`, { style });
+    const resource = kind === "npc" ? "npcs" : "characters";
+    return writeCloudJSON(`api/${resource}/${encodeURIComponent(characterId)}/style`, { style });
   }
   const settings = await runtimeSettingsReady;
   const latest = localSettings() || {};
@@ -126,11 +134,19 @@ export async function saveCharacterSheetStyleOverride(characterId, style) {
     ...settings,
     ...latest,
     sections: { ...settings.sections, ...(latest.sections || {}) },
-    characterSheetStyleOverrides: {
-      ...settings.characterSheetStyleOverrides,
-      ...(latest.characterSheetStyleOverrides || {}),
-      [characterId]: style,
-    },
+    ...(kind === "npc" ? {
+      npcSheetStyleOverrides: {
+        ...settings.npcSheetStyleOverrides,
+        ...(latest.npcSheetStyleOverrides || {}),
+        [characterId]: style,
+      },
+    } : {
+      characterSheetStyleOverrides: {
+        ...settings.characterSheetStyleOverrides,
+        ...(latest.characterSheetStyleOverrides || {}),
+        [characterId]: style,
+      },
+    }),
   });
   return { ok: true, style, updatedAt: saved.updatedAt };
 }

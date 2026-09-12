@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<!-- Campaign NPC archive with DM controls and player-safe visible entries. -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <base href="/">
+  <meta name="description" content="Choose an NPC and open their tracker.">
+  <title>NPCs | Cassian's Log</title>
+  <script src="shared/js/theme-bootstrap.js"></script>
+  <link rel="stylesheet" href="shared/assets/icons/bootstrap-icons.css">
+  <link rel="stylesheet" href="shared/assets/tailwind.css">
+  <link rel="icon" href="shared/assets/bat.ico">
+</head>
+<body class="flex min-h-screen flex-col bg-parchment font-sans text-stone-900 antialiased transition-colors dark:bg-ink dark:text-stone-100">
+  <nav data-site-header></nav>
+  <main class="relative mx-auto w-full max-w-7xl grow px-4 py-8 sm:px-6 lg:px-8">
+    <header class="mx-auto mb-10 max-w-2xl text-center">
+      <span class="mb-4 inline-flex items-center rounded-full bg-blood-500 px-3 py-1 text-xs font-bold text-white"><i class="bi bi-person-badge-fill mr-1"></i> NPC archive</span>
+      <h1 class="font-display text-4xl font-bold sm:text-5xl">NPC Tracker</h1>
+      <p id="npc-archive-description" class="mt-4 text-lg leading-relaxed text-stone-500 dark:text-stone-400">Players see only NPCs and fields revealed by a campaign DM.</p>
+      <button id="add-npc" type="button" class="mt-6 hidden items-center justify-center gap-2 rounded-xl border border-blood-500 bg-blood-500 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blood-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"><i class="bi bi-person-plus-fill"></i> Create NPC</button>
+    </header>
+    <section aria-labelledby="npcs-heading">
+      <h2 id="npcs-heading" class="sr-only">Available NPCs</h2>
+      <div id="npcs" class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3" aria-live="polite">
+        <div class="py-12 text-center md:col-span-2 xl:col-span-3"><div class="inline-block h-9 w-9 animate-spin rounded-full border-4 border-blood-500 border-r-transparent" role="status"><span class="sr-only">Loading NPCs...</span></div></div>
+      </div>
+    </section>
+  </main>
+  <footer class="relative mx-auto w-full max-w-7xl px-4 py-4 text-center text-sm text-stone-500 dark:text-stone-400 sm:px-6 lg:px-8">Campaign NPCs.</footer>
+
+  <div id="npc-dialog" class="fixed inset-0 z-50 hidden items-center justify-center bg-ink/80 p-3 backdrop-blur-sm sm:p-6" role="dialog" aria-modal="true" aria-labelledby="npc-dialog-title">
+    <form id="npc-form" class="max-h-full w-full max-w-2xl overflow-y-auto rounded-2xl border border-stone-300 bg-parchment p-5 shadow-2xl dark:border-white/15 dark:bg-ink sm:p-6">
+      <div class="mb-6 flex items-start justify-between gap-3">
+        <div><p class="text-xs font-bold uppercase tracking-[0.18em] text-blood-500">Quick setup</p><h2 id="npc-dialog-title" class="mt-1 font-display text-2xl font-bold">Create an NPC</h2><p class="mt-1 text-sm text-stone-500 dark:text-stone-400">New NPCs start hidden from players. Reveal fields in the full editor.</p></div>
+        <button id="close-npc-dialog" type="button" class="rounded-xl p-2 hover:bg-stone-200 dark:hover:bg-white/10" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="grid gap-6 sm:grid-cols-[9rem_1fr]">
+        <div><span class="mb-2 block text-sm font-bold">Portrait</span><button id="new-npc-portrait-button" type="button" class="group relative block w-full overflow-hidden rounded-2xl border border-stone-300 bg-white/60 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/15 dark:bg-white/5" aria-label="Choose NPC portrait"><img id="new-npc-portrait" src="shared/assets/bat.ico" alt="NPC portrait preview" class="aspect-square w-full object-cover"><span class="absolute inset-x-0 bottom-0 bg-black/70 px-2 py-2 text-xs font-bold text-white"><i class="bi bi-camera-fill mr-1"></i> Choose image</span></button><input id="new-npc-portrait-input" type="file" accept="image/*" class="sr-only"></div>
+        <div class="grid content-start gap-4 sm:grid-cols-2">
+          <label class="sm:col-span-2"><span class="mb-1 block text-sm font-bold">NPC name <span class="text-blood-500">*</span></span><input id="new-npc-name" required maxlength="80" autocomplete="off" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="New NPC"></label>
+          <label><span class="mb-1 block text-sm font-bold">Status</span><input id="new-npc-status" value="Active" maxlength="32" autocomplete="off" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 dark:border-white/15 dark:bg-white/5 dark:text-white"></label>
+          <label><span class="mb-1 block text-sm font-bold">Class or role</span><input id="new-npc-class" autocomplete="off" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="Guard, mage, merchant..."></label>
+          <label><span class="mb-1 block text-sm font-bold">Race or lineage</span><input id="new-npc-race" autocomplete="off" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 dark:border-white/15 dark:bg-white/5 dark:text-white"></label>
+          <label class="sm:max-w-40"><span class="mb-1 block text-sm font-bold">Level</span><input id="new-npc-level" type="number" value="1" step="1" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 dark:border-white/15 dark:bg-white/5 dark:text-white"></label>
+        </div>
+      </div>
+      <fieldset class="mt-6"><legend class="text-sm font-bold">Starting content</legend><div class="mt-2 grid gap-3 sm:grid-cols-2"><label class="flex cursor-pointer gap-3 rounded-xl border border-stone-300 bg-white/60 p-4 has-[:checked]:border-blood-500 dark:border-white/15 dark:bg-white/5"><input type="radio" name="starterMode" value="blank" checked class="mt-1 h-4 w-4 accent-red-700"><span><strong class="block">Clean sheet</strong><span class="mt-1 block text-sm text-stone-500">Core stats and empty lists.</span></span></label><label class="flex cursor-pointer gap-3 rounded-xl border border-stone-300 bg-white/60 p-4 has-[:checked]:border-blood-500 dark:border-white/15 dark:bg-white/5"><input type="radio" name="starterMode" value="starter" class="mt-1 h-4 w-4 accent-red-700"><span><strong class="block">Starter examples</strong><span class="mt-1 block text-sm text-stone-500">Editable sample abilities and gear.</span></span></label></div></fieldset>
+      <p id="npc-form-status" class="mt-5 min-h-5 text-sm text-stone-500 dark:text-stone-400" role="status" aria-live="polite"></p>
+      <div class="mt-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button id="cancel-npc-dialog" type="button" class="rounded-xl border border-stone-400 px-4 py-2 text-sm font-bold">Cancel</button><button id="create-npc-submit" type="submit" class="inline-flex items-center justify-center gap-2 rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-white hover:bg-blood-600 disabled:cursor-wait disabled:opacity-70"><i class="bi bi-arrow-right"></i> Create &amp; continue</button></div>
+    </form>
+  </div>
+  <script type="module" src="npc/js/archive.js"></script>
+</body>
+</html>

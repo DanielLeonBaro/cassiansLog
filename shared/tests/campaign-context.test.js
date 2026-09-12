@@ -66,6 +66,7 @@ assert.equal(selectRememberedCampaign(joinedCampaigns, {
   cookieDocument,
 }).slug, "aotr", "A user without history should receive the first joined campaign.");
 assert.equal(campaignRouteForUnscopedPath("sita", "/char/cassian/"), "/c/sita/char/cassian/");
+assert.equal(campaignRouteForUnscopedPath("sita", "/npc/known-npc/"), "/c/sita/npc/known-npc/");
 assert.equal(campaignRouteForUnscopedPath("sita", "/wiki/fiora"), "/c/sita/wiki/fiora");
 assert.equal(campaignRouteForUnscopedPath("sita", "/campaigns/manage"), "/c/sita/manage/");
 assert.equal(campaignRouteForUnscopedPath("sita", "/compendium/"), "", "Shared Compendium may stay on its global route.");

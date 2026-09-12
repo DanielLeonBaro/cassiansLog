@@ -2,11 +2,19 @@
 export const CHARACTERS_STORAGE_KEY = "dnd-characters";
 export const DELETED_CHARACTERS_STORAGE_KEY = "dnd-deleted-characters";
 export const PENDING_CHARACTER_STORAGE_KEY = "dnd-new-character";
+export const NPCS_STORAGE_KEY = "dnd-npcs";
+export const PENDING_NPC_STORAGE_KEY = "dnd-new-npc";
+
+export function entityDocumentsStorageKey(kind = globalThis.document?.body?.dataset.trackerKind) {
+  return kind === "npc" ? NPCS_STORAGE_KEY : CHARACTERS_STORAGE_KEY;
+}
 
 export function characterStateStorageKey(characterId) {
+  if (globalThis.document?.body?.dataset.trackerKind === "npc") return `dnd-npc-${characterId || "character"}-state`;
   return `dnd-${characterId || "character"}-state`;
 }
 
 export function characterNotesStorageKey(characterId) {
+  if (globalThis.document?.body?.dataset.trackerKind === "npc") return `dnd-npc-${characterId || "character"}-notes`;
   return `dnd-${characterId || "character"}-notes`;
 }

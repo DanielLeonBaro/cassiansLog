@@ -13,6 +13,7 @@ import {
 import { bodyJSON, error, json } from "../http.js";
 import { hashPassword, userFromRequest, verifyPassword } from "../user-auth.js";
 import { campaignCharacterRoute, listCampaignCharacters } from "./campaign-characters.js";
+import { campaignNpcRoute, listCampaignNpcs } from "./campaign-npcs.js";
 import { campaignContentRoute } from "./campaign-content.js";
 import { campaignScreenRoute } from "./campaign-screens.js";
 import { normalizeEntityStatus } from "../../shared/js/status.js";
@@ -222,12 +223,20 @@ export async function campaignRoute(request, env, parts) {
         ? (request.method === "GET" ? listCampaignCharacters(env, access) : error("Method not allowed.", 405))
         : campaignCharacterRoute(request, env, parts.slice(2), access);
     }
+    if (parts[1] === "npcs") {
+      return parts.length === 2
+        ? (request.method === "GET" ? listCampaignNpcs(env, access) : error("Method not allowed.", 405))
+        : campaignNpcRoute(request, env, parts.slice(2), access);
+    }
     if (parts[1] === "screens") return campaignScreenRoute(request, env, parts.slice(2), access);
     if (["wiki", "music", "combat-loot", "public-initiative", "settings"].includes(parts[1])) {
       return campaignContentRoute(request, env, parts[1], parts.slice(2), access);
     }
     return error("Campaign route not found.", 404);
   } catch (caught) {
+    if (/campaign_npcs|campaign_npc_runtime|campaign_user_npc_layouts/i.test(String(caught?.message || caught))) {
+      return error("NPC storage is unavailable. Apply migration 0016.", 503);
+    }
     if (/no such table|has no column/i.test(String(caught?.message || caught))) {
       return error("Campaign storage is unavailable. Apply migration 0012.", 503);
     }

@@ -8,9 +8,11 @@ import {
 } from "../../../shared/js/settings.js";
 import { escapeAttribute, escapeHTML } from "../../../shared/js/text.js";
 import {
-  CHARACTERS_STORAGE_KEY,
   characterStateStorageKey,
+  entityDocumentsStorageKey,
 } from "../storage-keys.js";
+import { isNpcTracker, trackerApiPath, trackerEntityLabel } from "../entity-context.js";
+import { normalizeNpcVisibility } from "../../../shared/js/npc-visibility.js";
 import { subscribeCharacterEditorExtensions } from "./extensions.js";
 import {
   V1_SECTION_DEFINITIONS,
@@ -48,11 +50,17 @@ import { currentV3CharacterSheetLayout, updateV3CharacterSheetLayout } from "../
 
 export function initializeCharacterEditor({ character, normalizeSpellcastingData, refreshUI }) {
   const params = new URLSearchParams(location.search);
+  const npcMode = isNpcTracker();
+  const entityLabel = trackerEntityLabel();
   const mountedExtensions = new Map();
   const expandedItems = new Map();
   let editing = false;
   let draft = null;
   let baseline = null;
+  let baselineVisibility = {};
+  let draftVisibility = {};
+  let baselinePlayerVisible = false;
+  let draftPlayerVisible = false;
   let baselineStyle = "v1";
   let draftStyle = "v1";
   let draggedV1Section = null;
@@ -68,10 +76,12 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     field: "w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/15 dark:bg-white/5 dark:text-white",
     panel: "rounded-2xl border border-stone-300/80 bg-white/70 p-4 dark:border-white/10 dark:bg-white/[.04]",
   };
-  const { renderNode, renderPrimitive } = createCharacterFieldRenderer({
+  const { renderNode, renderPrimitive, renderVisibilityControl } = createCharacterFieldRenderer({
     classes,
     expandedItems,
     getDraft: () => draft,
+    getVisibility: () => draftVisibility,
+    showVisibilityControls: npcMode,
   });
 
   function renderFields(keys) {
@@ -80,7 +90,8 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
 
   function renderBasics() {
     return `<div class="space-y-6">
-      <div class="${classes.panel}"><div class="flex flex-col gap-4 sm:flex-row sm:items-center"><button type="button" data-editor-portrait class="group relative h-28 w-28 shrink-0 overflow-hidden rounded-2xl border border-stone-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/15"><img data-editor-portrait-preview src="${escapeAttribute(draft.portrait || "shared/assets/bat.ico")}" alt="Character portrait preview" class="h-full w-full object-cover"><span class="absolute inset-x-0 bottom-0 bg-black/70 px-2 py-1.5 text-xs font-bold text-white"><i class="bi bi-camera-fill mr-1"></i> Change</span></button><div><h3 class="font-display text-lg font-bold">Character portrait</h3><p class="mt-1 text-sm text-stone-500 dark:text-stone-400">Choose an image from this device. It is saved with the character.</p></div></div></div>
+      ${npcMode ? `<label class="${classes.panel} flex items-center justify-between gap-4"><span><strong class="block">Show NPC in player archive</strong><span class="mt-1 block text-sm text-stone-500 dark:text-stone-400">Turning this off hides the NPC from players without removing it for Admins or DMs.</span></span><input type="checkbox" data-npc-player-visible class="h-6 w-6 shrink-0 accent-red-700" ${draftPlayerVisible ? "checked" : ""}></label>` : ""}
+      <div class="${classes.panel}"><div class="flex flex-col gap-4 sm:flex-row sm:items-center"><button type="button" data-editor-portrait class="group relative h-28 w-28 shrink-0 overflow-hidden rounded-2xl border border-stone-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/15"><img data-editor-portrait-preview src="${escapeAttribute(draft.portrait || "shared/assets/bat.ico")}" alt="${entityLabel} portrait preview" class="h-full w-full object-cover"><span class="absolute inset-x-0 bottom-0 bg-black/70 px-2 py-1.5 text-xs font-bold text-white"><i class="bi bi-camera-fill mr-1"></i> Change</span></button><div class="grow"><div class="flex items-center justify-between gap-3"><h3 class="font-display text-lg font-bold">${entityLabel} portrait</h3>${renderVisibilityControl(["portrait"], `${entityLabel} portrait`)}</div><p class="mt-1 text-sm text-stone-500 dark:text-stone-400">Choose an image from this device. It is saved with the ${entityLabel.toLowerCase()}.</p></div></div></div>
       ${renderFields(["name", "status", "class", "subclass", "race", "level", "experience", "background", "alignment", "gender"])}
     </div>`;
   }
@@ -271,8 +282,11 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
         : document.getElementById("editor-mobile-section"),
       returnFocus: () => returnFocusTarget || toggle,
       beforeClose() {
-        if (!draftsDiffer(baseline, draft) && baselineStyle === draftStyle && !draftsDiffer(baselineV3Layout, draftV3Layout)) return true;
-        return confirm("Discard your unsaved character changes?");
+        if (!draftsDiffer(baseline, draft) && baselineStyle === draftStyle && !draftsDiffer(baselineV3Layout, draftV3Layout)
+          && !draftsDiffer(baselineVisibility, draftVisibility) && baselinePlayerVisible === draftPlayerVisible) return true;
+        return confirm(npcMode
+          ? "Discard your unsaved NPC changes?"
+          : "Discard your unsaved character changes?");
       },
       onClose() {
         editing = false;
@@ -299,6 +313,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     document.getElementById("editor-fields").addEventListener("input", updateDraft);
     document.getElementById("editor-fields").addEventListener("click", handleEditorClick);
     document.getElementById("editor-fields").addEventListener("change", (event) => {
+      if (event.target.matches("[data-npc-player-visible]")) draftPlayerVisible = event.target.checked;
       if (event.target.id === "editor-mobile-section") activateSection(event.target.value);
       if (event.target.id === "editor-character-sheet-style") {
         draftStyle = ["v1", "v2", "v3"].includes(event.target.value) ? event.target.value : "v1";
@@ -342,6 +357,10 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     editing = true;
     baseline = clone(window.character);
     draft = clone(window.character);
+    baselineVisibility = normalizeNpcVisibility(window.npcVisibility);
+    draftVisibility = { ...baselineVisibility };
+    baselinePlayerVisible = document.body.dataset.npcPlayerVisible === "true";
+    draftPlayerVisible = baselinePlayerVisible;
     baselineStyle = ["v1", "v2", "v3"].includes(document.documentElement.dataset.characterSheetStyle) ? document.documentElement.dataset.characterSheetStyle : "v1";
     draftStyle = baselineStyle;
     baselineV3Layout = currentV3CharacterSheetLayout();
@@ -349,8 +368,8 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     activeSection = sectionRenderers[section] ? section : "basics";
     returnFocusTarget = trigger || document.activeElement || document.getElementById("edit-character-toggle");
     expandedItems.clear();
-    document.getElementById("editor-title").textContent = params.get("new") === "1" ? "Finish character setup" : "Edit character sheet";
-    document.getElementById("editor-character-name").textContent = draft.name || "Character";
+    document.getElementById("editor-title").textContent = params.get("new") === "1" ? `Finish ${entityLabel} setup` : `Edit ${entityLabel} tracker`;
+    document.getElementById("editor-character-name").textContent = draft.name || entityLabel;
     document.getElementById("editor-validation-status").textContent = "";
     renderEditorFields();
     document.querySelectorAll("[data-editor-portrait-preview]").forEach((image) => {
@@ -377,6 +396,14 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
   }
 
   function handleEditorClick(event) {
+    const visibilityToggle = event.target.closest("[data-npc-field-visibility]");
+    if (visibilityToggle && npcMode) {
+      const path = visibilityToggle.dataset.npcFieldVisibility;
+      if (draftVisibility[path] === true) delete draftVisibility[path];
+      else draftVisibility[path] = true;
+      renderEditorFields();
+      return;
+    }
     const sectionButton = event.target.closest("[data-editor-section-button]");
     if (sectionButton) {
       activateSection(sectionButton.dataset.editorSectionButton);
@@ -430,6 +457,25 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     }
     if (!Array.isArray(items)) return;
 
+    function reindexVisibility(startIndex, delta, removedIndex = null) {
+      if (!npcMode) return;
+      const prefix = `${collectionPath}.`;
+      const next = {};
+      Object.entries(draftVisibility).forEach(([fieldPath, visible]) => {
+        if (!fieldPath.startsWith(prefix)) {
+          next[fieldPath] = visible;
+          return;
+        }
+        const remainder = fieldPath.slice(prefix.length);
+        const [indexText, ...tail] = remainder.split(".");
+        const currentIndex = Number(indexText);
+        if (!Number.isInteger(currentIndex) || currentIndex === removedIndex) return;
+        const mappedIndex = currentIndex >= startIndex ? currentIndex + delta : currentIndex;
+        next[`${prefix}${mappedIndex}${tail.length ? `.${tail.join(".")}` : ""}`] = visible;
+      });
+      draftVisibility = next;
+    }
+
     if (add) {
       items.push(createBlankCollectionItem(path, items, draft));
       expandedItems.set(collectionPath, items.length - 1);
@@ -438,13 +484,20 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
       expandedItems.set(collectionPath, expandedItems.get(collectionPath) === index ? null : index);
     } else if (duplicate) {
       const index = Number(duplicate.dataset.index);
+      const originalPrefix = `${collectionPath}.${index}.`;
+      const copied = Object.entries(draftVisibility).filter(([fieldPath]) => fieldPath.startsWith(originalPrefix));
+      reindexVisibility(index + 1, 1);
       items.splice(index + 1, 0, duplicateCollectionItem(items[index], path.at(-1)));
+      copied.forEach(([fieldPath, visible]) => {
+        draftVisibility[`${collectionPath}.${index + 1}.${fieldPath.slice(originalPrefix.length)}`] = visible;
+      });
       expandedItems.set(collectionPath, index + 1);
     } else if (remove) {
       const index = Number(remove.dataset.index);
       const name = items[index]?.name || `${title(path.at(-1))} ${index + 1}`;
       if (!confirm(`Remove ${name}?`)) return;
       items.splice(index, 1);
+      reindexVisibility(index + 1, -1, index);
       expandedItems.delete(collectionPath);
     }
     renderEditorFields();
@@ -544,14 +597,14 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     if (!String(draft.name || "").trim()) {
       activateSection("basics");
       nameInput?.setAttribute("aria-invalid", "true");
-      document.getElementById("editor-validation-status").textContent = "Character name is required.";
+      document.getElementById("editor-validation-status").textContent = npcMode ? "NPC name is required." : "Character name is required.";
       nameInput?.focus();
       return false;
     }
     if (!normalizeEntityStatus(draft.status)) {
       activateSection("basics");
       statusInput?.setAttribute("aria-invalid", "true");
-      document.getElementById("editor-validation-status").textContent = "Character status cannot exceed 32 characters.";
+      document.getElementById("editor-validation-status").textContent = npcMode ? "NPC status cannot exceed 32 characters." : "Character status cannot exceed 32 characters.";
       statusInput?.focus();
       return false;
     }
@@ -570,10 +623,12 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     window.character = clone(draft);
     Object.keys(character).forEach((key) => delete character[key]);
     Object.assign(character, window.character);
-    const characters = readJSON(CHARACTERS_STORAGE_KEY, {});
+    const characters = readJSON(entityDocumentsStorageKey(), {});
     if (oldId !== character.id) delete characters[oldId];
-    characters[character.id] = clone(character);
-    writeJSON(CHARACTERS_STORAGE_KEY, characters);
+    characters[character.id] = npcMode
+      ? { document: clone(character), visibility: { ...draftVisibility }, playerVisible: draftPlayerVisible }
+      : clone(character);
+    writeJSON(entityDocumentsStorageKey(), characters);
     removeStored(characterStateStorageKey(oldId));
     baseline = clone(draft);
     if (document.documentElement.dataset.characterSheetStyle === "v3" && layoutChanged) {
@@ -585,14 +640,16 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     try {
       const bundledId = document.body.dataset.characterShell;
       if (oldId !== character.id) {
-        await writeCloudJSON(`api/characters/${encodeURIComponent(oldId)}/id`, { id: character.id });
+        await writeCloudJSON(trackerApiPath(oldId, "id"), { id: character.id });
       }
-      await writeCloudJSON(`api/characters/${encodeURIComponent(character.id)}`, {
+      await writeCloudJSON(trackerApiPath(character.id), {
         document: clone(character),
-        source: bundledId && bundledId !== "template" ? "bundled" : "custom",
+        ...(npcMode ? { visibility: draftVisibility, playerVisible: draftPlayerVisible } : {
+          source: bundledId && bundledId !== "template" ? "bundled" : "custom",
+        }),
       });
     } catch (error) {
-      console.error("Could not save character to D1:", error);
+      console.error(`Could not save ${entityLabel} to D1:`, error);
       characterCloudError = error;
     }
     if (layoutChanged || oldId !== character.id) {
@@ -620,6 +677,10 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
       }
       alert("Changes remain saved in this browser, but could not be saved to the shared cloud database.");
       return;
+    }
+    if (npcMode) {
+      window.npcVisibility = { ...draftVisibility };
+      document.body.dataset.npcPlayerVisible = String(draftPlayerVisible);
     }
     if (styleChanged) {
       try {

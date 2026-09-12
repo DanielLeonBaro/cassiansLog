@@ -11,6 +11,11 @@ import {
 } from "../../../shared/js/markdown-toolbar.js";
 import { renderRichText } from "../../../shared/js/rich-text.js";
 
+function notesApiPath(characterId) {
+  const resource = globalThis.document?.body?.dataset.trackerKind === "npc" ? "npcs" : "characters";
+  return `api/${resource}/${encodeURIComponent(characterId)}/notes`;
+}
+
 export function createNotesController({ characterId, cardClasses, escapeHTML }) {
   const storageKey = characterNotesStorageKey(characterId);
   let notes = [];
@@ -28,7 +33,7 @@ export function createNotesController({ characterId, cardClasses, escapeHTML }) 
 
   function persist() {
     writeJSON(storageKey, notes);
-    writeCloudJSON(`api/characters/${encodeURIComponent(characterId)}/notes`, { value: notes })
+    writeCloudJSON(notesApiPath(characterId), { value: notes })
       .catch((error) => console.error("Could not save notes to D1:", error));
   }
 
@@ -48,7 +53,7 @@ export function createNotesController({ characterId, cardClasses, escapeHTML }) 
       notes = currentCampaignSlug() && !isLocalRuntimeHost() ? [] : readJSON(storageKey, []);
     },
     async loadCloud() {
-      const result = await readCloudJSON(`api/characters/${encodeURIComponent(characterId)}/notes`, { fallback: null });
+      const result = await readCloudJSON(notesApiPath(characterId), { fallback: null });
       if (!Array.isArray(result?.value)) return false;
       notes = result.value;
       writeJSON(storageKey, notes);

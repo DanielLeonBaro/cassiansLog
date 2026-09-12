@@ -8,7 +8,18 @@ import {
   isSystemField,
 } from "./field-schema.js";
 
-export function createCharacterFieldRenderer({ classes, expandedItems, getDraft }) {
+export function createCharacterFieldRenderer({ classes, expandedItems, getDraft, getVisibility = () => ({}), showVisibilityControls = false }) {
+  function renderVisibilityControl(path, label = fieldTitle(path.at(-1))) {
+    if (!showVisibilityControls) return "";
+    const fieldPath = fieldPathKey(path);
+    const visible = getVisibility()?.[fieldPath] === true;
+    return `<button type="button" role="switch" aria-checked="${visible}" data-npc-field-visibility="${escapeAttribute(fieldPath)}" class="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold transition ${visible ? "border-emerald-600 bg-emerald-600 text-white" : "border-stone-400 text-stone-500 dark:border-white/20 dark:text-stone-300"}" aria-label="${visible ? "Hide" : "Show"} ${escapeAttribute(label)} from players"><i class="bi ${visible ? "bi-eye-fill" : "bi-eye-slash-fill"}" aria-hidden="true"></i>${visible ? "Shown" : "Hidden"}</button>`;
+  }
+
+  function fieldHeading(id, path, label, required = false) {
+    return `<span class="mb-1 flex items-center justify-between gap-2"><label for="${id}" class="block text-xs font-bold text-stone-500 dark:text-stone-400">${label}${required ? ' <span class="text-blood-500">*</span>' : ""}</label>${renderVisibilityControl(path, label)}</span>`;
+  }
+
   function renderPrimitive(value, path, key, { readOnly = false } = {}) {
     const id = `editor-${path.join("-")}`;
     const fieldPath = escapeAttribute(fieldPathKey(path));
@@ -19,13 +30,14 @@ export function createCharacterFieldRenderer({ classes, expandedItems, getDraft 
 
     if (profileField) {
       const options = getDraft().spellcasting?.profiles || [];
-      return `<label class="block"><span class="mb-1 block text-xs font-bold text-stone-500 dark:text-stone-400">${path[0] === "spells" ? "Source spellcasting profile" : "Spellcasting profile"}</span><select id="${id}" data-path="${fieldPath}" class="${classes.field}"><option value="">No profile</option>${options.map((profile) => `<option value="${escapeAttribute(profile.id)}" ${profile.id === value ? "selected" : ""}>${escapeHTML(profile.name || profile.id)}</option>`).join("")}</select></label>`;
+      const label = path[0] === "spells" ? "Source spellcasting profile" : "Spellcasting profile";
+      return `<div class="block">${fieldHeading(id, path, label)}<select id="${id}" data-path="${fieldPath}" class="${classes.field}"><option value="">No profile</option>${options.map((profile) => `<option value="${escapeAttribute(profile.id)}" ${profile.id === value ? "selected" : ""}>${escapeHTML(profile.name || profile.id)}</option>`).join("")}</select></div>`;
     }
     if (path[0] === "spells" && key === "prepared") {
       return '<div><span class="mb-1 block text-xs font-bold text-stone-500 dark:text-stone-400">Prepared</span><p class="rounded-xl border border-stone-300 bg-stone-100/70 px-3 py-2.5 text-sm text-stone-500 dark:border-white/15 dark:bg-white/5 dark:text-stone-400">Managed from the Prepare Spells section.</p></div>';
     }
     if (typeof value === "boolean") {
-      return `<label class="flex min-h-11 items-center gap-3 rounded-xl border border-stone-300 bg-white/60 px-3 py-2 dark:border-white/15 dark:bg-white/5 ${systemField ? "opacity-70" : ""}"><input id="${id}" data-path="${fieldPath}" type="checkbox" ${value ? "checked" : ""} ${systemField ? "disabled" : ""} class="h-5 w-5 accent-red-700"><span class="font-medium">${fieldTitle(key)}</span></label>`;
+      return `<div class="flex items-center gap-2"><label class="flex min-h-11 grow items-center gap-3 rounded-xl border border-stone-300 bg-white/60 px-3 py-2 dark:border-white/15 dark:bg-white/5 ${systemField ? "opacity-70" : ""}"><input id="${id}" data-path="${fieldPath}" type="checkbox" ${value ? "checked" : ""} ${systemField ? "disabled" : ""} class="h-5 w-5 accent-red-700"><span class="font-medium">${fieldTitle(key)}</span></label>${renderVisibilityControl(path)}</div>`;
     }
 
     const type = typeof value === "number" ? "number" : "text";
@@ -36,9 +48,9 @@ export function createCharacterFieldRenderer({ classes, expandedItems, getDraft 
     const required = path.length === 1 && key === "name";
     const maxLength = path.length === 1 && key === "status" ? 'maxlength="32" list="editor-status-options"' : "";
     const helper = systemField ? '<span class="mt-1 block text-xs text-stone-500">Preserved for links and saved-data compatibility.</span>' : "";
-    return `<label class="block"><span class="mb-1 block text-xs font-bold text-stone-500 dark:text-stone-400">${fieldTitle(key)}${required ? ' <span class="text-blood-500">*</span>' : ""}</span>${multiline
+    return `<div class="block">${fieldHeading(id, path, fieldTitle(key), required)}${multiline
       ? `<textarea id="${id}" data-path="${fieldPath}" class="${classes.field} ${systemField ? "opacity-70" : ""}" rows="3" ${systemField ? "readonly" : ""}>${escapeHTML(value)}</textarea>`
-      : `<input id="${id}" data-path="${fieldPath}" type="${type}" value="${escapeAttribute(value)}" ${list ? `list="${list}"` : ""} ${maxLength} ${required ? "required" : ""} ${systemField ? "readonly" : ""} class="${classes.field} ${systemField ? "opacity-70" : ""}">`}${helper}</label>`;
+      : `<input id="${id}" data-path="${fieldPath}" type="${type}" value="${escapeAttribute(value)}" ${list ? `list="${list}"` : ""} ${maxLength} ${required ? "required" : ""} ${systemField ? "readonly" : ""} class="${classes.field} ${systemField ? "opacity-70" : ""}">`}${helper}</div>`;
   }
 
   function collectionSummary(item, key, index) {
@@ -97,5 +109,5 @@ export function createCharacterFieldRenderer({ classes, expandedItems, getDraft 
     return renderPrimitive(value, path, key, options);
   }
 
-  return { renderNode, renderPrimitive };
+  return { renderNode, renderPrimitive, renderVisibilityControl };
 }

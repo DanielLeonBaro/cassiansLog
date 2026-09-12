@@ -16,6 +16,10 @@ import { escapeHTML, sanitizeIdentifier, setText, trackerUI as ui } from "./rend
 import { applyV1CharacterSheetOrder, refreshCharacterSheetTabs, refreshV3CharacterSheetLayout } from "./layout.js";
 
 const character = window.character;
+if (!character.hp || typeof character.hp !== "object") character.hp = { current: 0, temp: 0, max: 0 };
+character.hp.current = Number.isFinite(Number(character.hp.current)) ? Number(character.hp.current) : 0;
+character.hp.temp = Number.isFinite(Number(character.hp.temp)) ? Number(character.hp.temp) : 0;
+character.hp.max = Number.isFinite(Number(character.hp.max)) ? Number(character.hp.max) : 0;
 character.inspiration = normalizeCharacterFlag(character.inspiration);
 character.cinematic = normalizeCharacterFlag(character.cinematic);
 character.deathSaves = normalizeDeathSaves(character.deathSaves);
@@ -166,7 +170,7 @@ function loadHeader() {
     portrait.src = character.portrait || "shared/assets/bat.ico";
     portrait.alt = `${character.name} portrait`;
   }
-  document.title = `${character.name} | Character Tracker`;
+  document.title = `${character.name || "NPC"} | ${document.body?.dataset?.trackerKind === "npc" ? "NPC" : "Character"} Tracker`;
 }
 function loadHP() {
   setText("effective-hp", getTotalHP());

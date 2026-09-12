@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = process.cwd();
-const features = new Set(["campaigns", "char", "combat-loot", "compendium", "music", "public-initiative", "screens", "wiki"]);
+const features = new Set(["campaigns", "char", "combat-loot", "compendium", "music", "npc", "public-initiative", "screens", "wiki"]);
 const workerRouteFiles = ["admin", "campaigns", "characters", "combat-loot", "compendium", "music", "public-initiative", "screens", "themes", "wiki"]
   .map((name) => `cloudflare/routes/${name}.js`);
 const removedRoots = ["data", "js", "scripts", "tests", "config", "bootstrap", "src", "dist", "stuffToParse"];
@@ -37,7 +37,9 @@ for (const feature of features) {
     for (const specifier of imports(file)) {
       const dependency = targetRoot(file, specifier);
       assert.ok(
-        dependency === feature || dependency === "shared" || dependency === "external" || (["campaigns", "screens"].includes(feature) && dependency === "integrations"),
+        dependency === feature || dependency === "shared" || dependency === "external"
+          || (["campaigns", "screens"].includes(feature) && dependency === "integrations")
+          || (feature === "npc" && dependency === "char"),
         `${file} must not import ${dependency}: ${specifier}`,
       );
     }
@@ -55,6 +57,7 @@ for (const file of workerRouteFiles) {
   assert.ok(fs.existsSync(file), `${file} must own its Worker route family.`);
   assert.ok(fs.readFileSync("cloudflare/worker.js", "utf8").includes(`./routes/${path.basename(file)}`));
 }
+assert.ok(fs.readFileSync("cloudflare/routes/campaigns.js", "utf8").includes("./campaign-npcs.js"), "Campaign routing must include the NPC route family.");
 
 const allowedIntegrationEntrypoints = new Set([
   path.normalize("char/js/archive/api.js"),
@@ -113,6 +116,7 @@ const pageShells = new Map([
   ["campaigns/manage.html", "campaigns/js/manage.js"],
   ["char/index.html", "char/js/entries/characters.js"],
   ["char/tracker.html", "char/js/entries/tracker-standalone.js"],
+  ["npc/index.html", "npc/js/archive.js"],
   ["combat-loot/index.html", "combat-loot/js/entry.js"],
   ["compendium/index.html", "compendium/js/entry.js"],
   ["dm-screen/index.html", "screens/js/entry.js"],

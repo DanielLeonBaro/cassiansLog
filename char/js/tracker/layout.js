@@ -1,5 +1,5 @@
 // Moves existing tracker sections between V1 flow and V2 tabs without cloning controls.
-import { resolveCharacterSheetStyle } from "../../../shared/js/settings.js";
+import { resolveCharacterSheetStyle, resolveNpcSheetStyle } from "../../../shared/js/settings.js";
 import {
   V1_SECTION_DEFINITIONS,
   normalizeV1SectionOrder,
@@ -195,8 +195,10 @@ function handleJump(event) {
   if (tab) activateCharacterSheetTab(tab);
 }
 
-export function applyCharacterSheetLayout(settings = {}, characterId = "") {
-  const style = resolveCharacterSheetStyle(settings, characterId);
+export function applyCharacterSheetLayout(settings = {}, characterId = "", kind = "character") {
+  const style = kind === "npc"
+    ? resolveNpcSheetStyle(settings, characterId)
+    : resolveCharacterSheetStyle(settings, characterId);
   document.documentElement.dataset.characterSheetStyle = style;
   if (style !== "v2" || controller) return style;
 

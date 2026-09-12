@@ -1,4 +1,4 @@
-#Topics
+#Tas,s
 
 ##To do:
 - Sound effects soundboard. Make it so button shortcuts do it too
@@ -7,6 +7,11 @@
 - V1/V3 Combat Resources should be in expandeables
 - Standarize sizes of cards everywhere, also specifically in CT V3
 - Hideable Characters and NPCs from Players in Character Tracker / Add an NPC Tracker
+- Add reference to characters and NPCs into combat tracker
+- Characters from other campaigns don't show in admin
+- Rework Admin in general, make it better usable and less crammed
+- Visible pages or roles in admin are too generic, make it campaign specific or something
+- At the end of most of it, let's check all the code and rework it, see if something is not actually used, or made shorter, or code can be reused, etc.
 
 ##In Progress (Out of Tokens)
 - Make Import Character from D&D Beyond script into "New Character"

@@ -13,6 +13,7 @@ export const CAMPAIGN_BANNER_MAX = 700_000;
 
 const DEFAULT_CAMPAIGN_SECTIONS = {
   characters: true,
+  npcs: true,
   "player-screen": true,
   "dm-screen": true,
   "combat-loot": true,
@@ -36,6 +37,7 @@ export function defaultCampaignSettings() {
     sections: { ...DEFAULT_CAMPAIGN_SECTIONS },
     characterSheetStyle: "v1",
     characterSheetStyleOverrides: {},
+    npcSheetStyleOverrides: {},
   };
 }
 

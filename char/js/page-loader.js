@@ -7,19 +7,25 @@ import { migrateLegacyPortrait } from "./archive/repository.js";
 import { renderCharacterLoadError } from "./load-error.js";
 import {
   CHARACTERS_STORAGE_KEY,
+  NPCS_STORAGE_KEY,
   PENDING_CHARACTER_STORAGE_KEY,
 } from "./storage-keys.js";
 import { applyCharacterSheetLayout, applyV3CharacterSheetLayout } from "./tracker/layout.js";
 import { loadV3Layout } from "./tracker/v3-layout-repository.js";
-import { currentCampaignSlug, localCampaign, localCharacterAccess } from "../../shared/js/campaign-context.js";
+import { currentCampaign, currentCampaignSlug, localCampaign, localCharacterAccess } from "../../shared/js/campaign-context.js";
 import { isLocalRuntimeHost } from "../../shared/js/runtime-host.js";
 import { currentSession } from "../../shared/js/auth-client.js";
+import { projectNpcForPlayer } from "../../shared/js/npc-visibility.js";
 
 export function initializeCharacterPage() {
   const loaderScript = document.querySelector("script[data-character]");
+  const trackerKind = loaderScript?.dataset.trackerKind === "npc" ? "npc" : "character";
+  const npcMode = trackerKind === "npc";
+  document.body.dataset.trackerKind = trackerKind;
   const bundledCharacter = loaderScript?.dataset.character;
   const params = new URLSearchParams(window.location.search);
-  const routeMatch = window.location.pathname.match(/(?:\/c\/[a-z]{2,48})?\/char\/([^/]+)\/?$/i);
+  const routeSegment = npcMode ? "npc" : "char";
+  const routeMatch = window.location.pathname.match(new RegExp(`(?:/c/[a-z]{2,48})?/${routeSegment}/([^/]+)/?$`, "i"));
   const routeCharacter = routeMatch ? decodeURIComponent(routeMatch[1]) : "";
   const requestedCharacter = params.get("character") || (
     bundledCharacter === "template" && routeCharacter !== "template"
@@ -36,9 +42,10 @@ export function initializeCharacterPage() {
   const trackerURL = new URL(isLocalRuntimeHost() ? "char/tracker.html" : "char/tracker", document.baseURI);
 
   async function resolveCharacterShell() {
+    if (npcMode) return;
     if (bundledCharacter !== "template") return;
     if (params.has("character")) {
-      const canonical = new URL(`char/${encodeURIComponent(characterName)}/`, document.baseURI);
+      const canonical = new URL(`${routeSegment}/${encodeURIComponent(characterName)}/`, document.baseURI);
       params.delete("character");
       canonical.search = params.toString();
       window.history.replaceState(null, "", canonical);
@@ -92,7 +99,7 @@ export function initializeCharacterPage() {
 
   async function loadCharacterPage() {
     if (!characterName || !/^[a-z0-9-]+$/i.test(characterName)) {
-      renderCharacterLoadError("This character route is invalid.", { showBackLink: true });
+      renderCharacterLoadError(`This ${npcMode ? "NPC" : "character"} route is invalid.`, { showBackLink: true });
       return;
     }
 
@@ -112,32 +119,52 @@ export function initializeCharacterPage() {
       document.body.id = trackerDocument.body.id;
       document.body.innerHTML = trackerDocument.body.innerHTML;
       document.body.dataset.characterShell = characterShell || "";
-      applyCharacterSheetLayout(settings, characterName);
+      document.body.dataset.trackerKind = trackerKind;
+      if (npcMode) applyCharacterSheetLayout(settings, characterName, trackerKind);
+      else applyCharacterSheetLayout(settings, characterName);
       const { initializeTrackerHeader } = await import("./tracker/header.js");
       initializeTrackerHeader();
 
-      const savedCharacters = readJSON(CHARACTERS_STORAGE_KEY, {});
-      const savedCharacter = savedCharacters[characterName];
+      const documentStorageKey = npcMode ? NPCS_STORAGE_KEY : CHARACTERS_STORAGE_KEY;
+      const savedCharacters = readJSON(documentStorageKey, {});
+      const savedRecord = savedCharacters[characterName];
+      const savedCharacter = npcMode ? savedRecord?.document : savedRecord;
       const campaignSlug = currentCampaignSlug();
       const localCampaignMode = isLocalRuntimeHost() && Boolean(campaignSlug);
       const localContext = localCampaignMode ? localCampaign(campaignSlug) : null;
       if (localCampaignMode && !localContext?.joined) {
-        throw new Error("Join this campaign before opening its characters.");
+        throw new Error(`Join this campaign before opening its ${npcMode ? "NPCs" : "characters"}.`);
       }
       const cloudCharacter = localCampaignMode
         ? null
-        : await readCloudJSON(`api/characters/${encodeURIComponent(characterName)}`, { fallback: null });
-      if (campaignSlug && !localCampaignMode && !cloudCharacter?.document) {
-        throw new Error("This character is not active in this campaign.");
+        : await readCloudJSON(`api/${npcMode ? "npcs" : "characters"}/${encodeURIComponent(characterName)}`, { fallback: null });
+      const pendingNpcRecovery = npcMode && campaignSlug && !localCampaignMode && !cloudCharacter?.document
+        && savedCharacter && params.get("new") === "1"
+        && ["dm", "admin"].includes((await currentCampaign())?.role);
+      if (campaignSlug && !localCampaignMode && !cloudCharacter?.document && !pendingNpcRecovery) {
+        throw new Error(`This ${npcMode ? "NPC" : "character"} is not active in this campaign.`);
       }
+      const localNpcManager = npcMode && (pendingNpcRecovery || ["dm", "admin"].includes(localContext?.role));
       const access = localCampaignMode
-        ? localCharacterAccess(campaignSlug, characterName)
+        ? npcMode ? { canEdit: localNpcManager, canManage: localNpcManager } : localCharacterAccess(campaignSlug, characterName)
         : { canEdit: cloudCharacter?.canEdit !== false, canManage: cloudCharacter?.canManage !== false };
       document.body.dataset.characterCanEdit = String(access.canEdit);
       document.body.dataset.characterCanManage = String(access.canManage);
       if (!access.canEdit) document.getElementById("notesSection")?.remove();
+      document.body.dataset.npcPlayerVisible = String(cloudCharacter?.playerVisible ?? savedRecord?.playerVisible ?? false);
+      window.npcVisibility = npcMode ? (cloudCharacter?.visibility || savedRecord?.visibility || {}) : {};
+      window.npcVisibleFields = npcMode ? (cloudCharacter?.visibleFields || Object.keys(window.npcVisibility)) : [];
       let bundledData = cloudCharacter?.document;
+      if (npcMode && (localCampaignMode || pendingNpcRecovery)) {
+        if (!savedCharacter || (!localNpcManager && !savedRecord?.playerVisible)) throw new Error("This NPC is not visible to players.");
+        const projected = localNpcManager
+          ? { document: savedCharacter, visibleFields: Object.keys(savedRecord.visibility || {}) }
+          : projectNpcForPlayer(savedCharacter, savedRecord.visibility);
+        bundledData = projected.document;
+        window.npcVisibleFields = projected.visibleFields;
+      }
       if (!bundledData) {
+        if (npcMode) throw new Error("This NPC is not active in this campaign.");
         if (localCampaignMode && !savedCharacter && characterShell === "template" && characterName !== "template" && params.get("new") !== "1") {
           throw new Error("This character is not active in this campaign.");
         }
@@ -151,16 +178,20 @@ export function initializeCharacterPage() {
         bundledData = await characterResponse.json();
       }
       window.character = cloudCharacter?.document || bundledData;
-      if (!cloudCharacter?.document && savedCharacter) {
+      if (!npcMode && !cloudCharacter?.document && savedCharacter) {
         const migrated = migrateLegacyPortrait(savedCharacter);
         if (applyBundledUpdates(savedCharacter, bundledData) || migrated) {
           savedCharacters[characterName] = savedCharacter;
-          writeJSON(CHARACTERS_STORAGE_KEY, savedCharacters);
+          writeJSON(documentStorageKey, savedCharacters);
         }
         window.character = savedCharacter;
-      } else if (cloudCharacter?.document) {
-        savedCharacters[characterName] = cloneJSON(cloudCharacter.document);
-        writeJSON(CHARACTERS_STORAGE_KEY, savedCharacters);
+      } else if (cloudCharacter?.document && (!npcMode || access.canManage)) {
+        savedCharacters[characterName] = npcMode ? {
+          document: cloneJSON(cloudCharacter.document),
+          visibility: cloneJSON(cloudCharacter.visibility || {}),
+          playerVisible: cloudCharacter.playerVisible === true,
+        } : cloneJSON(cloudCharacter.document);
+        writeJSON(documentStorageKey, savedCharacters);
       } else if (params.get("new") === "1") {
         const pending = readJSON(PENDING_CHARACTER_STORAGE_KEY, {});
         window.character = cloneJSON(window.character);
@@ -168,7 +199,7 @@ export function initializeCharacterPage() {
         window.character.name = pending.name || "New Character";
         window.character.portrait = "shared/assets/bat.ico";
         savedCharacters[characterName] = window.character;
-        writeJSON(CHARACTERS_STORAGE_KEY, savedCharacters);
+        writeJSON(documentStorageKey, savedCharacters);
         removeStored(PENDING_CHARACTER_STORAGE_KEY);
       }
       if (document.documentElement.dataset.characterSheetStyle === "v3") {
@@ -182,7 +213,7 @@ export function initializeCharacterPage() {
       }
       await import("./entries/tracker.js");
     } catch (error) {
-      console.error("Could not load character page:", error);
+      console.error(`Could not load ${npcMode ? "NPC" : "character"} page:`, error);
       renderCharacterLoadError(error.message, { showBackLink: true });
     }
   }

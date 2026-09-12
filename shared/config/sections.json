@@ -1,6 +1,7 @@
 {
   "sections": {
     "characters": true,
+    "npcs": true,
     "player-screen": true,
     "dm-screen": true,
     "combat-loot": true,

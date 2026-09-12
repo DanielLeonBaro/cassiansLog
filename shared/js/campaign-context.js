@@ -5,14 +5,14 @@ import { currentLocalUser, LOCAL_ADMIN_USER, LOCAL_TEST_USERS, LOCAL_USERS } fro
 const CAMPAIGN_PATH = /^\/c\/([a-z]{2,48})(?:\/|$)/;
 const CAMPAIGN_SLUG = /^[a-z]{2,48}$/;
 const CAMPAIGN_API_RESOURCES = new Set([
-  "characters", "wiki", "music", "combat-loot", "public-initiative", "screens", "settings",
+  "characters", "npcs", "wiki", "music", "combat-loot", "public-initiative", "screens", "settings",
 ]);
 
 let contextPromise;
 const LOCAL_CAMPAIGNS_KEY = "cassianslog-local-campaigns-v1";
 const LAST_CAMPAIGN_KEY = "cassianslog-last-campaign-v1";
 const LAST_CAMPAIGN_COOKIE = "cassianslog_campaign";
-const UNSCOPED_CAMPAIGN_PAGE = /^\/(?:char|wiki|music|combat-loot|public-initiative|player-screen|dm-screen)(?:\/|$)/;
+const UNSCOPED_CAMPAIGN_PAGE = /^\/(?:char|npc|wiki|music|combat-loot|public-initiative|player-screen|dm-screen)(?:\/|$)/;
 
 function campaignSelectionKey(userId) {
   return `${LAST_CAMPAIGN_KEY}:${String(userId || "anonymous")}`;

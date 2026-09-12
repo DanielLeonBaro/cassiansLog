@@ -221,7 +221,12 @@ document.getElementById("campaign-settings").addEventListener("submit", async (e
   const sections = Object.fromEntries([...document.querySelectorAll("[data-section]")].map((input) => [input.dataset.section, input.checked]));
   const overrides = Object.fromEntries([...document.querySelectorAll("[data-style]")].filter((select) => select.value).map((select) => [select.dataset.style, select.value]));
   try {
-    const nextSettings = { sections, characterSheetStyle: new FormData(event.currentTarget).get("characterSheetStyle"), characterSheetStyleOverrides: overrides };
+    const nextSettings = {
+      sections,
+      characterSheetStyle: new FormData(event.currentTarget).get("characterSheetStyle"),
+      characterSheetStyleOverrides: overrides,
+      npcSheetStyleOverrides: settings.npcSheetStyleOverrides || {},
+    };
     const result = localFallback
       ? { settings: persistLocalRuntimeSettings(nextSettings) }
       : await requestJSON(`${api}/settings`, { method: "PUT", body: JSON.stringify(nextSettings) });

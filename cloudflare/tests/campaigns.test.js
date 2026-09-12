@@ -172,6 +172,47 @@ result = await call(env, cookies.carol, ["curseofstrahd", "characters", "hero", 
 assert.equal(result.response.status, 400, "Malformed layouts are rejected by the API.");
 result = await call(env, cookies.carol, ["curseofstrahd", "characters", "hero", "notes"]);
 assert.equal(result.response.status, 200, "Assigned players can read character notes.");
+
+const npc = {
+  id: "masked-one",
+  name: "Known Face",
+  status: "Active",
+  ac: 18,
+  secret: "Serves Strahd",
+  stats: { dex: { score: 16, modifier: 3 } },
+  actions: [{ id: "knife", name: "Knife", description: "Poisoned blade" }],
+};
+result = await call(env, cookies.alice, ["curseofstrahd", "npcs", "masked-one"], {
+  method: "PUT",
+  body: { document: npc, playerVisible: false, visibility: { name: true, "stats.dex.score": true, "actions.0.name": true } },
+});
+assert.equal(result.response.status, 200);
+result = await call(env, cookies.alice, ["curseofstrahd", "npcs"]);
+assert.equal(result.body.npcs.length, 1, "Campaign DMs keep hidden NPCs in their tracker archive.");
+assert.equal(result.body.npcs[0].document.secret, "Serves Strahd");
+result = await call(env, cookies.carol, ["curseofstrahd", "npcs"]);
+assert.equal(result.body.npcs.length, 0, "Players cannot list an NPC hidden at archive level.");
+result = await call(env, cookies.carol, ["curseofstrahd", "npcs", "masked-one"]);
+assert.equal(result.response.status, 404, "Players cannot bypass archive visibility with a direct NPC URL.");
+result = await call(env, cookies.alice, ["curseofstrahd", "npcs", "masked-one", "visibility"], { method: "PUT", body: { playerVisible: true } });
+assert.equal(result.response.status, 200);
+result = await call(env, cookies.carol, ["curseofstrahd", "npcs", "masked-one"]);
+assert.equal(result.response.status, 200);
+assert.equal(result.body.document.name, "Known Face");
+assert.equal(result.body.document.ac, undefined);
+assert.equal(result.body.document.secret, undefined);
+assert.deepEqual(result.body.document.stats, { dex: { score: 16 } });
+assert.deepEqual(result.body.document.actions, [{ name: "Knife" }]);
+assert.equal(result.body.visibility, undefined, "Player responses must not expose manager visibility state.");
+result = await call(env, cookies.carol, ["curseofstrahd", "npcs", "masked-one"], { method: "PUT", body: { document: npc, playerVisible: true, visibility: {} } });
+assert.equal(result.response.status, 403, "Players cannot edit NPC documents or disclosure rules.");
+result = await call(env, cookies.carol, ["curseofstrahd", "npcs", "masked-one", "state"]);
+assert.equal(result.body.value, null, "Player NPC views do not receive private runtime state.");
+result = await call(env, cookies.alice, ["curseofstrahd", "npcs", "masked-one", "layout"], { method: "PUT", body: { layout: bobLayout } });
+assert.equal(result.response.status, 200);
+result = await call(env, cookies.alice, ["curseofstrahd", "npcs", "masked-one", "id"], { method: "PUT", body: { id: "masked-agent" } });
+assert.equal(result.response.status, 200);
+assert.equal(database.prepare("SELECT COUNT(*) AS count FROM campaign_user_npc_layouts WHERE campaign_id = ? AND npc_id = 'masked-agent'").get(curseCampaignId).count, 1, "NPC rename preserves manager layouts.");
 const screen = { version: 1, widgets: [] };
 result = await call(env, cookies.carol, ["curseofstrahd", "screens", "player"], { method: "PUT", body: { document: screen } });
 assert.equal(result.response.status, 200);
