@@ -32,7 +32,7 @@ assert.equal(apiCharacter.name, "Mira Beyond");
 assert.equal(apiCharacter.class, "Wizard");
 assert.equal(apiCharacter.subclass, "Evoker");
 assert.equal(apiCharacter.level, 3);
-assert.deepEqual(apiCharacter.hp, { max: 17, current: 15, temp: 3 });
+assert.deepEqual(apiCharacter.hp, { max: 20, current: 18, temp: 3 });
 assert.equal(apiCharacter.stats.int.score, 16);
 assert.equal(apiCharacter.stats.int.save, 5);
 assert.equal(apiCharacter.stats.int.skills.find((skill) => skill.name === "Arcana").modifier, 5);
@@ -42,6 +42,80 @@ assert.equal(apiCharacter.spellcasting.profiles[0].saveDC, 13);
 assert.equal(apiCharacter.spellcasting.profiles[0].attackBonus, 5);
 assert.deepEqual(apiCharacter.spellcasting.slots[0], { id: "slot-1-1", profileId: "dnd-beyond-spellcasting", level: 1, current: 3, max: 4, reset: "long" });
 assert.equal(apiCharacter.currency.gp, 12);
+
+// Regression: the public API returns base HP and derived modifiers, not the final sheet totals.
+const gwendoline = mapDndBeyondPayload({ data: {
+  name: "Gwendoline",
+  classes: [{
+    id: 55,
+    level: 6,
+    definition: {
+      name: "Bard",
+      spellCastingAbilityId: 6,
+      classFeatures: [],
+      spellRules: { multiClassSpellSlotDivisor: 1, levelSpellSlots: [[], [], [], [], [], [], [4, 3, 3]] },
+    },
+    subclassDefinition: { name: "College of Lore", classFeatures: [] },
+  }],
+  race: { fullName: "Half-Elf", weightSpeeds: { normal: { walk: 30 } }, racialTraits: [] },
+  stats: [
+    { id: 1, value: 12 }, { id: 2, value: 14 }, { id: 3, value: 13 },
+    { id: 4, value: 8 }, { id: 5, value: 10 }, { id: 6, value: 15 },
+  ],
+  bonusStats: [], overrideStats: [],
+  modifiers: {
+    race: [
+      { type: "bonus", subType: "dexterity-score", fixedValue: 2 },
+      { type: "bonus", subType: "constitution-score", fixedValue: 1 },
+      { type: "bonus", subType: "charisma-score", fixedValue: 3 },
+      { type: "set-base", subType: "darkvision", fixedValue: 60 },
+    ],
+    class: [
+      { type: "half-proficiency", subType: "ability-checks" },
+      { type: "half-proficiency", subType: "initiative" },
+      { type: "proficiency", subType: "dexterity-saving-throws" },
+      { type: "proficiency", subType: "charisma-saving-throws" },
+      { type: "expertise", subType: "acrobatics" },
+      { type: "proficiency", subType: "rapier" },
+    ],
+    item: [
+      { type: "bonus", subType: "armor-class", fixedValue: 1, componentId: 10, requiresAttunement: true },
+      { type: "bonus", subType: "armor-class", fixedValue: 2, componentId: 11, requiresAttunement: false },
+    ],
+  },
+  inventory: [
+    { equipped: true, isAttuned: false, quantity: 1, definition: { id: 10, name: "Cloak of Protection", canAttune: true } },
+    { equipped: true, isAttuned: false, quantity: 1, definition: { id: 11, name: "Leather, +2", armorClass: 11, armorTypeId: 1 } },
+    { equipped: true, isAttuned: false, quantity: 1, definition: {
+      id: 12, name: "Rapier, +3", type: "Rapier", categoryId: 2, attackType: 1,
+      damage: { diceString: "1d8" }, damageType: "Piercing", properties: [{ name: "Finesse" }],
+      grantedModifiers: [{ type: "bonus", subType: "magic", fixedValue: 3 }],
+    } },
+  ],
+  baseHitPoints: 33, removedHitPoints: 0, temporaryHitPoints: 0,
+  currentXp: 18800, alignmentId: 3, gender: "Female", feats: [], currencies: {},
+  actions: { class: [{
+    name: "Bardic Inspiration", actionType: 3, activation: { activationType: 3 },
+    limitedUse: { statModifierUsesId: 6, maxUses: 0, numberUsed: 0, resetType: 1 },
+  }] },
+  customActions: [], spells: {},
+  classSpells: [{ characterClassId: 55, spells: [{ definition: { name: "Vicious Mockery", level: 0, components: [] } }] }],
+  spellSlots: [{ level: 1, used: 0, available: 0 }, { level: 2, used: 1, available: 0 }, { level: 3, used: 0, available: 0 }],
+  pactMagic: [], traits: { personalityTraits: "I keep my curse private." }, notes: {},
+} });
+
+assert.deepEqual(gwendoline.hp, { max: 45, current: 45, temp: 0 });
+assert.equal(gwendoline.ac, 16);
+assert.equal(gwendoline.initiative, 4);
+assert.equal(gwendoline.darkvision, 60);
+assert.equal(gwendoline.stats.int.skills.find((skill) => skill.name === "Arcana").modifier, 0);
+assert.equal(gwendoline.actions.find((action) => action.name === "Rapier, +3").attack, "+9 vs AC");
+assert.equal(gwendoline.actions.find((action) => action.name === "Rapier, +3").damage, "1d8+6 Piercing");
+assert.deepEqual(gwendoline.resources.find((resource) => resource.name === "Bardic Inspiration").uses, { current: 4, max: 4, reset: "short" });
+assert.equal(gwendoline.spellcasting.profiles[0].ability, "CHA");
+assert.equal(gwendoline.spellcasting.profiles[0].saveDC, 15);
+assert.deepEqual(gwendoline.spellcasting.slots.map((slot) => [slot.level, slot.current, slot.max]), [[1, 4, 4], [2, 2, 3], [3, 3, 3]]);
+assert.equal(gwendoline.features.some((feature) => feature.name === "Personality traits"), true);
 
 const pdfCharacter = mapDndBeyondPdfFields([
   ["CharacterName", "Oskarr Gorunn"], ["CLASS  LEVEL", "Druid 3"], ["RACE", "Gray Dwarf (Duergar)"],

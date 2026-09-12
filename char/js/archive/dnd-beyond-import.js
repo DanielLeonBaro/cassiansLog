@@ -51,6 +51,18 @@ const ALIGNMENTS = {
   9: "Chaotic Evil",
 };
 
+// Standard shared spell-slot progression used when D&D Beyond reports only slots spent.
+const MULTICLASS_SPELL_SLOTS = [
+  [],
+  [2], [3], [4, 2], [4, 3], [4, 3, 2], [4, 3, 3],
+  [4, 3, 3, 1], [4, 3, 3, 2], [4, 3, 3, 3, 1], [4, 3, 3, 3, 2],
+  [4, 3, 3, 3, 2, 1], [4, 3, 3, 3, 2, 1], [4, 3, 3, 3, 2, 1, 1],
+  [4, 3, 3, 3, 2, 1, 1], [4, 3, 3, 3, 2, 1, 1, 1],
+  [4, 3, 3, 3, 2, 1, 1, 1], [4, 3, 3, 3, 2, 1, 1, 1, 1],
+  [4, 3, 3, 3, 3, 1, 1, 1, 1], [4, 3, 3, 3, 3, 2, 1, 1, 1],
+  [4, 3, 3, 3, 3, 2, 2, 1, 1],
+];
+
 function number(value, fallback = 0) {
   const cleaned = String(value ?? "").replace(/[^0-9+.-]/g, "");
   if (!cleaned || cleaned === "--") return fallback;
@@ -93,19 +105,44 @@ function uniqueBy(items, key) {
 
 function rangeText(value) {
   if (!value) return "";
-  const base = value.origin === "Ranged" && value.rangeValue ? `${value.rangeValue} ft` : value.origin || "";
-  return value.aoeValue ? `${base}${base ? " / " : ""}${value.aoeValue} ft ${value.aoeType || "area"}` : base;
+  const distance = value.rangeValue ?? value.range;
+  const base = distance ? `${distance} ft${value.longRange && value.longRange !== distance ? ` / ${value.longRange} ft` : ""}` : value.origin || "";
+  const area = value.aoeValue ?? value.aoeSize;
+  return area ? `${base}${base ? " / " : ""}${area} ft ${value.aoeType || "area"}` : base;
 }
 
-function uses(value) {
-  if (!value || number(value.maxUses) <= 0) return undefined;
+function abilityKey(statId) {
+  return ABILITIES.find((entry) => entry[2] === number(statId))?.[0] || "";
+}
+
+function uses(value, stats = {}, proficiency = 0) {
+  if (!value) return undefined;
+  let max = number(value.maxUses);
+  const stat = abilityKey(value.statModifierUsesId);
+  if (stat) max += number(stats[stat]?.modifier);
+  if (value.useProficiencyBonus) max += proficiency;
+  if (max <= 0) return undefined;
   const reset = { 1: "short", 2: "long", 3: "day" }[value.resetType] || "long";
-  const max = number(value.maxUses);
   return { current: Math.max(0, max - number(value.numberUsed)), max, reset };
 }
 
 function apiModifiers(character) {
-  return Object.values(character.modifiers || {}).flatMap((items) => Array.isArray(items) ? items : []);
+  const inventory = character.inventory || [];
+  return Object.entries(character.modifiers || {}).flatMap(([source, items]) => {
+    if (!Array.isArray(items)) return [];
+    if (source !== "item") return items;
+    return items.filter((modifier) => {
+      const item = inventory.find((entry) => number(entry.definition?.id) === number(modifier.componentId));
+      return item?.equipped && (!modifier.requiresAttunement || item.isAttuned);
+    });
+  });
+}
+
+function modifierBonus(modifiers, subTypes) {
+  const allowed = new Set(subTypes);
+  return modifiers
+    .filter((item) => item.type === "bonus" && allowed.has(item.subType) && !item.restriction)
+    .reduce((total, item) => total + number(item.fixedValue ?? item.value), 0);
 }
 
 function apiStats(character, proficiency) {
@@ -123,14 +160,19 @@ function apiStats(character, proficiency) {
     if (modifiers.some((item) => item.type === "proficiency" && item.subType === `${name.toLowerCase()}-saving-throws`)) {
       scores[key].save += proficiency;
     }
+    scores[key].save += modifierBonus(modifiers, ["saving-throws", `${name.toLowerCase()}-saving-throws`]);
   }
   for (const [name, ability] of SKILLS) {
     const slug = name.toLowerCase().replaceAll(" ", "-");
     const expertise = modifiers.some((item) => item.type === "expertise" && item.subType === slug);
     const proficient = expertise || modifiers.some((item) => item.type === "proficiency" && item.subType === slug);
+    const halfProficient = !proficient && modifiers.some((item) =>
+      item.type === "half-proficiency" && (item.subType === "ability-checks" || item.subType === slug));
     scores[ability].skills.push({
       name,
-      modifier: scores[ability].modifier + (expertise ? proficiency * 2 : proficient ? proficiency : 0),
+      modifier: scores[ability].modifier
+        + (expertise ? proficiency * 2 : proficient ? proficiency : halfProficient ? Math.floor(proficiency / 2) : 0)
+        + modifierBonus(modifiers, ["ability-checks", slug]),
       proficiency: proficient,
     });
   }
@@ -141,11 +183,12 @@ function apiArmorClass(character, stats) {
   const equipped = (character.inventory || []).filter((item) => item.equipped && item.definition);
   const dexterity = stats.dex.modifier;
   let result = 10 + dexterity;
+  let shieldBonus = 0;
   for (const item of equipped) {
     const armor = number(item.definition.armorClass, -1);
     const type = number(item.definition.armorTypeId, 0);
     if (armor < 0) continue;
-    if (type === 4) result += armor;
+    if (type === 4) shieldBonus += armor;
     else if (type === 1) result = Math.max(result, armor + dexterity);
     else if (type === 2) result = Math.max(result, armor + Math.min(2, dexterity));
     else if (type === 3) result = Math.max(result, armor);
@@ -154,7 +197,7 @@ function apiArmorClass(character, stats) {
     const ability = ABILITIES.find((entry) => entry[2] === item.statId)?.[0];
     if (ability) result = Math.max(result, 10 + dexterity + stats[ability].modifier);
   }
-  return result;
+  return result + shieldBonus + modifierBonus(apiModifiers(character), ["armor-class"]);
 }
 
 function apiFeatures(character) {
@@ -177,36 +220,101 @@ function apiFeatures(character) {
     const definition = feat.definition || feat;
     features.push({ name: definition.name, category: "Feat", description: htmlText(definition.description || definition.snippet) });
   }
+  for (const [key, name] of [
+    ["personalityTraits", "Personality traits"], ["ideals", "Ideals"],
+    ["bonds", "Bonds"], ["flaws", "Flaws"],
+  ]) {
+    if (character.traits?.[key]) features.push({ name, category: "Background", description: character.traits[key] });
+  }
+  for (const [key, name] of [
+    ["organizations", "Organizations"], ["allies", "Allies"], ["enemies", "Enemies"],
+    ["backstory", "Backstory"], ["otherNotes", "Other notes"],
+  ]) {
+    if (character.notes?.[key]) features.push({ name, category: "Notes", description: character.notes[key] });
+  }
   return uniqueBy(features, (item) => `${item.category}:${item.name}`)
     .map((item, index) => ({ id: idFor(item.name, index), ...item }));
 }
 
-function apiActions(character) {
+function apiActions(character, stats, proficiency) {
   const entries = Object.entries(character.actions || {}).flatMap(([category, items]) =>
     (items || []).map((item) => ({ category, item })),
   );
+  entries.push(...(character.customActions || []).map((item) => ({ category: "custom", item })));
   return uniqueBy(entries, ({ item }) => item.name).map(({ category, item }, index) => ({
     id: idFor(item.name, index),
     name: item.name,
     category: category[0].toUpperCase() + category.slice(1),
     action: ACTIVATIONS[item.activation?.activationType || item.actionType] || "Other",
     range: rangeText(item.range),
-    attack: item.fixedToHit == null ? "" : `${number(item.fixedToHit) >= 0 ? "+" : ""}${item.fixedToHit} vs AC`,
-    damage: [item.dice?.diceString, item.damageType].filter(Boolean).join(" "),
-    uses: uses(item.limitedUse),
+    attack: item.fixedToHit == null && item.toHitBonus == null ? "" : `${number(item.fixedToHit ?? item.toHitBonus) >= 0 ? "+" : ""}${number(item.fixedToHit ?? item.toHitBonus)} vs AC`,
+    damage: [item.dice?.diceString || (item.diceCount && item.diceType ? `${item.diceCount}d${item.diceType}` : ""), item.damageBonus, item.damageType].filter(Boolean).join(" "),
+    uses: uses(item.limitedUse, stats, proficiency),
     description: htmlText(item.snippet || item.description),
   }));
 }
 
+function apiWeaponActions(character, stats, proficiency) {
+  const modifiers = apiModifiers(character);
+  const weapons = (character.inventory || []).filter((item) => item.equipped && item.definition?.damage);
+  const actions = weapons.map((item, index) => {
+    const definition = item.definition;
+    const properties = (definition.properties || []).map((property) => property.name);
+    const ability = definition.attackType === 2
+      ? stats.dex.modifier
+      : properties.includes("Finesse") ? Math.max(stats.str.modifier, stats.dex.modifier) : stats.str.modifier;
+    const slug = String(definition.type || definition.name).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const category = number(definition.categoryId) === 1 ? "simple-weapons" : "martial-weapons";
+    const proficient = modifiers.some((entry) => entry.type === "proficiency" && [slug, category].includes(entry.subType));
+    const magic = (definition.grantedModifiers || [])
+      .filter((entry) => entry.type === "bonus" && entry.subType === "magic" && (!entry.requiresAttunement || item.isAttuned))
+      .reduce((total, entry) => total + number(entry.fixedValue ?? entry.value), 0);
+    const attack = ability + (proficient ? proficiency : 0) + magic;
+    const damageBonus = ability + magic;
+    return {
+      id: idFor(definition.name, index), name: definition.name, category: "Weapon", action: "Action",
+      range: definition.attackType === 2 ? rangeText(definition) : "Melee",
+      attack: `${attack >= 0 ? "+" : ""}${attack} vs AC`,
+      damage: `${definition.damage.diceString}${damageBonus ? `${damageBonus >= 0 ? "+" : ""}${damageBonus}` : ""} ${definition.damageType || ""}`.trim(),
+      description: properties.join(", "),
+    };
+  });
+  const unarmedBonus = stats.str.modifier + proficiency;
+  actions.push({
+    id: "unarmed-strike", name: "Unarmed Strike", category: "Weapon", action: "Action", range: "Melee",
+    attack: `${unarmedBonus >= 0 ? "+" : ""}${unarmedBonus} vs AC`,
+    damage: `${Math.max(1, 1 + stats.str.modifier)} Bludgeoning`, description: "",
+  });
+  return actions;
+}
+
+function classSpellAbility(entry) {
+  return entry?.spellCastingAbilityId || entry?.definition?.spellCastingAbilityId || entry?.subclassDefinition?.spellCastingAbilityId;
+}
+
 function apiSpells(character) {
+  const castingClasses = (character.classes || []).filter((entry) => classSpellAbility(entry));
+  const defaultClass = castingClasses[0];
+  const classById = new Map((character.classes || []).map((entry) => [number(entry.id), entry]));
   const entries = [
-    ...Object.entries(character.spells || {}).flatMap(([source, items]) => (items || []).map((item) => ({ source, item }))),
-    ...(character.classSpells || []).flatMap((group) => (group.spells || []).map((item) => ({ source: "class", item }))),
+    ...Object.entries(character.spells || {}).flatMap(([source, items]) => (items || []).map((item) => ({
+      source,
+      item,
+      abilityId: item.spellCastingAbilityId || (source === "class" ? classSpellAbility(defaultClass) : null),
+    }))),
+    ...(character.classSpells || []).flatMap((group) => {
+      const classEntry = classById.get(number(group.characterClassId)) || defaultClass;
+      return (group.spells || []).map((item) => ({
+        source: classEntry?.definition?.name || "class",
+        item,
+        abilityId: item.spellCastingAbilityId || classSpellAbility(classEntry),
+      }));
+    }),
   ];
-  return uniqueBy(entries, ({ item }) => `${item.definition?.name}:${item.definition?.level}:${item.spellCastingAbilityId || ""}`)
-    .map(({ source, item }, index) => {
+  return uniqueBy(entries, ({ item, abilityId }) => `${item.definition?.name}:${item.definition?.level}:${abilityId || ""}`)
+    .map(({ source, item, abilityId }, index) => {
       const spell = item.definition || {};
-      const ability = ABILITIES.find((entry) => entry[2] === item.spellCastingAbilityId)?.[1]?.slice(0, 3).toUpperCase() || "";
+      const ability = ABILITIES.find((entry) => entry[2] === number(abilityId))?.[1]?.slice(0, 3).toUpperCase() || "";
       const components = (spell.components || []).map((id) => ({ 1: "V", 2: "S", 3: "M" }[id])).filter(Boolean).join(", ");
       return {
         id: idFor(spell.name, index), name: spell.name, category: spell.level ? "Spell" : "Cantrip",
@@ -217,6 +325,65 @@ function apiSpells(character) {
         uses: uses(item.limitedUse), description: htmlText(spell.description),
       };
     });
+}
+
+function apiHitPointMaximum(character, level, stats) {
+  if (character.overrideHitPoints != null) return Math.max(1, number(character.overrideHitPoints, 1));
+  const modifiers = apiModifiers(character);
+  const flatBonus = modifierBonus(modifiers, ["hit-points"]);
+  const perLevelBonus = modifierBonus(modifiers, ["hit-points-per-level"]) * level;
+  return Math.max(1, number(character.baseHitPoints) + number(character.bonusHitPoints)
+    + (stats.con.modifier * level) + flatBonus + perLevelBonus);
+}
+
+function apiInitiative(character, stats, proficiency) {
+  const modifiers = apiModifiers(character);
+  const proficient = modifiers.some((item) => item.type === "proficiency" && item.subType === "initiative");
+  const halfProficient = !proficient && modifiers.some((item) =>
+    item.type === "half-proficiency" && (item.subType === "initiative" || item.subType === "ability-checks"));
+  return stats.dex.modifier + (proficient ? proficiency : halfProficient ? Math.floor(proficiency / 2) : 0)
+    + modifierBonus(modifiers, ["initiative"]);
+}
+
+function apiSpellSlotMaximums(character) {
+  const classes = (character.classes || []).filter((entry) => {
+    const row = entry.definition?.spellRules?.levelSpellSlots?.[number(entry.level)];
+    return Array.isArray(row) && row.some((slot) => number(slot) > 0);
+  });
+  if (classes.length === 1) {
+    return classes[0].definition.spellRules.levelSpellSlots[number(classes[0].level)].map(number);
+  }
+  if (classes.length > 1) {
+    const casterLevel = classes.reduce((total, entry) => {
+      const divisor = Math.max(1, number(entry.definition.spellRules.multiClassSpellSlotDivisor, 1));
+      const contribution = number(entry.level) / divisor;
+      return total + (/artificer/i.test(entry.definition.name || "") ? Math.ceil(contribution) : Math.floor(contribution));
+    }, 0);
+    return MULTICLASS_SPELL_SLOTS[Math.min(20, casterLevel)] || [];
+  }
+  return [];
+}
+
+function apiSpellSlots(character) {
+  const maximums = apiSpellSlotMaximums(character);
+  const spentByLevel = new Map((character.spellSlots || []).map((slot) => [number(slot.level), number(slot.used)]));
+  const standard = maximums.map((max, index) => ({ level: index + 1, max: number(max) })).filter((slot) => slot.max > 0);
+  const reported = (character.spellSlots || [])
+    .filter((slot) => number(slot.available) > 0)
+    .map((slot) => ({ level: number(slot.level), max: number(slot.available) }));
+  const slots = (standard.length ? standard : reported).map((slot, index) => ({
+    id: `slot-${slot.level}-${index + 1}`, profileId: "dnd-beyond-spellcasting", level: slot.level,
+    current: Math.max(0, slot.max - (spentByLevel.get(slot.level) || 0)), max: slot.max, reset: "long",
+  }));
+  for (const slot of character.pactMagic || []) {
+    const max = number(slot.available);
+    if (max <= 0) continue;
+    slots.push({
+      id: `pact-slot-${slot.level}`, profileId: "dnd-beyond-spellcasting", level: number(slot.level),
+      current: Math.max(0, max - number(slot.used)), max, reset: "short",
+    });
+  }
+  return slots;
 }
 
 export function dndBeyondCharacterId(value) {
@@ -239,25 +406,26 @@ export function mapDndBeyondPayload(payload) {
   const stats = apiStats(character, proficiency);
   const classNames = (character.classes || []).map((entry) => entry.definition?.name).filter(Boolean);
   const subclassNames = (character.classes || []).map((entry) => entry.subclassDefinition?.name).filter(Boolean);
-  const maxHP = number(character.overrideHitPoints ?? character.baseHitPoints) + number(character.bonusHitPoints);
-  const actions = apiActions(character);
+  const maxHP = apiHitPointMaximum(character, level, stats);
+  const actions = uniqueBy([
+    ...apiActions(character, stats, proficiency),
+    ...apiWeaponActions(character, stats, proficiency),
+  ], (item) => item.name);
   const resources = actions.filter((item) => item.uses).map((item, index) => ({
     id: idFor(item.name, index), name: item.name, category: item.category,
     action: item.action, uses: item.uses, description: item.description,
   }));
   const spells = apiSpells(character);
-  const spellAbility = spells.find((item) => item.spellcasting)?.spellcasting || "";
+  const spellClass = (character.classes || []).find((entry) => classSpellAbility(entry));
+  const spellAbility = spells.find((item) => item.spellcasting)?.spellcasting
+    || ABILITIES.find((entry) => entry[2] === number(classSpellAbility(spellClass)))?.[1]?.slice(0, 3).toUpperCase() || "";
   const spellStat = ABILITIES.find((entry) => entry[1].slice(0, 3).toUpperCase() === spellAbility)?.[0];
   const spellModifier = spellStat ? stats[spellStat].modifier : 0;
-  const slots = [...(character.spellSlots || []), ...(character.pactMagic || [])]
-    .filter((slot) => number(slot.available) > 0)
-    .map((slot, index) => ({
-      id: `slot-${slot.level}-${index + 1}`, profileId: "dnd-beyond-spellcasting", level: number(slot.level),
-      current: Math.max(0, number(slot.available) - number(slot.used)), max: number(slot.available), reset: "long",
-    }));
+  const slots = apiSpellSlots(character);
+  const modifiers = apiModifiers(character);
   const perception = stats.wis.skills.find((skill) => skill.name === "Perception")?.modifier ?? stats.wis.modifier;
   const speeds = character.race?.weightSpeeds?.override || character.race?.weightSpeeds?.normal || {};
-  const senses = apiModifiers(character).filter((item) => item.type === "sense" && item.subType === "darkvision");
+  const senses = modifiers.filter((item) => item.subType === "darkvision");
   return {
     name: String(character.name).trim(), status: "Active",
     portrait: character.decorations?.avatarUrl || "",
@@ -267,15 +435,16 @@ export function mapDndBeyondPayload(payload) {
     alignment: ALIGNMENTS[character.alignmentId] || "", gender: character.gender || "",
     ac: apiArmorClass(character, stats),
     hp: { max: maxHP, current: Math.max(0, maxHP - number(character.removedHitPoints)), temp: number(character.temporaryHitPoints) },
-    initiative: stats.dex.modifier, proficiency, walk: number(speeds.walk, 30), fly: number(speeds.fly),
+    initiative: apiInitiative(character, stats, proficiency), proficiency, walk: number(speeds.walk, 30), fly: number(speeds.fly),
     passivePerception: 10 + perception,
     darkvision: senses.reduce((maximum, item) => Math.max(maximum, number(item.fixedValue ?? item.value)), 0),
     stats, actions, resources, features: apiFeatures(character), spells,
     spellcasting: {
       enabled: spells.length > 0,
       profiles: spells.length ? [{
-        id: "dnd-beyond-spellcasting", name: "D&D Beyond", ability: spellAbility,
-        saveDC: 8 + proficiency + spellModifier, attackBonus: proficiency + spellModifier, preparedLimit: 0,
+        id: "dnd-beyond-spellcasting", name: spellClass?.definition?.name || "D&D Beyond", ability: spellAbility,
+        saveDC: 8 + proficiency + spellModifier + modifierBonus(modifiers, ["spell-save-dc"]),
+        attackBonus: proficiency + spellModifier + modifierBonus(modifiers, ["spell-attacks"]), preparedLimit: 0,
       }] : [],
       slots,
     },
