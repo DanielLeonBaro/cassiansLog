@@ -581,15 +581,44 @@ async function main() {
       'return document.querySelectorAll("#npcs article").length === 2;',
       'return !document.getElementById("add-npc").classList.contains("hidden") && document.body.textContent.includes("Shown to players") && document.body.textContent.includes("Hidden from players");',
     );
+    await execute(`
+      document.getElementById("add-npc").click();
+      document.getElementById("dnd-beyond-import-toggle").click();
+      document.getElementById("dnd-beyond-url").value = "https://www.dndbeyond.com/characters/123456789";
+      document.getElementById("dnd-beyond-url-import").click();
+      return true;
+    `);
+    await waitFor(
+      'return document.getElementById("new-npc-name").value === "Imported Browser Hero" && !document.getElementById("dnd-beyond-import-summary").classList.contains("hidden");',
+      "NPC D&D Beyond import did not populate Quick Setup",
+    );
+    await execute('document.getElementById("create-npc-submit").click(); return true;');
+    await eventually(async () => {
+      const state = await execute(`return {
+        pathname: location.pathname,
+        name: window.character?.name || "",
+        intelligence: window.character?.stats?.int?.score,
+        status: document.getElementById("npc-form-status")?.textContent || "",
+        storedIds: Object.keys(JSON.parse(localStorage.getItem("dnd-npcs:campaign:aotr") || "{}")),
+      };`);
+      if (state.pathname === "/c/aotr/npc/imported-browser-hero/" && state.name === "Imported Browser Hero" && state.intelligence === 16) return state;
+      throw new Error(JSON.stringify(state));
+    }, "Imported D&D Beyond NPC did not open in the tracker");
+    assert.equal(await execute('return document.body.dataset.npcPlayerVisible === "false" && document.body.dataset.trackerKind === "npc" && window.npcVisibility?.$default === true && document.querySelector(\'[data-npc-field-visibility="ac"]\')?.textContent.includes("Shown");'), true, "Imported NPC should remain hidden while its fields start shown by default.");
+    console.log("Browser smoke passed: NPC D&D Beyond import");
     await smoke(
       "NPC tracker field controls",
       "/c/aotr/npc/known-npc/",
       'return window.character?.id === "known-npc" && Boolean(document.getElementById("edit-character-toggle"));',
       `
         document.getElementById("edit-character-toggle").click();
-        return document.querySelector('[data-npc-field-visibility="name"]')?.textContent.includes("Shown")
-          && document.querySelector('[data-npc-field-visibility="ac"]')?.textContent.includes("Hidden")
-          && Boolean(document.querySelector("[data-npc-player-visible]:checked"));
+        const initial = document.querySelector('[data-npc-field-visibility="name"]')?.textContent.includes("Shown")
+          && document.querySelector('[data-npc-field-visibility="ac"]')?.textContent.includes("Hidden");
+        document.querySelector('[data-npc-visibility-preset="show-all"]').click();
+        const showsAll = document.querySelector('[data-npc-field-visibility="ac"]')?.textContent.includes("Shown");
+        document.querySelector('[data-npc-visibility-preset="hide-all"]').click();
+        document.querySelector('[data-npc-field-visibility="name"]').click();
+        return initial && showsAll && Boolean(document.querySelector("[data-npc-player-visible]:checked"));
       `,
     );
     await execute('document.getElementById("editor-cancel").click(); localStorage.setItem("cassianslog-local-user-v1", "localhost-player-01"); return true;');

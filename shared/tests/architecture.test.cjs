@@ -131,6 +131,14 @@ for (const [file, entrypoint] of pageShells) {
   assert.match(source, /<script type="module"/, `${file} must use a module entrypoint.`);
   assert.ok(source.includes(`src="${entrypoint}"`), `${file} must load ${entrypoint}.`);
 }
+const npcArchiveSource = fs.readFileSync("npc/js/archive.js", "utf8");
+const npcRepositorySource = fs.readFileSync("npc/js/repository.js", "utf8");
+const npcPageSource = fs.readFileSync("npc/index.html", "utf8");
+assert.ok(npcArchiveSource.includes("../../char/js/archive/dnd-beyond-import.js"), "NPC creation must reuse the Character D&D Beyond importer.");
+assert.ok(npcRepositorySource.includes("applyImportedCharacterSetup"), "Imported NPCs must reuse Character document mapping.");
+for (const id of ["dnd-beyond-import-toggle", "dnd-beyond-url-import", "dnd-beyond-pdf-import", "dnd-beyond-import-summary"]) {
+  assert.ok(npcPageSource.includes(`id="${id}"`), `NPC creation must expose ${id}.`);
+}
 
 const catalog = JSON.parse(fs.readFileSync("char/catalog.json", "utf8"));
 for (const character of [...catalog.characters, "template"]) {

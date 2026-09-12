@@ -4,8 +4,8 @@ import { readCloudJSON, writeCloudJSON } from "../../shared/js/cloud-store.js";
 import { cloneJSON } from "../../shared/js/text.js";
 import { currentCampaign, currentCampaignSlug } from "../../shared/js/campaign-context.js";
 import { isLocalRuntimeHost } from "../../shared/js/runtime-host.js";
-import { projectNpcForPlayer } from "../../shared/js/npc-visibility.js";
-import { applyNewCharacterSetup } from "../../char/js/archive/repository.js";
+import { defaultNpcVisibility, projectNpcForPlayer } from "../../shared/js/npc-visibility.js";
+import { applyImportedCharacterSetup, applyNewCharacterSetup } from "../../char/js/archive/repository.js";
 import { NPCS_STORAGE_KEY } from "../../char/js/storage-keys.js";
 
 export function storedNpcRecords() {
@@ -34,11 +34,12 @@ export async function listNpcs() {
         const cloudIds = new Set(npcs.map((record) => record.id));
         Object.values(storedNpcRecords()).forEach((record) => {
           if (!record?.document?.id || cloudIds.has(record.document.id)) return;
+          const playerProjection = projectNpcForPlayer(record.document, record.visibility);
           npcs.push({
             id: record.document.id,
             document: cloneJSON(record.document),
             visibility: record.visibility || {},
-            visibleFields: Object.keys(record.visibility || {}),
+            visibleFields: playerProjection.visibleFields,
             playerVisible: record.playerVisible === true,
             canEdit: true,
             canManage: true,
@@ -53,9 +54,10 @@ export async function listNpcs() {
   return {
     canManage,
     npcs: records.filter((record) => canManage || record.playerVisible).map((record) => {
+      const playerProjection = projectNpcForPlayer(record.document, record.visibility);
       const projected = canManage
-        ? { document: cloneJSON(record.document), visibleFields: Object.keys(record.visibility || {}) }
-        : projectNpcForPlayer(record.document, record.visibility);
+        ? { document: cloneJSON(record.document), visibleFields: playerProjection.visibleFields }
+        : playerProjection;
       return {
         id: record.document.id,
         document: projected.document,
@@ -73,8 +75,11 @@ export async function createNpc(setup) {
   const id = npcId(setup.name, records);
   const response = await fetch("char/template/character.json");
   if (!response.ok) throw new Error("Could not load the NPC template.");
-  const document = applyNewCharacterSetup(await response.json(), { ...setup, id });
-  const record = { document, visibility: {}, playerVisible: false };
+  const template = await response.json();
+  const document = setup.importedCharacter
+    ? applyImportedCharacterSetup(template, { ...setup, id })
+    : applyNewCharacterSetup(template, { ...setup, id });
+  const record = { document, visibility: defaultNpcVisibility(), playerVisible: false };
   records[id] = cloneJSON(record);
   writeJSON(NPCS_STORAGE_KEY, records);
   if (isLocalRuntimeHost()) return { record, cloudSaved: true };

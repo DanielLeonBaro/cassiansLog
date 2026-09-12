@@ -30,5 +30,11 @@ const npcRenderer = createCharacterFieldRenderer({
 assert.match(npcRenderer.renderPrimitive("Known Face", ["name"], "name"), /data-npc-field-visibility="name"[\s\S]*Shown/);
 assert.match(npcRenderer.renderPrimitive(12, ["stats", "dex", "score"], "score"), /data-npc-field-visibility="stats\.dex\.score"[\s\S]*Hidden/);
 assert.match(npcRenderer.renderPrimitive(true, ["spellcasting", "enabled"], "enabled"), /data-npc-field-visibility="spellcasting\.enabled"/);
+const defaultVisibleNpcRenderer = createCharacterFieldRenderer({
+  classes: { button: "button", field: "field" }, expandedItems, getDraft: () => draft,
+  getVisibility: () => ({ $default: true, ac: false }), showVisibilityControls: true,
+});
+assert.match(defaultVisibleNpcRenderer.renderPrimitive("Hero", ["name"], "name"), /data-npc-field-visibility="name"[\s\S]*Shown/);
+assert.match(defaultVisibleNpcRenderer.renderPrimitive(18, ["ac"], "ac"), /data-npc-field-visibility="ac"[\s\S]*Hidden/);
 
 console.log("Character editor field-renderer tests passed.");

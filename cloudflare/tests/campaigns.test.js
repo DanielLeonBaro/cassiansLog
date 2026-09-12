@@ -204,6 +204,15 @@ assert.equal(result.body.document.secret, undefined);
 assert.deepEqual(result.body.document.stats, { dex: { score: 16 } });
 assert.deepEqual(result.body.document.actions, [{ name: "Knife" }]);
 assert.equal(result.body.visibility, undefined, "Player responses must not expose manager visibility state.");
+result = await call(env, cookies.alice, ["curseofstrahd", "npcs", "masked-one"], {
+  method: "PUT",
+  body: { document: npc, playerVisible: true, visibility: { $default: true, secret: false } },
+});
+assert.equal(result.response.status, 200);
+result = await call(env, cookies.carol, ["curseofstrahd", "npcs", "masked-one"]);
+assert.equal(result.body.document.ac, 18, "Default-visible NPC fields remain visible unless hidden.");
+assert.equal(result.body.document.secret, undefined, "Explicitly hidden NPC fields remain server-redacted.");
+assert.equal(result.body.document.actions[0].description, "Poisoned blade");
 result = await call(env, cookies.carol, ["curseofstrahd", "npcs", "masked-one"], { method: "PUT", body: { document: npc, playerVisible: true, visibility: {} } });
 assert.equal(result.response.status, 403, "Players cannot edit NPC documents or disclosure rules.");
 result = await call(env, cookies.carol, ["curseofstrahd", "npcs", "masked-one", "state"]);

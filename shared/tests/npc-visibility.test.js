@@ -1,6 +1,6 @@
 // Verifies allowlist-based NPC field projection never returns hidden values.
 import assert from "node:assert/strict";
-import { normalizeNpcVisibility, npcFieldVisible, projectNpcForPlayer } from "../js/npc-visibility.js";
+import { defaultNpcVisibility, normalizeNpcVisibility, npcFieldVisible, projectNpcForPlayer } from "../js/npc-visibility.js";
 
 const visibility = normalizeNpcVisibility({
   name: true,
@@ -34,5 +34,13 @@ assert.deepEqual(projected.document, {
 assert.equal(JSON.stringify(projected).includes("Hidden allegiance"), false);
 assert.equal(JSON.stringify(projected).includes("Secret poison"), false);
 assert.equal(JSON.stringify(projected).includes("Hidden tunnel"), false);
+
+const shownByDefault = normalizeNpcVisibility({ ...defaultNpcVisibility(), secret: false });
+assert.deepEqual(shownByDefault, { $default: true, secret: false });
+assert.equal(npcFieldVisible(shownByDefault, "name"), true);
+assert.equal(npcFieldVisible(shownByDefault, "secret"), false);
+const defaultProjection = projectNpcForPlayer({ id: "open", name: "Visible", secret: "Hidden" }, shownByDefault);
+assert.deepEqual(defaultProjection.document, { id: "open", name: "Visible" });
+assert.deepEqual(defaultProjection.visibleFields, ["id", "name"]);
 
 console.log("NPC field visibility projection tests passed.");

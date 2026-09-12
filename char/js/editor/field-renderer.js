@@ -1,5 +1,6 @@
 // Renders schema-driven editor fields and nested collection controls.
 import { escapeAttribute, escapeHTML } from "../../../shared/js/text.js";
+import { npcFieldVisible } from "../../../shared/js/npc-visibility.js";
 import {
   COLLECTION_KNOWN_FIELDS,
   collectionItemSummary,
@@ -12,7 +13,7 @@ export function createCharacterFieldRenderer({ classes, expandedItems, getDraft,
   function renderVisibilityControl(path, label = fieldTitle(path.at(-1))) {
     if (!showVisibilityControls) return "";
     const fieldPath = fieldPathKey(path);
-    const visible = getVisibility()?.[fieldPath] === true;
+    const visible = npcFieldVisible(getVisibility(), fieldPath);
     return `<button type="button" role="switch" aria-checked="${visible}" data-npc-field-visibility="${escapeAttribute(fieldPath)}" class="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold transition ${visible ? "border-emerald-600 bg-emerald-600 text-white" : "border-stone-400 text-stone-500 dark:border-white/20 dark:text-stone-300"}" aria-label="${visible ? "Hide" : "Show"} ${escapeAttribute(label)} from players"><i class="bi ${visible ? "bi-eye-fill" : "bi-eye-slash-fill"}" aria-hidden="true"></i>${visible ? "Shown" : "Hidden"}</button>`;
   }
 

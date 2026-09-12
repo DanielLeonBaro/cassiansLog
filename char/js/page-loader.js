@@ -157,9 +157,10 @@ export function initializeCharacterPage() {
       let bundledData = cloudCharacter?.document;
       if (npcMode && (localCampaignMode || pendingNpcRecovery)) {
         if (!savedCharacter || (!localNpcManager && !savedRecord?.playerVisible)) throw new Error("This NPC is not visible to players.");
+        const playerProjection = projectNpcForPlayer(savedCharacter, savedRecord.visibility);
         const projected = localNpcManager
-          ? { document: savedCharacter, visibleFields: Object.keys(savedRecord.visibility || {}) }
-          : projectNpcForPlayer(savedCharacter, savedRecord.visibility);
+          ? { document: savedCharacter, visibleFields: playerProjection.visibleFields }
+          : playerProjection;
         bundledData = projected.document;
         window.npcVisibleFields = projected.visibleFields;
       }
@@ -192,7 +193,7 @@ export function initializeCharacterPage() {
           playerVisible: cloudCharacter.playerVisible === true,
         } : cloneJSON(cloudCharacter.document);
         writeJSON(documentStorageKey, savedCharacters);
-      } else if (params.get("new") === "1") {
+      } else if (!npcMode && params.get("new") === "1") {
         const pending = readJSON(PENDING_CHARACTER_STORAGE_KEY, {});
         window.character = cloneJSON(window.character);
         window.character.id = characterName;

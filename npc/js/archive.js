@@ -5,6 +5,7 @@ import { initializeTheme } from "../../shared/js/theme.js";
 import { initializeDiceRoller } from "../../shared/js/dice/index.js";
 import { campaignPagePath } from "../../shared/js/campaign-context.js";
 import { characterDescription } from "../../char/js/archive/repository.js";
+import { importDndBeyondPage, importDndBeyondPdf } from "../../char/js/archive/dnd-beyond-import.js";
 import { escapeAttribute, escapeHTML } from "../../shared/js/text.js";
 import { createNpc, listNpcs, removeNpc, setNpcPlayerVisible } from "./repository.js";
 
@@ -15,13 +16,82 @@ initializeDiceRoller();
 const root = document.getElementById("npcs");
 const addButton = document.getElementById("add-npc");
 const form = document.getElementById("npc-form");
+const portraitPreview = document.getElementById("new-npc-portrait");
+const importToggle = document.getElementById("dnd-beyond-import-toggle");
+const importPanel = document.getElementById("dnd-beyond-import-panel");
+const importURL = document.getElementById("dnd-beyond-url");
+const importURLButton = document.getElementById("dnd-beyond-url-import");
+const importPDFButton = document.getElementById("dnd-beyond-pdf-import");
+const importPDFInput = document.getElementById("dnd-beyond-pdf-input");
+const importStatus = document.getElementById("dnd-beyond-import-status");
+const importSummary = document.getElementById("dnd-beyond-import-summary");
+const startingContent = document.getElementById("new-npc-starting-content");
+const fallbackPortrait = "shared/assets/bat.ico";
+let portrait = fallbackPortrait;
+let importedCharacter = null;
+let importing = false;
+let creating = false;
+let canManage = false;
 const dialog = createDialogController(document.getElementById("npc-dialog"), {
   form,
   initialFocus: document.getElementById("new-npc-name"),
   returnFocus: addButton,
+  beforeClose() {
+    return !creating && !importing;
+  },
+  onClose() {
+    portrait = fallbackPortrait;
+    importedCharacter = null;
+    importing = false;
+    creating = false;
+    portraitPreview.src = fallbackPortrait;
+    importPanel.classList.add("hidden");
+    importToggle.setAttribute("aria-expanded", "false");
+    importStatus.textContent = "";
+    importSummary.textContent = "";
+    importSummary.classList.add("hidden");
+    startingContent.classList.remove("hidden");
+    importURLButton.disabled = false;
+    importPDFButton.disabled = false;
+    document.getElementById("create-npc-submit").disabled = false;
+    document.getElementById("npc-form-status").textContent = "";
+  },
 });
-let portrait = "shared/assets/bat.ico";
-let canManage = false;
+
+function applyImportedNpc(character) {
+  importedCharacter = character;
+  document.getElementById("new-npc-name").value = character.name || "";
+  document.getElementById("new-npc-status").value = character.status || "Active";
+  document.getElementById("new-npc-class").value = character.class || "";
+  document.getElementById("new-npc-race").value = character.race || "";
+  document.getElementById("new-npc-level").value = character.level || 1;
+  portrait = character.portrait || fallbackPortrait;
+  portraitPreview.src = portrait;
+  startingContent.classList.add("hidden");
+  importSummary.textContent = `Imported ${character.name}. Review the essentials, then create the hidden NPC.`;
+  importSummary.classList.remove("hidden");
+}
+
+async function readImport(loadImport, progress) {
+  if (importing) return;
+  importing = true;
+  importURLButton.disabled = true;
+  importPDFButton.disabled = true;
+  importStatus.textContent = progress;
+  try {
+    const character = await loadImport();
+    applyImportedNpc(character);
+    importStatus.textContent = `Ready: ${character.name}, level ${character.level}.`;
+    document.getElementById("new-npc-name").focus();
+  } catch (error) {
+    console.error("Could not import D&D Beyond NPC:", error);
+    importStatus.textContent = error instanceof Error ? error.message : "Could not read that D&D Beyond character.";
+  } finally {
+    importing = false;
+    importURLButton.disabled = false;
+    importPDFButton.disabled = false;
+  }
+}
 
 function card(record) {
   const npc = record.document || {};
@@ -66,6 +136,21 @@ async function load() {
 addButton.addEventListener("click", dialog.open);
 document.getElementById("close-npc-dialog").addEventListener("click", dialog.close);
 document.getElementById("cancel-npc-dialog").addEventListener("click", dialog.close);
+importToggle.addEventListener("click", () => {
+  const expanded = importToggle.getAttribute("aria-expanded") === "true";
+  importToggle.setAttribute("aria-expanded", String(!expanded));
+  importPanel.classList.toggle("hidden", expanded);
+  if (!expanded) importURL.focus();
+});
+importURLButton.addEventListener("click", () => readImport(
+  () => importDndBeyondPage(importURL.value),
+  "Reading the public character page…",
+));
+importPDFButton.addEventListener("click", () => importPDFInput.click());
+importPDFInput.addEventListener("change", () => {
+  const file = importPDFInput.files?.[0];
+  if (file) readImport(() => importDndBeyondPdf(file), `Reading ${file.name}…`);
+});
 document.getElementById("new-npc-portrait-button").addEventListener("click", () => document.getElementById("new-npc-portrait-input").click());
 document.getElementById("new-npc-portrait-input").addEventListener("change", (event) => {
   const file = event.currentTarget.files?.[0];
@@ -77,7 +162,10 @@ document.getElementById("new-npc-portrait-input").addEventListener("change", (ev
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const submit = document.getElementById("create-npc-submit");
+  creating = true;
   submit.disabled = true;
+  submit.innerHTML = '<span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-r-transparent" aria-hidden="true"></span> Creating…';
+  document.getElementById("npc-form-status").textContent = "Creating the hidden NPC and saving it to the campaign…";
   try {
     const result = await createNpc({
       name: document.getElementById("new-npc-name").value,
@@ -87,12 +175,15 @@ form.addEventListener("submit", async (event) => {
       race: document.getElementById("new-npc-race").value,
       level: document.getElementById("new-npc-level").value,
       starterMode: form.elements.starterMode.value,
+      importedCharacter,
     });
     if (!result.cloudSaved) alert("NPC saved in this browser, but cloud save failed. Save again from the editor to retry.");
     location.href = `${campaignPagePath("npc")}${encodeURIComponent(result.record.document.id)}/?new=1&edit=1`;
   } catch (error) {
+    creating = false;
     document.getElementById("npc-form-status").textContent = error.message;
     submit.disabled = false;
+    submit.innerHTML = '<i class="bi bi-arrow-right"></i> Create & continue';
   }
 });
 

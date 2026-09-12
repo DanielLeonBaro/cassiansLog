@@ -12,7 +12,7 @@ import {
   entityDocumentsStorageKey,
 } from "../storage-keys.js";
 import { isNpcTracker, trackerApiPath, trackerEntityLabel } from "../entity-context.js";
-import { normalizeNpcVisibility } from "../../../shared/js/npc-visibility.js";
+import { defaultNpcVisibility, normalizeNpcVisibility, npcFieldVisible } from "../../../shared/js/npc-visibility.js";
 import { subscribeCharacterEditorExtensions } from "./extensions.js";
 import {
   V1_SECTION_DEFINITIONS,
@@ -91,6 +91,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
   function renderBasics() {
     return `<div class="space-y-6">
       ${npcMode ? `<label class="${classes.panel} flex items-center justify-between gap-4"><span><strong class="block">Show NPC in player archive</strong><span class="mt-1 block text-sm text-stone-500 dark:text-stone-400">Turning this off hides the NPC from players without removing it for Admins or DMs.</span></span><input type="checkbox" data-npc-player-visible class="h-6 w-6 shrink-0 accent-red-700" ${draftPlayerVisible ? "checked" : ""}></label>` : ""}
+      ${npcMode ? `<div class="${classes.panel} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><strong class="block">Player field visibility</strong><span class="mt-1 block text-sm text-stone-500 dark:text-stone-400">${draftVisibility.$default === true ? "Fields are shown unless you hide them." : "Only fields marked Shown are visible. Use Show all to switch to hide-only mode."}</span></div><div class="flex shrink-0 gap-2"><button type="button" data-npc-visibility-preset="hide-all" class="rounded-xl border border-stone-400 px-3 py-2 text-sm font-bold">Hide all</button><button type="button" data-npc-visibility-preset="show-all" class="rounded-xl border border-emerald-600 px-3 py-2 text-sm font-bold text-emerald-700 dark:text-emerald-300">Show all</button></div></div>` : ""}
       <div class="${classes.panel}"><div class="flex flex-col gap-4 sm:flex-row sm:items-center"><button type="button" data-editor-portrait class="group relative h-28 w-28 shrink-0 overflow-hidden rounded-2xl border border-stone-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/15"><img data-editor-portrait-preview src="${escapeAttribute(draft.portrait || "shared/assets/bat.ico")}" alt="${entityLabel} portrait preview" class="h-full w-full object-cover"><span class="absolute inset-x-0 bottom-0 bg-black/70 px-2 py-1.5 text-xs font-bold text-white"><i class="bi bi-camera-fill mr-1"></i> Change</span></button><div class="grow"><div class="flex items-center justify-between gap-3"><h3 class="font-display text-lg font-bold">${entityLabel} portrait</h3>${renderVisibilityControl(["portrait"], `${entityLabel} portrait`)}</div><p class="mt-1 text-sm text-stone-500 dark:text-stone-400">Choose an image from this device. It is saved with the ${entityLabel.toLowerCase()}.</p></div></div></div>
       ${renderFields(["name", "status", "class", "subclass", "race", "level", "experience", "background", "alignment", "gender"])}
     </div>`;
@@ -396,10 +397,22 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
   }
 
   function handleEditorClick(event) {
+    const visibilityPreset = event.target.closest("[data-npc-visibility-preset]");
+    if (visibilityPreset && npcMode) {
+      draftVisibility = visibilityPreset.dataset.npcVisibilityPreset === "show-all"
+        ? defaultNpcVisibility()
+        : {};
+      renderEditorFields();
+      return;
+    }
     const visibilityToggle = event.target.closest("[data-npc-field-visibility]");
     if (visibilityToggle && npcMode) {
       const path = visibilityToggle.dataset.npcFieldVisibility;
-      if (draftVisibility[path] === true) delete draftVisibility[path];
+      const visible = npcFieldVisible(draftVisibility, path);
+      if (draftVisibility.$default === true) {
+        if (visible) draftVisibility[path] = false;
+        else delete draftVisibility[path];
+      } else if (visible) delete draftVisibility[path];
       else draftVisibility[path] = true;
       renderEditorFields();
       return;

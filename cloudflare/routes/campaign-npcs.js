@@ -13,9 +13,10 @@ function npcRecord(row, access) {
   const manager = canManageCampaign(access);
   const fullDocument = parseStored(row.document_json, {});
   const visibility = normalizeNpcVisibility(parseStored(row.visibility_json, {}));
+  const playerProjection = projectNpcForPlayer(fullDocument, visibility);
   const projected = manager
-    ? { document: fullDocument, visibleFields: Object.keys(visibility) }
-    : projectNpcForPlayer(fullDocument, visibility);
+    ? { document: fullDocument, visibleFields: playerProjection.visibleFields }
+    : playerProjection;
   return {
     id: row.id,
     updatedAt: row.updated_at,
