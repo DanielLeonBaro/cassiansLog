@@ -223,14 +223,14 @@ Current platform reference: [Cloudflare Workers best practices](https://develope
 ### Required refactor loop
 
 1. Define the exact behavior boundary and affected owners.
-2. Run `npm test` before editing and record any pre-existing warning or failure.
+2. Run `npm test -- <affected tags>` before editing and record any pre-existing warning or failure.
 3. Add behavioral coverage before moving unprotected logic.
 4. Move one ownership boundary.
 5. Run the focused tests.
-6. Run `npm test` again.
+6. Run the same affected tags again. Run untagged `npm test` only for broad cross-cutting or release verification.
 7. Run `npm run build:site` for public-file, build, routing, or Tailwind changes.
 8. Perform HTTP smoke checks for affected routes.
-9. Run `npm run test:browser` for interaction, focus, local fallback, storage, and refresh behavior when those are affected.
+9. Run `npm run test:browser -- <affected tags>` for interaction, focus, local fallback, storage, and refresh behavior when those are affected.
 10. Inspect the diff for accidental generated-data, schema, route, key, or class changes.
 
 Passing source-text tests alone is not enough to prove browser behavior. Keep source-contract tests for architecture and markup invariants, but prefer direct module tests for pure behavior. As modules are extracted, replace tests that strip imports or match implementation strings with dynamic imports and public behavior assertions where practical.
@@ -302,7 +302,7 @@ Before merging a change, confirm:
 - [ ] Local and D1 authority, save timing, failure recovery, and refresh behavior are explicit.
 - [ ] A new public directory is in the static build, Tailwind scan, navigation/settings, and tests.
 - [ ] Schema work uses an additive migration and has an upgrade/recovery proof.
-- [ ] Focused tests and `npm test` pass.
+- [ ] Every affected component tag passes; full suite runs only when cross-cutting risk or release verification requires it.
 - [ ] Public/build changes pass `npm run build:site` and route smoke tests.
 - [ ] Interaction or layout changes have browser verification.
 - [ ] The diff contains no accidental generated output, secrets, unrelated cleanup, or compatibility drift.

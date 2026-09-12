@@ -1,5 +1,13 @@
 // Runs each test suite under a human-readable title so failures identify the broken behavior.
 const { spawnSync } = require("node:child_process");
+const { COMPONENT_TAGS, matchesTags, parseRequestedTags } = require("./component-tags.cjs");
+
+const requestedTags = parseRequestedTags(process.argv.slice(2));
+
+if (process.argv.includes("--list-tags")) {
+  console.log(COMPONENT_TAGS.join("\n"));
+  process.exit(0);
+}
 
 const suites = [
   ["Shared text escaping and JSON cloning", "shared/tests/text.test.js"],
@@ -85,8 +93,38 @@ function run(title, command, args) {
   process.exit(result.status || 1);
 }
 
-for (const [title, file, nodeOptions = []] of suites) {
+function tagsForSuite(file) {
+  if (file.includes("v3-layout") || file.includes("character-layout")) return ["@character-layout"];
+  if (file.includes("dnd-beyond")) return ["@characters", "@npcs"];
+  if (file.includes("compendium-integration")) return ["@compendium", "@screens"];
+  if (file.startsWith("char/")) return ["@characters"];
+  if (file.startsWith("combat-loot/")) return ["@combat"];
+  if (file.startsWith("public-initiative/")) return ["@initiative"];
+  if (file.startsWith("screens/")) return ["@screens"];
+  if (file.startsWith("music/")) return ["@music"];
+  if (file.startsWith("compendium/") || file.includes("compendium-cleanup")) return ["@compendium"];
+  if (file.startsWith("wiki/")) return ["@wiki"];
+  if (file.includes("character-compendium")) return ["@characters", "@compendium"];
+  if (file.includes("campaign-context") || file.includes("campaigns")) return ["@campaigns"];
+  if (file.includes("npc-visibility")) return ["@npcs"];
+  if (file.includes("theme")) return ["@themes"];
+  if (file.includes("auth")) return ["@auth"];
+  if (file.includes("screens")) return ["@screens", "@initiative"];
+  if (file.includes("markdown-toolbar")) return ["@characters", "@combat", "@screens", "@wiki"];
+  if (file.includes("dice")) return ["@characters", "@combat", "@screens"];
+  if (file.includes("settings")) return ["@admin", "@campaigns", "@characters", "@themes"];
+  if (file.includes("sections")) return ["@admin", "@campaigns"];
+  if (file.includes("worker.test")) return ["@admin", "@auth"];
+  return ["@core"];
+}
+
+const selectedSuites = suites.filter(([, file]) => matchesTags(requestedTags, tagsForSuite(file)));
+console.log(`Test selection: ${requestedTags.size ? [...requestedTags].join(", ") : "all tags"} (${selectedSuites.length}/${suites.length} suites)`);
+
+for (const [title, file, nodeOptions = []] of selectedSuites) {
   run(title, process.execPath, [...nodeOptions, file]);
 }
 
-run("Tailwind CSS build", process.platform === "win32" ? "npm.cmd" : "npm", ["run", "build:css"]);
+if (matchesTags(requestedTags, ["@themes"])) {
+  run("Tailwind CSS build", process.platform === "win32" ? "npm.cmd" : "npm", ["run", "build:css"]);
+}

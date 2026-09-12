@@ -3,7 +3,15 @@ node_modules/
 .wrangler/
 compendium/source/
 wiki/scripts/content-diff/output/
-.agents
+.agents/caveman
+.agents/caveman-commit
+.agents/caveman-compress
+.agents/caveman-explore
+.agents/caveman-help
+.agents/caveman-learn
+.agents/caveman-optimize
+.agents/caveman-review
+.agents/caveman-setup
 skills-lock.json
 googleSecret.md
 client_secret_759581088211-3a2t117l5cjjr7pkvimmdjfcs6jpgep4.apps.googleusercontent.com.json

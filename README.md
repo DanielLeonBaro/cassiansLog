@@ -34,8 +34,8 @@ If PowerShell blocks `npm.ps1`, use `npm.cmd`.
 | `npm run d1:migrate:remote` | Apply pending migrations to production D1 |
 | `npm run d1:seed:remote` | Refresh production Compendium and bundled characters |
 | `npm run import:wiki` | Refresh the bundled Wiki JSON seed |
-| `npm test` | Run feature, integration, architecture, route, and CSS tests |
-| `npm run test:browser` | Run local fallback smoke tests in headless Firefox through GeckoDriver |
+| `npm test` | Run all feature, integration, architecture, route, and CSS tests; append component tags for focused cases |
+| `npm run test:browser` | Run all local fallback smoke tests in headless Firefox; append component tags for focused cases |
 | `npm audit` | Check dependencies for known vulnerabilities |
 
 ## Independent feature layout
@@ -56,6 +56,8 @@ cassiansLog/
 ```
 
 Character, Combat & Loot, Compendium, and Wiki code may import neutral code from `shared/`, but they never import one another. Cross-feature behavior belongs in `integrations/`. The Character–Compendium picker is enabled by a separate module script on Character routes; removing that script removes the picker without affecting the Character editor.
+
+Automated tests accept component tags. For a campaign-aware Character change, run `npm test -- @campaigns @characters` and `npm run test:browser -- @campaigns @characters`. See `shared/tests/BROWSER_SMOKE.md` for the tag list. No tags runs everything.
 
 Bundled character data and portraits live beside their routes under `char/<id>/`. The Wiki seed lives at `wiki/data/pages.json`. Generated Compendium files live in `compendium/data/`; edit the builder rather than generated JSON by hand.
 

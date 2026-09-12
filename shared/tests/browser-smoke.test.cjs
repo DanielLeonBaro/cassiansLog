@@ -4,9 +4,20 @@ const childProcess = require("node:child_process");
 const fs = require("node:fs");
 const http = require("node:http");
 const path = require("node:path");
+const { COMPONENT_TAGS, matchesTags, parseRequestedTags } = require("./component-tags.cjs");
 
 const root = process.cwd();
 const timeoutMilliseconds = 30_000;
+const requestedTags = parseRequestedTags(process.argv.slice(2));
+
+if (process.argv.includes("--list-tags")) {
+  console.log(COMPONENT_TAGS.join("\n"));
+  process.exit(0);
+}
+
+function includesTag(...tags) {
+  return matchesTags(requestedTags, tags);
+}
 
 function executable(name, explicitPath) {
   if (explicitPath) return explicitPath;
@@ -208,6 +219,7 @@ async function main() {
     });
     sessionId = session.sessionId;
     const base = `http://127.0.0.1:${serverPort}`;
+    console.log(`Browser smoke selection: ${requestedTags.size ? [...requestedTags].join(", ") : "all tags"}`);
 
     async function command(method, pathname, body) {
       return webdriverRequest(driverPort, method, `/session/${sessionId}${pathname}`, body);
@@ -231,6 +243,18 @@ async function main() {
       const result = await execute(verifyScript);
       assert.equal(result, true, `${label} browser contract failed.`);
       console.log(`Browser smoke passed: ${label}`);
+    }
+
+    if (requestedTags.size && !requestedTags.has("@campaigns") && !requestedTags.has("@auth")) {
+      await navigate("/login/");
+      await waitFor('return document.querySelectorAll("#local-test-user option").length === 21;', "Focused browser setup did not load");
+      await execute(`
+        localStorage.setItem("cassianslog-local-user-v1", "localhost-admin");
+        localStorage.setItem("cassianslog-last-campaign-v1:localhost-admin", JSON.stringify({ id: "campaign-breugaire", slug: "aotr" }));
+        return true;
+      `);
+      await navigate("/campaigns/");
+      await waitFor('return Boolean(navigator.serviceWorker.controller);', "Focused browser route fallback did not activate");
     }
 
     async function auditCurrentLayout(label) {
@@ -273,12 +297,13 @@ async function main() {
       assert.deepEqual(result, { overflow: false, escapedControls: [], escapedHeaderBadges: 0 }, `${label} alignment audit failed.`);
     }
 
-    await smoke(
+    if (includesTag("@auth", "@campaigns")) await smoke(
       "Local test-user login",
       "/login/",
       'return document.querySelectorAll("#local-test-user option").length === 21;',
       'return !document.getElementById("local-test-login").classList.contains("hidden") && document.getElementById("local-test-user").value === "localhost-admin";',
     );
+    if (includesTag("@campaigns")) {
     await smoke(
       "Campaign discovery placeholder",
       "/campaigns/",
@@ -414,7 +439,9 @@ async function main() {
       return true;
     `);
     await waitFor('return location.pathname === "/c/aotr/char/";', "Local Admin did not return to AOTR");
+    }
 
+    if (includesTag("@characters")) {
     await smoke(
       "Character archive and Quick Setup",
       "/c/aotr/char/",
@@ -449,6 +476,11 @@ async function main() {
       "Imported Quick Setup did not close",
     );
     console.log("Browser smoke passed: D&D Beyond page import");
+    }
+
+    if (includesTag("@themes")) {
+    await navigate("/char/cassian/");
+    await waitFor('return Boolean(document.getElementById("theme-toggle"));', "Theme picker host page did not load");
     const themePicker = await execute(`
       const toggle = document.getElementById("theme-toggle");
       toggle.click();
@@ -512,7 +544,10 @@ async function main() {
       'return document.querySelector("[data-theme-dialog]").classList.contains("hidden");',
       "Theme picker did not close with Escape",
     );
+    console.log("Browser smoke passed: Theme picker");
+    }
 
+    if (includesTag("@characters")) {
     await smoke(
       "Character tracker and editor",
       "/char/cassian/",
@@ -563,7 +598,13 @@ async function main() {
       return { value: textarea.value, start: textarea.selectionStart, end: textarea.selectionEnd };
     `);
     assert.deepEqual(characterNoteFormatting, { value: "****", start: 2, end: 2 }, "Character Notes Bold should place the cursor inside the markers.");
+    }
 
+    if (includesTag("@npcs")) {
+    if (!includesTag("@characters")) {
+      await navigate("/char/cassian/");
+      await waitFor('return window.character?.id === "cassian";', "NPC fixture character did not load");
+    }
     await execute(`
       const template = JSON.parse(JSON.stringify(window.character));
       const shown = { ...template, id: "known-npc", name: "Known NPC", ac: 19, background: "Player-hidden secret" };
@@ -635,7 +676,9 @@ async function main() {
       'return document.getElementById("character-name").textContent.trim() === "Known NPC" && !document.body.textContent.includes("Player-hidden secret") && !document.getElementById("edit-character-toggle");',
     );
     await execute('localStorage.setItem("cassianslog-local-user-v1", "localhost-admin"); return true;');
+    }
 
+    if (includesTag("@character-layout")) {
     await execute(`
       localStorage.setItem("cassianslog-runtime-settings", JSON.stringify({ characterSheetStyle: "v3", characterSheetStyleOverrides: { cassian: "v3" }, sections: {}, openWrites: true }));
       const sections = [
@@ -722,7 +765,9 @@ async function main() {
     await navigate("/c/aotr/char/cassian/");
     await waitFor('return getComputedStyle(document.getElementById("v3-sheet-grid")).gridTemplateColumns.split(" ").length === 3;', "First user's separate V3 layout did not return");
     console.log("Browser smoke passed: configurable and user-isolated V3 tracker");
+    }
 
+    if (includesTag("@combat")) {
     await smoke(
       "Combat & Loot",
       "/combat-loot/",
@@ -816,7 +861,9 @@ async function main() {
       "Party link did not reach Initiative",
     );
     console.log("Browser smoke passed: Combat row and saved-party tracker links");
+    }
 
+    if (includesTag("@music")) {
     await smoke(
       "Music",
       "/music/",
@@ -828,7 +875,9 @@ async function main() {
         return document.querySelectorAll("#tag-entry-badges [data-entry-tag]").length === 1;
       `,
     );
+    }
 
+    if (includesTag("@wiki")) {
     await smoke(
       "Wiki",
       "/wiki/",
@@ -859,7 +908,9 @@ async function main() {
       `,
       "Wiki home banner did not save and render",
     );
+    }
 
+    if (includesTag("@compendium")) {
     await smoke(
       "Compendium",
       "/compendium/",
@@ -903,14 +954,18 @@ async function main() {
       `,
       "Compendium detail metadata was not friendly",
     );
+    }
 
+    if (includesTag("@initiative")) {
     await smoke(
       "Public Initiative",
       "/public-initiative/",
       'return document.getElementById("initiative-status").textContent !== "Loading initiative...";',
       'return Boolean(document.querySelector(\'#initiative-list a[href$="/char/cassian/"][target="_blank"]\')) && !document.querySelector("form, input, textarea, select");',
     );
+    }
 
+    if (includesTag("@screens")) {
     await navigate("/player-screen/");
     await waitFor(
       'return Boolean(document.querySelector("[data-add-widget]"));',
@@ -1106,57 +1161,62 @@ async function main() {
     console.log("Browser smoke passed: Player Screen widgets and responsive layout");
     console.log("Browser smoke passed: separate DM Screen actions");
     await command("POST", "/window/rect", { width: 1280, height: 900 });
+    }
 
+    if (includesTag("@admin")) {
     await smoke(
       "Admin localhost mode",
       "/admin/",
       'return !document.getElementById("admin-content").classList.contains("hidden");',
       'return document.getElementById("admin-description").textContent.includes("localStorage") && document.getElementById("admin-lock").hidden && document.querySelector("[data-site-header] #site-pages-menu-button") && !document.getElementById("themes").open && !document.getElementById("theme-admin-unavailable").classList.contains("hidden") && document.getElementById("add-theme").disabled;',
     );
+    }
 
     const auditEntries = [
-      ["Login", "/login/", 'return document.querySelectorAll("#local-test-user option").length === 21;'],
-      ["Campaigns", "/campaigns/", 'return document.querySelectorAll("#campaign-list article").length > 0;'],
-      ["Campaign Manage", "/c/aotr/manage/", 'return Boolean(document.getElementById("campaign-settings"));'],
-      ["Characters", "/c/aotr/char/", 'return document.querySelectorAll("#characters article").length > 0;'],
-      ["Tracker V1", "/c/aotr/char/cassian/", 'return document.documentElement.dataset.characterSheetStyle === "v1" && Boolean(document.getElementById("edit-character-toggle"));', "v1"],
-      ["Tracker V2", "/c/aotr/char/cassian/", 'return document.documentElement.dataset.characterSheetStyle === "v2" && Boolean(document.getElementById("v2-sheet-layout"));', "v2"],
-      ["Tracker V3", "/c/aotr/char/cassian/", 'return document.documentElement.dataset.characterSheetStyle === "v3" && Boolean(document.getElementById("v3-sheet-grid"));', "v3"],
-      ["Player Screen", "/player-screen/", 'return Boolean(document.getElementById("screen-grid"));'],
-      ["DM Screen", "/dm-screen/", 'return Boolean(document.getElementById("screen-grid"));'],
-      ["Combat & Loot", "/combat-loot/", 'return document.getElementById("tracker-list").children.length > 0;'],
-      ["Public Initiative", "/public-initiative/", 'return document.getElementById("initiative-status").textContent !== "Loading initiative...";'],
-      ["Music", "/music/", 'return Boolean(document.getElementById("track-form"));'],
-      ["Wiki", "/wiki/", 'return document.querySelectorAll("#wiki-sidebar a").length > 0;'],
-      ["Compendium", "/compendium/", 'return document.querySelectorAll("#compendium-results article").length > 0;'],
-      ["Admin", "/admin/", 'return !document.getElementById("admin-content").classList.contains("hidden");'],
-    ];
-    for (const mode of [
-      { label: "Standard desktop", reversed: false, width: 1280, height: 900 },
-      { label: "Reversed mobile", reversed: true, width: 375, height: 800 },
-    ]) {
-      await command("POST", "/window/rect", { width: mode.width, height: mode.height });
-      for (const [label, route, ready, style] of auditEntries) {
-        await execute(`
-          localStorage.setItem("dnd-theme", "cassians-classic");
-          localStorage.setItem("dnd-theme-reversed", String(arguments[0]));
-          localStorage.setItem("dnd-theme-font", "auto");
-          if (arguments[1]) {
-            const settings = JSON.stringify({ characterSheetStyle: arguments[1], characterSheetStyleOverrides: { cassian: arguments[1] }, sections: {}, openWrites: true });
-            localStorage.setItem("cassianslog-runtime-settings", settings);
-            localStorage.setItem("cassianslog-runtime-settings:campaign:aotr", settings);
-          }
-          return true;
-        `, [mode.reversed, style || ""]);
-        await navigate(route);
-        await waitFor(ready, `${label} did not become ready for alignment audit`);
-        await auditCurrentLayout(`${mode.label}: ${label}`);
+      ["Login", "/login/", 'return document.querySelectorAll("#local-test-user option").length === 21;', "", ["@auth"]],
+      ["Campaigns", "/campaigns/", 'return document.querySelectorAll("#campaign-list article").length > 0;', "", ["@campaigns"]],
+      ["Campaign Manage", "/c/aotr/manage/", 'return Boolean(document.getElementById("campaign-settings"));', "", ["@campaigns"]],
+      ["Characters", "/c/aotr/char/", 'return document.querySelectorAll("#characters article").length > 0;', "", ["@characters"]],
+      ["Tracker V1", "/c/aotr/char/cassian/", 'return document.documentElement.dataset.characterSheetStyle === "v1" && Boolean(document.getElementById("edit-character-toggle"));', "v1", ["@characters"]],
+      ["Tracker V2", "/c/aotr/char/cassian/", 'return document.documentElement.dataset.characterSheetStyle === "v2" && Boolean(document.getElementById("v2-sheet-layout"));', "v2", ["@characters"]],
+      ["Tracker V3", "/c/aotr/char/cassian/", 'return document.documentElement.dataset.characterSheetStyle === "v3" && Boolean(document.getElementById("v3-sheet-grid"));', "v3", ["@character-layout"]],
+      ["Player Screen", "/player-screen/", 'return Boolean(document.getElementById("screen-grid"));', "", ["@screens"]],
+      ["DM Screen", "/dm-screen/", 'return Boolean(document.getElementById("screen-grid"));', "", ["@screens"]],
+      ["Combat & Loot", "/combat-loot/", 'return document.getElementById("tracker-list").children.length > 0;', "", ["@combat"]],
+      ["Public Initiative", "/public-initiative/", 'return document.getElementById("initiative-status").textContent !== "Loading initiative...";', "", ["@initiative"]],
+      ["Music", "/music/", 'return Boolean(document.getElementById("track-form"));', "", ["@music"]],
+      ["Wiki", "/wiki/", 'return document.querySelectorAll("#wiki-sidebar a").length > 0;', "", ["@wiki"]],
+      ["Compendium", "/compendium/", 'return document.querySelectorAll("#compendium-results article").length > 0;', "", ["@compendium"]],
+      ["Admin", "/admin/", 'return !document.getElementById("admin-content").classList.contains("hidden");', "", ["@admin"]],
+    ].filter(([, , , , tags]) => includesTag(...tags) || requestedTags.has("@themes"));
+    if (auditEntries.length) {
+      for (const mode of [
+        { label: "Standard desktop", reversed: false, width: 1280, height: 900 },
+        { label: "Reversed mobile", reversed: true, width: 375, height: 800 },
+      ]) {
+        await command("POST", "/window/rect", { width: mode.width, height: mode.height });
+        for (const [label, route, ready, style] of auditEntries) {
+          await execute(`
+            localStorage.setItem("dnd-theme", "cassians-classic");
+            localStorage.setItem("dnd-theme-reversed", String(arguments[0]));
+            localStorage.setItem("dnd-theme-font", "auto");
+            if (arguments[1]) {
+              const settings = JSON.stringify({ characterSheetStyle: arguments[1], characterSheetStyleOverrides: { cassian: arguments[1] }, sections: {}, openWrites: true });
+              localStorage.setItem("cassianslog-runtime-settings", settings);
+              localStorage.setItem("cassianslog-runtime-settings:campaign:aotr", settings);
+            }
+            return true;
+          `, [mode.reversed, style || ""]);
+          await navigate(route);
+          await waitFor(ready, `${label} did not become ready for alignment audit`);
+          await auditCurrentLayout(`${mode.label}: ${label}`);
+        }
       }
+      await command("POST", "/window/rect", { width: 1280, height: 900 });
+      console.log(`Browser alignment audit passed: ${requestedTags.size ? [...requestedTags].join(", ") : "all shipped routes"}, tracker styles, desktop/mobile, Standard/Reversed`);
     }
-    await command("POST", "/window/rect", { width: 1280, height: 900 });
-    console.log("Browser alignment audit passed: all shipped routes, tracker styles, desktop/mobile, Standard/Reversed");
 
-    console.log("Headless Firefox browser smoke tests passed.");
+    console.log(`Headless Firefox browser smoke tests passed${requestedTags.size ? ` (${[...requestedTags].join(", ")})` : ""}.`);
   } catch (error) {
     if (driverOutput.trim()) console.error(driverOutput.trim());
     throw error;
