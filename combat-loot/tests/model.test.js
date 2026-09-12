@@ -377,7 +377,14 @@ function setCell(document, tableType, rowId, role, value) {
 {
   const { document: initial, idFactory } = makeDocument();
   const initiative = tracker(initial, "initiative");
-  const document = setCell(initial, "initiative", initiative.rows[0].id, "character", "Goblin");
+  let document = setCell(initial, "initiative", initiative.rows[0].id, "character", "Goblin");
+  document = model.setTrackerRowCharacterLink(
+    document,
+    initiative.id,
+    initiative.rows[0].id,
+    { kind: "npc", id: "goblin-chief" },
+  );
+  assert.equal(initial.tables[0].rows[0].characterLink, undefined, "link changes must not mutate source data");
   const merged = model.mergeInitiativeIntoCombat(document, { idFactory });
   const combat = tracker(merged, "combat");
 
@@ -386,6 +393,19 @@ function setCell(document, tableType, rowId, role, value) {
   assert.equal(cellValues(combat, "damage")[0], "0");
   assert.equal(cellValues(combat, "hp")[0], "0");
   assert.equal(cellValues(combat, "ac")[0], "0");
+  assert.deepEqual(combat.rows[0].characterLink, { kind: "npc", id: "goblin-chief" });
+
+  const unlinked = model.setTrackerRowCharacterLink(
+    merged,
+    combat.id,
+    combat.rows[0].id,
+    null,
+  );
+  assert.equal(unlinked.tables.find((table) => table.type === "combat").rows[0].characterLink, undefined);
+  assert.throws(
+    () => model.setTrackerRowCharacterLink(document, initiative.id, initiative.rows[0].id, { kind: "monster", id: "goblin" }),
+    /valid Character or NPC link/,
+  );
 }
 
 {
@@ -440,7 +460,7 @@ function setCell(document, tableType, rowId, role, value) {
 {
   const { document: initial, idFactory } = makeDocument();
   const members = [
-    { character: "cassian", maxHp: "40", ac: "16" },
+    { character: "cassian", maxHp: "40", ac: "16", characterLink: { kind: "character", id: "cassian" } },
     { character: "Karma", maxHp: "28", ac: "14" },
   ];
 
@@ -448,6 +468,7 @@ function setCell(document, tableType, rowId, role, value) {
   let initiative = tracker(document, "initiative");
   assert.deepEqual(cellValues(initiative, "character"), ["Cassian", "Karma"]);
   assert.deepEqual(cellValues(initiative, "initiative"), ["", ""]);
+  assert.deepEqual(initiative.rows[0].characterLink, { kind: "character", id: "cassian" });
   document = model.bringPartyMembersToInitiative(document, members, { idFactory });
   initiative = tracker(document, "initiative");
   assert.equal(initiative.rows.length, 2, "bringing the party twice should not duplicate names");
@@ -457,6 +478,7 @@ function setCell(document, tableType, rowId, role, value) {
   assert.deepEqual(cellValues(combat, "character"), ["Cassian", "Karma"]);
   assert.deepEqual(cellValues(combat, "hp"), ["40", "28"]);
   assert.deepEqual(cellValues(combat, "ac"), ["16", "14"]);
+  assert.deepEqual(combat.rows[0].characterLink, { kind: "character", id: "cassian" });
 }
 
 console.log("Combat and Loot model tests passed.");

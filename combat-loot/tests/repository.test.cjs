@@ -7,6 +7,9 @@ const storageCode = fs.readFileSync("shared/js/storage.js", "utf8")
   .replace(/^import[\s\S]*?;\r?\n/gm, "")
   .replace(/export /g, "");
 const textCode = fs.readFileSync("shared/js/text.js", "utf8").replace(/export /g, "");
+const trackerLinkCode = fs.readFileSync("shared/js/tracker-link.js", "utf8")
+  .replace(/^import .*\r?\n/gm, "")
+  .replace(/export /g, "");
 const repositoryCode = fs.readFileSync("combat-loot/js/repository.js", "utf8")
   .replace(/^import .*\r?\n/gm, "")
   .replace(/export /g, "");
@@ -44,6 +47,7 @@ vm.createContext(context);
 vm.runInContext(`
   ${storageCode}
   ${textCode}
+  ${trackerLinkCode}
   ${repositoryCode}
   globalThis.api = {
     STORAGE_VERSION,
@@ -160,6 +164,8 @@ assert.equal(api.DRAFT_STORAGE_KEY, DRAFT_KEY);
   setFirstCell(numericCell, 12);
   const badSourceId = validDocument();
   badSourceId.tables[0].rows[0].sourceInitiativeRowId = 4;
+  const badCharacterLink = validDocument();
+  badCharacterLink.tables[0].rows[0].characterLink = { kind: "monster", id: "goblin" };
   const badCounter = validDocument();
   badCounter.nextTrackerNumber = 0;
   const duplicateId = validDocument();
@@ -211,6 +217,7 @@ assert.equal(api.DRAFT_STORAGE_KEY, DRAFT_KEY);
     badRole,
     numericCell,
     badSourceId,
+    badCharacterLink,
     badCounter,
     duplicateId,
     noCoreTables,
@@ -237,6 +244,15 @@ assert.equal(api.DRAFT_STORAGE_KEY, DRAFT_KEY);
     assert.deepEqual(plain(api.loadPresetCollection(storage)), []);
     assert.equal(api.loadDraft(storage), null);
   }
+
+  const linkedDocument = validDocument();
+  linkedDocument.tables[0].rows[0].characterLink = { kind: "character", id: "cassian" };
+  const linkedStorage = createStorage();
+  assert.equal(api.saveDraft({ currentDocument: linkedDocument, storage: linkedStorage }).ok, true);
+  assert.deepEqual(
+    plain(api.loadDraft(linkedStorage).currentDocument.tables[0].rows[0].characterLink),
+    { kind: "character", id: "cassian" },
+  );
 
   const combatWithoutCharacter = validDocument();
   combatWithoutCharacter.tables[1].columns = [];

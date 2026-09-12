@@ -14,7 +14,9 @@ assert.doesNotMatch(page, /writeCloudJSON|addEventListener/);
 assert.match(html, /<ol id="initiative-list"/);
 assert.match(page, /badge\.textContent = String\(index \+ 1\)/);
 assert.match(page, /bg-blood-500[^"\n]*text-on-accent/);
-assert.match(page, /label\.textContent = name/);
+assert.match(page, /label\.textContent = entry\.name/);
+assert.match(page, /trackerLinkHref\(entry\.characterLink\)/);
+assert.match(page, /link\.target = "_blank"/);
 assert.match(combatPage, /href="public-initiative\/"/);
 assert.match(entry, /activePage: "public-initiative"/);
 

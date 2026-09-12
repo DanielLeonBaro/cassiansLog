@@ -1,7 +1,7 @@
 // Verifies combat tracker view.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { createCombatLootDocument, updateTrackerCell } from "../js/model.js";
+import { createCombatLootDocument, setTrackerRowCharacterLink, updateTrackerCell } from "../js/model.js";
 import { renderTracker } from "../js/view.js";
 
 let document = createCombatLootDocument();
@@ -18,6 +18,7 @@ assert.match(initiativeHTML, />Bring a Party<\/button>/);
 assert.match(initiativeHTML, /class="inline-flex gap-1"><button[^>]*data-action="sort-initiative"/);
 assert.match(initiativeHTML, /data-action="sort-initiative"[^>]*class="[^"]*bg-violet-300/);
 assert.match(initiativeHTML, /data-action="send-to-combat"[^>]*class="[^"]*bg-violet-300/);
+assert.match(initiativeHTML, /data-action="edit-character-link"/);
 
 let html = renderTracker(combat);
 assert.match(html, /data-action="add-column-end"[^>]*class="[^"]*bg-emerald-700/);
@@ -59,9 +60,15 @@ assert.match(
   html,
   new RegExp(`data-inline-cell[^>]*data-column-id="${byRole("hp").id}"[^>]*class="[^"]*min-h-12[^"]*min-w-52`),
 );
-assert.match(html, /style="left:0;width:15rem;min-width:15rem"/);
-assert.match(html, /style="left:15rem"/);
-assert.match(html, /style="left:18rem"/);
+assert.match(html, /style="left:0;width:17rem;min-width:17rem"/);
+assert.match(html, /style="left:17rem"/);
+assert.match(html, /style="left:20rem"/);
+
+document = setTrackerRowCharacterLink(document, combat.id, row.id, { kind: "character", id: "cassian" });
+combat = document.tables.find((table) => table.type === "combat");
+html = renderTracker(combat);
+assert.match(html, /href="\/char\/cassian\/"[^>]*target="_blank"[^>]*rel="noopener"/);
+assert.match(html, /data-action="edit-character-link"[^>]*>[\s\S]*bi-person-check-fill/);
 
 document = updateTrackerCell(document, combat.id, row.id, byRole("damage").id, "");
 combat = document.tables.find((table) => table.type === "combat");
@@ -85,11 +92,17 @@ assert.match(html, /value="Character"/);
 assert.match(html, /data-action="toggle-row-tools"[^>]*class="[^"]*border-blood-500[^"]*bg-blood-500/);
 
 const pageHTML = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+const pageSource = readFileSync(new URL("../js/page.js", import.meta.url), "utf8");
 assert.match(pageHTML, /<div class="flex flex-col gap-4">/);
 assert.doesNotMatch(pageHTML, /xl:flex-row xl:items-end xl:justify-between/);
 assert.match(pageHTML, /id="send-combat-dialog"/);
 assert.match(pageHTML, /id="bring-party-dialog"/);
 assert.match(pageHTML, /id="party-conflict-dialog"/);
+assert.match(pageHTML, /id="character-link-dialog"/);
+assert.match(pageHTML, /id="character-link-enabled"/);
+assert.match(pageHTML, /id="character-link-entity"/);
+assert.match(pageSource, /data-party-link/);
+assert.match(pageHTML, /id="party-save"/);
 assert.match(pageHTML, /id="party-name"/);
 assert.match(pageHTML, /data-markdown-editor[\s\S]*id="editor-format-toolbar"[\s\S]*id="editor-value"/);
 assert.match(pageHTML, /id="sort-send-combat"[^>]*>Sort &amp; Send<\/button>/);

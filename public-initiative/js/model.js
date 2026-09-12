@@ -1,5 +1,7 @@
 // Extracts an ordered public combatant list from a shared initiative snapshot.
-export function initiativeNamesFromSnapshot(snapshot) {
+import { normalizeTrackerLink } from "../../shared/js/tracker-link.js";
+
+export function initiativeEntriesFromSnapshot(snapshot) {
   const tables = snapshot?.draft?.currentDocument?.tables;
   if (!Array.isArray(tables)) return [];
 
@@ -11,9 +13,17 @@ export function initiativeNamesFromSnapshot(snapshot) {
   const characterColumn = initiative.columns.find((column) => column?.role === "character");
   if (!characterColumn?.id) return [];
 
-  return initiative.rows
-    .map((row) => row?.cells?.[characterColumn.id])
-    .filter((name) => typeof name === "string")
-    .map((name) => name.trim())
-    .filter(Boolean);
+  return initiative.rows.reduce((entries, row) => {
+    const name = typeof row?.cells?.[characterColumn.id] === "string"
+      ? row.cells[characterColumn.id].trim()
+      : "";
+    if (!name) return entries;
+    const characterLink = normalizeTrackerLink(row.characterLink);
+    entries.push({ name, ...(characterLink ? { characterLink } : {}) });
+    return entries;
+  }, []);
+}
+
+export function initiativeNamesFromSnapshot(snapshot) {
+  return initiativeEntriesFromSnapshot(snapshot).map((entry) => entry.name);
 }

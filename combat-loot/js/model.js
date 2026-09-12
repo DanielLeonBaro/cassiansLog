@@ -1,4 +1,6 @@
 // Defines Combat and Loot normalization and state transformations without DOM side effects.
+import { normalizeTrackerLink } from "../../shared/js/tracker-link.js";
+
 export const COMBAT_LOOT_DOCUMENT_VERSION = 1;
 export const COMBAT_HEALTH_COLUMNS_VERSION = 1;
 export const DEFAULT_TRACKERS_VERSION = 1;
@@ -139,6 +141,7 @@ function makeTrackerRow(id, tracker) {
 
 function isDefaultBlankCombatRow(row, columns) {
   return !row.sourceInitiativeRowId
+    && !row.characterLink
     && columns.every((column) => {
       const value = normalizeText(row.cells?.[column.id]).trim();
       return value === "" || (["damage", "hp", "currentHp", "ac"].includes(column.role) && value === "0");
@@ -498,6 +501,23 @@ export function updateTrackerCell(document, tableId, rowId, columnId, value) {
   return copy;
 }
 
+export function setTrackerRowCharacterLink(document, tableId, rowId, value) {
+  const copy = cloneDocument(document);
+  const tracker = findTracker(copy, tableId);
+  if (!["initiative", "combat"].includes(tracker.type)) {
+    throw new Error("Character links are only available in Initiative and Combat trackers.");
+  }
+  const row = findRow(tracker, rowId);
+  if (value === null || value === undefined) {
+    delete row.characterLink;
+    return copy;
+  }
+  const link = normalizeTrackerLink(value);
+  if (!link) throw new TypeError("A valid Character or NPC link is required.");
+  row.characterLink = link;
+  return copy;
+}
+
 export function addCombatRound(document, options = {}) {
   const copy = cloneDocument(document);
   const combat = findTrackerByType(copy, "combat");
@@ -574,6 +594,8 @@ export function bringPartyMembersToInitiative(document, members, options = {}) {
     const row = blankRows[index] || makeRow(allocateId("row"), initiative.columns);
     row.cells[characterColumn.id] = normalizeCharacterName(member.character);
     if (initiativeColumn) row.cells[initiativeColumn.id] = "";
+    const characterLink = normalizeTrackerLink(member.characterLink);
+    if (characterLink) row.characterLink = characterLink;
     if (!blankRows[index]) initiative.rows.push(row);
   });
   return copy;
@@ -639,11 +661,13 @@ export function mergeInitiativeIntoCombat(document, options = {}) {
     const match = matchedRows.get(initiativeRow.id);
     if (match) {
       match.cells[combatCharacterColumn.id] = name;
+      if (initiativeRow.characterLink) match.characterLink = { ...initiativeRow.characterLink };
       return match;
     }
     const row = makeTrackerRow(allocateId("row"), combat);
     row.sourceInitiativeRowId = initiativeRow.id;
     row.cells[combatCharacterColumn.id] = name;
+    if (initiativeRow.characterLink) row.characterLink = { ...initiativeRow.characterLink };
     return row;
   });
 

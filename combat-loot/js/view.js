@@ -2,6 +2,7 @@
 import { escapeAttribute, escapeHTML } from "../../shared/js/text.js";
 import { renderRichText } from "../../shared/js/rich-text.js";
 import { calculateCurrentHP, evaluateArithmeticFormula } from "./model.js";
+import { trackerLinkHref } from "../../shared/js/tracker-link.js";
 
 const iconButton = "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-stone-300 bg-white/70 text-xs text-stone-600 transition hover:border-blood-500 hover:text-blood-500 disabled:cursor-not-allowed disabled:opacity-35 dark:border-white/15 dark:bg-white/5 dark:text-stone-300";
 const toolbarButtonBase = "inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition";
@@ -9,7 +10,7 @@ const toolbarButton = `${toolbarButtonBase} border-stone-300 bg-white/70 text-st
 const greenToolbarButton = `${toolbarButtonBase} border-emerald-700 bg-emerald-700 text-white hover:border-emerald-800 hover:bg-emerald-800`;
 const yellowToolbarButton = `${toolbarButtonBase} border-yellow-200 bg-yellow-200 text-yellow-950 hover:border-yellow-300`;
 const violetToolbarButton = `${toolbarButtonBase} border-violet-300 bg-violet-300 text-violet-950 hover:border-violet-400`;
-const ROW_TOOLS_WIDTH = "15rem";
+const ROW_TOOLS_WIDTH = "17rem";
 
 function actionButton({ action, icon, label, title = label, data = "", disabled = false, danger = false }) {
   return `<button type="button" data-action="${action}" ${data} ${disabled ? "disabled" : ""} class="${iconButton} ${danger ? "hover:border-red-500 hover:text-red-500" : ""}" aria-label="${escapeAttribute(label)}" title="${escapeAttribute(title)}"><i class="bi ${icon}" aria-hidden="true"></i></button>`;
@@ -56,7 +57,7 @@ function columnIsHidden(table, column, view) {
 
 function stickyLeft(view, kind) {
   if (kind === "number") return view.hideRowTools ? "0" : ROW_TOOLS_WIDTH;
-  return view.hideRowTools ? "3rem" : "18rem";
+  return view.hideRowTools ? "3rem" : "20rem";
 }
 
 function columnHeader(table, column, columnIndex, view) {
@@ -108,6 +109,12 @@ function combatHealth(table, row) {
   };
 }
 
+function characterLink(row) {
+  const href = trackerLinkHref(row.characterLink);
+  if (!href) return "";
+  return `<a href="${escapeAttribute(href)}" target="_blank" rel="noopener" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-blood-500 transition hover:bg-blood-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blood-500" aria-label="Open linked tracker in a new tab" title="Open linked tracker"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>`;
+}
+
 function inlineCell(table, row, column, health) {
   const rawValue = String(row.cells?.[column.id] ?? "");
   const isPlaceholder = table.type === "combat"
@@ -128,7 +135,10 @@ function inlineCell(table, row, column, health) {
   const numeric = ["initiative", "hp", "ac"].includes(column.role);
   const surfaceSize = table.type === "combat" && ["hp", "ac"].includes(column.role)
     ? "min-h-12 min-w-52" : "min-w-28";
-  return `<label class="block"><span class="sr-only">${escapeHTML(column.title)}</span><input type="text" ${numeric ? `inputmode="${column.role === "initiative" ? "numeric" : "decimal"}"` : ""} ${invalidAttributes} data-inline-cell data-table-id="${escapeAttribute(table.id)}" data-row-id="${escapeAttribute(row.id)}" data-column-id="${escapeAttribute(column.id)}" value="${escapeAttribute(isPlaceholder ? "" : rawValue)}" ${isPlaceholder ? 'placeholder="0"' : ""} class="w-full ${surfaceSize} rounded-lg border bg-transparent px-2 py-2 text-left text-sm outline-none transition placeholder:italic placeholder:text-stone-400 ${borderClasses}"></label>`;
+  const input = `<label class="block min-w-0 grow"><span class="sr-only">${escapeHTML(column.title)}</span><input type="text" ${numeric ? `inputmode="${column.role === "initiative" ? "numeric" : "decimal"}"` : ""} ${invalidAttributes} data-inline-cell data-table-id="${escapeAttribute(table.id)}" data-row-id="${escapeAttribute(row.id)}" data-column-id="${escapeAttribute(column.id)}" value="${escapeAttribute(isPlaceholder ? "" : rawValue)}" ${isPlaceholder ? 'placeholder="0"' : ""} class="w-full ${surfaceSize} rounded-lg border bg-transparent px-2 py-2 text-left text-sm outline-none transition placeholder:italic placeholder:text-stone-400 ${borderClasses}"></label>`;
+  return column.role === "character"
+    ? `<div class="flex items-center gap-1">${input}${characterLink(row)}</div>`
+    : input;
 }
 
 function modalCell(table, row, column) {
@@ -191,6 +201,7 @@ function rowControls(table, row, index) {
     ${actionButton({ action: "insert-row-after", icon: "bi-plus-square", label: `Insert row after ${index + 1}`, data })}
     ${actionButton({ action: "move-row", icon: "bi-arrow-up", label: `Move row ${index + 1} up`, data: `${data} data-delta="-1"`, disabled: index === 0 })}
     ${actionButton({ action: "move-row", icon: "bi-arrow-down", label: `Move row ${index + 1} down`, data: `${data} data-delta="1"`, disabled: index === table.rows.length - 1 })}
+    ${["initiative", "combat"].includes(table.type) ? actionButton({ action: "edit-character-link", icon: row.characterLink ? "bi-person-check-fill" : "bi-person-plus-fill", label: `Set tracker link for row ${index + 1}`, data }) : ""}
     ${actionButton({ action: "delete-row", icon: "bi-trash", label: `Delete row ${index + 1}`, data, danger: true })}
   </div></td>`;
 }

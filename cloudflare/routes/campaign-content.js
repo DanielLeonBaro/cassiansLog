@@ -1,5 +1,5 @@
 // Handles campaign-scoped Wiki, Music, Combat, initiative, and runtime settings.
-import { initiativeNamesFromSnapshot } from "../../public-initiative/js/model.js";
+import { initiativeEntriesFromSnapshot } from "../../public-initiative/js/model.js";
 import { normalizeWikiPages } from "../../wiki/js/model.js";
 import { canManageCampaign, campaignSettingsRecord, defaultCampaignSettings, LEGACY_CAMPAIGN_ID } from "../campaigns.js";
 import { bodyJSON, error, json, parseStored, safeId } from "../http.js";
@@ -183,7 +183,8 @@ export async function campaignContentRoute(request, env, resource, parts, access
   if (resource === "settings" && parts.length === 0) return settingsRoute(request, env, access);
   if (resource === "public-initiative" && parts.length === 0 && request.method === "GET") {
     const snapshot = await combatSnapshot(env, access);
-    return json({ names: initiativeNamesFromSnapshot({ draft: snapshot.draft }), updatedAt: snapshot.draftUpdatedAt });
+    const entries = initiativeEntriesFromSnapshot({ draft: snapshot.draft });
+    return json({ entries, names: entries.map((entry) => entry.name), updatedAt: snapshot.draftUpdatedAt });
   }
   return error("Campaign resource not found.", 404);
 }

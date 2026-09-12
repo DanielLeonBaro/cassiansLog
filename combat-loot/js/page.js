@@ -14,6 +14,7 @@ import {
   normalizeCharacterName,
   renameTracker,
   renameTrackerColumn,
+  setTrackerRowCharacterLink,
   sortInitiativeRows,
   updateTrackerCell,
 } from "./model.js";
@@ -43,6 +44,7 @@ import {
 } from "./repository.js";
 import { renderWorkspace } from "./view.js";
 import { campaignCanManage, currentCampaignSlug } from "../../shared/js/campaign-context.js";
+import { loadCombatEntityOptions } from "../../integrations/combat-entities/index.js";
 import {
   COMPACT_MARKDOWN_FORMATS,
   handleMarkdownToolbarClick,
@@ -144,12 +146,19 @@ export async function initializeCombatLoot() {
     editorValue: document.getElementById("editor-value"),
     editorHelp: document.getElementById("editor-help"),
     editorError: document.getElementById("editor-error"),
+    characterLinkDialog: document.getElementById("character-link-dialog"),
+    characterLinkForm: document.getElementById("character-link-form"),
+    characterLinkEnabled: document.getElementById("character-link-enabled"),
+    characterLinkEntity: document.getElementById("character-link-entity"),
+    characterLinkStatus: document.getElementById("character-link-status"),
+    characterLinkSave: document.getElementById("character-link-save"),
     partyDialog: document.getElementById("party-dialog"),
     partyForm: document.getElementById("party-form"),
     partyMembers: document.getElementById("party-members"),
     addPartyMember: document.getElementById("add-party-member"),
     partySelect: document.getElementById("party-select"),
     partyName: document.getElementById("party-name"),
+    partySave: document.getElementById("party-save"),
     bringPartyDialog: document.getElementById("bring-party-dialog"),
     bringPartyForm: document.getElementById("bring-party-form"),
     bringPartyList: document.getElementById("bring-party-list"),
@@ -205,6 +214,8 @@ export async function initializeCombatLoot() {
       : null
     : cloneJSON(workspace);
   let editorTarget = null;
+  let characterLinkTarget = null;
+  let characterLinkOptions = null;
   let confirmationAction = null;
   let pendingCombatSend = null;
   let draggedRow = null;
@@ -214,6 +225,7 @@ export async function initializeCombatLoot() {
   const { close: closeDialog, open: openDialog } = createCombatDialogController({
     dialogs: [
       elements.editorDialog,
+      elements.characterLinkDialog,
       elements.partyDialog,
       elements.bringPartyDialog,
       elements.partyConflictDialog,
@@ -488,11 +500,105 @@ export async function initializeCombatLoot() {
     openDialog(elements.editorDialog, elements.editorValue);
   }
 
+  async function loadCharacterLinkOptions() {
+    if (characterLinkOptions) return characterLinkOptions;
+    characterLinkOptions = await loadCombatEntityOptions();
+    return characterLinkOptions;
+  }
+
+  function characterLinkValue(link) {
+    return link ? `${link.kind}:${link.id}` : "";
+  }
+
+  function updateCharacterLinkControls({ loading = false } = {}) {
+    const enabled = elements.characterLinkEnabled.checked;
+    elements.characterLinkEntity.disabled = loading || !enabled;
+    elements.characterLinkSave.disabled = loading || (enabled && !elements.characterLinkEntity.value);
+  }
+
+  function renderCharacterLinkOptions(options, currentLink) {
+    const currentValue = characterLinkValue(currentLink);
+    const groups = [
+      ["character", "Characters"],
+      ["npc", "NPCs"],
+    ];
+    let markup = '<option value="">No tracker link</option>';
+    groups.forEach(([kind, label]) => {
+      const entries = options
+        .filter((option) => option.kind === kind)
+        .sort((left, right) => left.name.localeCompare(right.name));
+      if (!entries.length) return;
+      markup += `<optgroup label="${label}">${entries.map((option) => `<option value="${escapeOptionValue(characterLinkValue(option))}">${escapeOptionText(option.name)}</option>`).join("")}</optgroup>`;
+    });
+    if (currentValue && !options.some((option) => characterLinkValue(option) === currentValue)) {
+      markup += `<optgroup label="Unavailable"><option value="${escapeOptionValue(currentValue)}">Current linked tracker</option></optgroup>`;
+    }
+    elements.characterLinkEntity.innerHTML = markup;
+    elements.characterLinkEntity.value = currentValue;
+  }
+
+  function partyLinkOptionsMarkup(currentLink) {
+    const options = characterLinkOptions || [];
+    const currentValue = characterLinkValue(currentLink);
+    const groups = [
+      ["character", "Characters"],
+      ["npc", "NPCs"],
+    ];
+    let markup = '<option value="">No tracker link</option>';
+    groups.forEach(([kind, label]) => {
+      const entries = options
+        .filter((option) => option.kind === kind)
+        .sort((left, right) => left.name.localeCompare(right.name));
+      if (!entries.length) return;
+      markup += `<optgroup label="${label}">${entries.map((option) => `<option value="${escapeOptionValue(characterLinkValue(option))}">${escapeOptionText(option.name)}</option>`).join("")}</optgroup>`;
+    });
+    if (currentValue && !options.some((option) => characterLinkValue(option) === currentValue)) {
+      markup += `<optgroup label="Unavailable"><option value="${escapeOptionValue(currentValue)}">Current linked tracker</option></optgroup>`;
+    }
+    return markup.replace(`value="${escapeOptionValue(currentValue)}"`, `value="${escapeOptionValue(currentValue)}" selected`);
+  }
+
+  function selectedCharacterLink(value) {
+    const separator = String(value || "").indexOf(":");
+    return separator < 1 ? undefined : {
+      kind: value.slice(0, separator),
+      id: value.slice(separator + 1),
+    };
+  }
+
+  async function openCharacterLinkEditor(tableId, rowId) {
+    const table = tableById(tableId);
+    const row = rowById(table, rowId);
+    if (!table || !row) return;
+    characterLinkTarget = { tableId, rowId };
+    elements.characterLinkEnabled.checked = Boolean(row.characterLink);
+    elements.characterLinkEntity.innerHTML = '<option value="">Loading Characters and NPCs…</option>';
+    elements.characterLinkStatus.textContent = "Loading Characters and NPCs…";
+    updateCharacterLinkControls({ loading: true });
+    openDialog(elements.characterLinkDialog, elements.characterLinkEnabled);
+    try {
+      const options = await loadCharacterLinkOptions();
+      if (!characterLinkTarget
+        || characterLinkTarget.tableId !== tableId
+        || characterLinkTarget.rowId !== rowId) return;
+      renderCharacterLinkOptions(options, row.characterLink);
+      elements.characterLinkStatus.textContent = options.length
+        ? "Choose any Character or NPC in this campaign."
+        : "No Characters or NPCs are available in this campaign.";
+      updateCharacterLinkControls();
+    } catch (error) {
+      console.error("Could not load Character and NPC links:", error);
+      elements.characterLinkStatus.textContent = "Could not load Characters and NPCs. Close and try again.";
+      updateCharacterLinkControls({ loading: true });
+    }
+  }
+
   function partyMemberMarkup(member = {}) {
-    return `<div data-party-member class="grid gap-2 rounded-xl border border-stone-300 p-3 dark:border-white/10 sm:grid-cols-[minmax(0,1fr)_7rem_7rem_auto] sm:items-end">
+    return `<div data-party-member class="grid gap-2 rounded-xl border border-stone-300 p-3 dark:border-white/10 sm:grid-cols-[minmax(0,1fr)_7rem_7rem_minmax(11rem,1fr)_auto] sm:items-end">
       <label><span class="mb-1 block text-xs font-bold">Character</span><input data-party-character maxlength="100" value="${escapeOptionValue(member.character || "")}" placeholder="Cassian" class="w-full rounded-lg border border-stone-300 bg-white/80 px-3 py-2 text-stone-900 outline-none focus:border-blood-500 dark:border-white/15 dark:bg-white/5 dark:text-white"></label>
       <label><span class="mb-1 block text-xs font-bold">Max HP</span><input data-party-hp inputmode="decimal" value="${escapeOptionValue(member.maxHp || "")}" placeholder="40" class="w-full rounded-lg border border-stone-300 bg-white/80 px-3 py-2 text-stone-900 outline-none focus:border-blood-500 dark:border-white/15 dark:bg-white/5 dark:text-white"></label>
       <label><span class="mb-1 block text-xs font-bold">AC</span><input data-party-ac inputmode="decimal" value="${escapeOptionValue(member.ac || "")}" placeholder="16" class="w-full rounded-lg border border-stone-300 bg-white/80 px-3 py-2 text-stone-900 outline-none focus:border-blood-500 dark:border-white/15 dark:bg-white/5 dark:text-white"></label>
+      <label><span class="mb-1 block text-xs font-bold">Tracker link</span><select data-party-link class="w-full rounded-lg border border-stone-300 bg-white/80 px-3 py-2 text-stone-900 dark:border-white/15 dark:bg-stone-900 dark:text-white">${partyLinkOptionsMarkup(member.characterLink)}</select></label>
       <button type="button" data-remove-party-member class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-red-400 text-red-600 transition hover:border-red-500 hover:text-red-700 dark:text-red-300" aria-label="Remove party member" title="Remove party member"><i class="bi bi-trash-fill"></i></button>
     </div>`;
   }
@@ -532,14 +638,27 @@ export async function initializeCombatLoot() {
     (party?.members?.length ? party.members : [{}]).forEach(addPartyMemberRow);
   }
 
-  function openPartyEditor() {
+  async function openPartyEditor() {
     renderPartyEditorOptions();
-    loadPartyIntoEditor("");
+    elements.partyMembers.innerHTML = '<p class="p-4 text-sm text-stone-500 dark:text-stone-400">Loading Characters and NPCs…</p>';
+    elements.addPartyMember.disabled = true;
+    elements.partySelect.disabled = true;
+    elements.partySave.disabled = true;
     openDialog(elements.partyDialog, elements.partyName);
+    try {
+      await loadCharacterLinkOptions();
+      loadPartyIntoEditor(elements.partySelect.value);
+      elements.addPartyMember.disabled = false;
+      elements.partySelect.disabled = false;
+      elements.partySave.disabled = false;
+    } catch (error) {
+      console.error("Could not load party tracker links:", error);
+      elements.partyMembers.innerHTML = '<p class="rounded-xl border border-red-400 p-4 text-sm text-red-600 dark:text-red-300">Could not load Characters and NPCs. Close and try again.</p>';
+    }
   }
 
   function partyBadges(party) {
-    return party.members.map((member) => `<span class="inline-flex items-center rounded-full border border-yellow-300/70 bg-yellow-200 px-2.5 py-1 text-xs font-bold text-yellow-950">${escapeOptionText(member.character)} · HP ${escapeOptionText(member.maxHp)} · AC ${escapeOptionText(member.ac)}</span>`).join("");
+    return party.members.map((member) => `<span class="inline-flex items-center rounded-full border border-yellow-300/70 bg-yellow-200 px-2.5 py-1 text-xs font-bold text-yellow-950">${escapeOptionText(member.character)} · HP ${escapeOptionText(member.maxHp)} · AC ${escapeOptionText(member.ac)}${member.characterLink ? ' · <i class="bi bi-link-45deg" aria-label="Tracker linked"></i>' : ""}</span>`).join("");
   }
 
   function openBringParty() {
@@ -811,6 +930,7 @@ export async function initializeCombatLoot() {
     columnById,
     openBringParty,
     openCellEditor,
+    openCharacterLinkEditor,
     openPartyEditor,
     openSendToCombat,
     requestDeletion,
@@ -951,6 +1071,30 @@ export async function initializeCombatLoot() {
     ));
   });
 
+  elements.characterLinkEnabled.addEventListener("change", () => updateCharacterLinkControls());
+  elements.characterLinkEntity.addEventListener("change", () => updateCharacterLinkControls());
+  elements.characterLinkForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (!characterLinkTarget) return;
+    let link = null;
+    if (elements.characterLinkEnabled.checked) {
+      const separator = elements.characterLinkEntity.value.indexOf(":");
+      if (separator < 1) return elements.characterLinkEntity.focus();
+      link = {
+        kind: elements.characterLinkEntity.value.slice(0, separator),
+        id: elements.characterLinkEntity.value.slice(separator + 1),
+      };
+    }
+    const target = characterLinkTarget;
+    if (applyMutation(
+      (current) => setTrackerRowCharacterLink(current, target.tableId, target.rowId, link),
+      link ? "Tracker link saved." : "Tracker link removed.",
+    )) {
+      characterLinkTarget = null;
+      closeDialog(elements.characterLinkDialog);
+    }
+  });
+
   elements.addPartyMember.addEventListener("click", () => {
     addPartyMemberRow();
     elements.partyMembers.lastElementChild?.querySelector("[data-party-character]")?.focus();
@@ -974,6 +1118,7 @@ export async function initializeCombatLoot() {
         character: row.querySelector("[data-party-character]").value,
         maxHp: row.querySelector("[data-party-hp]").value,
         ac: row.querySelector("[data-party-ac]").value,
+        characterLink: selectedCharacterLink(row.querySelector("[data-party-link]").value),
       }));
     try {
       const nextParties = upsertParty(partyLibrary, {
@@ -1057,12 +1202,14 @@ export async function initializeCombatLoot() {
   document.querySelectorAll("[data-close-dialog]").forEach((button) =>
     button.addEventListener("click", () => {
       if (button.dataset.closeDialog === "editor-dialog") editorTarget = null;
+      if (button.dataset.closeDialog === "character-link-dialog") characterLinkTarget = null;
       if (button.dataset.closeDialog === "party-conflict-dialog") pendingCombatSend = null;
       closeDialog(document.getElementById(button.dataset.closeDialog));
     }),
   );
   [
     elements.editorDialog,
+    elements.characterLinkDialog,
     elements.partyDialog,
     elements.bringPartyDialog,
     elements.partyConflictDialog,
@@ -1070,6 +1217,7 @@ export async function initializeCombatLoot() {
   ].forEach((dialog) =>
     dialog.addEventListener("click", (event) => {
       if (event.target !== dialog) return;
+      if (dialog === elements.characterLinkDialog) characterLinkTarget = null;
       if (dialog === elements.partyConflictDialog) pendingCombatSend = null;
       closeDialog(dialog);
     }),
@@ -1105,6 +1253,7 @@ export async function initializeCombatLoot() {
       elements.bringPartyDialog,
       elements.nameDialog,
       elements.partyDialog,
+      elements.characterLinkDialog,
       elements.editorDialog,
     ].find((dialog) => !dialog.classList.contains("hidden"));
     if (event.key === "Tab" && openDialogElement) {
@@ -1139,6 +1288,9 @@ export async function initializeCombatLoot() {
       closeDialog(elements.nameDialog);
     } else if (!elements.partyDialog.classList.contains("hidden")) {
       closeDialog(elements.partyDialog);
+    } else if (!elements.characterLinkDialog.classList.contains("hidden")) {
+      characterLinkTarget = null;
+      closeDialog(elements.characterLinkDialog);
     } else if (!elements.editorDialog.classList.contains("hidden")) {
       editorTarget = null;
       closeDialog(elements.editorDialog);

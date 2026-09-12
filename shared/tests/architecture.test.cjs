@@ -38,7 +38,7 @@ for (const feature of features) {
       const dependency = targetRoot(file, specifier);
       assert.ok(
         dependency === feature || dependency === "shared" || dependency === "external"
-          || (["campaigns", "screens"].includes(feature) && dependency === "integrations")
+          || (["campaigns", "combat-loot", "screens"].includes(feature) && dependency === "integrations")
           || (feature === "npc" && dependency === "char"),
         `${file} must not import ${dependency}: ${specifier}`,
       );
@@ -63,6 +63,7 @@ const allowedIntegrationEntrypoints = new Set([
   path.normalize("char/js/archive/api.js"),
   path.normalize("char/js/editor/extensions.js"),
   path.normalize("compendium/js/api.js"),
+  path.normalize("npc/js/api.js"),
   path.normalize("public-initiative/js/api.js"),
 ]);
 for (const file of javascriptFiles("integrations")) {

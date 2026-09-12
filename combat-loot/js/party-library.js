@@ -3,6 +3,7 @@ import { readJSON, writeJSON } from "../../shared/js/storage.js";
 import { cloneJSON } from "../../shared/js/text.js";
 import { normalizeCharacterName } from "./model.js";
 import { campaignStorageKey } from "../../shared/js/campaign-context.js";
+import { normalizeTrackerLink } from "../../shared/js/tracker-link.js";
 
 export const PARTY_LIBRARY_VERSION = 1;
 export const PARTY_LIBRARY_STORAGE_KEY = "dnd-combat-loot-party-library-v1";
@@ -36,6 +37,7 @@ function normalizeMembers(members, { strict = false } = {}) {
     const character = normalizeCharacterName(member?.character);
     const maxHp = numericText(member?.maxHp);
     const ac = numericText(member?.ac);
+    const characterLink = normalizeTrackerLink(member?.characterLink);
     if (!character && !text(member?.maxHp) && !text(member?.ac)) continue;
     if (!character) {
       if (strict) throw new Error("Each party member needs a character name.");
@@ -49,11 +51,14 @@ function normalizeMembers(members, { strict = false } = {}) {
       if (strict) throw new Error(`${character} needs a numeric AC.`);
       continue;
     }
+    if (member?.characterLink !== undefined && !characterLink) {
+      if (strict) throw new Error(`${character} has an invalid Character or NPC link.`);
+    }
     if (result.some((candidate) => comparable(candidate.character) === comparable(character))) {
       if (strict) throw new Error(`${character} is already in this party.`);
       continue;
     }
-    result.push({ character, maxHp, ac });
+    result.push({ character, maxHp, ac, ...(characterLink ? { characterLink } : {}) });
   }
   return result;
 }
@@ -157,6 +162,7 @@ export function partyCandidatesForCharacters(parties, characters) {
         character: member.character,
         maxHp: member.maxHp,
         ac: member.ac,
+        ...(member.characterLink ? { characterLink: member.characterLink } : {}),
       })));
     if (options.length) candidates.push({ character, key, options });
     return candidates;
@@ -169,6 +175,11 @@ export function resolvePartyCandidates(candidates, selections = {}) {
     const option = candidate.options.length === 1
       ? candidate.options[0]
       : candidate.options.find((choice) => choice.partyId === selectedId);
-    return option ? [{ character: candidate.character, maxHp: option.maxHp, ac: option.ac }] : [];
+    return option ? [{
+      character: candidate.character,
+      maxHp: option.maxHp,
+      ac: option.ac,
+      ...(option.characterLink ? { characterLink: option.characterLink } : {}),
+    }] : [];
   });
 }

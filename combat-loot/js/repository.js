@@ -1,6 +1,7 @@
 // Owns Combat and Loot serialization, persistence, and fallback precedence.
 import { readJSON, removeStored, writeJSON } from "../../shared/js/storage.js";
 import { cloneJSON, normalizeText } from "../../shared/js/text.js";
+import { validTrackerLink } from "../../shared/js/tracker-link.js";
 
 export const STORAGE_VERSION = 1;
 export const PRESETS_STORAGE_KEY = "dnd-combat-loot-presets-v1";
@@ -103,6 +104,7 @@ function isDocument(value) {
       && hasUniqueId(row, ids)
       && isRecord(row.cells)
       && (row.sourceInitiativeRowId === undefined || typeof row.sourceInitiativeRowId === "string")
+      && (row.characterLink === undefined || validTrackerLink(row.characterLink))
       && columnIds.every((columnId) => typeof row.cells[columnId] === "string"));
   });
   return tablesAreValid && initiativeCount === 1 && combatCount === 1;

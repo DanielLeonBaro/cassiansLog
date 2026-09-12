@@ -12,7 +12,8 @@ import {
 } from "./model.js";
 
 export function rowHasData(row) {
-  return Object.values(row?.cells || {}).some((value) => String(value || "").trim());
+  return Boolean(row?.characterLink)
+    || Object.values(row?.cells || {}).some((value) => String(value || "").trim());
 }
 
 export function columnHasData(table, column) {
@@ -29,6 +30,7 @@ export function createCombatActionDispatcher({
   applyMutation,
   columnById,
   openCellEditor,
+  openCharacterLinkEditor = () => {},
   openBringParty = () => {},
   openPartyEditor = () => {},
   openSendToCombat = () => {},
@@ -98,6 +100,7 @@ export function createCombatActionDispatcher({
       });
     }
     if (action === "open-cell-editor") return openCellEditor(table.id, row.id, column.id);
+    if (action === "edit-character-link") return openCharacterLinkEditor(table.id, row.id);
     return undefined;
   };
 }

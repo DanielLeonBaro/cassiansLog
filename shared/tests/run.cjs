@@ -29,6 +29,7 @@ const suites = [
   ["Dice formula parsing and rolling", "shared/tests/dice.test.js"],
   ["Combat and Loot model", "combat-loot/tests/model.test.js"],
   ["Combat party library", "combat-loot/tests/party-library.test.js"],
+  ["Combat Character and NPC choices", "combat-loot/tests/entity-integration.test.js"],
   ["Combat tracker view", "combat-loot/tests/view.test.js"],
   ["Combat and Loot repository", "combat-loot/tests/repository.test.cjs"],
   ["Combat action dispatcher", "combat-loot/tests/action-dispatcher.test.js"],

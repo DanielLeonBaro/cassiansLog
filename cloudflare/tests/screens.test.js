@@ -124,11 +124,15 @@ assert.equal((await (await screenRoute(request("/api/screens/player"), dmEnv, ["
 
 const initiative = await publicInitiativeRoute({
   DB: { prepare: () => ({ first: async () => ({
-    draft_json: JSON.stringify({ currentDocument: { tables: [{ type: "initiative", columns: [{ id: "name", role: "character" }], rows: [{ cells: { name: "Cassian" } }, { cells: { name: " " } }] }] } }),
+    draft_json: JSON.stringify({ currentDocument: { tables: [{ type: "initiative", columns: [{ id: "name", role: "character" }], rows: [{ cells: { name: "Cassian" }, characterLink: { kind: "character", id: "cassian" } }, { cells: { name: " " } }] }] } }),
     updated_at: "2026-08-28T00:00:00.000Z",
   }) }) },
 });
-assert.deepEqual((await initiative.json()).names, ["Cassian"]);
+const initiativeBody = await initiative.json();
+assert.deepEqual(initiativeBody.names, ["Cassian"]);
+assert.deepEqual(initiativeBody.entries, [
+  { name: "Cassian", characterLink: { kind: "character", id: "cassian" } },
+]);
 
 const missingMigration = await screenRoute(request("/api/screens/player"), {
   DB: {

@@ -748,6 +748,75 @@ async function main() {
     `);
     assert.deepEqual(combatCellFormatting, { value: "****", start: 2, end: 2, toolbarVisible: true }, "Combat text-cell Bold should place the cursor inside the markers.");
 
+    await execute(`
+      document.querySelector('[data-tracker] [data-action="edit-character-link"]').click();
+      return true;
+    `);
+    await waitFor(
+      'return Boolean(document.querySelector(\'#character-link-entity option[value="character:cassian"]\'));',
+      "Combat tracker Character choices did not load",
+    );
+    await execute(`
+      const enabled = document.getElementById("character-link-enabled");
+      const entity = document.getElementById("character-link-entity");
+      enabled.checked = true;
+      enabled.dispatchEvent(new Event("change", { bubbles: true }));
+      entity.value = "character:cassian";
+      entity.dispatchEvent(new Event("change", { bubbles: true }));
+      document.getElementById("character-link-form").requestSubmit();
+      return true;
+    `);
+    await waitFor(
+      'return Boolean(document.querySelector(\'[data-tracker] a[href$="/char/cassian/"][target="_blank"]\'));',
+      "Combat tracker link did not save",
+    );
+    await execute(`
+      document.querySelector('[data-action="set-party"]').click();
+      return true;
+    `);
+    await waitFor(
+      'return Boolean(document.querySelector(\'#party-members [data-party-link] option[value="character:cassian"]\'));',
+      "Party Character and NPC choices did not load",
+    );
+    await execute(`
+      document.getElementById("party-name").value = "Linked Party";
+      const member = document.querySelector("[data-party-member]");
+      member.querySelector("[data-party-character]").value = "Cassian";
+      member.querySelector("[data-party-hp]").value = "40";
+      member.querySelector("[data-party-ac]").value = "16";
+      member.querySelector("[data-party-link]").value = "character:cassian";
+      document.getElementById("party-form").requestSubmit();
+      return true;
+    `);
+    await waitFor(
+      'return document.getElementById("party-dialog").classList.contains("hidden");',
+      "Linked party did not save",
+    );
+    await execute(`
+      document.querySelector('[data-action="bring-party"]').click();
+      return true;
+    `);
+    await waitFor(
+      'return document.getElementById("bring-party-list").textContent.includes("Linked Party");',
+      "Linked saved party did not appear",
+    );
+    await execute(`
+      const party = [...document.querySelectorAll('#bring-party-list label')]
+        .find((label) => label.textContent.includes("Linked Party"));
+      party.querySelector('input[name="party"]').checked = true;
+      document.getElementById("bring-party-form").requestSubmit();
+      return true;
+    `);
+    await waitFor(
+      `
+        const row = document.querySelector('[data-tracker] [data-table-row]');
+        return row?.querySelector('[data-inline-cell]')?.value === "Cassian"
+          && Boolean(row.querySelector('a[href$="/char/cassian/"][target="_blank"]'));
+      `,
+      "Party link did not reach Initiative",
+    );
+    console.log("Browser smoke passed: Combat row and saved-party tracker links");
+
     await smoke(
       "Music",
       "/music/",
@@ -839,7 +908,7 @@ async function main() {
       "Public Initiative",
       "/public-initiative/",
       'return document.getElementById("initiative-status").textContent !== "Loading initiative...";',
-      'return Boolean(document.getElementById("initiative-list")) && !document.querySelector("form, input, textarea, select");',
+      'return Boolean(document.querySelector(\'#initiative-list a[href$="/char/cassian/"][target="_blank"]\')) && !document.querySelector("form, input, textarea, select");',
     );
 
     await navigate("/player-screen/");

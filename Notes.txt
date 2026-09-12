@@ -6,14 +6,19 @@
 - Show/Hide Characters to players but not to DM
 - V1/V3 Combat Resources should be in expandeables
 - Standarize sizes of cards everywhere, also specifically in CT V3
-- Add reference to characters and NPCs into combat tracker
 - Characters from other campaigns don't show in admin
-- Rework Admin in general, make it better usable and less crammed
-- Visible pages or roles in admin are too generic, make it campaign specific or something
+    - Visible pages or roles in admin are too generic, make it campaign specific or something
 - At the end of most of it, let's check all the code and rework it, see if something is not actually used, or made shorter, or code can be reused, etc.
 
+##Priorities
+- More juice to admin; characters assigned to users
+- Rework what legacy is, i don't want any hardcodded stuff
+- Add export button (downloads JSON)
+- Add Generate PDF
+- Standarize unit tests or automated cases in general and add tags to them so you don't always run them all, only for the affected components
+
 ##In Progress (Out of Tokens)
-- Hideable Characters and NPCs from Players in Character Tracker / Add an NPC Tracker
+- Add reference to characters and NPCs into combat tracker
 
 ##Done
 - Music Module
@@ -37,6 +42,8 @@
 - Depure Compendium entries, useless information like ability score improvements, basic movement speed.
 - Make selectable background, default grid, but then make dotted grid, vertical horizontal and diagonla lines, pixels, animated backgrounds, etc
 - Make Import Character from D&D Beyond script into "New Character"
+- Hideable Characters and NPCs from Players in Character Tracker / Add an NPC Tracker
+- Rework Admin in general, make it better usable and less crammed
 
 
 ---

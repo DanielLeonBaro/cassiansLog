@@ -10,6 +10,7 @@ import { createCombatLootDocument } from "../js/model.js";
 
 assert.equal(rowHasData({ cells: { name: "", note: "  " } }), false);
 assert.equal(rowHasData({ cells: { name: "Goblin" } }), true);
+assert.equal(rowHasData({ cells: { name: "" }, characterLink: { kind: "npc", id: "goblin" } }), true);
 assert.equal(columnHasData({ rows: [{ cells: { hp: "2" } }] }, { id: "hp", title: "" }), true);
 assert.equal(tableHasData({ title: "", columns: [], rows: [] }), false);
 
@@ -21,6 +22,7 @@ let opened = null;
 let partyOpened = false;
 let bringOpened = false;
 let sendOpened = false;
+let characterLinkOpened = null;
 let toggled = null;
 const handleAction = createCombatActionDispatcher({
   applyMutation(operation, message = "") {
@@ -32,6 +34,7 @@ const handleAction = createCombatActionDispatcher({
   columnById: (table, id) => table?.columns.find((column) => column.id === id),
   requestDeletion: ({ action }) => action(),
   openCellEditor: (...ids) => { opened = ids; },
+  openCharacterLinkEditor: (...ids) => { characterLinkOpened = ids; },
   openPartyEditor: () => { partyOpened = true; },
   openBringParty: () => { bringOpened = true; },
   openSendToCombat: () => { sendOpened = true; },
@@ -53,6 +56,14 @@ handleAction({
   },
 });
 assert.deepEqual(opened, [initiative().id, row.id, column.id]);
+handleAction({
+  dataset: {
+    action: "edit-character-link",
+    tableId: initiative().id,
+    rowId: row.id,
+  },
+});
+assert.deepEqual(characterLinkOpened, [initiative().id, row.id]);
 handleAction({ dataset: { action: "set-party", tableId: initiative().id } });
 assert.equal(partyOpened, true);
 handleAction({ dataset: { action: "bring-party", tableId: initiative().id } });

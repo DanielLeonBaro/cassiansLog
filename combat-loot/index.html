@@ -83,6 +83,30 @@
         </form>
     </div>
 
+    <div id="character-link-dialog" class="fixed inset-0 z-[70] hidden items-center justify-center bg-ink/80 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="character-link-dialog-title">
+        <form id="character-link-form" class="w-full max-w-lg overflow-hidden rounded-2xl border border-stone-300 bg-parchment shadow-2xl dark:border-white/15 dark:bg-stone-900">
+            <div class="flex items-start justify-between gap-3 border-b border-stone-300 px-5 py-4 dark:border-white/10">
+                <div>
+                    <h2 id="character-link-dialog-title" class="font-display text-xl font-bold">Row tracker link</h2>
+                    <p class="mt-1 text-sm text-stone-500 dark:text-stone-400">Add an icon beside this name that opens a tracker in a new tab.</p>
+                </div>
+                <button type="button" data-close-dialog="character-link-dialog" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-stone-300 transition hover:border-blood-500 hover:text-blood-500 dark:border-white/15" aria-label="Close tracker link editor"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="space-y-4 p-5">
+                <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-stone-300 bg-white/50 p-4 dark:border-white/15 dark:bg-white/5">
+                    <input id="character-link-enabled" type="checkbox" class="h-5 w-5 accent-blood-500">
+                    <span class="font-bold">Show tracker link</span>
+                </label>
+                <label class="block"><span class="mb-1 block text-sm font-bold">Character or NPC</span><select id="character-link-entity" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/15 dark:bg-stone-900 dark:text-white"><option value="">Loading Characters and NPCs…</option></select></label>
+                <p id="character-link-status" class="text-xs text-stone-500 dark:text-stone-400" role="status"></p>
+                <div class="flex justify-end gap-2">
+                    <button type="button" data-close-dialog="character-link-dialog" class="rounded-xl border border-stone-400 px-4 py-2 text-sm font-bold">Cancel</button>
+                    <button id="character-link-save" type="submit" class="rounded-xl border border-blood-500 bg-blood-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-blood-600 disabled:cursor-not-allowed disabled:opacity-50">Save link</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
     <div id="party-dialog" class="fixed inset-0 z-[70] hidden items-center justify-center bg-ink/80 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="party-dialog-title">
         <form id="party-form" class="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-stone-300 bg-parchment shadow-2xl dark:border-white/15 dark:bg-stone-900">
             <div class="flex items-start justify-between gap-3 border-b border-stone-300 px-5 py-4 dark:border-white/10">
@@ -102,7 +126,7 @@
             </div>
             <div class="flex justify-end gap-2 border-t border-stone-300 px-5 py-4 dark:border-white/10">
                 <button type="button" data-close-dialog="party-dialog" class="rounded-xl border border-stone-400 px-4 py-2 text-sm font-bold">Cancel</button>
-                <button type="submit" class="rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-blood-600">Save Party</button>
+                <button id="party-save" type="submit" class="rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-blood-600 disabled:cursor-not-allowed disabled:opacity-50">Save Party</button>
             </div>
         </form>
     </div>

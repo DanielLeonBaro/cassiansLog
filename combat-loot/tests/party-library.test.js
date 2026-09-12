@@ -19,12 +19,17 @@ function storage() {
 
 let parties = upsertParty([], {
   name: "Party 1",
-  members: [{ character: "cassian", maxHp: "40", ac: "16" }],
+  members: [{
+    character: "cassian",
+    maxHp: "40",
+    ac: "16",
+    characterLink: { kind: "character", id: "cassian" },
+  }],
 }, { idFactory: () => "party-1" });
 parties = upsertParty(parties, {
   name: "Party 2",
   members: [
-    { character: "Cassian", maxHp: "50", ac: "18" },
+    { character: "Cassian", maxHp: "50", ac: "18", characterLink: { kind: "npc", id: "cassian-double" } },
     { character: "Karma", maxHp: "28", ac: "14" },
   ],
 }, { idFactory: () => "party-2" });
@@ -37,7 +42,7 @@ assert.throws(() => upsertParty(parties, {
 }), /already exists/);
 
 assert.deepEqual(membersForPartyIds(parties, ["party-1", "party-2"]), [
-  { character: "Cassian", maxHp: "40", ac: "16" },
+  { character: "Cassian", maxHp: "40", ac: "16", characterLink: { kind: "character", id: "cassian" } },
   { character: "Karma", maxHp: "28", ac: "14" },
 ]);
 
@@ -45,7 +50,7 @@ const candidates = partyCandidatesForCharacters(parties, ["cassian", "Karma", "U
 assert.equal(candidates[0].options.length, 2);
 assert.equal(candidates[1].options.length, 1);
 assert.deepEqual(resolvePartyCandidates(candidates, { cassian: "party-2" }), [
-  { character: "Cassian", maxHp: "50", ac: "18" },
+  { character: "Cassian", maxHp: "50", ac: "18", characterLink: { kind: "npc", id: "cassian-double" } },
   { character: "Karma", maxHp: "28", ac: "14" },
 ]);
 
@@ -53,5 +58,9 @@ const local = storage();
 const saved = savePartyLibrary(parties, local);
 assert.equal(saved.ok, true);
 assert.deepEqual(loadPartyLibrary(local), parties);
+assert.throws(() => upsertParty([], {
+  name: "Bad link",
+  members: [{ character: "Goblin", maxHp: "7", ac: "12", characterLink: { kind: "monster", id: "goblin" } }],
+}), /invalid Character or NPC link/);
 
 console.log("Combat party-library tests passed.");

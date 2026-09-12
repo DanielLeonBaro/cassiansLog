@@ -1,5 +1,5 @@
 // Handles public initiative API routing, validation, authorization, and D1 persistence.
-import { initiativeNamesFromSnapshot } from "../../public-initiative/js/model.js";
+import { initiativeEntriesFromSnapshot } from "../../public-initiative/js/model.js";
 import { json, parseStored } from "../http.js";
 
 export async function publicInitiativeRoute(env) {
@@ -7,5 +7,6 @@ export async function publicInitiativeRoute(env) {
     "SELECT draft_json, updated_at FROM combat_drafts WHERE id = 'default'",
   ).first();
   const draft = row ? parseStored(row.draft_json) : null;
-  return json({ names: initiativeNamesFromSnapshot({ draft }), updatedAt: row?.updated_at || null });
+  const entries = initiativeEntriesFromSnapshot({ draft });
+  return json({ entries, names: entries.map((entry) => entry.name), updatedAt: row?.updated_at || null });
 }
