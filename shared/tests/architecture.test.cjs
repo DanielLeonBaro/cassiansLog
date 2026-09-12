@@ -95,11 +95,15 @@ assert.match(fs.readFileSync("admin/index.html", "utf8"), /name="character-sheet
 assert.match(fs.readFileSync("admin/index.html", "utf8"), /name="character-sheet-style" value="v2"/);
 assert.match(fs.readFileSync("admin/index.html", "utf8"), /id="character-style-settings"/);
 const adminEntrypoint = fs.readFileSync("admin/js/entry.js", "utf8");
+const adminPage = fs.readFileSync("admin/index.html", "utf8");
 assert.ok(adminEntrypoint.includes("isLocalRuntimeHost"), "Admin should detect its localhost storage mode.");
 assert.ok(adminEntrypoint.includes("persistLocalRuntimeSettings"), "Local Admin settings should persist without D1.");
 assert.ok(adminEntrypoint.includes("characterSheetStyleOverrides"), "Admin should save per-character style choices.");
 assert.ok(adminEntrypoint.includes("data-user-theme"), "Admin should support per-user theme assignment.");
 assert.ok(adminEntrypoint.includes("data-remove-theme"), "Admin should support unprotected theme removal.");
+assert.ok(adminEntrypoint.includes("data-user-campaign-role"), "Admin should manage roles per campaign.");
+assert.match(adminPage, /<details id="themes"/, "Theme management should be expandable.");
+assert.ok(adminEntrypoint.includes("<details class=\"group rounded-2xl"), "Each Admin user should render as an expandable row.");
 
 const siteBuild = fs.readFileSync("shared/build/site.cjs", "utf8");
 const tailwindConfig = fs.readFileSync("shared/styles/tailwind.config.cjs", "utf8");
@@ -112,6 +116,7 @@ assert.ok(tailwindConfig.includes('./login/**/*.{html,js}'), "Login must be incl
 assert.ok(siteBuild.includes('"character-route-worker.js"'), "The localhost character-route fallback must be deployed.");
 
 const pageShells = new Map([
+  ["admin/index.html", "admin/js/entry.js"],
   ["campaigns/index.html", "campaigns/js/hub.js"],
   ["campaigns/manage.html", "campaigns/js/manage.js"],
   ["char/index.html", "char/js/entries/characters.js"],

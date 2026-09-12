@@ -8,6 +8,7 @@ import {
 } from "../../shared/js/settings.js";
 import { logout } from "../../shared/js/auth-client.js";
 import { createDialogController } from "../../shared/js/dialog.js";
+import { mountSiteHeader } from "../../shared/js/site-header.js";
 import { DEFAULT_BACKGROUND_ID } from "../../shared/js/background-catalog.js";
 import {
   BASE_THEME_ID,
@@ -17,7 +18,7 @@ import {
 } from "../../shared/js/theme-catalog.js";
 
 const localMode = isLocalRuntimeHost();
-const accountRoleLabels = {
+const legacyAccessLabels = {
   characters: "Characters",
   "player-screen": "Player Screen",
   "dm-screen": "DM Screen",
@@ -48,6 +49,7 @@ const sectionLabels = {
   notes: "Notes",
 };
 
+mountSiteHeader({ activePage: "admin" });
 initializeTheme();
 
 const status = document.getElementById("admin-status");
@@ -145,37 +147,82 @@ async function adminRequest(path = "", options = {}) {
   return response.json();
 }
 
+function campaignMembership(user, campaignId) {
+  return (user.campaignMemberships || []).find((membership) => membership.campaignId === campaignId);
+}
+
+function campaignRoleSummary(user) {
+  if (user.isPrimaryAdmin) {
+    return '<span class="rounded-full bg-blood-500 px-2.5 py-1 text-xs font-bold text-white">Site admin · all campaigns</span>';
+  }
+  const memberships = user.campaignMemberships || [];
+  if (!memberships.length) return '<span class="text-xs text-stone-500 dark:text-stone-400">No campaigns</span>';
+  const dmCount = memberships.filter((membership) => membership.role === "dm").length;
+  const playerCount = memberships.length - dmCount;
+  return `<span class="rounded-full bg-theme-surface-strong px-2.5 py-1 text-xs font-bold">${memberships.length} campaign${memberships.length === 1 ? "" : "s"}</span>${dmCount ? `<span class="rounded-full bg-blood-500/15 px-2.5 py-1 text-xs font-bold text-blood-500">${dmCount} DM</span>` : ""}${playerCount ? `<span class="rounded-full bg-theme-surface-strong px-2.5 py-1 text-xs font-bold">${playerCount} Player</span>` : ""}`;
+}
+
+function renderCampaignRoles(user) {
+  if (snapshot?.campaignStorageAvailable === false) {
+    return '<p class="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm">Campaign roles require migration 0012.</p>';
+  }
+  if (!snapshot?.campaigns?.length) {
+    return '<p class="text-sm text-stone-500 dark:text-stone-400">No campaigns found. Create one from the Campaigns page.</p>';
+  }
+  if (user.isPrimaryAdmin) {
+    return `<p class="rounded-xl border border-blood-500/30 bg-blood-500/10 p-3 text-sm"><strong>Site admin access</strong><span class="mt-1 block text-stone-600 dark:text-stone-300">Full DM-level access to all ${snapshot.campaigns.length} campaign${snapshot.campaigns.length === 1 ? "" : "s"}; no membership record needed.</span></p>`;
+  }
+  return `<div class="grid gap-2">${snapshot.campaigns.map((campaign) => {
+    const membership = campaignMembership(user, campaign.id);
+    return `<label class="grid gap-3 rounded-xl border border-stone-300 p-3 dark:border-white/10 sm:grid-cols-[minmax(0,1fr)_10rem] sm:items-center">
+      <span class="min-w-0"><strong class="block truncate">${escapeHTML(campaign.name)}</strong><small class="text-stone-500 dark:text-stone-400">/${escapeHTML(campaign.slug)}</small></span>
+      <select data-user-campaign-role data-campaign-id="${escapeHTML(campaign.id)}" class="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-bold dark:border-white/15 dark:bg-stone-900" aria-label="Role in ${escapeHTML(campaign.name)}">
+        <option value=""${membership ? "" : " selected"}>Not a member</option>
+        <option value="player"${membership?.role === "player" ? " selected" : ""}>Player</option>
+        <option value="dm"${membership?.role === "dm" ? " selected" : ""}>DM</option>
+      </select>
+    </label>`;
+  }).join("")}</div>`;
+}
+
 function renderUsers(users = []) {
   if (localMode) {
     userRoot.innerHTML = '<p class="text-sm text-stone-500">User accounts require D1 and are not available in local static mode.</p>';
     return;
   }
   userRoot.innerHTML = users.map((user) => `
-    <article class="rounded-2xl border border-stone-300 p-4 dark:border-white/15" data-user="${escapeHTML(user.id)}">
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <div><strong>${escapeHTML(user.email)}</strong>${user.isPrimaryAdmin ? '<span class="ml-2 rounded-full bg-blood-500 px-2 py-0.5 text-xs font-bold text-white">Primary admin</span>' : ""}</div>
-        <small class="text-stone-500 dark:text-stone-400">Created ${escapeHTML(new Date(user.createdAt).toLocaleDateString())}</small>
-      </div>
-      <fieldset class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3"${user.isPrimaryAdmin ? " disabled" : ""}>
-        <legend class="mb-2 text-sm font-bold">Visible pages / roles</legend>
-        ${Object.entries(accountRoleLabels).map(([role, label]) => `
-          <label class="flex items-center gap-2 rounded-lg border border-stone-300 px-3 py-2 text-sm dark:border-white/10">
-            <input type="checkbox" data-user-role="${role}" class="accent-red-700"${user.roles.includes(role) ? " checked" : ""}${["characters", "player-screen"].includes(role) ? " disabled" : ""}> ${label}
-          </label>`).join("")}
-      </fieldset>
-      ${snapshot?.themeStorageAvailable === false
-        ? '<p class="mt-4 border-t border-stone-300 pt-4 text-sm text-stone-500 dark:border-white/10 dark:text-stone-400">Theme assignment requires migration 0008 and is currently unavailable.</p>'
-        : `<label class="mt-4 block border-t border-stone-300 pt-4 dark:border-white/10"><span class="mb-1 block text-sm font-bold">Theme</span>
+    <details class="group rounded-2xl border border-stone-300 dark:border-white/15" data-user="${escapeHTML(user.id)}">
+      <summary class="flex cursor-pointer list-none flex-wrap items-center gap-3 p-4">
+        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blood-500/15 font-display text-lg font-bold text-blood-500">${escapeHTML(user.email.slice(0, 1).toUpperCase())}</span>
+        <span class="min-w-0 grow"><strong class="block truncate">${escapeHTML(user.email)}</strong><span data-user-campaign-summary class="mt-1 flex flex-wrap gap-1.5">${campaignRoleSummary(user)}</span></span>
+        <span class="ml-auto flex items-center gap-3"><small class="hidden text-stone-500 dark:text-stone-400 sm:block">Created ${escapeHTML(new Date(user.createdAt).toLocaleDateString())}</small><i class="bi bi-chevron-down transition group-open:rotate-180"></i></span>
+      </summary>
+      <div class="space-y-5 border-t border-stone-300 p-4 dark:border-white/10">
+        <section><h3 class="font-display text-lg font-bold">Campaign roles</h3><p class="mb-3 mt-1 text-sm text-stone-500 dark:text-stone-400">Membership and permissions are isolated per campaign.</p>${renderCampaignRoles(user)}</section>
+        ${snapshot?.themeStorageAvailable === false
+        ? '<p class="border-t border-stone-300 pt-4 text-sm text-stone-500 dark:border-white/10 dark:text-stone-400">Theme assignment requires migration 0008 and is currently unavailable.</p>'
+        : `<label class="block border-t border-stone-300 pt-4 dark:border-white/10"><span class="mb-1 block text-sm font-bold">Theme</span>
         <select data-user-theme class="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm font-bold dark:border-white/15 dark:bg-stone-900">
           ${(snapshot?.themes || []).map((theme) => `<option value="${escapeHTML(theme.id)}"${(user.themePreference?.themeId || BASE_THEME_ID) === theme.id ? " selected" : ""}>${escapeHTML(theme.name)}</option>`).join("")}
         </select>
         <small class="mt-1 block text-stone-500 dark:text-stone-400">Keeps this user's Standard/Reversed and font choices. Latest save wins.</small>
-      </label>`}
-      <div class="mt-4 flex flex-col gap-3 border-t border-stone-300 pt-4 dark:border-white/10 sm:flex-row sm:items-end">
+        </label>`}
+        <details class="rounded-xl border border-stone-300 dark:border-white/10">
+          <summary class="cursor-pointer list-none px-3 py-2.5 text-sm font-bold"><i class="bi bi-box-arrow-up-right mr-2 text-blood-500"></i>Legacy page access</summary>
+          <fieldset class="grid gap-2 border-t border-stone-300 p-3 dark:border-white/10 sm:grid-cols-2 lg:grid-cols-3"${user.isPrimaryAdmin ? " disabled" : ""}>
+            <legend class="sr-only">Legacy page access</legend>
+            ${Object.entries(legacyAccessLabels).map(([role, label]) => `
+              <label class="flex items-center gap-2 rounded-lg border border-stone-300 px-3 py-2 text-sm dark:border-white/10">
+                <input type="checkbox" data-user-role="${role}" class="accent-red-700"${user.roles.includes(role) ? " checked" : ""}${["characters", "player-screen"].includes(role) ? " disabled" : ""}> ${label}
+              </label>`).join("")}
+          </fieldset>
+        </details>
+      <div class="flex flex-col gap-3 border-t border-stone-300 pt-4 dark:border-white/10 sm:flex-row sm:items-end">
         <label class="grow"><span class="mb-1 block text-sm font-bold">New password</span><input type="password" data-user-password minlength="10" autocomplete="new-password" class="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 dark:border-white/15 dark:bg-white/5" placeholder="10+ characters, number, special character"></label>
         <button type="button" data-reset-password class="rounded-xl border border-blood-500 px-4 py-2 text-sm font-bold text-blood-500">Reset password</button>
       </div>
-    </article>`).join("") || '<p class="text-sm text-stone-500">No user accounts found.</p>';
+      </div>
+    </details>`).join("") || '<p class="text-sm text-stone-500">No user accounts found.</p>';
 }
 
 function themeSwatch(label, name, hex) {
@@ -276,6 +323,9 @@ function renderCharacterStyles(characters, overrides = {}) {
 async function unlock() {
   try {
     snapshot = await adminRequest();
+    document.getElementById("admin-campaign-count").textContent = String(snapshot.campaigns?.length || 0);
+    document.getElementById("admin-user-count").textContent = String(snapshot.users?.length || 0);
+    document.getElementById("admin-theme-count").textContent = String(snapshot.themes?.length || 0);
     openWrites.checked = snapshot.settings.openWrites;
     const selectedStyle = characterStyleInputs.find(
       (input) => input.value === snapshot.settings.characterSheetStyle,
@@ -375,11 +425,45 @@ userRoot.addEventListener("change", async (event) => {
     }
     return;
   }
+  const campaignSelect = event.target.closest("[data-user-campaign-role]");
+  if (campaignSelect) {
+    const card = campaignSelect.closest("[data-user]");
+    const user = snapshot.users.find((item) => item.id === card.dataset.user);
+    const campaign = snapshot.campaigns.find((item) => item.id === campaignSelect.dataset.campaignId);
+    const previousMembership = campaignMembership(user, campaign.id);
+    const previousRole = previousMembership?.role || "";
+    const role = campaignSelect.value;
+    if (!role && previousMembership && !globalThis.confirm(`Remove ${user.email} from ${campaign.name}? Their character assignments in this campaign will also be removed.`)) {
+      campaignSelect.value = previousRole;
+      return;
+    }
+    campaignSelect.disabled = true;
+    try {
+      const result = await adminRequest(`/users/${encodeURIComponent(user.id)}/campaigns/${encodeURIComponent(campaign.id)}`, {
+        method: role ? "PUT" : "DELETE",
+        ...(role ? { body: JSON.stringify({ role }) } : {}),
+      });
+      user.campaignMemberships = (user.campaignMemberships || [])
+        .filter((membership) => membership.campaignId !== campaign.id);
+      if (result.membership) user.campaignMemberships.push(result.membership);
+      card.querySelector("[data-user-campaign-summary]").innerHTML = campaignRoleSummary(user);
+      setStatus(role
+        ? `${user.email} is now ${role === "dm" ? "DM" : "Player"} in ${campaign.name}.`
+        : `${user.email} was removed from ${campaign.name}.`, "success");
+    } catch (error) {
+      campaignSelect.value = previousRole;
+      setStatus(error.message, "error");
+    } finally {
+      campaignSelect.disabled = false;
+    }
+    return;
+  }
   const input = event.target.closest("[data-user-role]");
   if (!input) return;
   const card = input.closest("[data-user]");
   const roles = [...card.querySelectorAll("[data-user-role]:checked")].map((item) => item.dataset.userRole);
-  card.querySelectorAll("input, button").forEach((control) => { control.disabled = true; });
+  const roleInputs = [...card.querySelectorAll("[data-user-role]")];
+  roleInputs.forEach((control) => { control.disabled = true; });
   try {
     const result = await adminRequest(`/users/${encodeURIComponent(card.dataset.user)}/roles`, {
       method: "PUT",
@@ -392,8 +476,9 @@ userRoot.addEventListener("change", async (event) => {
     input.checked = !input.checked;
     setStatus(error.message, "error");
   } finally {
-    card.querySelectorAll("input, button").forEach((control) => { control.disabled = false; });
-    card.querySelector('[data-user-role="characters"]').disabled = true;
+    roleInputs.forEach((control) => {
+      control.disabled = ["characters", "player-screen"].includes(control.dataset.userRole);
+    });
   }
 });
 

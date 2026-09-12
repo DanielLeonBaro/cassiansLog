@@ -1042,7 +1042,7 @@ async function main() {
       "Admin localhost mode",
       "/admin/",
       'return !document.getElementById("admin-content").classList.contains("hidden");',
-      'return document.getElementById("admin-description").textContent.includes("localStorage") && document.getElementById("admin-lock").hidden && !document.getElementById("theme-admin-unavailable").classList.contains("hidden") && document.getElementById("add-theme").disabled;',
+      'return document.getElementById("admin-description").textContent.includes("localStorage") && document.getElementById("admin-lock").hidden && document.querySelector("[data-site-header] #site-pages-menu-button") && !document.getElementById("themes").open && !document.getElementById("theme-admin-unavailable").classList.contains("hidden") && document.getElementById("add-theme").disabled;',
     );
 
     const auditEntries = [

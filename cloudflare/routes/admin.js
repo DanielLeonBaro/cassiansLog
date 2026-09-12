@@ -18,6 +18,50 @@ import {
   passwordProblem,
 } from "../user-auth.js";
 
+async function campaignMembershipRoute(request, env, userId, campaignId) {
+  if (!safeId(userId) || !safeId(campaignId)) return error("User or campaign ID is invalid.");
+  const [target, campaign, membership] = await Promise.all([
+    env.DB.prepare("SELECT email FROM users WHERE id = ?").bind(userId).first(),
+    env.DB.prepare("SELECT id FROM campaigns WHERE id = ?").bind(campaignId).first(),
+    env.DB.prepare("SELECT role, joined_at FROM campaign_memberships WHERE campaign_id = ? AND user_id = ?")
+      .bind(campaignId, userId).first(),
+  ]);
+  if (!target) return error("User not found.", 404);
+  if (!campaign) return error("Campaign not found.", 404);
+  if (normalizeEmail(target.email) === PRIMARY_ADMIN_EMAIL) {
+    return error("The primary administrator already has full access to every campaign.", 409);
+  }
+
+  if (request.method === "PUT") {
+    const role = (await bodyJSON(request))?.role;
+    if (!["player", "dm"].includes(role)) return error("Campaign role must be player or dm.");
+    const now = new Date().toISOString();
+    if (!membership) {
+      await env.DB.prepare(
+        "INSERT INTO campaign_memberships (campaign_id, user_id, role, joined_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+      ).bind(campaignId, userId, role, now, now).run();
+      return json({ ok: true, membership: { campaignId, role, joinedAt: now, updatedAt: now } });
+    }
+    const updated = await env.DB.prepare(
+      `UPDATE campaign_memberships SET role = ?, updated_at = ? WHERE campaign_id = ? AND user_id = ?
+      AND (role != 'dm' OR ? = 'dm' OR (SELECT COUNT(*) FROM campaign_memberships WHERE campaign_id = ? AND role = 'dm') > 1)`,
+    ).bind(role, now, campaignId, userId, role, campaignId).run();
+    if (!updated.meta?.changes) return error("Assign another DM before demoting the final DM.", 409);
+    return json({ ok: true, membership: { campaignId, role, joinedAt: membership.joined_at, updatedAt: now } });
+  }
+
+  if (request.method === "DELETE") {
+    if (!membership) return error("Campaign membership not found.", 404);
+    const removed = await env.DB.prepare(
+      `DELETE FROM campaign_memberships WHERE campaign_id = ? AND user_id = ?
+      AND (role != 'dm' OR (SELECT COUNT(*) FROM campaign_memberships WHERE campaign_id = ? AND role = 'dm') > 1)`,
+    ).bind(campaignId, userId, campaignId).run();
+    if (!removed.meta?.changes) return error("Assign another DM before removing the final DM.", 409);
+    return json({ ok: true });
+  }
+  return error("Method not allowed.", 405);
+}
+
 export async function adminRoute(request, env, parts) {
   if (!await adminAuthorized(request, env)) return error("Primary administrator access required.", 401);
   if (request.method === "GET" && parts.length === 0) {
@@ -28,6 +72,8 @@ export async function adminRoute(request, env, parts) {
     ]);
     let users = { results: [] };
     let campaigns = { results: [] };
+    let campaignMemberships = { results: [] };
+    let campaignStorageAvailable = true;
     try {
       users = await env.DB.prepare(
         `SELECT users.id, users.email, users.roles_json, users.created_at, users.updated_at,
@@ -53,7 +99,12 @@ export async function adminRoute(request, env, parts) {
         JOIN campaign_slugs AS current ON current.campaign_id = campaigns.id AND current.is_current = 1
         ORDER BY campaigns.name COLLATE NOCASE`,
       ).all();
+      campaignMemberships = await env.DB.prepare(
+        `SELECT campaign_id, user_id, role, joined_at, updated_at
+        FROM campaign_memberships ORDER BY joined_at`,
+      ).all();
     } catch (caught) {
+      campaignStorageAvailable = false;
       console.warn("Campaigns could not be listed. Apply migration 0012.", caught);
     }
     return json({
@@ -77,6 +128,7 @@ export async function adminRoute(request, env, parts) {
         createdAt: row.created_at,
         updatedAt: row.updated_at,
       })),
+      campaignStorageAvailable,
       users: users.results.map((row) => ({
         id: row.id,
         email: row.email,
@@ -87,6 +139,14 @@ export async function adminRoute(request, env, parts) {
             ...parseStored(row.roles_json, []).filter((role) => ASSIGNABLE_ROLES.includes(role)),
           ])],
         isPrimaryAdmin: normalizeEmail(row.email) === PRIMARY_ADMIN_EMAIL,
+        campaignMemberships: campaignMemberships.results
+          .filter((membership) => membership.user_id === row.id)
+          .map((membership) => ({
+            campaignId: membership.campaign_id,
+            role: membership.role,
+            joinedAt: membership.joined_at,
+            updatedAt: membership.updated_at,
+          })),
         themePreference: preferenceFromRow(row.theme_id ? {
           theme_id: row.theme_id,
           reversed: row.reversed,
@@ -131,6 +191,9 @@ export async function adminRoute(request, env, parts) {
     await env.DB.prepare("UPDATE users SET roles_json = ?, updated_at = ? WHERE id = ?")
       .bind(JSON.stringify(roles), new Date().toISOString(), parts[1]).run();
     return json({ ok: true, roles });
+  }
+  if (parts[0] === "users" && parts[1] && parts[2] === "campaigns" && parts[3] && parts.length === 4) {
+    return campaignMembershipRoute(request, env, parts[1], parts[3]);
   }
   if (request.method === "PUT" && parts[0] === "users" && parts[1] && parts[2] === "theme" && parts.length === 3) {
     const body = await bodyJSON(request);

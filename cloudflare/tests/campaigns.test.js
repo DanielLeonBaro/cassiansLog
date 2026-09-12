@@ -123,6 +123,29 @@ for (const parts of [["aotr", "members"], ["aotr", "characters"], ["aotr", "sett
 }
 assert.equal(result.body.canEdit, true, "Primary Admin should be able to edit shared campaign content.");
 
+let adminResponse = await handleRequest(request("/api/admin", cookies.admin), env);
+assert.equal(adminResponse.status, 200);
+let adminBody = await adminResponse.json();
+assert.equal(adminBody.campaignStorageAvailable, true);
+assert.equal(
+  adminBody.users.find((user) => user.id === "alice").campaignMemberships
+    .find((membership) => membership.campaignId === curseCampaignId).role,
+  "dm",
+  "Admin users should expose campaign-specific memberships.",
+);
+
+adminResponse = await handleRequest(request(`/api/admin/users/dave/campaigns/${curseCampaignId}`, cookies.admin, { method: "PUT", body: { role: "player" } }), env);
+assert.equal(adminResponse.status, 200, "Primary Admin should add a user to a campaign as Player.");
+assert.equal(database.prepare("SELECT role FROM campaign_memberships WHERE campaign_id = ? AND user_id = 'dave'").get(curseCampaignId).role, "player");
+adminResponse = await handleRequest(request(`/api/admin/users/dave/campaigns/${curseCampaignId}`, cookies.admin, { method: "PUT", body: { role: "dm" } }), env);
+assert.equal(adminResponse.status, 200, "Primary Admin should change a campaign role to DM.");
+adminResponse = await handleRequest(request(`/api/admin/users/dave/campaigns/${curseCampaignId}`, cookies.admin, { method: "DELETE" }), env);
+assert.equal(adminResponse.status, 200, "Primary Admin should remove a campaign membership.");
+adminResponse = await handleRequest(request(`/api/admin/users/alice/campaigns/${curseCampaignId}`, cookies.admin, { method: "PUT", body: { role: "player" } }), env);
+assert.equal(adminResponse.status, 409, "Admin campaign controls must preserve the final DM.");
+adminResponse = await handleRequest(request(`/api/admin/users/admin/campaigns/${curseCampaignId}`, cookies.admin, { method: "PUT", body: { role: "player" } }), env);
+assert.equal(adminResponse.status, 409, "Primary Admin should keep implicit access instead of a campaign membership role.");
+
 result = await call(env, cookies.bob, ["curseofstrahd", "wiki"]);
 assert.equal(result.response.status, 403, "Visible metadata must not grant content access.");
 
