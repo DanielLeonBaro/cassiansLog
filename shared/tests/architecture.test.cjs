@@ -115,6 +115,7 @@ for (const feature of features) {
 assert.ok(siteBuild.includes('"login"'), "Login must be included in the Cloudflare static site build.");
 assert.ok(tailwindConfig.includes('./login/**/*.{html,js}'), "Login must be included in the Tailwind source scan.");
 assert.ok(siteBuild.includes('"character-route-worker.js"'), "The localhost character-route fallback must be deployed.");
+assert.ok(siteBuild.includes('"DnD_5E_CharacterSheet - Form Fillable.pdf"'), "The fillable character PDF must be deployed.");
 
 const pageShells = new Map([
   ["admin/index.html", "admin/js/entry.js"],

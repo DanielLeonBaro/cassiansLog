@@ -47,6 +47,7 @@ import {
 } from "../../../shared/js/v3-layout.js";
 import { saveV3Layout } from "../tracker/v3-layout-repository.js";
 import { currentV3CharacterSheetLayout, updateV3CharacterSheetLayout } from "../tracker/layout.js";
+import { downloadCharacterJson, downloadCharacterPdf } from "./character-export.js";
 
 export function initializeCharacterEditor({ character, normalizeSpellcastingData, refreshUI }) {
   const params = new URLSearchParams(location.search);
@@ -272,7 +273,13 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
       <div id="editor-fields" class="grow space-y-5 overflow-y-auto p-3 sm:p-6"></div>
       <footer class="flex flex-col gap-3 border-t border-stone-300 p-3 dark:border-white/10 sm:flex-row sm:items-center sm:justify-between sm:p-4">
         <p id="editor-validation-status" class="text-sm font-medium text-blood-500" role="alert"></p>
-        <div class="flex justify-end gap-3"><button id="editor-cancel" type="button" class="rounded-xl border border-stone-400 px-4 py-2 text-sm font-bold">Cancel</button><button id="editor-save" type="button" class="${classes.button}"><i class="bi bi-check-lg"></i> Save changes</button></div>
+        <div class="flex flex-wrap justify-end gap-3">${npcMode ? "" : `<details id="editor-export-menu" class="relative">
+          <summary class="inline-flex cursor-pointer list-none items-center justify-center gap-2 rounded-xl border border-stone-400 px-4 py-2 text-sm font-bold [&::-webkit-details-marker]:hidden"><i class="bi bi-download"></i> Export character</summary>
+          <div class="absolute bottom-full right-0 z-10 mb-2 w-52 overflow-hidden rounded-xl border border-stone-300 bg-parchment p-1 shadow-xl dark:border-white/15 dark:bg-ink">
+            <button id="editor-export-json" type="button" class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-bold hover:bg-stone-200 disabled:cursor-wait disabled:opacity-50 dark:hover:bg-white/10"><i class="bi bi-filetype-json"></i> Download JSON</button>
+            <button id="editor-export-pdf" type="button" class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-bold hover:bg-stone-200 disabled:cursor-wait disabled:opacity-50 dark:hover:bg-white/10"><i class="bi bi-file-earmark-pdf"></i> Download filled PDF</button>
+          </div>
+        </details>`}<button id="editor-cancel" type="button" class="rounded-xl border border-stone-400 px-4 py-2 text-sm font-bold">Cancel</button><button id="editor-save" type="button" class="${classes.button}"><i class="bi bi-check-lg"></i> Save changes</button></div>
       </footer>
     </div>`;
     document.body.appendChild(overlay);
@@ -311,6 +318,8 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     document.getElementById("editor-close").addEventListener("click", controller.close);
     document.getElementById("editor-cancel").addEventListener("click", controller.close);
     document.getElementById("editor-save").addEventListener("click", save);
+    document.getElementById("editor-export-json")?.addEventListener("click", () => exportDraft("json"));
+    document.getElementById("editor-export-pdf")?.addEventListener("click", () => exportDraft("pdf"));
     document.getElementById("editor-fields").addEventListener("input", updateDraft);
     document.getElementById("editor-fields").addEventListener("click", handleEditorClick);
     document.getElementById("editor-fields").addEventListener("change", (event) => {
@@ -622,6 +631,25 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
       return false;
     }
     return true;
+  }
+
+  async function exportDraft(format) {
+    if (!draft) return;
+    const button = document.getElementById(`editor-export-${format}`);
+    const status = document.getElementById("editor-validation-status");
+    button.disabled = true;
+    status.textContent = format === "pdf" ? "Preparing filled PDF…" : "Preparing JSON…";
+    try {
+      if (format === "pdf") await downloadCharacterPdf(clone(draft));
+      else downloadCharacterJson(clone(draft));
+      status.textContent = "";
+      document.getElementById("editor-export-menu")?.removeAttribute("open");
+    } catch (error) {
+      console.error(`Could not export character ${format.toUpperCase()}:`, error);
+      status.textContent = `Could not export ${format.toUpperCase()}. Try again.`;
+    } finally {
+      button.disabled = false;
+    }
   }
 
   async function save() {

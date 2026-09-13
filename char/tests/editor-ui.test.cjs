@@ -68,6 +68,11 @@ for (const hook of ["editor-v3-columns", "data-v3-section-drag", "data-v3-sectio
 assert.match(editor, /The campaign DM controls the style; this grid is personal to you/, "Assigned players should receive personal V3 controls without style authority.");
 assert.match(editor, /saveV3Layout/, "V3 changes should use personal layout persistence.");
 assert.match(editor, /saveCharacterSheetStyleOverride/, "Style changes should use shared persistence.");
+for (const id of ["editor-export-menu", "editor-export-json", "editor-export-pdf"]) {
+  assert.ok(editor.includes(`id=\"${id}\"`), `Editor should include ${id}.`);
+}
+assert.match(editor, /downloadCharacterJson\(clone\(draft\)\)/, "JSON export should include current unsaved draft data.");
+assert.match(editor, /downloadCharacterPdf\(clone\(draft\)\)/, "PDF export should include current unsaved draft data.");
 assert.match(editor, /data-character-editor-section/, "Editor should accept focused section triggers.");
 assert.match(editor, /return \{ open \};/, "Editor should expose its focused open action.");
 

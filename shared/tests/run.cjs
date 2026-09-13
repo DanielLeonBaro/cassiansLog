@@ -28,6 +28,7 @@ const suites = [
   ["Spellcasting profiles and preparation", "char/tests/spellcasting.test.cjs"],
   ["Character repository and creation", "char/tests/repository.test.cjs"],
   ["D&D Beyond character import conversion", "char/tests/dnd-beyond-import.test.js"],
+  ["Character JSON and filled PDF export", "char/tests/character-export.test.js"],
   ["Character editor draft model", "char/tests/editor-model.test.cjs"],
   ["Character archive shortcuts and editor UI", "char/tests/editor-ui.test.cjs"],
   ["Character sheet layout and ownership", "char/tests/layout.test.cjs"],

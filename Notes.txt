@@ -12,16 +12,18 @@
 
 ##Priorities
 - More juice to admin; characters assigned to users
-- Rework what legacy is, i don't want any hardcodded stuff
 - Add export button (downloads JSON)
 - Add Generate PDF
-- Standarize unit tests or automated cases in general and add tags to them so you don't always run them all, only for the affected components
 
 ##In Progress (Out of Tokens)
-- Add reference to characters and NPCs into combat tracker
+
+#In Pause
+- Rework what legacy is, i don't want any hardcodded stuff
+
 
 ##Done
 - Music Module
+- Standarize unit tests or automated cases in general and add tags to them so you don't always run them all, only for the affected components
 - Some checkboxes don't respect accent color in theme, in admin for instance
 - Columns to V1 in Character Tracker
 - Character Module v2, similar to D&D Beyond
@@ -44,6 +46,7 @@
 - Make Import Character from D&D Beyond script into "New Character"
 - Hideable Characters and NPCs from Players in Character Tracker / Add an NPC Tracker
 - Rework Admin in general, make it better usable and less crammed
+- Add reference to characters and NPCs into combat tracker
 
 
 ---

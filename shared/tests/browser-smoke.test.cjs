@@ -44,6 +44,7 @@ function contentType(file) {
     ".json": "application/json; charset=utf-8",
     ".mjs": "text/javascript; charset=utf-8",
     ".png": "image/png",
+    ".pdf": "application/pdf",
     ".woff": "font/woff",
     ".woff2": "font/woff2",
   })[path.extname(file).toLowerCase()] || "application/octet-stream";
@@ -559,6 +560,44 @@ async function main() {
         return name === window.character.name && !editor.classList.contains("hidden") && Boolean(document.getElementById("editor-fields").children.length);
       `,
     );
+    await execute(`
+      window.__characterExports = [];
+      URL.createObjectURL = (blob) => {
+        const exported = { type: blob.type, size: blob.size, filename: "", signature: "" };
+        window.__characterExports.push(exported);
+        blob.arrayBuffer().then((buffer) => {
+          exported.signature = String.fromCharCode(...new Uint8Array(buffer).slice(0, 4));
+        });
+        return "blob:http://127.0.0.1/export-test";
+      };
+      URL.revokeObjectURL = () => {};
+      HTMLAnchorElement.prototype.click = function () {
+        window.__characterExports.at(-1).filename = this.download;
+      };
+      document.getElementById("editor-export-menu").open = true;
+      document.getElementById("editor-export-json").click();
+      return true;
+    `);
+    await waitFor(
+      'return window.__characterExports.length === 1 && window.__characterExports[0].signature === "{\\n  ";',
+      "Character JSON export did not finish",
+    );
+    await execute(`
+      document.getElementById("editor-export-menu").open = true;
+      document.getElementById("editor-export-pdf").click();
+      return true;
+    `);
+    await waitFor(
+      'return window.__characterExports.length === 2 && window.__characterExports[1].signature === "%PDF" && !document.getElementById("editor-export-pdf").disabled;',
+      "Filled character PDF export did not finish",
+    );
+    const characterExports = await execute('return window.__characterExports;');
+    assert.equal(characterExports[0].type, "application/json");
+    assert.equal(characterExports[0].filename, "cassian-aurelius-von-bloodington-iii.json");
+    assert.equal(characterExports[1].type, "application/pdf");
+    assert.equal(characterExports[1].filename, "cassian-aurelius-von-bloodington-iii.pdf");
+    assert.ok(characterExports[1].size > 100_000, "Filled character PDF download should contain the complete sheet.");
+    console.log("Browser smoke passed: Character JSON and filled PDF export");
     const characterFlags = await execute(`
       const inspiration = document.getElementById("inspiration-toggle");
       const cinematic = document.getElementById("cinematic-toggle");

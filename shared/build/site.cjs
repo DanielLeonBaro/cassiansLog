@@ -7,6 +7,7 @@ const output = path.join(root, ".cloudflare", "public");
 const publicEntries = [
   "index.html",
   "character-route-worker.js",
+  "DnD_5E_CharacterSheet - Form Fillable.pdf",
   "admin",
   "char",
   "campaigns",
