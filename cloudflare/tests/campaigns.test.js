@@ -122,6 +122,9 @@ for (const parts of [["aotr", "members"], ["aotr", "characters"], ["aotr", "sett
   assert.equal(result.response.status, 200, `Primary Admin should have DM access to ${parts.at(-1)}.`);
 }
 assert.equal(result.body.canEdit, true, "Primary Admin should be able to edit shared campaign content.");
+const legacyAdminDocument = JSON.stringify({ id: "legacy-admin-toggle", name: "Legacy Admin Toggle" });
+database.prepare("INSERT INTO characters (id, document_json, source, active, created_at, updated_at) VALUES ('legacy-admin-toggle', ?, 'custom', 1, ?, ?)").run(legacyAdminDocument, now, now);
+database.prepare("INSERT INTO campaign_characters (campaign_id, id, document_json, source, active, created_at, updated_at) VALUES ('campaign-breugaire', 'legacy-admin-toggle', ?, 'custom', 1, ?, ?)").run(legacyAdminDocument, now, now);
 
 let adminResponse = await handleRequest(request("/api/admin", cookies.admin), env);
 assert.equal(adminResponse.status, 200);
@@ -133,6 +136,13 @@ assert.equal(
   "dm",
   "Admin users should expose campaign-specific memberships.",
 );
+const legacyAdminCharacter = adminBody.campaigns.find((campaign) => campaign.id === "campaign-breugaire").characters[0];
+adminResponse = await handleRequest(request(`/api/admin/campaigns/campaign-breugaire/entities/characters/${legacyAdminCharacter.id}`, cookies.admin, { method: "PUT", body: { active: false } }), env);
+assert.equal(adminResponse.status, 200);
+assert.equal(database.prepare("SELECT active FROM campaign_characters WHERE campaign_id = 'campaign-breugaire' AND id = ?").get(legacyAdminCharacter.id).active, 0);
+assert.equal(database.prepare("SELECT active FROM characters WHERE id = ?").get(legacyAdminCharacter.id).active, 0, "AOTR availability should remain mirrored to the legacy character list.");
+adminResponse = await handleRequest(request(`/api/admin/campaigns/campaign-breugaire/entities/characters/${legacyAdminCharacter.id}`, cookies.admin, { method: "PUT", body: { active: true } }), env);
+assert.equal(adminResponse.status, 200);
 
 adminResponse = await handleRequest(request(`/api/admin/users/dave/campaigns/${curseCampaignId}`, cookies.admin, { method: "PUT", body: { role: "player" } }), env);
 assert.equal(adminResponse.status, 200, "Primary Admin should add a user to a campaign as Player.");
@@ -185,6 +195,29 @@ assert.equal(result.response.status, 200);
 
 result = await call(env, cookies.alice, ["curseofstrahd", "characters", "hero", "assignments"], { method: "PUT", body: { userIds: ["carol"] } });
 assert.equal(result.response.status, 200);
+adminResponse = await handleRequest(request("/api/admin", cookies.admin), env);
+adminBody = await adminResponse.json();
+const adminCurseCampaign = adminBody.campaigns.find((campaign) => campaign.id === curseCampaignId);
+assert.equal(adminCurseCampaign.characters.find((character) => character.id === "hero").name, "Hero", "Admin should group characters under their campaign.");
+assert.equal(
+  adminBody.users.find((user) => user.id === "carol").characterAssignments
+    .some((assignment) => assignment.campaignId === curseCampaignId && assignment.characterId === "hero"),
+  true,
+  "Admin users should expose assigned campaign characters.",
+);
+adminResponse = await handleRequest(request(`/api/admin/users/carol/campaigns/${curseCampaignId}/characters/hero`, cookies.admin, { method: "DELETE" }), env);
+assert.equal(adminResponse.status, 200, "Primary Admin should remove a player's character assignment.");
+assert.equal(database.prepare("SELECT COUNT(*) AS count FROM campaign_character_editors WHERE campaign_id = ? AND user_id = 'carol' AND character_id = 'hero'").get(curseCampaignId).count, 0);
+adminResponse = await handleRequest(request(`/api/admin/users/carol/campaigns/${curseCampaignId}/characters/hero`, cookies.admin, { method: "PUT" }), env);
+assert.equal(adminResponse.status, 200, "Primary Admin should assign a campaign character to a player.");
+adminResponse = await handleRequest(request(`/api/admin/users/alice/campaigns/${curseCampaignId}/characters/hero`, cookies.admin, { method: "PUT" }), env);
+assert.equal(adminResponse.status, 409, "DMs should retain implicit access instead of character assignment rows.");
+adminResponse = await handleRequest(request(`/api/admin/campaigns/${curseCampaignId}/entities/characters/hero`, cookies.admin, { method: "PUT", body: { active: false } }), env);
+assert.equal(adminResponse.status, 200);
+result = await call(env, cookies.carol, ["curseofstrahd", "characters"]);
+assert.equal(result.body.characters.some((character) => character.id === "hero"), false, "Admin availability should hide a character from its campaign list.");
+adminResponse = await handleRequest(request(`/api/admin/campaigns/${curseCampaignId}/entities/characters/hero`, cookies.admin, { method: "PUT", body: { active: true } }), env);
+assert.equal(adminResponse.status, 200, "Primary Admin should restore a hidden campaign character.");
 const carolLayout = normalizeV3Layout({ ...DEFAULT_V3_LAYOUT, columns: 3, sections: DEFAULT_V3_LAYOUT.sections.map((section) => ({ ...section, span: 1 })) });
 result = await call(env, cookies.carol, ["curseofstrahd", "characters", "hero", "layout"], { method: "PUT", body: { layout: carolLayout } });
 assert.equal(result.response.status, 200);
@@ -219,6 +252,20 @@ result = await call(env, cookies.carol, ["curseofstrahd", "npcs", "masked-one"])
 assert.equal(result.response.status, 404, "Players cannot bypass archive visibility with a direct NPC URL.");
 result = await call(env, cookies.alice, ["curseofstrahd", "npcs", "masked-one", "visibility"], { method: "PUT", body: { playerVisible: true } });
 assert.equal(result.response.status, 200);
+adminResponse = await handleRequest(request("/api/admin", cookies.admin), env);
+adminBody = await adminResponse.json();
+assert.equal(
+  adminBody.campaigns.find((campaign) => campaign.id === curseCampaignId).npcs
+    .find((item) => item.id === "masked-one").playerVisible,
+  true,
+  "Admin should group NPCs and their player visibility under the campaign.",
+);
+adminResponse = await handleRequest(request(`/api/admin/campaigns/${curseCampaignId}/entities/npcs/masked-one`, cookies.admin, { method: "PUT", body: { active: false } }), env);
+assert.equal(adminResponse.status, 200);
+result = await call(env, cookies.carol, ["curseofstrahd", "npcs", "masked-one"]);
+assert.equal(result.response.status, 404, "Admin availability should hide an NPC from its campaign.");
+adminResponse = await handleRequest(request(`/api/admin/campaigns/${curseCampaignId}/entities/npcs/masked-one`, cookies.admin, { method: "PUT", body: { active: true } }), env);
+assert.equal(adminResponse.status, 200, "Primary Admin should restore a hidden campaign NPC.");
 result = await call(env, cookies.carol, ["curseofstrahd", "npcs", "masked-one"]);
 assert.equal(result.response.status, 200);
 assert.equal(result.body.document.name, "Known Face");

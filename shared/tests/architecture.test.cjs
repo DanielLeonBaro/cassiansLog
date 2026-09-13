@@ -103,6 +103,8 @@ assert.ok(adminEntrypoint.includes("characterSheetStyleOverrides"), "Admin shoul
 assert.ok(adminEntrypoint.includes("data-user-theme"), "Admin should support per-user theme assignment.");
 assert.ok(adminEntrypoint.includes("data-remove-theme"), "Admin should support unprotected theme removal.");
 assert.ok(adminEntrypoint.includes("data-user-campaign-role"), "Admin should manage roles per campaign.");
+assert.ok(adminEntrypoint.includes("data-campaign-entity"), "Admin should manage Character and NPC availability per campaign.");
+assert.ok(adminEntrypoint.includes("data-user-character-assignment"), "Admin should assign campaign Characters from each user row.");
 assert.match(adminPage, /<details id="themes"/, "Theme management should be expandable.");
 assert.ok(adminEntrypoint.includes("<details class=\"group rounded-2xl"), "Each Admin user should render as an expandable row.");
 

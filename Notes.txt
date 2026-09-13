@@ -12,14 +12,11 @@
 
 ##Priorities
 - More juice to admin; characters assigned to users
-- Add export button (downloads JSON)
-- Add Generate PDF
 
 ##In Progress (Out of Tokens)
 
 #In Pause
 - Rework what legacy is, i don't want any hardcodded stuff
-
 
 ##Done
 - Music Module
@@ -47,6 +44,8 @@
 - Hideable Characters and NPCs from Players in Character Tracker / Add an NPC Tracker
 - Rework Admin in general, make it better usable and less crammed
 - Add reference to characters and NPCs into combat tracker
+- Add export button (downloads JSON)
+- Add Generate PDF
 
 
 ---

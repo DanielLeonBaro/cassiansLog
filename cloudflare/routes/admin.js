@@ -3,7 +3,7 @@ import { adminAuthorized } from "../auth.js";
 import { bodyJSON, error, json, parseStored, safeId } from "../http.js";
 import { loadSettings, updateSettings } from "../settings.js";
 import { adminThemeRoute } from "./admin-themes.js";
-import { validCampaignSlug } from "../campaigns.js";
+import { LEGACY_CAMPAIGN_ID, validCampaignSlug } from "../campaigns.js";
 import {
   assignUserTheme,
   loadThemeCatalog,
@@ -62,6 +62,61 @@ async function campaignMembershipRoute(request, env, userId, campaignId) {
   return error("Method not allowed.", 405);
 }
 
+async function campaignEntityAvailabilityRoute(request, env, campaignId, kind, entityId) {
+  if (request.method !== "PUT") return error("Method not allowed.", 405);
+  if (!safeId(campaignId) || !safeId(entityId) || !["characters", "npcs"].includes(kind)) {
+    return error("Campaign entity is invalid.");
+  }
+  const body = await bodyJSON(request);
+  if (typeof body?.active !== "boolean") return error("Entity availability must be true or false.");
+  const now = new Date().toISOString();
+  const campaignUpdate = kind === "characters"
+    ? env.DB.prepare("UPDATE campaign_characters SET active = ?, updated_at = ? WHERE campaign_id = ? AND id = ?")
+    : env.DB.prepare("UPDATE campaign_npcs SET active = ?, updated_at = ? WHERE campaign_id = ? AND id = ?");
+  const statements = [campaignUpdate.bind(body.active ? 1 : 0, now, campaignId, entityId)];
+  if (kind === "characters" && campaignId === LEGACY_CAMPAIGN_ID) {
+    statements.push(env.DB.prepare(
+      "UPDATE characters SET active = ?, updated_at = ? WHERE id = ?",
+    ).bind(body.active ? 1 : 0, now, entityId));
+  }
+  const [updated] = await env.DB.batch(statements);
+  if (!updated.meta?.changes) return error(kind === "characters" ? "Character not found." : "NPC not found.", 404);
+  return json({ ok: true, active: body.active, updatedAt: now });
+}
+
+async function userCharacterAssignmentRoute(request, env, userId, campaignId, characterId) {
+  if (!safeId(userId) || !safeId(campaignId) || !safeId(characterId)) return error("Character assignment is invalid.");
+  const [target, membership, character] = await Promise.all([
+    env.DB.prepare("SELECT email FROM users WHERE id = ?").bind(userId).first(),
+    env.DB.prepare("SELECT role FROM campaign_memberships WHERE campaign_id = ? AND user_id = ?")
+      .bind(campaignId, userId).first(),
+    env.DB.prepare("SELECT id FROM campaign_characters WHERE campaign_id = ? AND id = ?")
+      .bind(campaignId, characterId).first(),
+  ]);
+  if (!target) return error("User not found.", 404);
+  if (normalizeEmail(target.email) === PRIMARY_ADMIN_EMAIL) {
+    return error("The primary administrator already has access to every character.", 409);
+  }
+  if (!membership || membership.role !== "player") return error("Character editors must be campaign players.", 409);
+  if (!character) return error("Character not found.", 404);
+
+  if (request.method === "PUT") {
+    const now = new Date().toISOString();
+    await env.DB.prepare(
+      `INSERT INTO campaign_character_editors (campaign_id, character_id, user_id, assigned_at)
+      VALUES (?, ?, ?, ?) ON CONFLICT(campaign_id, character_id, user_id) DO NOTHING`,
+    ).bind(campaignId, characterId, userId, now).run();
+    return json({ ok: true, assigned: true, assignedAt: now });
+  }
+  if (request.method === "DELETE") {
+    await env.DB.prepare(
+      "DELETE FROM campaign_character_editors WHERE campaign_id = ? AND character_id = ? AND user_id = ?",
+    ).bind(campaignId, characterId, userId).run();
+    return json({ ok: true, assigned: false });
+  }
+  return error("Method not allowed.", 405);
+}
+
 export async function adminRoute(request, env, parts) {
   if (!await adminAuthorized(request, env)) return error("Primary administrator access required.", 401);
   if (request.method === "GET" && parts.length === 0) {
@@ -73,7 +128,11 @@ export async function adminRoute(request, env, parts) {
     let users = { results: [] };
     let campaigns = { results: [] };
     let campaignMemberships = { results: [] };
+    let campaignCharacters = { results: [] };
+    let campaignCharacterEditors = { results: [] };
+    let campaignNpcs = { results: [] };
     let campaignStorageAvailable = true;
+    let npcStorageAvailable = true;
     try {
       users = await env.DB.prepare(
         `SELECT users.id, users.email, users.roles_json, users.created_at, users.updated_at,
@@ -92,20 +151,41 @@ export async function adminRoute(request, env, parts) {
       }
     }
     try {
-      campaigns = await env.DB.prepare(
-        `SELECT campaigns.id, campaigns.name, campaigns.description, campaigns.banner, campaigns.join_enabled, campaigns.created_at, campaigns.updated_at,
-          current.slug
-        FROM campaigns
-        JOIN campaign_slugs AS current ON current.campaign_id = campaigns.id AND current.is_current = 1
-        ORDER BY campaigns.name COLLATE NOCASE`,
-      ).all();
-      campaignMemberships = await env.DB.prepare(
-        `SELECT campaign_id, user_id, role, joined_at, updated_at
-        FROM campaign_memberships ORDER BY joined_at`,
-      ).all();
+      [campaigns, campaignMemberships, campaignCharacters, campaignCharacterEditors] = await Promise.all([
+        env.DB.prepare(
+          `SELECT campaigns.id, campaigns.name, campaigns.description, campaigns.banner, campaigns.join_enabled, campaigns.created_at, campaigns.updated_at,
+            current.slug
+          FROM campaigns
+          JOIN campaign_slugs AS current ON current.campaign_id = campaigns.id AND current.is_current = 1
+          ORDER BY campaigns.name COLLATE NOCASE`,
+        ).all(),
+        env.DB.prepare(
+          `SELECT campaign_id, user_id, role, joined_at, updated_at
+          FROM campaign_memberships ORDER BY joined_at`,
+        ).all(),
+        env.DB.prepare(
+          `SELECT campaign_id, id, document_json, source, active, updated_at
+          FROM campaign_characters ORDER BY campaign_id, id`,
+        ).all(),
+        env.DB.prepare(
+          `SELECT campaign_id, character_id, user_id, assigned_at
+          FROM campaign_character_editors ORDER BY campaign_id, character_id, user_id`,
+        ).all(),
+      ]);
     } catch (caught) {
       campaignStorageAvailable = false;
       console.warn("Campaigns could not be listed. Apply migration 0012.", caught);
+    }
+    if (campaignStorageAvailable) {
+      try {
+        campaignNpcs = await env.DB.prepare(
+          `SELECT campaign_id, id, document_json, player_visible, active, updated_at
+          FROM campaign_npcs ORDER BY campaign_id, id`,
+        ).all();
+      } catch (caught) {
+        npcStorageAvailable = false;
+        console.warn("Campaign NPCs could not be listed. Apply migration 0016.", caught);
+      }
     }
     return json({
       settings,
@@ -127,8 +207,27 @@ export async function adminRoute(request, env, parts) {
         joinEnabled: Boolean(row.join_enabled),
         createdAt: row.created_at,
         updatedAt: row.updated_at,
+        characters: campaignCharacters.results
+          .filter((character) => character.campaign_id === row.id)
+          .map((character) => ({
+            id: character.id,
+            name: parseStored(character.document_json, {})?.name || character.id,
+            source: character.source,
+            active: Boolean(character.active),
+            updatedAt: character.updated_at,
+          })),
+        npcs: campaignNpcs.results
+          .filter((npc) => npc.campaign_id === row.id)
+          .map((npc) => ({
+            id: npc.id,
+            name: parseStored(npc.document_json, {})?.name || npc.id,
+            playerVisible: Boolean(npc.player_visible),
+            active: Boolean(npc.active),
+            updatedAt: npc.updated_at,
+          })),
       })),
       campaignStorageAvailable,
+      npcStorageAvailable,
       users: users.results.map((row) => ({
         id: row.id,
         email: row.email,
@@ -146,6 +245,13 @@ export async function adminRoute(request, env, parts) {
             role: membership.role,
             joinedAt: membership.joined_at,
             updatedAt: membership.updated_at,
+          })),
+        characterAssignments: campaignCharacterEditors.results
+          .filter((assignment) => assignment.user_id === row.id)
+          .map((assignment) => ({
+            campaignId: assignment.campaign_id,
+            characterId: assignment.character_id,
+            assignedAt: assignment.assigned_at,
           })),
         themePreference: preferenceFromRow(row.theme_id ? {
           theme_id: row.theme_id,
@@ -194,6 +300,13 @@ export async function adminRoute(request, env, parts) {
   }
   if (parts[0] === "users" && parts[1] && parts[2] === "campaigns" && parts[3] && parts.length === 4) {
     return campaignMembershipRoute(request, env, parts[1], parts[3]);
+  }
+  if (parts[0] === "users" && parts[1] && parts[2] === "campaigns" && parts[3]
+    && parts[4] === "characters" && parts[5] && parts.length === 6) {
+    return userCharacterAssignmentRoute(request, env, parts[1], parts[3], parts[5]);
+  }
+  if (parts[0] === "campaigns" && parts[1] && parts[2] === "entities" && parts[3] && parts[4] && parts.length === 5) {
+    return campaignEntityAvailabilityRoute(request, env, parts[1], parts[3], parts[4]);
   }
   if (request.method === "PUT" && parts[0] === "users" && parts[1] && parts[2] === "theme" && parts.length === 3) {
     const body = await bodyJSON(request);

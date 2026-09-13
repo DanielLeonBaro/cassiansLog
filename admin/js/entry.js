@@ -123,7 +123,16 @@ async function adminRequest(path = "", options = {}) {
     const method = options.method || "GET";
     if (!path && method === "GET") {
       const [settings, characters] = await Promise.all([runtimeSettingsReady, localCharacters()]);
-      return { settings, characters, users: [], themes: [], themeStorageAvailable: false };
+      return {
+        settings,
+        characters,
+        campaigns: [],
+        users: [],
+        themes: [],
+        campaignStorageAvailable: false,
+        npcStorageAvailable: false,
+        themeStorageAvailable: false,
+      };
     }
     if (path === "/settings" && method === "PUT") {
       return { ok: true, settings: persistLocalRuntimeSettings(JSON.parse(options.body)) };
@@ -151,15 +160,47 @@ function campaignMembership(user, campaignId) {
   return (user.campaignMemberships || []).find((membership) => membership.campaignId === campaignId);
 }
 
+function characterAssigned(user, campaignId, characterId) {
+  return (user.characterAssignments || []).some((assignment) => (
+    assignment.campaignId === campaignId && assignment.characterId === characterId
+  ));
+}
+
+function managedCharacterCount(user) {
+  return (snapshot?.campaigns || []).reduce((count, campaign) => {
+    const activeCharacters = (campaign.characters || []).filter((character) => character.active);
+    const membership = campaignMembership(user, campaign.id);
+    if (user.isPrimaryAdmin || membership?.role === "dm") return count + activeCharacters.length;
+    if (membership?.role !== "player") return count;
+    return count + activeCharacters.filter((character) => characterAssigned(user, campaign.id, character.id)).length;
+  }, 0);
+}
+
+function visibleNpcCount(user) {
+  return (snapshot?.campaigns || []).reduce((count, campaign) => {
+    const membership = campaignMembership(user, campaign.id);
+    if (!user.isPrimaryAdmin && !membership) return count;
+    const npcs = (campaign.npcs || []).filter((npc) => npc.active);
+    return count + (user.isPrimaryAdmin || membership?.role === "dm"
+      ? npcs.length
+      : npcs.filter((npc) => npc.playerVisible).length);
+  }, 0);
+}
+
 function campaignRoleSummary(user) {
+  const characterCount = managedCharacterCount(user);
+  const npcCount = visibleNpcCount(user);
+  const entityBadges = snapshot?.campaignStorageAvailable === false ? "" : `
+    <span class="rounded-full bg-sky-500/15 px-2.5 py-1 text-xs font-bold text-sky-700 dark:text-sky-300" title="Characters this person can edit">${characterCount} Character${characterCount === 1 ? "" : "s"}</span>
+    ${snapshot?.npcStorageAvailable === false ? "" : `<span class="rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300" title="NPCs this person can access">${npcCount} NPC${npcCount === 1 ? "" : "s"}</span>`}`;
   if (user.isPrimaryAdmin) {
-    return '<span class="rounded-full bg-blood-500 px-2.5 py-1 text-xs font-bold text-white">Site admin · all campaigns</span>';
+    return `<span class="rounded-full bg-blood-500 px-2.5 py-1 text-xs font-bold text-white">Site admin · all campaigns</span>${entityBadges}`;
   }
   const memberships = user.campaignMemberships || [];
-  if (!memberships.length) return '<span class="text-xs text-stone-500 dark:text-stone-400">No campaigns</span>';
+  if (!memberships.length) return `<span class="text-xs text-stone-500 dark:text-stone-400">No campaigns</span>${entityBadges}`;
   const dmCount = memberships.filter((membership) => membership.role === "dm").length;
   const playerCount = memberships.length - dmCount;
-  return `<span class="rounded-full bg-theme-surface-strong px-2.5 py-1 text-xs font-bold">${memberships.length} campaign${memberships.length === 1 ? "" : "s"}</span>${dmCount ? `<span class="rounded-full bg-blood-500/15 px-2.5 py-1 text-xs font-bold text-blood-500">${dmCount} DM</span>` : ""}${playerCount ? `<span class="rounded-full bg-theme-surface-strong px-2.5 py-1 text-xs font-bold">${playerCount} Player</span>` : ""}`;
+  return `<span class="rounded-full bg-theme-surface-strong px-2.5 py-1 text-xs font-bold">${memberships.length} campaign${memberships.length === 1 ? "" : "s"}</span>${dmCount ? `<span class="rounded-full bg-blood-500/15 px-2.5 py-1 text-xs font-bold text-blood-500">${dmCount} DM</span>` : ""}${playerCount ? `<span class="rounded-full bg-theme-surface-strong px-2.5 py-1 text-xs font-bold">${playerCount} Player</span>` : ""}${entityBadges}`;
 }
 
 function renderCampaignRoles(user) {
@@ -185,6 +226,46 @@ function renderCampaignRoles(user) {
   }).join("")}</div>`;
 }
 
+function renderUserCharacterAssignments(user) {
+  if (snapshot?.campaignStorageAvailable === false) {
+    return '<p class="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm">Character assignments require migration 0012.</p>';
+  }
+  if (user.isPrimaryAdmin) {
+    return '<p class="rounded-xl border border-blood-500/30 bg-blood-500/10 p-3 text-sm">Site admin access already includes every campaign character and NPC.</p>';
+  }
+  const memberships = user.campaignMemberships || [];
+  const playerCampaigns = (snapshot?.campaigns || []).filter((campaign) => (
+    memberships.some((membership) => membership.campaignId === campaign.id && membership.role === "player")
+  ));
+  const dmCampaigns = (snapshot?.campaigns || []).filter((campaign) => (
+    memberships.some((membership) => membership.campaignId === campaign.id && membership.role === "dm")
+  ));
+  const playerControls = playerCampaigns.map((campaign) => `
+    <fieldset class="rounded-xl border border-stone-300 p-3 dark:border-white/10">
+      <legend class="px-1 text-sm font-bold">${escapeHTML(campaign.name)}</legend>
+      <div class="mt-1 grid gap-2 sm:grid-cols-2">${(campaign.characters || []).map((character) => `
+        <label class="flex cursor-pointer items-center gap-2 rounded-lg border border-stone-300 px-3 py-2 text-sm dark:border-white/10">
+          <input type="checkbox" data-user-character-assignment data-campaign-id="${escapeHTML(campaign.id)}" data-character-id="${escapeHTML(character.id)}" class="accent-red-700"${characterAssigned(user, campaign.id, character.id) ? " checked" : ""}>
+          <span class="min-w-0"><strong class="block truncate">${escapeHTML(character.name)}</strong>${character.active ? "" : '<small class="text-stone-500 dark:text-stone-400">Hidden from campaign list</small>'}</span>
+        </label>`).join("") || '<span class="text-sm text-stone-500 dark:text-stone-400">No characters in this campaign.</span>'}</div>
+    </fieldset>`).join("");
+  const dmNote = dmCampaigns.length
+    ? `<p class="rounded-xl bg-theme-surface-strong p-3 text-sm"><strong>DM access:</strong> all characters and NPCs in ${dmCampaigns.map((campaign) => escapeHTML(campaign.name)).join(", ")}.</p>`
+    : "";
+  return `${dmNote}${playerControls || (!dmNote
+    ? '<p class="text-sm text-stone-500 dark:text-stone-400">Assign a Player campaign role before assigning characters.</p>'
+    : "")}`;
+}
+
+function refreshUserEntityDisplays() {
+  (snapshot?.users || []).forEach((user) => {
+    const card = [...userRoot.querySelectorAll("[data-user]")].find((item) => item.dataset.user === user.id);
+    if (!card) return;
+    card.querySelector("[data-user-campaign-summary]").innerHTML = campaignRoleSummary(user);
+    card.querySelector("[data-user-character-assignments]").innerHTML = renderUserCharacterAssignments(user);
+  });
+}
+
 function renderUsers(users = []) {
   if (localMode) {
     userRoot.innerHTML = '<p class="text-sm text-stone-500">User accounts require D1 and are not available in local static mode.</p>';
@@ -199,6 +280,7 @@ function renderUsers(users = []) {
       </summary>
       <div class="space-y-5 border-t border-stone-300 p-4 dark:border-white/10">
         <section><h3 class="font-display text-lg font-bold">Campaign roles</h3><p class="mb-3 mt-1 text-sm text-stone-500 dark:text-stone-400">Membership and permissions are isolated per campaign.</p>${renderCampaignRoles(user)}</section>
+        <section class="border-t border-stone-300 pt-4 dark:border-white/10"><h3 class="font-display text-lg font-bold">Assigned characters</h3><p class="mb-3 mt-1 text-sm text-stone-500 dark:text-stone-400">Players edit checked characters. DMs already manage everything in their campaigns.</p><div data-user-character-assignments class="space-y-3">${renderUserCharacterAssignments(user)}</div></section>
         ${snapshot?.themeStorageAvailable === false
         ? '<p class="border-t border-stone-300 pt-4 text-sm text-stone-500 dark:border-white/10 dark:text-stone-400">Theme assignment requires migration 0008 and is currently unavailable.</p>'
         : `<label class="block border-t border-stone-300 pt-4 dark:border-white/10"><span class="mb-1 block text-sm font-bold">Theme</span>
@@ -292,16 +374,51 @@ function renderSections(sections) {
     </label>`).join("");
 }
 
-function renderCharacters(characters) {
+function campaignEntityRow(campaign, entity, kind) {
+  const kindLabel = kind === "characters" ? "Character" : "NPC";
+  const detail = kind === "characters"
+    ? `${entity.id} · ${entity.source}`
+    : `${entity.id} · ${entity.playerVisible ? "Shown to players" : "Hidden from players"}`;
+  return `
+    <label class="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-stone-300 px-4 py-3 dark:border-white/15">
+      <span class="min-w-0"><strong class="block truncate">${escapeHTML(entity.name)}</strong><small class="text-stone-500 dark:text-stone-400">${escapeHTML(detail)}</small></span>
+      <span class="flex shrink-0 items-center gap-2 text-sm font-bold"><span data-entity-state>${entity.active ? "Available" : "Hidden"}</span><input type="checkbox" data-campaign-entity data-campaign-id="${escapeHTML(campaign.id)}" data-entity-kind="${kind}" data-entity-id="${escapeHTML(entity.id)}" class="h-5 w-5 accent-red-700" aria-label="${entity.active ? "Hide" : "Show"} ${kindLabel} ${escapeHTML(entity.name)}"${entity.active ? " checked" : ""}></span>
+    </label>`;
+}
+
+function renderCampaignEntities(campaigns) {
   if (localMode) {
-    characterRoot.innerHTML = '<p class="text-sm text-stone-500">Character availability requires D1 and is not changed in local mode.</p>';
+    characterRoot.innerHTML = '<p class="text-sm text-stone-500">Campaign character and NPC availability requires D1.</p>';
     return;
   }
-  characterRoot.innerHTML = characters.map((character) => `
-    <label class="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-stone-300 px-4 py-3 dark:border-white/15">
-      <span><strong class="block">${escapeHTML(character.name)}</strong><small class="text-stone-500 dark:text-stone-400">${escapeHTML(character.id)} · ${escapeHTML(character.source)}</small></span>
-      <input type="checkbox" data-character="${escapeHTML(character.id)}" class="h-5 w-5 accent-red-700"${character.active ? " checked" : ""}>
-    </label>`).join("") || '<p class="text-sm text-stone-500">No characters are stored in D1.</p>';
+  if (snapshot?.campaignStorageAvailable === false) {
+    characterRoot.innerHTML = '<p class="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm">Campaign availability requires migration 0012.</p>';
+    return;
+  }
+  characterRoot.innerHTML = campaigns.map((campaign) => {
+    const characters = campaign.characters || [];
+    const npcs = campaign.npcs || [];
+    const activeCharacters = characters.filter((character) => character.active).length;
+    const activeNpcs = npcs.filter((npc) => npc.active).length;
+    return `
+      <details data-admin-campaign="${escapeHTML(campaign.id)}" class="group rounded-xl border border-stone-300 dark:border-white/10">
+        <summary class="flex cursor-pointer list-none flex-wrap items-center gap-2 px-4 py-3">
+          <span class="min-w-0 grow"><strong class="block truncate">${escapeHTML(campaign.name)}</strong><small class="text-stone-500 dark:text-stone-400">/${escapeHTML(campaign.slug)}</small></span>
+          <span data-campaign-character-count class="rounded-full bg-sky-500/15 px-2.5 py-1 text-xs font-bold text-sky-700 dark:text-sky-300">${activeCharacters}/${characters.length} Characters</span>
+          ${snapshot?.npcStorageAvailable === false ? '<span class="rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-bold text-amber-700 dark:text-amber-300">NPC storage unavailable</span>' : `<span data-campaign-npc-count class="rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">${activeNpcs}/${npcs.length} NPCs</span>`}
+          <i class="bi bi-chevron-down ml-1 transition group-open:rotate-180"></i>
+        </summary>
+        <div class="border-t border-stone-300 p-4 dark:border-white/10">
+          <h4 class="font-display text-lg font-bold">Characters</h4>
+          <div class="mt-2 space-y-2">${characters.map((character) => campaignEntityRow(campaign, character, "characters")).join("") || '<p class="text-sm text-stone-500 dark:text-stone-400">No characters stored.</p>'}</div>
+          <div class="my-4 border-t border-stone-300 dark:border-white/10"></div>
+          <h4 class="font-display text-lg font-bold">NPCs</h4>
+          <div class="mt-2 space-y-2">${snapshot?.npcStorageAvailable === false
+            ? '<p class="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm">NPC availability requires migration 0016.</p>'
+            : npcs.map((npc) => campaignEntityRow(campaign, npc, "npcs")).join("") || '<p class="text-sm text-stone-500 dark:text-stone-400">No NPCs stored.</p>'}</div>
+        </div>
+      </details>`;
+  }).join("") || '<p class="text-sm text-stone-500">No campaigns are stored in D1.</p>';
 }
 
 function renderCharacterStyles(characters, overrides = {}) {
@@ -333,7 +450,7 @@ async function unlock() {
     selectedStyle.checked = true;
     renderSections(snapshot.settings.sections);
     renderCharacterStyles(snapshot.characters, snapshot.settings.characterSheetStyleOverrides);
-    renderCharacters(snapshot.characters);
+    renderCampaignEntities(snapshot.campaigns || []);
     renderThemes(snapshot.themes);
     renderUsers(snapshot.users);
     content.classList.remove("hidden");
@@ -376,15 +493,27 @@ document.getElementById("save-settings").addEventListener("click", async () => {
 });
 
 characterRoot.addEventListener("change", async (event) => {
-  const input = event.target.closest("[data-character]");
+  const input = event.target.closest("[data-campaign-entity]");
   if (!input) return;
+  const campaign = snapshot.campaigns.find((item) => item.id === input.dataset.campaignId);
+  const collection = input.dataset.entityKind === "characters" ? campaign?.characters : campaign?.npcs;
+  const entity = collection?.find((item) => item.id === input.dataset.entityId);
+  if (!campaign || !entity) return;
   input.disabled = true;
   try {
-    await adminRequest(`/characters/${encodeURIComponent(input.dataset.character)}`, {
+    await adminRequest(`/campaigns/${encodeURIComponent(campaign.id)}/entities/${encodeURIComponent(input.dataset.entityKind)}/${encodeURIComponent(entity.id)}`, {
       method: "PUT",
       body: JSON.stringify({ active: input.checked }),
     });
-    setStatus(`${input.dataset.character} is now ${input.checked ? "available" : "hidden"}.`, "success");
+    entity.active = input.checked;
+    input.closest("label").querySelector("[data-entity-state]").textContent = input.checked ? "Available" : "Hidden";
+    input.setAttribute("aria-label", `${input.checked ? "Hide" : "Show"} ${input.dataset.entityKind === "characters" ? "Character" : "NPC"} ${entity.name}`);
+    const card = input.closest("[data-admin-campaign]");
+    const activeCount = collection.filter((item) => item.active).length;
+    const count = card.querySelector(input.dataset.entityKind === "characters" ? "[data-campaign-character-count]" : "[data-campaign-npc-count]");
+    if (count) count.textContent = `${activeCount}/${collection.length} ${input.dataset.entityKind === "characters" ? "Characters" : "NPCs"}`;
+    refreshUserEntityDisplays();
+    setStatus(`${entity.name} is now ${input.checked ? "available" : "hidden"} in ${campaign.name}.`, "success");
   } catch (error) {
     input.checked = !input.checked;
     setStatus(error.message, "error");
@@ -398,6 +527,32 @@ document.getElementById("admin-lock").addEventListener("click", () => {
 });
 
 userRoot.addEventListener("change", async (event) => {
+  const assignmentInput = event.target.closest("[data-user-character-assignment]");
+  if (assignmentInput) {
+    const card = assignmentInput.closest("[data-user]");
+    const user = snapshot.users.find((item) => item.id === card.dataset.user);
+    const campaign = snapshot.campaigns.find((item) => item.id === assignmentInput.dataset.campaignId);
+    const character = campaign?.characters?.find((item) => item.id === assignmentInput.dataset.characterId);
+    if (!user || !campaign || !character) return;
+    assignmentInput.disabled = true;
+    try {
+      await adminRequest(`/users/${encodeURIComponent(user.id)}/campaigns/${encodeURIComponent(campaign.id)}/characters/${encodeURIComponent(character.id)}`, {
+        method: assignmentInput.checked ? "PUT" : "DELETE",
+      });
+      user.characterAssignments = (user.characterAssignments || []).filter((assignment) => (
+        assignment.campaignId !== campaign.id || assignment.characterId !== character.id
+      ));
+      if (assignmentInput.checked) user.characterAssignments.push({ campaignId: campaign.id, characterId: character.id });
+      card.querySelector("[data-user-campaign-summary]").innerHTML = campaignRoleSummary(user);
+      setStatus(`${character.name} ${assignmentInput.checked ? "assigned to" : "removed from"} ${user.email}.`, "success");
+    } catch (error) {
+      assignmentInput.checked = !assignmentInput.checked;
+      setStatus(error.message, "error");
+    } finally {
+      assignmentInput.disabled = false;
+    }
+    return;
+  }
   const themeSelect = event.target.closest("[data-user-theme]");
   if (themeSelect) {
     const card = themeSelect.closest("[data-user]");
@@ -446,7 +601,11 @@ userRoot.addEventListener("change", async (event) => {
       user.campaignMemberships = (user.campaignMemberships || [])
         .filter((membership) => membership.campaignId !== campaign.id);
       if (result.membership) user.campaignMemberships.push(result.membership);
-      card.querySelector("[data-user-campaign-summary]").innerHTML = campaignRoleSummary(user);
+      if (!result.membership) {
+        user.characterAssignments = (user.characterAssignments || [])
+          .filter((assignment) => assignment.campaignId !== campaign.id);
+      }
+      refreshUserEntityDisplays();
       setStatus(role
         ? `${user.email} is now ${role === "dm" ? "DM" : "Player"} in ${campaign.name}.`
         : `${user.email} was removed from ${campaign.name}.`, "success");
