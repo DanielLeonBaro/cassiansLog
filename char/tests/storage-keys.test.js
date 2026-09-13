@@ -6,6 +6,7 @@ import {
   PENDING_CHARACTER_STORAGE_KEY,
   characterNotesStorageKey,
   characterStateStorageKey,
+  diceHistoryStorageKey,
 } from "../js/storage-keys.js";
 
 assert.equal(CHARACTERS_STORAGE_KEY, "dnd-characters");
@@ -15,5 +16,9 @@ assert.equal(characterStateStorageKey("cassian"), "dnd-cassian-state");
 assert.equal(characterStateStorageKey(""), "dnd-character-state");
 assert.equal(characterNotesStorageKey("cassian"), "dnd-cassian-notes");
 assert.equal(characterNotesStorageKey(), "dnd-character-notes");
+assert.equal(diceHistoryStorageKey("cassian"), "dnd-cassian-roll-history");
+globalThis.document = { body: { dataset: { trackerKind: "npc" } } };
+assert.equal(diceHistoryStorageKey("goblin"), "dnd-npc-goblin-roll-history");
+delete globalThis.document;
 
 console.log("Character storage-key tests passed.");

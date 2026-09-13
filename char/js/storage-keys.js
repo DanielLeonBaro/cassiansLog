@@ -18,3 +18,8 @@ export function characterNotesStorageKey(characterId) {
   if (globalThis.document?.body?.dataset.trackerKind === "npc") return `dnd-npc-${characterId || "character"}-notes`;
   return `dnd-${characterId || "character"}-notes`;
 }
+
+export function diceHistoryStorageKey(characterId) {
+  if (globalThis.document?.body?.dataset.trackerKind === "npc") return `dnd-npc-${characterId || "character"}-roll-history`;
+  return `dnd-${characterId || "character"}-roll-history`;
+}

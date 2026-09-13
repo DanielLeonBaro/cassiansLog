@@ -23,6 +23,7 @@ const suites = [
   ["Character rest controller", "char/tests/rest-controller.test.js"],
   ["Character tracker inventory state", "char/tests/tracker-state.test.js"],
   ["Character tracker views", "char/tests/tracker-views.test.js"],
+  ["Character tracker roll controls", "char/tests/tracker-rolls.test.js"],
   ["Character editor field schema", "char/tests/editor-field-schema.test.js"],
   ["Character editor field rendering", "char/tests/editor-field-renderer.test.js"],
   ["Spellcasting profiles and preparation", "char/tests/spellcasting.test.cjs"],

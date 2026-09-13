@@ -1,5 +1,11 @@
 // Renders tracker cards, spell slots, prepared profiles, and inventory items.
 import { escapeHTML, sanitizeIdentifier, trackerUI as ui } from "./rendering.js";
+import {
+  attackRollFormula,
+  damageRollFormula,
+  renderRollButton,
+  renderRollableText,
+} from "./rolls.js";
 
 export function createTrackerViews({
   formatReset,
@@ -26,7 +32,7 @@ export function createTrackerViews({
     const statusToggles = attunedToggle || wearingToggle
       ? `<div class="flex shrink-0 items-start gap-2">${attunedToggle}${wearingToggle}</div>`
       : "";
-    return `<div class="${ui.card}"><div class="${ui.cardHeader}"><strong>${escapeHTML(item.name)}</strong><span class="${ui.badge} ${ui.badgePrimary}">x${item.quantity}</span></div><div class="${ui.cardBody} flex items-start justify-between gap-3"><small class="min-w-0 grow text-left">${escapeHTML(item.description || "")}</small>${statusToggles}</div></div>`;
+    return `<div class="${ui.card}"><div class="${ui.cardHeader}"><strong>${escapeHTML(item.name)}</strong><span class="${ui.badge} ${ui.badgePrimary}">x${item.quantity}</span></div><div class="${ui.cardBody} flex items-start justify-between gap-3"><small class="min-w-0 grow text-left">${renderRollableText(item.description || "")}</small>${statusToggles}</div></div>`;
   }
 
   function renderDetailBadges(item) {
@@ -37,10 +43,18 @@ export function createTrackerViews({
       badges.push(`<span class="${ui.badge} tracker-badge-neutral bg-stone-800 text-white">${escapeHTML(item.school)}</span>`);
     if (item.range)
       badges.push(`<span class="${ui.badge} tracker-badge-neutral bg-stone-800 text-white">Range: ${escapeHTML(item.range)}</span>`);
-    if (item.attack)
-      badges.push(`<span class="${ui.badge} tracker-badge-neutral bg-stone-800 text-white">${escapeHTML(item.attack)}</span>`);
-    if (item.damage)
-      badges.push(`<span class="${ui.badge} tracker-badge-neutral bg-stone-800 text-white">${escapeHTML(item.damage)}</span>`);
+    if (item.attack) {
+      const formula = attackRollFormula(item.attack);
+      badges.push(formula
+        ? renderRollButton({ formula, label: `${item.name || "Ability"} Attack`, text: item.attack })
+        : `<span class="${ui.badge} tracker-badge-neutral bg-stone-800 text-white">${escapeHTML(item.attack)}</span>`);
+    }
+    if (item.damage) {
+      const formula = damageRollFormula(item.damage);
+      badges.push(formula
+        ? renderRollButton({ formula, label: `${item.name || "Ability"} Damage`, text: item.damage })
+        : `<span class="${ui.badge} tracker-badge-neutral bg-stone-800 text-white">${escapeHTML(item.damage)}</span>`);
+    }
     if (item.duration)
       badges.push(`<span class="${ui.badge} tracker-badge-neutral bg-stone-800 text-white">Duration: ${escapeHTML(item.duration)}</span>`);
     if (item.components)
@@ -73,7 +87,7 @@ export function createTrackerViews({
     } else {
       usage = `<span class="${ui.badge} ${ui.badgeSecondary}">At will</span>`;
     }
-    return `<div class="${ui.card}"><div class="${ui.cardHeader}"><strong>${escapeHTML(item.name)}</strong><span class="${ui.badge} ${ui.badgeDanger}">${escapeHTML(item.category || "Ability")}</span></div><div class="p-5"><div class="flex flex-wrap items-center justify-between gap-2">${usage}</div>${renderDetailBadges(item)}<p class="mt-2 text-sm">${escapeHTML(item.description || "")}</p></div></div>`;
+    return `<div class="${ui.card}"><div class="${ui.cardHeader}"><strong>${escapeHTML(item.name)}</strong><span class="${ui.badge} ${ui.badgeDanger}">${escapeHTML(item.category || "Ability")}</span></div><div class="p-5"><div class="flex flex-wrap items-center justify-between gap-2">${usage}</div>${renderDetailBadges(item)}<p class="mt-2 text-sm">${renderRollableText(item.description || "")}</p></div></div>`;
   }
 
   function renderSpellSlot(slot, profile) {
@@ -121,7 +135,7 @@ export function createTrackerViews({
       ? `<span class="${ui.badge} ${ui.badgeSuccess}">${item.uses.current}/${item.uses.max}</span><span class="${ui.badge} ${ui.badgeSecondary}">${formatReset(item.uses.reset)}</span>`
       : "";
     const googleURL = `https://www.google.com/search?q=${encodeURIComponent(`${item.name} D&D 5e`)}`;
-    return `<div class="${ui.card}"><div class="${ui.cardHeader}"><strong>${escapeHTML(item.name)}</strong><div class="flex items-center gap-2"><span class="${ui.badge} ${ui.badgeDanger}">${escapeHTML(item.category || "Ability")}</span><a class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-sky-600 text-sky-600 transition hover:bg-sky-600 hover:text-white" href="${escapeHTML(googleURL)}" target="_blank" rel="noopener noreferrer" aria-label="Search Google for ${escapeHTML(item.name)}"><i class="bi bi-google"></i></a></div></div><div class="p-5"><div class="flex flex-wrap items-center justify-between gap-2"><div class="flex flex-wrap gap-2">${item.action ? `<span class="${ui.badge} ${ui.badgePrimary}">${escapeHTML(item.action)}</span>` : ""}</div><div class="flex flex-wrap gap-2">${useBadges}</div></div>${renderDetailBadges(item)}<p class="mt-2 text-sm">${escapeHTML(item.description || "")}</p></div></div>`;
+    return `<div class="${ui.card}"><div class="${ui.cardHeader}"><strong>${escapeHTML(item.name)}</strong><div class="flex items-center gap-2"><span class="${ui.badge} ${ui.badgeDanger}">${escapeHTML(item.category || "Ability")}</span><a class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-sky-600 text-sky-600 transition hover:bg-sky-600 hover:text-white" href="${escapeHTML(googleURL)}" target="_blank" rel="noopener noreferrer" aria-label="Search Google for ${escapeHTML(item.name)}"><i class="bi bi-google"></i></a></div></div><div class="p-5"><div class="flex flex-wrap items-center justify-between gap-2"><div class="flex flex-wrap gap-2">${item.action ? `<span class="${ui.badge} ${ui.badgePrimary}">${escapeHTML(item.action)}</span>` : ""}</div><div class="flex flex-wrap gap-2">${useBadges}</div></div>${renderDetailBadges(item)}<p class="mt-2 text-sm">${renderRollableText(item.description || "")}</p></div></div>`;
   }
 
   return {

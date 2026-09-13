@@ -628,6 +628,45 @@ async function main() {
       'return document.getElementById("character-editor").classList.contains("hidden");',
       "Character editor did not close",
     );
+    const characterRoll = await execute(`
+      const clear = document.getElementById("dice-history-clear");
+      if (!clear.classList.contains("hidden")) clear.click();
+      const attack = document.querySelector('[data-roll-label="Shortsword Attack"]');
+      attack.click();
+      const attackResult = document.getElementById("dice-roller-result").textContent.replace(/\\s+/g, " ").trim();
+      document.querySelector('[data-roll-label="Shortsword Damage"]').click();
+      const damageResult = document.getElementById("dice-roller-result").textContent.replace(/\\s+/g, " ").trim();
+      document.getElementById("dice-formula").value = "2d20+5";
+      document.getElementById("dice-roller-form").requestSubmit();
+      const historyKey = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
+        .find((key) => key === "dnd-cassian-roll-history" || key.startsWith("dnd-cassian-roll-history:campaign:"));
+      const history = JSON.parse(localStorage.getItem(historyKey) || "[]");
+      return {
+        hasSkillRoll: Boolean(document.querySelector('[data-roll-label="Acrobatics Skill"]')),
+        hasSaveRoll: Boolean(document.querySelector('[data-roll-label="Strength Saving Throw"]')),
+        attackResult,
+        damageResult,
+        result: document.getElementById("dice-roller-result").textContent.replace(/\\s+/g, " ").trim(),
+        historyLabels: [...document.querySelectorAll("#dice-history-list strong")].slice(0, 3).map((label) => label.textContent),
+        storedLabels: history.slice(0, 3).map((entry) => entry.label),
+        storedTotal: history[0]?.total,
+      };
+    `);
+    assert.equal(characterRoll.hasSkillRoll, true, "Character skills should be rollable.");
+    assert.equal(characterRoll.hasSaveRoll, true, "Character saving throws should be rollable.");
+    assert.match(characterRoll.attackResult, /^\d+ \+ 8 = \d+$/, "Shortsword Attack should roll 1d20+8.");
+    assert.match(characterRoll.damageResult, /^\d+ \+ 5 = \d+$/, "Shortsword Damage should roll 1d6+5.");
+    assert.match(characterRoll.result, /^\(\d+ \+ \d+\) \+ 5 = \d+$/, "The manual dice roller should roll 2d20+5.");
+    assert.deepEqual(characterRoll.historyLabels, ["Dice Roller 2d20+5", "Shortsword Damage", "Shortsword Attack"]);
+    assert.deepEqual(characterRoll.storedLabels, characterRoll.historyLabels);
+    assert.equal(characterRoll.storedTotal, Number(characterRoll.result.split("=").at(-1).trim()), "Saved roll total should match the visible result.");
+    await execute('document.getElementById("dice-roller-close").click(); return true;');
+    await navigate("/char/cassian/");
+    await waitFor(
+      'return document.querySelector("#dice-history-list strong")?.textContent === "Dice Roller 2d20+5";',
+      "Character roll history did not persist after reload",
+    );
+    console.log("Browser smoke passed: Character tracker dice rolls and history");
     const characterNoteFormatting = await execute(`
       const textarea = document.getElementById("note-body");
       const bold = document.querySelector('#note-format-toolbar [data-markdown-format="bold"]');
@@ -684,6 +723,10 @@ async function main() {
       if (state.pathname === "/c/aotr/npc/imported-browser-hero/" && state.name === "Imported Browser Hero" && state.intelligence === 16) return state;
       throw new Error(JSON.stringify(state));
     }, "Imported D&D Beyond NPC did not open in the tracker");
+    await waitFor(
+      'return Boolean(document.querySelector(\'[data-npc-field-visibility="ac"]\'));',
+      "Imported NPC editor visibility controls did not mount",
+    );
     assert.equal(await execute('return document.body.dataset.npcPlayerVisible === "false" && document.body.dataset.trackerKind === "npc" && window.npcVisibility?.$default === true && document.querySelector(\'[data-npc-field-visibility="ac"]\')?.textContent.includes("Shown");'), true, "Imported NPC should remain hidden while its fields start shown by default.");
     console.log("Browser smoke passed: NPC D&D Beyond import");
     await smoke(
@@ -692,13 +735,14 @@ async function main() {
       'return window.character?.id === "known-npc" && Boolean(document.getElementById("edit-character-toggle"));',
       `
         document.getElementById("edit-character-toggle").click();
+        const hasRoll = Boolean(document.querySelector('[data-roll-label="Shortsword Attack"]'));
         const initial = document.querySelector('[data-npc-field-visibility="name"]')?.textContent.includes("Shown")
           && document.querySelector('[data-npc-field-visibility="ac"]')?.textContent.includes("Hidden");
         document.querySelector('[data-npc-visibility-preset="show-all"]').click();
         const showsAll = document.querySelector('[data-npc-field-visibility="ac"]')?.textContent.includes("Shown");
         document.querySelector('[data-npc-visibility-preset="hide-all"]').click();
         document.querySelector('[data-npc-field-visibility="name"]').click();
-        return initial && showsAll && Boolean(document.querySelector("[data-npc-player-visible]:checked"));
+        return hasRoll && initial && showsAll && Boolean(document.querySelector("[data-npc-player-visible]:checked"));
       `,
     );
     await execute('document.getElementById("editor-cancel").click(); localStorage.setItem("cassianslog-local-user-v1", "localhost-player-01"); return true;');
@@ -711,7 +755,7 @@ async function main() {
     await smoke(
       "NPC player field redaction",
       "/c/aotr/npc/known-npc/",
-      'return window.character?.id === "known-npc" && document.body.dataset.characterCanEdit === "false";',
+      'return window.character?.id === "known-npc" && document.body.dataset.characterCanEdit === "false" && document.getElementById("character-name")?.textContent.trim() === "Known NPC" && !document.getElementById("edit-character-toggle");',
       'return document.getElementById("character-name").textContent.trim() === "Known NPC" && !document.body.textContent.includes("Player-hidden secret") && !document.getElementById("edit-character-toggle");',
     );
     await execute('localStorage.setItem("cassianslog-local-user-v1", "localhost-admin"); return true;');

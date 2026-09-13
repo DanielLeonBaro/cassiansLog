@@ -30,6 +30,11 @@ const renderingCode = fs.readFileSync("char/js/tracker/rendering.js", "utf8")
 const viewsCode = fs.readFileSync("char/js/tracker/views.js", "utf8")
   .replace(/^import[\s\S]*?;\r?\n/gm, "")
   .replace(/export /g, "");
+const diceFormulaCode = fs.readFileSync("shared/js/dice/formula.js", "utf8")
+  .replace(/export /g, "");
+const rollsCode = fs.readFileSync("char/js/tracker/rolls.js", "utf8")
+  .replace(/^import[\s\S]*?;\r?\n/gm, "")
+  .replace(/export /g, "");
 const sharedEscapeCode = `function escapeHTML(value) {
   return String(value ?? "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
@@ -84,7 +89,7 @@ function loadCharacter(source) {
   context.campaignStorageKey = (key) => key;
   vm.createContext(context);
   vm.runInContext(
-    `${source}\n${modelCode}\n${storageCode}\n${storageKeyCode}\n${hitPointCode}\n${filterCode}\n${filtersCode}\n${deathSaveCode}\n${restCode}\n${restControllerCode}\n${sharedEscapeCode}\n${renderingCode}\nconst ui = trackerUI;\n${viewsCode}\n${notesCode}\n${stateCode}\n${appCode}\nglobalThis.testAPI = { character, getPreparedCount, togglePreparedSpell, toggleCharacterFlag, isAlwaysPreparedSpell, isSpellAvailableInCombat, getCombatItemRecords, renderAbilityCard, saveState, loadState, applyDamage, applyTemporaryHitPoints, toggleDeathSave, toggleStable, healHP, shortRest, longRest, getRestDetails };`,
+    `${source}\n${modelCode}\n${storageCode}\n${storageKeyCode}\n${hitPointCode}\n${filterCode}\n${filtersCode}\n${deathSaveCode}\n${restCode}\n${restControllerCode}\n${sharedEscapeCode}\n${diceFormulaCode}\n${rollsCode}\n${renderingCode}\nconst ui = trackerUI;\n${viewsCode}\n${notesCode}\n${stateCode}\n${appCode}\nglobalThis.testAPI = { character, getPreparedCount, togglePreparedSpell, toggleCharacterFlag, isAlwaysPreparedSpell, isSpellAvailableInCombat, getCombatItemRecords, renderAbilityCard, saveState, loadState, applyDamage, applyTemporaryHitPoints, toggleDeathSave, toggleStable, healHP, shortRest, longRest, getRestDetails };`,
     context,
   );
   return { ...context.testAPI, storage };

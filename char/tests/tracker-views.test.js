@@ -21,9 +21,21 @@ assert.match(views.renderResourceCard({
 assert.match(views.renderSpellSlot({ id: "slot-1", level: 1, current: 1, max: 2 }, { name: "Wizard" }), /data-id="slot-1"[\s\S]*1\/2/);
 assert.match(views.renderPreparedProfile({ id: "wizard", name: "Wizard", preparedLimit: 2 }), /Fire Bolt[\s\S]*Cantrip · always ready/);
 assert.match(views.renderAbilityCard({ name: "Slash", category: "Attack", action: "Action" }), /Search Google for Slash/);
+const weapon = views.renderAbilityCard({
+  name: "Shortsword",
+  category: "Attack",
+  action: "Action",
+  attack: "+8 vs AC",
+  damage: "1d6+5 piercing",
+  description: "On a critical hit, add roll(1d6).",
+});
+assert.match(weapon, /data-roll-formula="1d20\+8" data-roll-label="Shortsword Attack"/);
+assert.match(weapon, /data-roll-formula="1d6\+5" data-roll-label="Shortsword Damage"/);
+assert.match(weapon, /data-roll-label="Dice Roller 1d6"/);
 
 const plainItem = views.renderInventoryItem({ name: "Rope", quantity: 1, description: "50 feet" }, 0);
 assert.doesNotMatch(plainItem, /Attuned|Wearing|inventory-item-status/);
+assert.match(views.renderInventoryItem({ name: "Potion", quantity: 1, description: "Heal roll(2d4+2)." }, 1), /data-roll-formula="2d4\+2"/);
 const configurableItem = views.renderInventoryItem({
   name: "Magic Cloak",
   quantity: 1,

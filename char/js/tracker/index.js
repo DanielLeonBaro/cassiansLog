@@ -14,8 +14,12 @@ import { createNotesController } from "./notes.js";
 import { createTrackerState, normalizeCharacterFlag } from "./state.js";
 import { escapeHTML, sanitizeIdentifier, setText, trackerUI as ui } from "./rendering.js";
 import { applyV1CharacterSheetOrder, refreshCharacterSheetTabs, refreshV3CharacterSheetLayout } from "./layout.js";
+import { initializeDiceRoller } from "../../../shared/js/dice/index.js";
+import { diceHistoryStorageKey } from "../storage-keys.js";
+import { modifierRollFormula, renderRollButton } from "./rolls.js";
 
 const character = window.character;
+let diceRoller = null;
 if (!character.hp || typeof character.hp !== "object") character.hp = { current: 0, temp: 0, max: 0 };
 character.hp.current = Number.isFinite(Number(character.hp.current)) ? Number(character.hp.current) : 0;
 character.hp.temp = Number.isFinite(Number(character.hp.temp)) ? Number(character.hp.temp) : 0;
@@ -91,6 +95,7 @@ const {
   isAlwaysPreparedSpell,
 });
 function initializeApp() {
+  diceRoller = initializeDiceRoller({ historyKey: diceHistoryStorageKey(character.id) });
   notesController.load();
   trackerState.load();
   loadStats();
@@ -253,16 +258,23 @@ function renderV2Stats(container) {
     <div class="v2-ability-card">
       <div><span class="v2-ability-key">${escapeHTML(key.toUpperCase())}</span><strong>${escapeHTML(statNames[key] || key)}</strong></div>
       <div class="v2-ability-values"><span title="Ability score">${stat.score}</span><strong title="Ability modifier">${formatModifier(stat.modifier)}</strong></div>
-      <div class="v2-save-row"><span><i class="bi bi-shield-check" aria-hidden="true"></i> Save</span><strong>${formatModifier(stat.save)}</strong></div>
+      ${renderRollButton({
+        formula: modifierRollFormula(stat.save),
+        label: `${statNames[key] || key} Saving Throw`,
+        content: `<span><i class="bi bi-shield-check" aria-hidden="true"></i> Save</span><strong>${formatModifier(stat.save)}</strong>`,
+        className: "v2-save-row flex w-full cursor-pointer items-center justify-between text-left transition hover:text-blood-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold",
+      })}
     </div>`).join("");
   const skills = stats.flatMap(([key, stat]) => (stat.skills || []).map((skill) => ({
     ...skill,
     ability: key.toUpperCase(),
   }))).map((skill) => `
-    <li class="v2-skill-row">
-      <span>${skill.proficiency ? '<i class="bi bi-star-fill" aria-label="Proficient"></i>' : '<i class="bi bi-circle" aria-hidden="true"></i>'}<small>${escapeHTML(skill.ability)}</small>${escapeHTML(skill.name)}</span>
-      <strong>${formatModifier(skill.modifier)}</strong>
-    </li>`).join("");
+    <li>${renderRollButton({
+      formula: modifierRollFormula(skill.modifier),
+      label: `${skill.name} Skill`,
+      content: `<span>${skill.proficiency ? '<i class="bi bi-star-fill" aria-label="Proficient"></i>' : '<i class="bi bi-circle" aria-hidden="true"></i>'}<small>${escapeHTML(skill.ability)}</small>${escapeHTML(skill.name)}</span><strong>${formatModifier(skill.modifier)}</strong>`,
+      className: "v2-skill-row flex w-full cursor-pointer items-center justify-between text-left transition hover:text-blood-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold",
+    })}</li>`).join("");
   container.innerHTML = `
     <section class="v2-stat-column" aria-labelledby="v2-abilities-heading">
       <h2 id="v2-abilities-heading" class="v2-rail-heading"><i class="bi bi-dice-6-fill" aria-hidden="true"></i> Abilities &amp; Saves</h2>
@@ -277,10 +289,20 @@ function renderStatCard(name, stat) {
   const skills = (stat.skills || [])
     .map(
       (skill) =>
-        `<li class="flex items-center justify-between border-t border-stone-200 px-4 py-3 first:border-0 dark:border-white/10"><div>${skill.proficiency ? '<i class="bi bi-star-fill mr-2 text-blood-500"></i>' : '<i class="bi bi-dot mr-2"></i>'}${escapeHTML(skill.name)}</div><span class="${ui.badge} ${ui.badgeSecondary}">${formatModifier(skill.modifier)}</span></li>`,
+        `<li class="border-t border-stone-200 first:border-0 dark:border-white/10">${renderRollButton({
+          formula: modifierRollFormula(skill.modifier),
+          label: `${skill.name} Skill`,
+          content: `<div>${skill.proficiency ? '<i class="bi bi-star-fill mr-2 text-blood-500"></i>' : '<i class="bi bi-dot mr-2"></i>'}${escapeHTML(skill.name)}</div><span class="${ui.badge} ${ui.badgeSecondary}">${formatModifier(skill.modifier)}</span>`,
+          className: "flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left transition hover:bg-blood-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold",
+        })}</li>`,
     )
     .join("");
-  return `<div class="${ui.card}"><div class="${ui.cardHeader}"><span class="${ui.badge} ${ui.badgeWarning}">${stat.score}</span><strong>${escapeHTML(name)}</strong><span class="${ui.badge} ${ui.badgeDanger}">${formatModifier(stat.modifier)}</span></div><ul><li class="flex items-center justify-between px-4 py-3"><strong><i class="bi bi-shield-check mr-2"></i>Saving Throw</strong><span class="${ui.badge} ${ui.badgeWarning}">${formatModifier(stat.save)}</span></li>${skills}</ul></div>`;
+  return `<div class="${ui.card}"><div class="${ui.cardHeader}"><span class="${ui.badge} ${ui.badgeWarning}">${stat.score}</span><strong>${escapeHTML(name)}</strong><span class="${ui.badge} ${ui.badgeDanger}">${formatModifier(stat.modifier)}</span></div><ul><li>${renderRollButton({
+    formula: modifierRollFormula(stat.save),
+    label: `${name} Saving Throw`,
+    content: `<strong><i class="bi bi-shield-check mr-2"></i>Saving Throw</strong><span class="${ui.badge} ${ui.badgeWarning}">${formatModifier(stat.save)}</span>`,
+    className: "flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left font-bold transition hover:bg-blood-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold",
+  })}</li>${skills}</ul></div>`;
 }
 function loadTrackers() {
   const trackers = character.trackers || [];
@@ -699,6 +721,12 @@ function loadCurrency() {
 }
 function setupEvents() {
   document.addEventListener("click", (event) => {
+    const rollTarget = event.target.closest("[data-roll-formula]");
+    if (rollTarget) {
+      event.preventDefault();
+      diceRoller?.roll(rollTarget.dataset.rollFormula, rollTarget.dataset.rollLabel);
+      return;
+    }
     const target = event.target.closest("[data-tracker-action]");
     if (!target) return;
     const action = target.dataset.trackerAction;

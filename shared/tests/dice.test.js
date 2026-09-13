@@ -5,6 +5,13 @@ import {
   parseDiceFormula,
   rollDiceFormula,
 } from "../js/dice/formula.js";
+import {
+  clearDiceHistory,
+  loadDiceHistory,
+  MAX_DICE_HISTORY,
+  normalizeDiceHistory,
+  recordDiceHistory,
+} from "../js/dice/history.js";
 
 function deterministicRoller(values) {
   const remaining = [...values];
@@ -45,5 +52,32 @@ assert.equal(appendDieToFormula("2d20", 20), "2d20+1d20");
 assert.equal(appendDieToFormula("2d6+", 8), "2d6+1d8");
 assert.equal(appendDieToFormula(" 1d10 ", 100), "1d10+1d100");
 assert.throws(() => appendDieToFormula("d20", 3), /Unsupported/);
+
+const stored = new Map();
+globalThis.localStorage = {
+  getItem: (key) => stored.get(key) ?? null,
+  setItem: (key, value) => stored.set(key, String(value)),
+  removeItem: (key) => stored.delete(key),
+};
+const historyEntry = {
+  label: "Shortsword Attack",
+  formula: "1d20+8",
+  total: 14,
+  parts: [{ text: "6", tone: "normal" }, { text: " + " }, { text: "8" }],
+  rolledAt: "2026-09-13T00:00:00.000Z",
+};
+recordDiceHistory("test-rolls", historyEntry);
+assert.deepEqual(loadDiceHistory("test-rolls")[0], {
+  ...historyEntry,
+  parts: [
+    { text: "6", tone: "normal" },
+    { text: " + ", tone: "normal" },
+    { text: "8", tone: "normal" },
+  ],
+});
+const oversized = Array.from({ length: MAX_DICE_HISTORY + 10 }, (_, index) => ({ ...historyEntry, total: index }));
+assert.equal(normalizeDiceHistory(oversized).length, MAX_DICE_HISTORY);
+clearDiceHistory("test-rolls");
+assert.deepEqual(loadDiceHistory("test-rolls"), []);
 
 console.log("Dice formula tests passed.");
