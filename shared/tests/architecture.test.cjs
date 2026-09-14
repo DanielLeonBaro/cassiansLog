@@ -84,6 +84,8 @@ assert.ok(fs.existsSync("admin/index.html"), "The admin route must exist.");
 assert.ok(fs.readFileSync("shared/js/site-header.js", "utf8").includes("admin/"), "Role-aware navigation must include Admin.");
 assert.ok(fs.readFileSync("shared/js/site-header.js", "utf8").includes('id: "wiki"'), "Role-aware navigation must include Wiki.");
 assert.ok(fs.existsSync("login/index.html"), "The authentication route must exist.");
+const desktopPageWidthClass = "lg:max-w-[110rem]";
+assert.ok(fs.readFileSync("login/index.html", "utf8").includes(desktopPageWidthClass), "Login must use the shared wide desktop page width.");
 assert.ok(fs.existsSync("shared/js/account-menu.js"), "The shared Me account panel must exist.");
 assert.ok(fs.readFileSync("shared/js/site-header.js", "utf8").includes("mountAccountMenu"), "The site header must mount the Me account panel.");
 const accountMenu = fs.readFileSync("shared/js/account-menu.js", "utf8");
@@ -137,6 +139,7 @@ const pageShells = new Map([
 for (const [file, entrypoint] of pageShells) {
   const source = fs.readFileSync(file, "utf8");
   assert.match(source, /<nav data-site-header><\/nav>/, `${file} must mount the shared header.`);
+  assert.ok(source.includes(desktopPageWidthClass), `${file} must use the shared wide desktop page width.`);
   assert.match(source, /<script type="module"/, `${file} must use a module entrypoint.`);
   assert.ok(source.includes(`src="${entrypoint}"`), `${file} must load ${entrypoint}.`);
 }
@@ -153,10 +156,12 @@ const catalog = JSON.parse(fs.readFileSync("char/catalog.json", "utf8"));
 for (const character of [...catalog.characters, "template"]) {
   const directory = `char/${character}`;
   assert.ok(fs.existsSync(`${directory}/index.html`), `${character} must own its route.`);
+  assert.ok(fs.readFileSync(`${directory}/index.html`, "utf8").includes(desktopPageWidthClass), `${character} must use the shared wide desktop page width.`);
   const data = JSON.parse(fs.readFileSync(`${directory}/character.json`, "utf8"));
   assert.equal(typeof data.name, "string", `${character} must own valid character JSON.`);
   assert.ok(!data.portrait.startsWith("data/"), `${character} must not reference legacy data paths.`);
 }
+assert.ok(fs.readFileSync("npc/template/index.html", "utf8").includes(desktopPageWidthClass), "NPC template must use the shared wide desktop page width.");
 
 const characterLoader = fs.readFileSync("char/js/page-loader.js", "utf8");
 for (const key of ["CHARACTERS_STORAGE_KEY", "PENDING_CHARACTER_STORAGE_KEY"]) assert.ok(characterLoader.includes(key));
