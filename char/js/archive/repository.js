@@ -2,6 +2,7 @@
 import { readJSON, writeJSON } from "../../../shared/js/storage.js";
 import { readCloudJSON, writeCloudJSON } from "../../../shared/js/cloud-store.js";
 import { cloneJSON } from "../../../shared/js/text.js";
+import { normalizeCharacterDocument } from "../model.js";
 import {
   assignLocalCharacterEditor,
   currentCampaignSlug,
@@ -194,9 +195,9 @@ export function applyImportedCharacterSetup(template, setup) {
 export async function createCharacter(setup) {
   const id = createCharacterId(setup.name);
   const template = await getJSON(new URL("../../template/character.json", import.meta.url));
-  const character = setup.importedCharacter
+  const character = normalizeCharacterDocument(setup.importedCharacter
     ? applyImportedCharacterSetup(template, { ...setup, id })
-    : applyNewCharacterSetup(template, { ...setup, id });
+    : applyNewCharacterSetup(template, { ...setup, id }));
   const stored = storedCharacters();
   stored[id] = cloneJSON(character);
   writeJSON(CHARACTERS_KEY, stored);

@@ -17,6 +17,12 @@ function sql(value) {
 const manifest = readJSON(path.join(dataRoot, "manifest.json"));
 const index = readJSON(path.join(dataRoot, "index.json"));
 const indexById = new Map(index.entries.map((entry) => [entry.id, entry]));
+const rulesMetadataPath = manifest.rulesMetadataFile
+  ? path.join(dataRoot, manifest.rulesMetadataFile)
+  : "";
+const rulesMetadata = rulesMetadataPath && fs.existsSync(rulesMetadataPath)
+  ? readJSON(rulesMetadataPath).entries || {}
+  : {};
 const generatedAt = manifest.generatedAt || new Date(0).toISOString();
 const statements = [
   `INSERT INTO app_meta (key, value_json, updated_at) VALUES ('compendium-manifest', ${sql(JSON.stringify(manifest))}, ${sql(generatedAt)}) ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json, updated_at = excluded.updated_at;`,
@@ -28,14 +34,17 @@ for (const category of manifest.categories) {
   for (const detail of data.entries) {
     const summary = indexById.get(detail.id);
     if (!summary) throw new Error(`Missing index entry for ${detail.id}`);
+    const metadata = rulesMetadata[detail.id] || {};
+    const seededSummary = { ...metadata, ...summary };
+    const seededDetail = { ...metadata, ...detail };
     const values = [
       detail.id,
       category.id,
       summary.name || detail.name || "",
       summary.publication || detail.publication || "",
       summary.type || detail.type || "",
-      JSON.stringify(summary),
-      JSON.stringify(detail),
+      JSON.stringify(seededSummary),
+      JSON.stringify(seededDetail),
       generatedAt,
     ].map(sql).join(", ");
     statements.push(`INSERT INTO compendium_entries (id, category, name, publication, type, index_json, detail_json, updated_at) VALUES (${values}) ON CONFLICT(id) DO UPDATE SET category = excluded.category, name = excluded.name, publication = excluded.publication, type = excluded.type, index_json = excluded.index_json, detail_json = excluded.detail_json, updated_at = excluded.updated_at;`);

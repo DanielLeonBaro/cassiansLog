@@ -14,6 +14,8 @@ assert.deepEqual(EDITOR_SECTION_DEFINITIONS.map(({ id }) => id), [
   "basics", "combat", "actions", "spellcasting", "features", "inventory", "advanced",
 ]);
 assert.equal(CHARACTER_SECTION_KEYS.has("v1SectionOrder"), true);
+assert.equal(CHARACTER_SECTION_KEYS.has("characterSchemaVersion"), true);
+assert.equal(CHARACTER_SECTION_KEYS.has("build"), true);
 assert.equal(COLLECTION_KNOWN_FIELDS.spells.has("prepared"), true);
 assert.equal(COLLECTION_KNOWN_FIELDS.inventory.has("attunement"), true);
 assert.equal(COLLECTION_KNOWN_FIELDS.inventory.has("wearable"), true);

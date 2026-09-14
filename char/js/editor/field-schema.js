@@ -13,7 +13,7 @@ export const CHARACTER_SECTION_KEYS = new Set([
   "portrait", "name", "status", "class", "subclass", "race", "level", "experience", "background", "alignment", "gender",
   "hp", "ac", "initiative", "proficiency", "walk", "fly", "passivePerception", "darkvision", "stats",
   "actions", "trackers", "spellcasting", "spells", "features", "resources", "inventory", "currency",
-  "id", "bundledUpdate", "bundledUpdateVersions", "v1SectionOrder",
+  "id", "bundledUpdate", "bundledUpdateVersions", "v1SectionOrder", "characterSchemaVersion", "build",
 ]);
 
 export const COLLECTION_KNOWN_FIELDS = {

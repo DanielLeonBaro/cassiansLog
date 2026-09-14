@@ -9,6 +9,13 @@ const {
   preferenceScore,
 } = require("./cleanup-rules.cjs");
 const { compendiumFacets } = require("./facets.cjs");
+const {
+  COVERAGE_FILE,
+  ORIGINAL_IDS_FILE,
+  RULES_METADATA_FILE,
+  loadStableIdMap,
+  writeRulesArtifacts,
+} = require("./rules-artifacts.cjs");
 
 const featureRoot = path.resolve(__dirname, "..");
 const inputRoot = path.join(featureRoot, "source");
@@ -630,6 +637,10 @@ const canonicalEntries = [...byOriginalId.values()].sort((left, right) =>
   ),
 );
 
+const stableIdByOriginalId = loadStableIdMap(outputRoot);
+const reservedStableIds = new Map(
+  [...stableIdByOriginalId].map(([originalId, id]) => [id, originalId]),
+);
 const usedIds = new Map();
 for (const entry of canonicalEntries) {
   const prefix = publicationToken(entry.publication, entry.abbreviation);
@@ -638,8 +649,14 @@ for (const entry of canonicalEntries) {
     /^([A-Z])/,
     (letter) => letter.toLowerCase(),
   );
-  let id = baseId;
-  if (usedIds.has(id)) {
+  const preservedId = stableIdByOriginalId.get(entry.originalId);
+  let id = preservedId || baseId;
+  const unavailable = (candidate) => usedIds.has(candidate)
+    || (reservedStableIds.has(candidate) && reservedStableIds.get(candidate) !== entry.originalId);
+  if (preservedId && unavailable(id)) {
+    throw new Error(`Stable Compendium ID collision: ${entry.originalId} -> ${id}`);
+  }
+  if (!preservedId && unavailable(id)) {
     const contextualSuffix = pascal(
       entry.originalId
         .replace(/^ID_/, "")
@@ -649,8 +666,9 @@ for (const entry of canonicalEntries) {
     );
     id = `${baseId}${contextualSuffix}`;
   }
-  if (usedIds.has(id))
+  if (!preservedId && unavailable(id))
     id = `${id}${hash(`${entry.originalId}|${entry.inputPath}`)}`;
+  if (unavailable(id)) throw new Error(`Compendium ID collision: ${entry.originalId} -> ${id}`);
   usedIds.set(id, entry.originalId);
   entry.id = id;
   entry.category = categoryFor(entry.type);
@@ -681,7 +699,15 @@ canonicalEntries.forEach((entry) => {
 });
 
 fs.mkdirSync(outputRoot, { recursive: true });
-const outputFiles = new Set(["manifest.json", "index.json"]);
+const generatedAt = new Date().toISOString();
+const rulesManifest = writeRulesArtifacts(outputRoot, compendiumEntries, generatedAt);
+const outputFiles = new Set([
+  "manifest.json",
+  "index.json",
+  RULES_METADATA_FILE,
+  ORIGINAL_IDS_FILE,
+  COVERAGE_FILE,
+]);
 
 const categoryCounts = {};
 for (const [category, definition] of Object.entries(categoryDefinitions)) {
@@ -692,7 +718,7 @@ for (const [category, definition] of Object.entries(categoryDefinitions)) {
   writeJSON(path.join(outputRoot, fileName), {
     category,
     label: definition.label,
-    generatedAt: new Date().toISOString(),
+    generatedAt,
     entries,
   });
 }
@@ -716,22 +742,23 @@ const publications = [...new Set(compendiumEntries.map((entry) => entry.publicat
 );
 
 writeJSON(path.join(outputRoot, "index.json"), {
-    generatedAt: new Date().toISOString(),
+  generatedAt,
     entries: indexEntries,
 });
 
 writeJSON(path.join(outputRoot, "manifest.json"), {
-    generatedAt: new Date().toISOString(),
-    inputFiles: xmlFiles.length,
-    rawEntries: rawEntries.length,
+  generatedAt,
+  inputFiles: xmlFiles.length,
+  rawEntries: rawEntries.length,
   entries: compendiumEntries.length,
-    categories: Object.entries(categoryDefinitions).map(([id, definition]) => ({
-      id,
-      label: definition.label,
-      file: `${id}.json`,
-      count: categoryCounts[id],
-    })),
-    publications,
+  categories: Object.entries(categoryDefinitions).map(([id, definition]) => ({
+    id,
+    label: definition.label,
+    file: `${id}.json`,
+    count: categoryCounts[id],
+  })),
+  publications,
+  ...rulesManifest,
 });
 
 for (const fileName of fs.readdirSync(outputRoot)) {

@@ -23,6 +23,7 @@ export function createTrackerState({
 }) {
   const storageKey = characterStateStorageKey(character.id);
   const inventoryState = new Map();
+  let retainedState = {};
 
   function inventoryItemKey(item, index) {
     if (item?.id) return `id:${item.id}`;
@@ -60,6 +61,7 @@ export function createTrackerState({
 
   function apply(state) {
     if (!state) return;
+    retainedState = { ...state };
     if (Object.prototype.hasOwnProperty.call(state, "inspiration"))
       character.inspiration = normalizeCharacterFlag(state.inspiration);
     if (Object.prototype.hasOwnProperty.call(state, "cinematic"))
@@ -70,6 +72,20 @@ export function createTrackerState({
       character.hp.current = Math.min(character.hp.max, Number(state.hp.current));
       character.hp.temp = Math.max(0, Number(state.hp.temp) || 0);
     }
+    if (Array.isArray(state.hitDice)) {
+      const savedDice = new Map(state.hitDice.map((item) => [item.die, item]));
+      character.hitDice = (character.hitDice || []).map((pool) => ({
+        ...pool,
+        current: Math.max(0, Math.min(pool.max, Number(savedDice.get(pool.die)?.current ?? pool.current ?? pool.max))),
+      }));
+    }
+    if (Array.isArray(state.conditions)) character.conditions = state.conditions.map((condition) =>
+      condition && typeof condition === "object" ? { ...condition } : condition);
+    if (Object.prototype.hasOwnProperty.call(state, "concentration"))
+      character.concentration = state.concentration && typeof state.concentration === "object"
+        ? { ...state.concentration } : state.concentration || null;
+    if (Object.prototype.hasOwnProperty.call(state, "exhaustion"))
+      character.exhaustion = Math.max(0, Math.min(6, Math.trunc(Number(state.exhaustion) || 0)));
     (state.trackers || []).forEach((saved) => {
       const tracker = (character.trackers || []).find((item) => item.id === saved.id);
       if (tracker) tracker.active = Boolean(saved.active);
@@ -110,14 +126,39 @@ export function createTrackerState({
   }
 
   function snapshot() {
+    const uses = getAllCharacterItems().filter((item) => item.uses).map((item) => ({ id: item.id, current: item.uses.current }));
+    const useIds = new Set(uses.map((item) => item.id));
+    const slots = getSpellSlots().map((slot) => ({ id: slot.id, current: slot.current }));
+    const slotIds = new Set(slots.map((slot) => slot.id));
+    const hitDice = (character.hitDice || []).map((pool) => ({ die: pool.die, current: pool.current }));
+    const hitDiceIds = new Set(hitDice.map((pool) => pool.die));
     return {
+      ...retainedState,
       hp: { current: character.hp.current, temp: character.hp.temp },
       inspiration: character.inspiration,
       cinematic: character.cinematic,
       deathSaves: { ...character.deathSaves },
+      hitDice: [
+        ...hitDice,
+        ...(Array.isArray(retainedState.hitDice) ? retainedState.hitDice : [])
+          .filter((pool) => !hitDiceIds.has(pool.die)),
+      ],
+      conditions: (character.conditions || []).map((condition) =>
+        condition && typeof condition === "object" ? { ...condition } : condition),
+      concentration: character.concentration && typeof character.concentration === "object"
+        ? { ...character.concentration } : character.concentration || null,
+      exhaustion: Math.max(0, Math.min(6, Math.trunc(Number(character.exhaustion) || 0))),
       trackers: (character.trackers || []).map((tracker) => ({ id: tracker.id, active: tracker.active })),
-      uses: getAllCharacterItems().filter((item) => item.uses).map((item) => ({ id: item.id, current: item.uses.current })),
-      slots: getSpellSlots().map((slot) => ({ id: slot.id, current: slot.current })),
+      uses: [
+        ...uses,
+        ...(Array.isArray(retainedState.uses) ? retainedState.uses : [])
+          .filter((item) => !useIds.has(item.id)),
+      ],
+      slots: [
+        ...slots,
+        ...(Array.isArray(retainedState.slots) ? retainedState.slots : [])
+          .filter((slot) => !slotIds.has(slot.id)),
+      ],
       prepared: (character.spells || []).map((spell) => ({ id: spell.id, prepared: Boolean(spell.prepared) })),
       inventory: (character.inventory || []).map((item, index) => ({
         key: inventoryItemKey(item, index),
