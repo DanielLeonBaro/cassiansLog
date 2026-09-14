@@ -1,4 +1,5 @@
 // Projects rules-ready feature actions/resources and mutable play conditions.
+import { activeRuleEntries } from "./active-rules.js";
 const ACTION_TYPES = new Map([
   ["action", "Action"],
   ["attack", "Action"],
@@ -47,6 +48,15 @@ function finiteInteger(value) {
 }
 
 function expressionValue(expression, core) {
+  const direct = finiteInteger(expression);
+  if (direct !== null) return direct;
+  if (expression && typeof expression === "object") {
+    if (expression.type === "table") {
+      const level = Number(expression.level === "class" ? core.level : core.level);
+      return finiteInteger(expression.values?.[level]);
+    }
+    return null;
+  }
   const value = normalized(expression).replace(/^\{\{/, "").replace(/\}\}$/, "");
   const number = finiteInteger(value);
   if (number !== null) return number;
@@ -155,8 +165,9 @@ export function calculatePlayCharacterValues({ graph, catalog, core, runtime, ov
   const resources = [];
   const trace = {};
 
-  graph.activeEntries.forEach((active) => {
-    const entry = index.get(active.id);
+  const ruleEntries = activeRuleEntries(graph, catalog);
+  ruleEntries.forEach(({ entry }) => index.set(entry.id, entry));
+  ruleEntries.forEach(({ entry, active }) => {
     if (!entry || entry.automation?.status !== "rules-ready") return;
     const actionLabel = text(entry.sheetAttributes?.action);
     const usage = parsedUsage(entry, core);
@@ -227,6 +238,56 @@ export function calculatePlayCharacterValues({ graph, catalog, core, runtime, ov
       usage: usage.usage,
       ...(uses ? { resourceId, uses: { ...uses } } : {}),
     });
+
+    void active;
+  });
+
+  ruleEntries.forEach(({ entry, active }) => {
+    const resourceDefinitions = Array.isArray(entry.rules?.resources) ? entry.rules.resources : [];
+    resourceDefinitions.forEach((rule, ruleIndex) => {
+      if (active.level < (finiteInteger(rule.level) || 1)) return;
+      const maximum = expressionValue(rule.max, { ...core, level: active.level });
+      if (maximum === null || maximum < 1 || !text(rule.id)) {
+        warnings.add({ code: "unsupported-rule-expression", path: `catalog.${entry.id}.rules.resources.${ruleIndex}`, entryId: entry.id, sourceId: entry.id, blocking: true, message: `${entry.name || entry.id} has an invalid resource rule.` });
+        return;
+      }
+      const resourceId = `rule-resource:${entry.id}:${rule.id}`;
+      const maximumResult = overrideResolver.number(`resources.${resourceId}.max`, maximum, [source(entry, maximum)], { integer: true, minimum: 1 });
+      const current = currentUses(savedUses.get(resourceId), maximumResult.value);
+      const uses = {
+        current,
+        max: maximumResult.value,
+        reset: text(rule.reset) || "long",
+        ...(rule.recovery ? { recovery: rule.recovery } : {}),
+      };
+      resources.push({ id: resourceId, definitionId: entry.id, name: text(rule.name) || rule.id, category: text(rule.category) || "Feature", action: text(rule.action) || "Other", uses, description: text(rule.description) });
+      trace[`resources.${resourceId}.max`] = maximumResult.trace;
+      trace[`resources.${resourceId}.current`] = { value: current, sources: [{ kind: savedUses.has(resourceId) ? "runtime" : "default", sourceId: savedUses.has(resourceId) ? `runtime.uses.${resourceId}` : `resources.${resourceId}.max`, label: `${text(rule.name) || rule.id} remaining uses`, value: current }] };
+    });
+
+    (Array.isArray(entry.rules?.actions) ? entry.rules.actions : []).forEach((rule, ruleIndex) => {
+      if (active.level < (finiteInteger(rule.level) || 1)) return;
+      const action = ACTION_TYPES.get(normalized(rule.action));
+      if (!action || !text(rule.id)) {
+        warnings.add({ code: "unsupported-rule-expression", path: `catalog.${entry.id}.rules.actions.${ruleIndex}`, entryId: entry.id, sourceId: entry.id, blocking: true, message: `${entry.name || entry.id} has an invalid action rule.` });
+        return;
+      }
+      const resourceId = text(rule.resourceId) ? `rule-resource:${entry.id}:${rule.resourceId}` : "";
+      const resource = resources.find((item) => item.id === resourceId);
+      actions.push({
+        id: `rule-action:${entry.id}:${rule.id}`,
+        definitionId: entry.id,
+        name: text(rule.name) || rule.id,
+        category: text(rule.category) || "Feature",
+        action,
+        range: text(rule.range),
+        attack: text(rule.attack),
+        damage: text(rule.damage),
+        healing: text(rule.healing),
+        description: text(rule.description),
+        ...(resource ? { resourceId, uses: { ...resource.uses } } : {}),
+      });
+    });
   });
 
   actions.sort((left, right) => left.name.localeCompare(right.name) || left.id.localeCompare(right.id));
@@ -244,6 +305,7 @@ export function calculatePlayCharacterValues({ graph, catalog, core, runtime, ov
     message: "Runtime exhaustion must be a whole number from 0 through 6; it was clamped.",
   });
   const exhaustion = Math.max(0, Math.min(6, exhaustionNumber || 0));
+  const inspiration = runtime?.inspiration === true;
   trace.conditions = { value: conditions, sources: conditions.map((condition) => ({
     kind: "runtime", sourceId: `runtime.conditions.${condition.id}`, label: condition.name, value: condition.id,
   })) };
@@ -253,6 +315,9 @@ export function calculatePlayCharacterValues({ graph, catalog, core, runtime, ov
   trace.exhaustion = { value: exhaustion, sources: exhaustion ? [{
     kind: "runtime", sourceId: "runtime.exhaustion", label: "Exhaustion", value: exhaustion,
   }] : [] };
+  trace.inspiration = { value: inspiration, sources: inspiration ? [{
+    kind: "runtime", sourceId: "runtime.inspiration", label: "Heroic Inspiration", value: true,
+  }] : [] };
 
-  return { actions, resources, conditions, concentration, exhaustion, trace, warnings: warnings.sorted() };
+  return { actions, resources, conditions, concentration, exhaustion, inspiration, trace, warnings: warnings.sorted() };
 }

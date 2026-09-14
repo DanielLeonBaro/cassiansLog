@@ -9,10 +9,12 @@
 - Characters from other campaigns don't show in admin
     - Visible pages or roles in admin are too generic, make it campaign specific or something
 - At the end of most of it, let's check all the code and rework it, see if something is not actually used, or made shorter, or code can be reused, etc.
+- Add button to change widht (90, 100, 110 rem)
 
 ##Priorities
 - More juice to admin; characters assigned to users
 - Fix Responsiveness, or improve it, so tablet and phone views are better
+- Fix V2 width (110 rem)
 
 ##In Progress (Out of Tokens)
 

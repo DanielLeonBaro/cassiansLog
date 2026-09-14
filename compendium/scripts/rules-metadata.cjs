@@ -4,6 +4,7 @@ const {
   CERTIFIED_ORIGINAL_IDS,
   SUPPORTED_RULE_EXPRESSIONS,
 } = require("./automation-coverage.cjs");
+const { certificationFor, effectiveCertifiedEntry } = require("./certifications.cjs");
 
 const RULE_METADATA_VERSION = 1;
 const ORIGINAL_ID_PATTERN = /\bID_[A-Z0-9_]+\b/g;
@@ -173,7 +174,9 @@ function buildRulesArtifacts(entries, {
   const metadataById = new Map();
   const occurrenceCounts = new Map();
   entries.forEach((entry) => {
-    const dependencies = dependencyOriginalIds(entry).map((originalId) => {
+    const effectiveEntry = effectiveCertifiedEntry(entry);
+    const certification = certificationFor(entry);
+    const dependencies = dependencyOriginalIds(effectiveEntry).map((originalId) => {
       const resolved = byOriginalId.get(originalId);
       return {
         originalId,
@@ -182,7 +185,7 @@ function buildRulesArtifacts(entries, {
       };
     });
     const automation = automationFor(
-      entry,
+      effectiveEntry,
       dependencies,
       certifiedOriginalIds,
       supportedExpressions,
@@ -200,6 +203,14 @@ function buildRulesArtifacts(entries, {
       source: entry.publication || "Unknown Source",
       dependencies,
       automation: publicAutomation,
+      ...(certification ? {
+        certification: certification.certification || {},
+        rulesOverride: certification.rules,
+        requirementsOverride: certification.requirements ?? "",
+        prerequisiteOverride: certification.prerequisite ?? "",
+        settersOverride: certification.setters || {},
+        sheetAttributesOverride: certification.sheetAttributes || {},
+      } : {}),
     });
   });
 

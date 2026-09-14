@@ -1,6 +1,12 @@
 // Verifies D&D Beyond URL, API payload, and exported-PDF field conversion.
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { dndBeyondCharacterId, mapDndBeyondPayload, mapDndBeyondPdfFields } from "../js/archive/dnd-beyond-import.js";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const gwendolineFixture = JSON.parse(fs.readFileSync(path.join(here, "fixtures/gwendoline-snapshot.json"), "utf8"));
 
 assert.equal(dndBeyondCharacterId("https://www.dndbeyond.com/characters/123456789/Example"), "123456789");
 assert.equal(dndBeyondCharacterId("https://character-service.dndbeyond.com/character/v5/character/42"), "42");
@@ -104,18 +110,19 @@ const gwendoline = mapDndBeyondPayload({ data: {
   pactMagic: [], traits: { personalityTraits: "I keep my curse private." }, notes: {},
 } });
 
-assert.deepEqual(gwendoline.hp, { max: 45, current: 45, temp: 0 });
-assert.equal(gwendoline.ac, 16);
-assert.equal(gwendoline.initiative, 4);
-assert.equal(gwendoline.darkvision, 60);
-assert.equal(gwendoline.stats.int.skills.find((skill) => skill.name === "Arcana").modifier, 0);
-assert.equal(gwendoline.actions.find((action) => action.name === "Rapier, +3").attack, "+9 vs AC");
-assert.equal(gwendoline.actions.find((action) => action.name === "Rapier, +3").damage, "1d8+6 Piercing");
-assert.deepEqual(gwendoline.resources.find((resource) => resource.name === "Bardic Inspiration").uses, { current: 4, max: 4, reset: "short" });
-assert.equal(gwendoline.spellcasting.profiles[0].ability, "CHA");
-assert.equal(gwendoline.spellcasting.profiles[0].saveDC, 15);
-assert.deepEqual(gwendoline.spellcasting.slots.map((slot) => [slot.level, slot.current, slot.max]), [[1, 4, 4], [2, 2, 3], [3, 3, 3]]);
-assert.equal(gwendoline.features.some((feature) => feature.name === "Personality traits"), true);
+assert.equal(gwendoline.name, gwendolineFixture.name);
+assert.deepEqual(gwendoline.hp, gwendolineFixture.hp);
+assert.equal(gwendoline.ac, gwendolineFixture.ac);
+assert.equal(gwendoline.initiative, gwendolineFixture.initiative);
+assert.equal(gwendoline.darkvision, gwendolineFixture.darkvision);
+assert.equal(gwendoline.stats.int.skills.find((skill) => skill.name === "Arcana").modifier, gwendolineFixture.arcanaModifier);
+assert.equal(gwendoline.actions.find((action) => action.name === "Rapier, +3").attack, gwendolineFixture.rapier.attack);
+assert.equal(gwendoline.actions.find((action) => action.name === "Rapier, +3").damage, gwendolineFixture.rapier.damage);
+assert.deepEqual(gwendoline.resources.find((resource) => resource.name === "Bardic Inspiration").uses, gwendolineFixture.bardicInspiration);
+assert.equal(gwendoline.spellcasting.profiles[0].ability, gwendolineFixture.spellcasting.ability);
+assert.equal(gwendoline.spellcasting.profiles[0].saveDC, gwendolineFixture.spellcasting.saveDC);
+assert.deepEqual(gwendoline.spellcasting.slots.map((slot) => [slot.level, slot.current, slot.max]), gwendolineFixture.spellcasting.slots);
+assert.equal(gwendoline.features.some((feature) => feature.name === "Personality traits"), gwendolineFixture.personalityTraits);
 
 const pdfCharacter = mapDndBeyondPdfFields([
   ["CharacterName", "Oskarr Gorunn"], ["CLASS  LEVEL", "Druid 3"], ["RACE", "Gray Dwarf (Duergar)"],

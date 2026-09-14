@@ -22,6 +22,13 @@ function positiveInteger(value, fallback = 1) {
   return Number.isFinite(number) && number > 0 ? number : fallback;
 }
 
+function selectionCount(value, level) {
+  if (value && typeof value === "object" && value.type === "table") {
+    return positiveInteger(value.values?.[level], positiveInteger(value.default));
+  }
+  return positiveInteger(value);
+}
+
 function isTrue(value) {
   return value === true || normalized(value) === "true";
 }
@@ -120,6 +127,7 @@ function optionsForSelection(selection, catalogIndex) {
   if (Array.isArray(selection.items) && selection.items.length) {
     return selection.items
       .map((item) => ({
+        ...(item && typeof item === "object" ? item : {}),
         id: text(String(item?.id ?? "")),
         label: text(item?.label) || text(String(item?.id ?? "")),
         kind: "list-item",
@@ -252,7 +260,7 @@ function choiceDraft(source, selection, selectionIndex, build, catalogIndex, con
   const uniqueValues = [...new Set(values)];
   const selectedOptions = uniqueValues.map((value) => ({ value, option: lookup.get(value) || null }));
   const invalidValues = selectedOptions.filter(({ option }) => !option?.available).map(({ value }) => value);
-  const maximum = positiveInteger(selection.number);
+  const maximum = selectionCount(selection.number, context.level);
   const minimum = isTrue(selection.optional) ? 0 : maximum;
   const acceptedOptions = selectedOptions
     .filter(({ option }) => option?.available)
@@ -271,6 +279,7 @@ function choiceDraft(source, selection, selectionIndex, build, catalogIndex, con
     minimumLevel: positiveInteger(selection.level),
     requirements: text(selection.requirements),
     supports: text(selection.supports),
+    level: context.level,
     context,
     options,
     selectedValues: values,
@@ -552,6 +561,19 @@ export function evaluateCharacterBuild({ character, catalog } = {}) {
     }
   });
 
+  build.levels.forEach((level, index) => {
+    const classEntry = catalogIndex.byReference.get(level.classId);
+    const subclassLevel = Number(classEntry?.rules?.subclassLevel || 0);
+    if (!subclassLevel || Number(level.level) < subclassLevel || text(level.subclassId)) return;
+    warnings.add({
+      code: "subclass-required",
+      path: `build.levels.${index}.subclassId`,
+      entryId: classEntry.id,
+      blocking: true,
+      message: `${classEntry.name || classEntry.id} requires a subclass at level ${subclassLevel}.`,
+    });
+  });
+
   activeEntries.forEach((entry) => {
     const status = automationStatus(entry);
     if (status !== "rules-ready") {
@@ -718,6 +740,17 @@ export function evaluateCharacterBuild({ character, catalog } = {}) {
         message: `${choice.name} cannot resolve option ${option.originalId || option.id}.`,
       }));
       choice.acceptedOptions.forEach((option) => {
+        if (["partial", "manual"].includes(option.automation)) {
+          warnings.add({
+            code: option.automation === "partial" ? "partial-automation" : "manual-automation",
+            path: `build.selections.${choice.key}`,
+            entryId: option.id,
+            sourceId: choice.sourceId,
+            choiceKey: choice.key,
+            blocking: false,
+            message: `${option.label} is selected without automatic rule effects.`,
+          });
+        }
         if (!option.entry) return;
         const requirement = dynamicEntryRequirement(
           option.entry,

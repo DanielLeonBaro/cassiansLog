@@ -29,14 +29,33 @@ const statements = [
 ];
 
 let entryCount = 0;
+function applyRulesMetadata(entry, metadata) {
+  const {
+    rulesOverride,
+    requirementsOverride,
+    prerequisiteOverride,
+    settersOverride,
+    sheetAttributesOverride,
+    ...rulesMetadata
+  } = metadata;
+  return {
+    ...entry,
+    ...rulesMetadata,
+    ...(rulesOverride ? { rules: rulesOverride } : {}),
+    ...(requirementsOverride !== undefined ? { requirements: requirementsOverride } : {}),
+    ...(prerequisiteOverride !== undefined ? { prerequisite: prerequisiteOverride } : {}),
+    setters: { ...(entry.setters || {}), ...(settersOverride || {}) },
+    sheetAttributes: { ...(entry.sheetAttributes || {}), ...(sheetAttributesOverride || {}) },
+  };
+}
 for (const category of manifest.categories) {
   const data = readJSON(path.join(dataRoot, category.file));
   for (const detail of data.entries) {
     const summary = indexById.get(detail.id);
     if (!summary) throw new Error(`Missing index entry for ${detail.id}`);
     const metadata = rulesMetadata[detail.id] || {};
-    const seededSummary = { ...metadata, ...summary };
-    const seededDetail = { ...metadata, ...detail };
+    const seededSummary = applyRulesMetadata(summary, metadata);
+    const seededDetail = applyRulesMetadata(detail, metadata);
     const values = [
       detail.id,
       category.id,

@@ -23,6 +23,8 @@ const suites = [
   ["Character rules runtime and rests", "char/tests/rules-runtime.test.js"],
   ["Character spell rules", "char/tests/spell-rules.test.js"],
   ["Character inventory rules", "char/tests/inventory-rules.test.js"],
+  ["Fighter and Wizard level 1-5 certification", "char/tests/class-certification.test.js"],
+  ["First-slice Human, Sage, and Soldier certification", "char/tests/first-slice-certification.test.js"],
   ["Character rendering helpers", "char/tests/rendering.test.js"],
   ["Character load-error rendering", "char/tests/load-error.test.js"],
   ["Character tracker filters", "char/tests/filters.test.js"],

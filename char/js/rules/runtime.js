@@ -203,6 +203,7 @@ export function normalizeCharacterRuntime({ runtime, sheet } = {}) {
     currency: normalizedCurrency(source.currency ?? sheet?.currency),
     conditions: normalizeConditions(source.conditions),
     concentration: normalizeConcentration(source.concentration),
+    inspiration: source.inspiration === true,
     exhaustion: Math.trunc(bounded(source.exhaustion, 0, 6)),
   };
 }
@@ -357,6 +358,39 @@ export function castRuntimeSpell({ runtime, sheet, spellId, slotId = "", ritual 
   };
 }
 
+export function recoverRuntimeSpellSlots({ runtime, sheet, profileId, slots = [] } = {}) {
+  const next = normalizeCharacterRuntime({ runtime, sheet });
+  const profile = (sheet?.spellcasting?.profiles || []).find((candidate) => candidate.id === text(profileId));
+  const failed = (code, message) => ({ runtime: next, applied: false, warning: { code, path: `runtime.slots.${text(profileId)}`, blocking: false, message } });
+  if (!profile?.slotRecovery) return failed("spell-slot-recovery-unavailable", `Spellcasting profile ${text(profileId)} has no slot recovery feature.`);
+  const resource = next.uses.find((use) => use.id === profile.slotRecovery.resourceId);
+  if (!resource?.current) return failed("insufficient-runtime-resource", `${profile.name} has no slot recovery use remaining.`);
+  const definitions = new Map((sheet.spellcasting?.slots || []).map((slot) => [slot.id, slot]));
+  const requested = new Map();
+  for (const candidate of Array.isArray(slots) ? slots : []) {
+    const id = text(candidate?.id || candidate?.slotId);
+    const amount = Math.trunc(finite(candidate?.amount, 0));
+    const definition = definitions.get(id);
+    const state = next.slots.find((slot) => slot.id === id);
+    if (!definition || !state || definition.pool !== "spellcasting" || definition.level > profile.slotRecovery.maxSlotLevel || amount < 1) {
+      return failed("invalid-spell-slot-recovery", `Slot recovery request ${id || "unknown"} is invalid.`);
+    }
+    requested.set(id, (requested.get(id) || 0) + amount);
+  }
+  if (!requested.size) return failed("invalid-spell-slot-recovery", "Choose at least one expended spell slot to recover.");
+  let cost = 0;
+  for (const [id, amount] of requested) {
+    const definition = definitions.get(id);
+    const state = next.slots.find((slot) => slot.id === id);
+    if (state.current + amount > definition.max) return failed("spell-slot-recovery-overflow", `${id} cannot recover beyond its maximum.`);
+    cost += definition.level * amount;
+  }
+  if (cost > profile.slotRecovery.budget) return failed("spell-slot-recovery-budget", `${profile.name} can recover ${profile.slotRecovery.budget} total slot levels.`);
+  for (const [id, amount] of requested) next.slots.find((slot) => slot.id === id).current += amount;
+  resource.current -= 1;
+  return { runtime: next, applied: true, warning: null };
+}
+
 export function spendRuntimeResource({ runtime, sheet, resourceId, amount = 1 } = {}) {
   const next = normalizeCharacterRuntime({ runtime, sheet });
   const id = text(resourceId);
@@ -446,8 +480,17 @@ export function applyCharacterRest({ runtime, sheet, ruleset = "5e", kind } = {}
   const resources = new Map(definitionItems(sheet).filter((item) => item?.uses).map((item) => [item.id, item]));
   next.uses.forEach((use) => {
     const definition = resources.get(use.id);
-    if (!definition || !restEligible(definition.uses.reset, kind)) return;
+    if (!definition) return;
     const maximum = Math.max(0, Math.trunc(finite(definition.uses.max)));
+    const recovery = definition.uses.recovery?.[kind];
+    if (recovery !== undefined) {
+      const recovered = recovery === "all" ? maximum : Math.max(0, Math.trunc(finite(recovery)));
+      const nextCurrent = Math.min(maximum, use.current + recovered);
+      if (use.current !== nextCurrent) changes.push(`uses.${use.id}`);
+      use.current = nextCurrent;
+      return;
+    }
+    if (!restEligible(definition.uses.reset, kind)) return;
     if (use.current !== maximum) changes.push(`uses.${use.id}`);
     use.current = maximum;
   });
@@ -472,6 +515,10 @@ export function applyCharacterRest({ runtime, sheet, ruleset = "5e", kind } = {}
   if (next.conditions.length !== beforeConditions) changes.push("conditions");
 
   if (kind === "long") {
+    if (sheet?.rest?.long?.inspiration === true && !next.inspiration) {
+      next.inspiration = true;
+      changes.push("inspiration");
+    }
     if (next.hp.current !== sheet.hp.max) changes.push("hp.current");
     if (next.hp.temp) changes.push("hp.temp");
     next.hp.current = sheet.hp.max;

@@ -1,5 +1,6 @@
 // Resolves rules-ready equipment instances and calculates inventory-derived sheet values.
 import { evaluateIdRequirement } from "./requirements.js";
+import { activeRuleEntries } from "./active-rules.js";
 
 const COIN_VALUES = Object.freeze({ cp: 1, sp: 10, ep: 50, gp: 100, pp: 1000 });
 const SIZE_MULTIPLIERS = Object.freeze({ tiny: 0.5, small: 1, medium: 1, large: 2, huge: 4, gargantuan: 8 });
@@ -59,6 +60,9 @@ function activeAliases(graph) {
   const aliases = new Set();
   (graph?.activeEntries || []).forEach((entry) => {
     [entry.id, entry.originalId, normalized(entry.name)].filter(Boolean).forEach((alias) => aliases.add(alias));
+  });
+  (graph?.choices || []).filter((choice) => choice.status === "complete").forEach((choice) => {
+    (choice.selectedIds || []).forEach((id) => aliases.add(id));
   });
   return aliases;
 }
@@ -338,6 +342,10 @@ function armorClass(instances, core, warnings) {
 function characterSize(document, graph, catalog) {
   const direct = text(document.build.description?.size || document.size);
   if (direct) return direct;
+  const selected = activeRuleEntries(graph, catalog)
+    .map(({ entry }) => text(entry.rules?.character?.size))
+    .find(Boolean);
+  if (selected) return selected;
   const index = catalogIndex(catalog);
   const speciesRoot = (graph?.roots || []).find((root) => root.kind === "species" && root.status === "active");
   const species = speciesRoot ? index.get(speciesRoot.entryId) : null;
@@ -375,9 +383,12 @@ function formatBonus(value) {
   return `${value >= 0 ? "+" : ""}${value}`;
 }
 
-function weaponActions(instances, graph, core, trace, ruleset) {
+function weaponActions(instances, graph, catalog, core, trace, ruleset) {
   const aliases = activeAliases(graph);
-  const actions = instances.filter((item) => item.active && item.profile.weapon).map((item) => {
+  const styleRules = activeRuleEntries(graph, catalog).flatMap(({ entry }) =>
+    (Array.isArray(entry.rules?.weaponModifiers) ? entry.rules.weaponModifiers : []).map((rule) => ({ entry, rule })));
+  const activeWeapons = instances.filter((item) => item.active && item.profile.weapon);
+  const actions = activeWeapons.map((item) => {
     const weapon = item.profile.weapon;
     const properties = weapon.properties;
     const finesse = properties.some((property) => normalized(property) === "finesse");
@@ -385,8 +396,18 @@ function weaponActions(instances, graph, core, trace, ruleset) {
     const ability = core.stats[abilityId] || core.stats.str;
     const proficiencyAliases = [weapon.proficiency, normalized(weapon.proficiency)].filter(Boolean);
     const proficient = weapon.proficient || proficiencyAliases.some((alias) => aliases.has(alias));
-    const attackBonus = ability.modifier + (proficient ? core.proficiency : 0) + weapon.bonus;
-    const damageBonus = ability.modifier + weapon.bonus;
+    const modifiers = styleRules.filter(({ rule }) => {
+      if (rule.attackType && normalized(rule.attackType) !== weapon.attackType) return false;
+      if (rule.property && !properties.some((property) => normalized(property) === normalized(rule.property))) return false;
+      if (Array.isArray(rule.propertiesAny) && !rule.propertiesAny.some((required) => properties.some((property) => normalized(property) === normalized(required)))) return false;
+      if (rule.oneHanded && properties.some((property) => normalized(property) === "two-handed")) return false;
+      if (rule.requiresNoOtherWeapon && activeWeapons.length !== 1) return false;
+      return true;
+    });
+    const styleAttack = modifiers.reduce((sum, { rule }) => sum + finite(rule.attack, 0), 0);
+    const styleDamage = modifiers.reduce((sum, { rule }) => sum + finite(rule.damage, 0), 0);
+    const attackBonus = ability.modifier + (proficient ? core.proficiency : 0) + weapon.bonus + styleAttack;
+    const damageBonus = ability.modifier + weapon.bonus + styleDamage;
     const damage = `${weapon.damage}${damageBonus ? formatBonus(damageBonus) : ""}${weapon.damageType ? ` ${weapon.damageType}` : ""}`.trim();
     const masteryActive = Boolean(weapon.mastery && weapon.masteryId && aliases.has(weapon.masteryId));
     const id = `weapon:${item.instanceId}`;
@@ -394,8 +415,9 @@ function weaponActions(instances, graph, core, trace, ruleset) {
       { kind: "ability", sourceId: `stats.${abilityId}.modifier`, label: `${abilityId.toUpperCase()} modifier`, value: ability.modifier },
       ...(proficient ? [{ kind: "proficiency", sourceId: weapon.proficiency || "weapon.proficiency", label: "Weapon proficiency", value: core.proficiency }] : []),
       ...(weapon.bonus ? [{ kind: "equipment", sourceId: item.instanceId, label: `${item.name} bonus`, value: weapon.bonus }] : []),
+      ...modifiers.filter(({ rule }) => finite(rule.attack, 0)).map(({ entry, rule }) => ({ kind: "rules", sourceId: entry.id, label: text(rule.label) || entry.name, value: finite(rule.attack, 0) })),
     ] };
-    trace[`actions.${id}.damage`] = { value: damage, sources: [{ kind: "equipment", sourceId: item.instanceId, label: item.name, value: weapon.damage }, { kind: "ability", sourceId: `stats.${abilityId}.modifier`, label: `${abilityId.toUpperCase()} modifier`, value: damageBonus }] };
+    trace[`actions.${id}.damage`] = { value: damage, sources: [{ kind: "equipment", sourceId: item.instanceId, label: item.name, value: weapon.damage }, { kind: "ability", sourceId: `stats.${abilityId}.modifier`, label: `${abilityId.toUpperCase()} modifier`, value: ability.modifier }, ...modifiers.filter(({ rule }) => finite(rule.damage, 0)).map(({ entry, rule }) => ({ kind: "rules", sourceId: entry.id, label: text(rule.label) || entry.name, value: finite(rule.damage, 0) }))] };
     return {
       id,
       instanceId: item.instanceId,
@@ -411,6 +433,12 @@ function weaponActions(instances, graph, core, trace, ruleset) {
       mastery: weapon.mastery,
       masteryActive,
       proficient,
+      styleEffects: modifiers.flatMap(({ rule }) => [
+        ...(rule.damageReroll ? [{ kind: "damage-reroll", values: rule.damageReroll }] : []),
+        ...(rule.damageDieMinimum ? [{ kind: "damage-die-minimum", value: rule.damageDieMinimum }] : []),
+        ...(rule.offhandAbilityDamage ? [{ kind: "offhand-ability-damage", value: true }] : []),
+        ...(rule.damageRollTwice ? [{ kind: "damage-roll-twice", oncePerTurn: rule.oncePerTurn === true }] : []),
+      ]),
     };
   });
   const attackBonus = core.stats.str.modifier + core.proficiency;
@@ -488,7 +516,7 @@ export function calculateInventoryCharacterValues({ document, graph, catalog, co
   ]));
   const burden = encumbrance(document, graph, catalog, core, totalWeight, warnings);
   const armor = armorClass(instances, core, warnings);
-  const actions = weaponActions(instances, graph, core, trace, document.build.ruleset);
+  const actions = weaponActions(instances, graph, catalog, core, trace, document.build.ruleset);
   trace.inventoryWeight = { value: totalWeight, sources: [
     ...sheetInventory.filter((item) => item.weight !== null).map((item) => ({ kind: "equipment", sourceId: item.instanceId, label: item.name, value: item.weight })),
     ...(coinWeight ? [{ kind: "currency", sourceId: "currency", label: "Coin weight", value: coinWeight }] : []),

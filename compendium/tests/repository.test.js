@@ -7,7 +7,7 @@ globalThis.fetch = async (url) => {
   if (value === "api/compendium/catalog") {
     return new Response(JSON.stringify({
       manifest: { categories: [], publications: [] },
-      entries: [{ id: "shortsword", name: "Shortsword" }],
+      entries: [{ id: "shortsword", name: "Shortsword", rules: { stats: [{ name: "stale", value: "1" }] } }],
     }));
   }
   if (value === "api/compendium/categories/items") {
@@ -35,6 +35,12 @@ globalThis.fetch = async (url) => {
           source: "Player's Handbook",
           dependencies: [],
           automation: { status: "manual", reasons: ["no-automation-data"], expressions: [] },
+          certification: { ruleset: "5e", levels: [1, 5] },
+          rulesOverride: { stats: [{ name: "certified", value: "1" }] },
+          requirementsOverride: "",
+          prerequisiteOverride: "",
+          settersOverride: { hd: "d10" },
+          sheetAttributesOverride: {},
         },
       },
     }));
@@ -52,6 +58,8 @@ try {
   assert.equal(catalog.entries[0].ruleset, "5e");
   assert.equal(catalog.entries[0].publisher, "Wizards of the Coast");
   assert.equal(catalog.entries[0].automation.status, "manual");
+  assert.equal(catalog.entries[0].rules.stats[0].name, "certified", "local certifications override stale D1 rules");
+  assert.equal(catalog.entries[0].setters.hd, "d10");
   const items = await loadCompendiumCategory("items", {
     categories: [{ id: "items", file: "items.json" }],
   });

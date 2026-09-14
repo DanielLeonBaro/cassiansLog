@@ -1,0 +1,16 @@
+{
+  "name": "Gwendoline",
+  "hp": { "max": 45, "current": 45, "temp": 0 },
+  "ac": 16,
+  "initiative": 4,
+  "darkvision": 60,
+  "arcanaModifier": 0,
+  "rapier": { "attack": "+9 vs AC", "damage": "1d8+6 Piercing" },
+  "bardicInspiration": { "current": 4, "max": 4, "reset": "short" },
+  "spellcasting": {
+    "ability": "CHA",
+    "saveDC": 15,
+    "slots": [[1, 4, 4], [2, 2, 3], [3, 3, 3]]
+  },
+  "personalityTraits": true
+}

@@ -29,11 +29,26 @@ function loadLocalRulesMetadata() {
   return rulesMetadataPromise;
 }
 
-function applyRulesMetadata(entries, metadata) {
-  return entries.map((entry) => ({
-    ...(metadata[entry.id] || {}),
-    ...entry,
-  }));
+export function applyRulesMetadata(entries, metadata) {
+  return entries.map((entry) => {
+    const {
+      rulesOverride,
+      requirementsOverride,
+      prerequisiteOverride,
+      settersOverride,
+      sheetAttributesOverride,
+      ...rulesMetadata
+    } = metadata[entry.id] || {};
+    return {
+      ...entry,
+      ...rulesMetadata,
+      ...(rulesOverride ? { rules: rulesOverride } : {}),
+      ...(requirementsOverride !== undefined ? { requirements: requirementsOverride } : {}),
+      ...(prerequisiteOverride !== undefined ? { prerequisite: prerequisiteOverride } : {}),
+      setters: { ...(entry.setters || {}), ...(settersOverride || {}) },
+      sheetAttributes: { ...(entry.sheetAttributes || {}), ...(sheetAttributesOverride || {}) },
+    };
+  });
 }
 
 export function loadCompendiumCatalog() {
@@ -57,11 +72,29 @@ export function loadCompendiumCatalog() {
       const metadataById = new Map(local.entries.map((entry) => [entry.id, entry]));
       return {
         manifest: { ...local.manifest, ...cloud.manifest },
-        entries: cloud.entries.map((entry) => ({
-          ...(metadataById.get(entry.id) || {}),
-          ...entry,
-          facets: entry.facets || facetsById.get(entry.id),
-        })),
+        entries: cloud.entries.map((entry) => {
+          const localEntry = metadataById.get(entry.id) || {};
+          const merged = {
+            ...localEntry,
+            ...entry,
+            facets: entry.facets || facetsById.get(entry.id),
+          };
+          if (!localEntry.certification) return merged;
+          return {
+            ...merged,
+            ruleset: localEntry.ruleset,
+            publisher: localEntry.publisher,
+            source: localEntry.source,
+            dependencies: localEntry.dependencies,
+            automation: localEntry.automation,
+            certification: localEntry.certification,
+            rules: localEntry.rules,
+            requirements: localEntry.requirements,
+            prerequisite: localEntry.prerequisite,
+            setters: { ...(entry.setters || {}), ...(localEntry.setters || {}) },
+            sheetAttributes: { ...(entry.sheetAttributes || {}), ...(localEntry.sheetAttributes || {}) },
+          };
+        }),
       };
     });
   }

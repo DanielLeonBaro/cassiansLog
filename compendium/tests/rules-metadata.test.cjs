@@ -1,10 +1,13 @@
 // Verifies deterministic Compendium provenance, dependencies, coverage, and safe certification.
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const {
   buildRulesArtifacts,
   publisherFor,
   rulesetFor,
 } = require("../scripts/rules-metadata.cjs");
+const { CHARACTER_CERTIFICATIONS } = require("../scripts/certifications.cjs");
 
 const entries = [
   {
@@ -98,7 +101,7 @@ assert.equal(
     + artifacts.coverage.totals.manual,
   entries.length,
 );
-assert.ok(artifacts.coverage.unsupportedExpressions.some((entry) => entry.type === "grant"));
+assert.ok(artifacts.coverage.unsupportedExpressions.some((entry) => entry.type === "requirements"));
 
 const supported = new Set(["grant", "level", "prerequisite"]);
 const readyEntries = [
@@ -125,6 +128,15 @@ assert.throws(
   () => buildRulesArtifacts([entries[0], { ...entries[1], originalId: entries[0].originalId }]),
   /Ambiguous Compendium original ID/,
 );
+
+const generatedReport = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../data/character-certification-report.json"), "utf8"));
+assert.equal(generatedReport.certifiedEntries.length, Object.keys(CHARACTER_CERTIFICATIONS).length);
+assert.deepEqual(generatedReport.unresolvedRules, []);
+assert.ok(generatedReport.certifiedEntries.every((entry) => entry.status === "rules-ready"));
+for (const originalId of [
+  "ID_RACE_HUMAN", "ID_WOTC_PHB24_RACE_HUMAN", "ID_BACKGROUND_SAGE",
+  "ID_WOTC_PHB24_BACKGROUND_SAGE", "ID_BACKGROUND_SOLDIER", "ID_WOTC_PHB24_BACKGROUND_SOLDIER",
+]) assert.ok(generatedReport.certifiedEntries.some((entry) => entry.originalId === originalId));
 assert.throws(
   () => buildRulesArtifacts([entries[0], { ...entries[1], id: entries[0].id }]),
   /Duplicate Compendium stable ID/,

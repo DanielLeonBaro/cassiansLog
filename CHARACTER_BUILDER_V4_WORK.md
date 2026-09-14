@@ -320,8 +320,8 @@ Each row is a complete stopping point. The `Verification` column is the minimum 
 | 7 | Done | Actions, resources, conditions, concentration, and ruleset-aware rests. `RUL-003`, `RUL-006`, `RUL-011` | Engine/runtime/rest tests; `npm test -- @characters`; stop before spell/inventory expansion. |
 | 8 | Done | Spell repertoire, preparation, slots, pact magic, rituals, upcasting, and multiclass math. `RUL-004`, `RUL-011` | Per-level and multiclass tables, runtime consumption/rest tests; `npm test -- @characters`. |
 | 9 | Done | Inventory instances, currency, weight, containers, equip/attune, weapons, and modifiers. `RUL-003`, `RUL-005` | Instance identity, nesting, encumbrance, attunement, attack tests; `npm test -- @characters`. |
-| 10 | To Do | Certify Fighter and Wizard levels 1–5 in both editions. `RUL-001`–`RUL-004`, `RUL-006`–`RUL-011` | Level-by-level golden fixtures and unresolved-rule report; stop when both classes are rules-ready for the slice. |
-| 11 | To Do | Certify Human, Sage, and Soldier in both editions; complete first-slice fixtures. `RUL-001`–`RUL-003`, `RUL-007`–`RUL-011` | Cross-product first-slice fixtures including Gwendoline snapshot regression. |
+| 10 | Done | Certify Fighter and Wizard levels 1–5 in both editions. `RUL-001`–`RUL-004`, `RUL-006`–`RUL-011` | Level-by-level golden fixtures and unresolved-rule report; stop when both classes are rules-ready for the slice. |
+| 11 | Done | Certify Human, Sage, and Soldier in both editions; complete first-slice fixtures. `RUL-001`–`RUL-003`, `RUL-007`–`RUL-011` | Cross-product first-slice fixtures including Gwendoline snapshot regression. |
 | 12 | To Do | Draft local persistence, additive D1 migration, APIs, auth, finalization, and collision handling. `BLD-004`, `BLD-012`, `CMP-006`, `CMP-007` | Fresh/upgraded/idempotent migration; local/cloud success/failure; API method/auth/role/409 tests; `npm test -- @characters @campaigns`. |
 | 13 | To Do | Accessible builder shell, progress navigation, autosave status, resume, dirty/failure recovery. `BLD-001`–`BLD-004`, `BLD-013` | Model/UI/browser tests; `npm run build:site`; `npm run test:browser -- @characters`. |
 | 14 | To Do | Home preferences and ruleset/source/coverage filters. `BLD-005`, `BLD-006`, `BLD-013` | Filter/state/change-preview tests and browser flows in both rulesets. |
@@ -346,7 +346,7 @@ Each row is a complete stopping point. The `Verification` column is the minimum 
 
 ## In Progress
 
-None. Task 10 is next: certify Fighter and Wizard levels 1–5 in both editions.
+None. Task 12 is next: add local builder drafts, additive D1 storage/APIs, authorization, atomic finalization, and collision handling.
 
 ## Done
 
@@ -445,6 +445,25 @@ None. Task 10 is next: certify Fighter and Wizard levels 1–5 in both editions.
 - Added pure runtime inventory mutation and charge-spending helpers plus eligible short/long-rest charge recovery.
 - Preserved manual sheets and existing V1–V3 inventory UI/state behavior. Stopped before production item certification and V4 inventory UI.
 
+### Task 10 — Fighter and Wizard levels 1–5
+
+- Added reviewed declarative overlays for 2014/2024 Fighter and Wizard plus Champion and Evocation subclasses. Raw generated Aurora rules remain unchanged; only the metadata sidecar applies certified replacements.
+- Certified class saving throws, proficiencies, skills, subclass timing, ASIs, features, Fighter actions/resources/styles/mastery counts/Extra Attack, Wizard spellcasting/preparation/cantrips/spellbook growth/slots, and Arcane Recovery.
+- Added inline choice effects with source traces, level-aware selection counts, class/subclass feature projection, attacks-per-action and critical-threshold projection, style-aware weapon modifiers, partial resource recovery, and bounded Arcane Recovery slot restoration.
+- Added 20 level-by-level golden cases across both editions. They prove HP, proficiency, saves, skills/expertise, features, resources/rests, attacks, spell DCs, preparation, cantrips, spellbook minimums, slots, required subclasses, and trace sources without warnings.
+- Generated `character-certification-report.json`: eight scoped entries are `rules-ready`; unresolved certified rules are zero. Other qualifying feats stay explicit manual/partial branches and never receive guessed effects.
+- Stopped before Human, Sage, Soldier, builder UI, V4 UI, D1 changes, seed application, deployment, and remote mutation.
+
+### Task 11 — Human, Sage, Soldier, and first-slice fixtures
+
+- Added reviewed declarative overlays for 2014/2024 Human, Sage, and Soldier. Both editions now project origin ability changes, skills, languages, tools, features, size, creature type, speed, and source traces through stable IDs.
+- Added 2024 Human Resourceful long-rest inspiration, Skillful selection, size selection, standard origin languages, and certified Tough HP scaling. Other Origin Feats and 2014 Variant Human remain selectable manual branches with explicit warnings.
+- Added 2024 Sage background ability choices and core grants. Magic Initiate (Wizard) stays visible with an explicit nonblocking manual-spell warning; no spells are guessed before their catalog certification.
+- Added 2024 Soldier background ability choices, gaming-set proficiency, and Savage Attacker’s once-per-turn roll-twice weapon effect.
+- Added 40 cross-product golden cases: two classes, two backgrounds, two editions, and levels 1–5. They verify edition isolation, HP/ability math, skills, tools, languages, features, rests, traces, and manual boundaries.
+- Moved Gwendoline’s trusted import totals into a durable snapshot fixture and kept the existing API import regression tied to it.
+- Generated certification report now contains 14 `rules-ready` entries with zero unresolved certified rules. No builder UI, D1 schema/API, seed application, deployment, or remote mutation was started.
+
 ## Verification Log
 
 - 2026-09-13 — Task 1 pre-edit repository state: branch `main`, commit `0ad6eb1`; only `.playwright-cli/` was untracked.
@@ -493,6 +512,18 @@ None. Task 10 is next: certify Fighter and Wizard levels 1–5 in both editions.
 - 2026-09-14 — Task 9 build verification: `npm run build:site` passed. Existing Browserslist age warning remained non-fatal; generated output stayed local.
 - 2026-09-14 — Task 9 whitespace verification: `git diff --check` passed.
 - 2026-09-14 — Task 9 automation boundary: production certification remains at 0 `rules-ready`; inventory automation is proven with synthetic metadata only, and no Compendium entry was promoted.
+- 2026-09-14 — Task 10 rules verification: official D&D Beyond 2014 and 2024 class tables were rechecked for Fighter/Wizard levels 1–5, subclass timing, Second Wind recovery, Weapon Mastery counts, spell preparation, and spell slots.
+- 2026-09-14 — Task 10 direct checks: `node char/tests/class-certification.test.js` and `node char/tests/inventory-rules.test.js` passed. The golden suite covers 20 class-level cases plus subclass enforcement, Archery attack tracing, 2024 partial Second Wind recovery, and Arcane Recovery slot restoration.
+- 2026-09-14 — Task 10 focused verification: `npm test -- @characters @compendium` passed all 37 selected suites. The intentional offline settings-fallback diagnostic appeared and its suite passed.
+- 2026-09-14 — Task 10 build verification: `npm run build:site` passed. Existing Browserslist age warning remained non-fatal; generated output stayed local.
+- 2026-09-14 — Task 10 whitespace verification: `git diff --check` passed.
+- 2026-09-14 — Task 10 automation boundary: only Fighter, Wizard, Champion, School of Evocation, and their 2024 counterparts are certified. Human/Sage/Soldier, unrelated classes/subclasses, other feats, D1 state, and remote systems were not changed.
+- 2026-09-14 — Task 11 rules verification: official D&D Beyond 2014 and 2024 origin rules were rechecked for Human, Sage, Soldier, background ability choices, languages, skills, tools, Resourceful, Tough, Magic Initiate, and Savage Attacker.
+- 2026-09-14 — Task 11 direct checks: the new first-slice suite passed 40 cross-product cases plus Savage Attacker, manual Variant Human, edition mismatch, metadata promotion, and Resourceful long-rest checks. The Gwendoline snapshot-backed D&D Beyond import suite and runtime/rest suite also passed.
+- 2026-09-14 — Task 11 focused verification: `npm test -- @characters @compendium` passed all 38 selected suites. The intentional offline settings-fallback diagnostic appeared and its suite passed.
+- 2026-09-14 — Task 11 build verification: `npm run build:site` passed. Existing Browserslist age warning remained non-fatal; generated output stayed local.
+- 2026-09-14 — Task 11 whitespace verification: `git diff --check` passed.
+- 2026-09-14 — Task 11 automation boundary: open 2014 Variant Human and 2024 Origin Feat branches warn as manual; 2024 Sage’s Magic Initiate spell choices warn as manual until spell entries are certified. No effect is guessed.
 
 For every later task, record the command, result, relevant fixture/browser scenario, and any known pre-existing warning. Do not replace older evidence.
 
@@ -500,16 +531,16 @@ For every later task, record the command, result, relevant fixture/browser scena
 
 ### Current state
 
-- Catalog version: `sha256-c79bb4f04416556454f6`.
-- Total: 15,191 entries; 0 `rules-ready`, 6,108 `partial`, and 9,083 `manual`.
+- Catalog version: `sha256-66622fa7953f5b2e5953`.
+- Total: 15,191 entries; 14 `rules-ready`, 6,094 `partial`, and 9,083 `manual`.
 - Rulesets: 13,431 `5e`, 1,530 `5.5e`, and 230 shared/agnostic entries.
-- Dependencies: 13,132 resolved and 4,344 missing references. Missing references remain visible and prevent certification.
+- Dependencies: 13,071 resolved and 4,314 missing references. Missing references remain visible and prevent certification.
 - Stable IDs: 15,191 entries and original IDs; 0 missing IDs, collisions, or ambiguities.
-- Existing parsed rule expressions remain uncertified. The empty certification registry intentionally keeps every entry from automatic application.
+- Certification is stored in reviewed overlays. Uncertified parsed expressions remain partial/manual and cannot apply automatically.
 - The Task 4 evaluator can now validate strict rule graphs and choices, but production certification remains intentionally unchanged until the first-slice content tasks prove each entry.
-- Tasks 5–9 now cover the planned core numerical, durability, play-state, spell, and inventory engine surfaces with synthetic fixtures. Production coverage remains unchanged until Task 10 begins explicit class certification.
+- Tasks 5–9 cover the core engine surfaces; Tasks 10–11 promote 14 proven class, subclass, species, and background entries. The generated first-slice report has zero unresolved rules inside this certified scope.
 - All entries remain browseable through the existing Compendium.
-- Generated detail lives in `compendium/data/coverage.json`, `rules-metadata.json`, and `original-ids.json`.
+- Generated detail lives in `compendium/data/coverage.json`, `rules-metadata.json`, `original-ids.json`, and `character-certification-report.json`.
 
 ### Required generated report after Task 3
 
@@ -540,6 +571,8 @@ Certification is explicit. Completing engine code does not automatically certify
 - Task 7 adds pure action/runtime modules and routes only rules-mode rests through them. Reverting those modules plus the Task 7 engine, tracker state/rest, tests, and generated CSS changes restores the Task 6 boundary; legacy Character documents need no data rollback.
 - Task 8 adds the pure spell calculation module, spell runtime transitions, assignment normalization, grant metadata, engine composition, tests, and generated CSS changes. Reverting those Task 8 portions restores the Task 7 boundary; no Character document, runtime record, Compendium certification, D1 data, or remote system needs migration rollback.
 - Task 9 adds the pure inventory calculation module, additive engine inputs/projection, runtime inventory transitions, tests, and generated CSS changes. Reverting those Task 9 portions restores the Task 8 boundary; schema-v2 inventory data remains valid but inactive, and no stored Character, D1 data, Compendium certification, or remote system needs migration rollback.
+- Task 10 certification is reversible by removing the reviewed overlay registry, inline-choice/class projection additions, golden fixtures/report, and regenerating the metadata sidecars. No Character document, runtime record, D1 table, or remote data needs rollback.
+- Task 11 certification is reversible by removing the six origin overlays, origin projection/runtime additions, first-slice and Gwendoline fixtures, test registration, and regenerating metadata sidecars. Runtime inspiration remains additive; no stored Character, D1 table, or remote data needs rollback.
 - Before any remote D1 migration or deployment: obtain explicit approval, export/verify a recovery point, verify migration order, and record the exact rollback procedure here.
 - No remote operation has been performed for this project plan.
 

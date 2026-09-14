@@ -16,6 +16,7 @@ import {
   calculateInventoryCharacterValues,
   prepareCharacterInventory,
 } from "./inventory-calculations.js";
+import { calculateClassCharacterValues } from "./class-calculations.js";
 
 function catalogEntries(catalog) {
   if (Array.isArray(catalog)) return catalog;
@@ -30,7 +31,7 @@ function activeRootNames(graph, catalog, kind) {
     .filter(Boolean);
 }
 
-function rulesSheet(document, graph, core, durability, play, magic, equipment, catalog) {
+function rulesSheet(document, graph, core, durability, play, magic, equipment, classRules, catalog) {
   const { characterSchemaVersion, build, ...legacy } = document;
   const classes = activeRootNames(graph, catalog, "class");
   const subclasses = activeRootNames(graph, catalog, "subclass");
@@ -60,6 +61,12 @@ function rulesSheet(document, graph, core, durability, play, magic, equipment, c
     defenses: durability.defenses,
     actions: [...equipment.actions, ...play.actions],
     resources: play.resources,
+    features: classRules.features,
+    combat: classRules.combat,
+    size: classRules.character.size || legacy.size || "",
+    creatureType: classRules.character.creatureType || legacy.creatureType || "",
+    rest: classRules.rest,
+    inspiration: play.inspiration,
     conditions: play.conditions,
     concentration: play.concentration,
     exhaustion: play.exhaustion,
@@ -138,6 +145,7 @@ export function evaluateCharacter({ character, catalog, runtime } = {}) {
     runtime,
     overrideResolver,
   });
+  const classes = calculateClassCharacterValues({ graph, catalog });
   durability.trace.walk = {
     value: durability.movement.walk,
     sources: [{ kind: "projection", sourceId: "movement.walk", label: "Walking speed", value: durability.movement.walk }],
@@ -151,8 +159,8 @@ export function evaluateCharacter({ character, catalog, runtime } = {}) {
     sources: [{ kind: "projection", sourceId: "senses.darkvision", label: "Darkvision range", value: durability.senses.darkvision }],
   };
   return {
-    sheet: rulesSheet(document, graph, core, durability, play, magic, equipment, catalog),
-    trace: { ...core.trace, ...durability.trace, ...play.trace, ...magic.trace, ...equipment.trace },
-    warnings: mergedWarnings(core.warnings, durability.warnings, play.warnings, magic.warnings, equipment.warnings, overrideResolver.finish()),
+    sheet: rulesSheet(document, graph, core, durability, play, magic, equipment, classes, catalog),
+    trace: { ...core.trace, ...durability.trace, ...play.trace, ...magic.trace, ...equipment.trace, ...classes.trace },
+    warnings: mergedWarnings(core.warnings, durability.warnings, play.warnings, magic.warnings, equipment.warnings, classes.warnings, overrideResolver.finish()),
   };
 }

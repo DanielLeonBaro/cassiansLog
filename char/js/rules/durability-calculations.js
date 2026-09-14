@@ -1,5 +1,6 @@
 // Calculates rules-mode durability, mobility, senses, and named proficiencies.
 import { collectApplicableStatRules } from "./core-calculations.js";
+import { activeRuleEntries } from "./active-rules.js";
 
 const MOVEMENT_TYPES = Object.freeze(["walk", "fly", "climb", "swim", "burrow"]);
 const SENSE_TYPES = Object.freeze(["darkvision", "blindsight", "tremorsense", "truesight"]);
@@ -73,7 +74,7 @@ function unsupported(record, warnings, detail = "durability stat expression") {
 
 function ruleNumber(record, core) {
   const number = strictNumber(record.rule?.value);
-  if (number !== null) return number;
+  if (number !== null) return record.rule?.perLevel === true ? number * core.level : number;
   const expression = normalized(record.rule?.value);
   if (expression === "level") return core.level;
   if (expression === "proficiency") return core.proficiency;
@@ -249,7 +250,8 @@ function classifyRules(records, core, warnings) {
   records.forEach((record) => {
     const name = normalized(record.rule?.name);
     if (!isDurabilityStatRule(record)) return;
-    if (hasEquipmentCondition(record) && !record.equipmentResolved) {
+    if (hasEquipmentCondition(record) && record.equipmentResolved === false) return;
+    if (hasEquipmentCondition(record) && record.equipmentResolved !== true) {
       unsupported(record, warnings, "equipment condition");
       return;
     }
@@ -380,6 +382,16 @@ function namedCollections(graph, catalog, overrideResolver, trace) {
       defenseSources[kind].push({ ...source, value });
     }
   });
+  activeRuleEntries(graph, catalog).forEach(({ entry }) => {
+    (Array.isArray(entry.rules?.languages) ? entry.rules.languages : []).forEach((value) => {
+      const label = text(value);
+      if (label) sources.languages.push({ kind: "rules", sourceId: entry.id, originalId: text(entry.originalId), label: text(entry.name) || entry.id, value: label });
+    });
+    (Array.isArray(entry.rules?.proficiencies) ? entry.rules.proficiencies : []).forEach((value) => {
+      const label = text(value);
+      if (label) sources.proficiencies.push({ kind: "rules", sourceId: entry.id, originalId: text(entry.originalId), label: text(entry.name) || entry.id, value: label });
+    });
+  });
 
   const result = {};
   ["languages", "proficiencies"].forEach((path) => {
@@ -419,7 +431,11 @@ export function calculateDurabilityCharacterValues({
 }) {
   const warnings = warningCollector();
   const trace = {};
-  const records = [...collectApplicableStatRules({ graph, catalog, warnings }), ...extraStatRecords];
+  const armorEquipped = (inventory?.armor?.sources || []).some((source) => source.kind === "equipment");
+  const records = [...collectApplicableStatRules({ graph, catalog, warnings }), ...extraStatRecords]
+    .map((record) => text(record.rule?.equipped) && record.equipmentResolved === undefined
+      ? { ...record, equipmentResolved: normalized(record.rule.equipped) === "armor" && armorEquipped }
+      : record);
   const classified = classifyRules(records, core, warnings);
   const hpResult = hitPoints(
     document,

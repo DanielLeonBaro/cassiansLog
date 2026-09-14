@@ -167,6 +167,19 @@ function preparedLimit(rule, profile, core, warnings, entry, ruleIndex) {
   return { value: 0, sources: [] };
 }
 
+function repertoireLimit(configuration, profile, fallback = 0) {
+  const fixed = integer(configuration);
+  if (fixed !== null) return Math.max(0, fixed);
+  if (configuration?.type === "table") {
+    const value = Array.isArray(configuration.values)
+      ? configuration.values[profile.level]
+      : configuration.values?.[profile.level];
+    const result = integer(value);
+    if (result !== null) return Math.max(0, result);
+  }
+  return fallback;
+}
+
 function collectProfiles(graph, catalog, core, overrideResolver, warnings, trace) {
   const index = catalogIndex(catalog).byId;
   const profiles = [];
@@ -231,6 +244,8 @@ function collectProfiles(graph, catalog, core, overrideResolver, warnings, trace
       const save = overrideResolver.number(`spellcasting.profiles.${id}.saveDC`, 8 + core.proficiency + core.stats[ability].modifier, saveSources, { integer: true });
       const attack = overrideResolver.number(`spellcasting.profiles.${id}.attackBonus`, core.proficiency + core.stats[ability].modifier, attackSources, { integer: true });
       const prepared = overrideResolver.number(`spellcasting.profiles.${id}.preparedLimit`, limit.value, limit.sources, { integer: true, minimum: 0 });
+      const cantripLimit = repertoireLimit(rule.cantrips, profile);
+      const spellbookMinimum = repertoireLimit(rule.spellbook, profile);
       profiles.push({
         ...profile,
         ability: ability.toUpperCase(),
@@ -238,10 +253,19 @@ function collectProfiles(graph, catalog, core, overrideResolver, warnings, trace
         saveDC: save.value,
         attackBonus: attack.value,
         preparedLimit: prepared.value,
+        cantripLimit,
+        spellbookMinimum,
+        ...(rule.recovery ? { slotRecovery: {
+          resourceId: `rule-resource:${entry.id}:${text(rule.recovery.id)}`,
+          budget: rule.recovery.budget === "half-level-up" ? Math.ceil(profile.level / 2) : 0,
+          maxSlotLevel: Math.max(1, integer(rule.recovery.maxSlotLevel) ?? 5),
+        } } : {}),
       });
       trace[`spellcasting.profiles.${id}.saveDC`] = save.trace;
       trace[`spellcasting.profiles.${id}.attackBonus`] = attack.trace;
       trace[`spellcasting.profiles.${id}.preparedLimit`] = prepared.trace;
+      trace[`spellcasting.profiles.${id}.cantripLimit`] = { value: cantripLimit, sources: [ruleSource(entry, cantripLimit, { ruleIndex, classLevel: profile.level })] };
+      trace[`spellcasting.profiles.${id}.spellbookMinimum`] = { value: spellbookMinimum, sources: [ruleSource(entry, spellbookMinimum, { ruleIndex, classLevel: profile.level })] };
     });
   });
   return profiles.sort((left, right) => left.name.localeCompare(right.name) || left.id.localeCompare(right.id));
@@ -559,6 +583,14 @@ function calculateSpells(document, graph, catalog, profiles, slots, core, runtim
       sourceId: profile.id,
       blocking: true,
       message: `${profile.name} has ${prepared.length} prepared spells but allows ${profile.preparedLimit}.`,
+    });
+    const cantrips = spells.filter((spell) => spell.source === profile.id && spell.level === 0);
+    if (profile.cantripLimit && cantrips.length > profile.cantripLimit) warnings.add({
+      code: "cantrip-limit",
+      path: `build.spells.${profile.id}`,
+      sourceId: profile.id,
+      blocking: true,
+      message: `${profile.name} has ${cantrips.length} cantrips but allows ${profile.cantripLimit}.`,
     });
   });
   return spells;

@@ -1,6 +1,7 @@
 // Calculates rules-mode abilities, saves, skills, passives, and their source traces.
 import { evaluateIdRequirement } from "./requirements.js";
 import { ABILITIES, PASSIVE_SKILLS, SKILLS } from "./core-definitions.js";
+import { activeRuleEntries } from "./active-rules.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -89,8 +90,7 @@ function activeAliases(graph) {
 
 function applicableStatRules(graph, catalogIndex, aliases, warnings) {
   const records = [];
-  graph.activeEntries.forEach((active) => {
-    const entry = catalogIndex.get(active.id);
+  activeRuleEntries(graph, [...catalogIndex.values()]).forEach(({ entry, active }) => {
     if (!entry || entry.automation?.status !== "rules-ready") return;
     const stats = Array.isArray(entry.rules?.stats) ? entry.rules.stats : [];
     stats.forEach((rule, ruleIndex) => {
