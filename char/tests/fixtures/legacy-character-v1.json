@@ -1,0 +1,54 @@
+{
+  "id": "legacy-hero",
+  "name": "Legacy Hero",
+  "class": "Wizard",
+  "subclass": "School of Evocation",
+  "race": "Human",
+  "background": "Sage",
+  "level": 5,
+  "experience": 6500,
+  "ac": 15,
+  "hp": {
+    "max": 32,
+    "current": 19,
+    "temp": 4,
+    "homebrewBuffer": 2
+  },
+  "initiative": 3,
+  "proficiency": 3,
+  "stats": {
+    "int": {
+      "score": 18,
+      "modifier": 4,
+      "save": 7,
+      "skills": [
+        {
+          "name": "Arcana",
+          "modifier": 7,
+          "proficiency": true,
+          "customRank": "trained"
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "id": "fire-bolt",
+      "name": "Fire Bolt",
+      "attack": 7,
+      "damage": "2d10 Fire",
+      "homebrewTag": "signature"
+    }
+  ],
+  "inventory": [
+    {
+      "id": "spellbook",
+      "name": "Spellbook",
+      "quantity": 1
+    }
+  ],
+  "customCampaignField": {
+    "kept": true,
+    "nested": ["unchanged"]
+  }
+}

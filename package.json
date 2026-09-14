@@ -9,6 +9,7 @@
     "d1:seed:local": "npm run d1:seed && wrangler d1 execute cassianslog-data --local --file=.cloudflare/d1-seed.sql",
     "d1:seed:remote": "npm run d1:seed && wrangler d1 execute cassianslog-data --remote --file=.cloudflare/d1-seed.sql",
     "build:compendium": "node compendium/scripts/build.cjs",
+    "build:compendium-metadata": "node compendium/scripts/build-rules-metadata.cjs",
     "build:compendium-cleanup-sql": "node compendium/scripts/build-d1-cleanup.cjs",
     "clean:compendium": "node compendium/scripts/clean-data.cjs",
     "import:wiki": "node wiki/scripts/import.cjs",

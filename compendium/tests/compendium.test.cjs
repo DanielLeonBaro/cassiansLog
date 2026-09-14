@@ -12,10 +12,39 @@ assert.ok(
 
 const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 const index = JSON.parse(fs.readFileSync(indexPath, "utf8")).entries;
+const rulesMetadata = JSON.parse(
+  fs.readFileSync(`compendium/data/${manifest.rulesMetadataFile}`, "utf8"),
+);
+const originalIds = JSON.parse(
+  fs.readFileSync(`compendium/data/${manifest.originalIdLookupFile}`, "utf8"),
+);
+const coverage = JSON.parse(
+  fs.readFileSync(`compendium/data/${manifest.coverageFile}`, "utf8"),
+);
 
 assert.equal(manifest.inputFiles, 1951);
 assert.ok(index.length > 10000);
 assert.equal(new Set(index.map((entry) => entry.id)).size, index.length);
+assert.match(manifest.catalogVersion, /^sha256-[a-f0-9]{20}$/);
+assert.equal(rulesMetadata.catalogVersion, manifest.catalogVersion);
+assert.equal(originalIds.catalogVersion, manifest.catalogVersion);
+assert.equal(coverage.catalogVersion, manifest.catalogVersion);
+assert.equal(Object.keys(rulesMetadata.entries).length, manifest.entries);
+assert.equal(Object.keys(originalIds.entries).length, manifest.entries);
+assert.equal(coverage.totals.entries, manifest.entries);
+assert.equal(
+  coverage.totals["rules-ready"] + coverage.totals.partial + coverage.totals.manual,
+  manifest.entries,
+);
+assert.equal(coverage.stableIds.collisions, 0);
+assert.equal(coverage.stableIds.ambiguities, 0);
+assert.equal(originalIds.entries.ID_WOTC_PHB_CLASS_FIGHTER, "phbClassFighter");
+assert.equal(rulesMetadata.entries.phbClassFighter.ruleset, "5e");
+assert.equal(rulesMetadata.entries.phb24ClassFighter.ruleset, "5.5e");
+assert.ok(["rules-ready", "partial", "manual"].includes(
+  rulesMetadata.entries.phbClassFighter.automation.status,
+));
+assert.ok(Array.isArray(rulesMetadata.entries.phbClassFighter.dependencies));
 
 const removedFeatureNames = new Set([
   "Strength", "Dexterity", "Constitution", "Intelligence", "Wisdom", "Charisma",
@@ -76,6 +105,12 @@ for (const id of [
 const pageCode = fs.readFileSync("compendium/js/page.js", "utf8");
 assert.match(pageCode, /data-technical-identifiers/);
 assert.doesNotMatch(pageCode, /<strong>Supports:<\/strong>/);
+const generatorCode = fs.readFileSync("compendium/scripts/build.cjs", "utf8");
+assert.match(generatorCode, /loadStableIdMap\(outputRoot\)/);
+assert.match(generatorCode, /stableIdByOriginalId\.get\(entry\.originalId\)/);
+const seedCode = fs.readFileSync("cloudflare/scripts/build-seed.cjs", "utf8");
+assert.match(seedCode, /manifest\.rulesMetadataFile/);
+assert.match(seedCode, /JSON\.stringify\(seededDetail\)/);
 
 for (const category of manifest.categories) {
   assert.ok(fs.existsSync(`compendium/data/${category.file}`));

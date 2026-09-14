@@ -10,6 +10,11 @@ globalThis.fetch = async (url) => {
       entries: [{ id: "shortsword", name: "Shortsword" }],
     }));
   }
+  if (value === "api/compendium/categories/items") {
+    return new Response(JSON.stringify({
+      entries: [{ id: "shortsword", name: "Shortsword", description: "A blade." }],
+    }));
+  }
   if (value.endsWith("/data/manifest.json")) {
     return new Response(JSON.stringify({ categories: [], publications: [] }));
   }
@@ -21,16 +26,38 @@ globalThis.fetch = async (url) => {
       }],
     }));
   }
+  if (value.endsWith("/data/rules-metadata.json")) {
+    return new Response(JSON.stringify({
+      entries: {
+        shortsword: {
+          ruleset: "5e",
+          publisher: "Wizards of the Coast",
+          source: "Player's Handbook",
+          dependencies: [],
+          automation: { status: "manual", reasons: ["no-automation-data"], expressions: [] },
+        },
+      },
+    }));
+  }
   return new Response("Not found", { status: 404 });
 };
 
 try {
-  const { loadCompendiumCatalog } = await import(`../js/repository.js?test=${Date.now()}`);
+  const { loadCompendiumCatalog, loadCompendiumCategory } = await import(`../js/repository.js?test=${Date.now()}`);
   const catalog = await loadCompendiumCatalog();
   assert.deepEqual(catalog.entries[0].facets, {
     kinds: ["Swords"],
     damageTypes: ["Piercing"],
   });
+  assert.equal(catalog.entries[0].ruleset, "5e");
+  assert.equal(catalog.entries[0].publisher, "Wizards of the Coast");
+  assert.equal(catalog.entries[0].automation.status, "manual");
+  const items = await loadCompendiumCategory("items", {
+    categories: [{ id: "items", file: "items.json" }],
+  });
+  assert.equal(items[0].description, "A blade.");
+  assert.equal(items[0].ruleset, "5e");
+  assert.equal(items[0].automation.status, "manual");
 } finally {
   globalThis.fetch = originalFetch;
 }

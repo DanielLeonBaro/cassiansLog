@@ -6,13 +6,19 @@ function plural(count, singular, pluralForm = `${singular}s`) {
 export function getRestDetails(character, items, slots, kind) {
   const long = kind === "long";
   if (!long && kind !== "short") throw new Error("Unknown rest type.");
+  const rulesAware = character.build?.mode === "rules";
+  const restoresOnRest = (reset = "long") => {
+    if (!rulesAware) return long || reset === "short";
+    return long ? ["short", "long", "day"].includes(reset) : reset === "short";
+  };
   const resources = items.filter((item) =>
-    long ? Boolean(item.uses) : item.uses?.reset === "short",
+    Boolean(item.uses) && restoresOnRest(item.uses.reset),
   );
   const restoredSlots = slots.filter((slot) =>
-    long ? true : (slot.reset || "long") === "short",
+    restoresOnRest(slot.reset),
   );
   const title = long ? "Long rest" : "Short rest";
+  const ruleset = character.build?.ruleset === "5.5e" ? "5.5e" : "5e";
   const resourceCount = plural(resources.length, "resource");
   const slotCount = plural(restoredSlots.length, "spell-slot group");
   const effects = [
@@ -24,9 +30,16 @@ export function getRestDetails(character, items, slots, kind) {
       : "No spell-slot groups are restored.",
     long
       ? `Current HP returns to ${character.hp.max}, and temporary HP is cleared.`
-      : "Temporary HP is cleared. Current HP does not change.",
-    "Death saving throws and Stable are reset.",
+      : rulesAware
+        ? "Current and temporary HP do not change; hit dice can be spent separately."
+        : "Temporary HP is cleared. Current HP does not change.",
+    long || !rulesAware
+      ? "Death saving throws and Stable are reset."
+      : "Death saving throws and Stable do not change.",
   ];
+  if (rulesAware && long) effects.push(ruleset === "5.5e"
+    ? "All spent hit dice return."
+    : "Spent hit dice return up to half the character level; multiclass pools use displayed order until choice UI is added.");
   return {
     kind,
     title,
@@ -35,6 +48,8 @@ export function getRestDetails(character, items, slots, kind) {
       ? "A long rest restores the character for the next adventuring day."
       : "A short rest restores features that recharge after a short rest.",
     effects,
-    toast: `${title} complete. ${resourceCount} and ${slotCount} restored; ${long ? "HP, temporary HP," : "temporary HP"} and death saves reset.`,
+    toast: rulesAware
+      ? `${title} complete. ${resourceCount} and ${slotCount} restored${long ? "; HP, hit dice, and eligible effects updated" : ""}.`
+      : `${title} complete. ${resourceCount} and ${slotCount} restored; ${long ? "HP, temporary HP," : "temporary HP"} and death saves reset.`,
   };
 }

@@ -4,6 +4,7 @@ const path = require("node:path");
 const { writeJSON } = require("../../shared/build/output.cjs");
 const { filterCompendiumEntries } = require("./cleanup-rules.cjs");
 const { compendiumFacets } = require("./facets.cjs");
+const { writeRulesArtifacts } = require("./rules-artifacts.cjs");
 
 const compendiumRoot = path.resolve(__dirname, "..");
 const backupRoot = path.join(compendiumRoot, "dataFullBackup");
@@ -43,6 +44,7 @@ if (filteredIndex.length !== filteredEntries.length) {
 
 const generatedAt = new Date().toISOString();
 fs.mkdirSync(outputRoot, { recursive: true });
+const rulesManifest = writeRulesArtifacts(outputRoot, filteredEntries, generatedAt);
 
 const filteredCategories = categoryData.map((category) => {
   const entries = category.data.entries
@@ -75,6 +77,7 @@ writeJSON(path.join(outputRoot, "manifest.json"), {
   publications: [...new Set(filteredEntries.map((entry) => entry.publication))].sort(
     (left, right) => left.localeCompare(right),
   ),
+  ...rulesManifest,
 });
 
 console.log(

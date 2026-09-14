@@ -1,0 +1,78 @@
+{
+  "characterSchemaVersion": 2,
+  "id": "manual-hero",
+  "name": "Manual Hero",
+  "ac": 17,
+  "hp": {
+    "max": 40,
+    "current": 31,
+    "temp": 0
+  },
+  "customTopLevel": "preserve me",
+  "build": {
+    "version": 1,
+    "mode": "manual",
+    "status": "complete",
+    "ruleset": "5.5e",
+    "catalogVersion": "fixture-1",
+    "preferences": {
+      "progression": "milestone",
+      "hitPoints": "manual",
+      "encumbrance": "variant",
+      "coinWeight": false,
+      "prerequisites": true,
+      "enabledSources": ["phb-2024", "phb-2024", " homebrew "],
+      "customPreference": true
+    },
+    "levels": [
+      {
+        "classId": " fighter-2024 ",
+        "subclassId": " champion-2024 ",
+        "level": 5,
+        "hitPointRolls": [8, "7"],
+        "customLevelField": "preserve me"
+      }
+    ],
+    "speciesId": " human-2024 ",
+    "backgroundId": " soldier-2024 ",
+    "abilityScores": {
+      "method": "manual",
+      "base": {
+        "str": "17",
+        "dex": 12,
+        "customAbility": 3
+      },
+      "customRollNote": "kept"
+    },
+    "selections": {
+      "fighting-style": "defense"
+    },
+    "spells": {
+      "knownIds": ["spell-a", "spell-a", " spell-b "],
+      "spellbookIds": [],
+      "customSpellField": true
+    },
+    "inventory": [
+      {
+        "instanceId": " armor-one ",
+        "definitionId": "chain-mail-2024",
+        "quantity": "1",
+        "containerId": "",
+        "customItemField": true
+      }
+    ],
+    "description": {
+      "backstory": "Still manual"
+    },
+    "overrides": {
+      "ac": {
+        "value": 17,
+        "reason": " House rule ",
+        "customOverrideField": true
+      }
+    },
+    "customBuildField": {
+      "kept": true
+    }
+  }
+}

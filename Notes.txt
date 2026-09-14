@@ -47,6 +47,7 @@
 - Add reference to characters and NPCs into combat tracker
 - Add export button (downloads JSON)
 - Add Generate PDF
+- Make everything uses more space of the page, too many useless space at the sides
 
 
 ---

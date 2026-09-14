@@ -9,6 +9,9 @@ const storageCode = fs.readFileSync("shared/js/storage.js", "utf8")
 const textCode = fs.readFileSync("shared/js/text.js", "utf8").replace(/export /g, "");
 const statusCode = fs.readFileSync("shared/js/status.js", "utf8").replace(/export /g, "");
 const storageKeyCode = fs.readFileSync("char/js/storage-keys.js", "utf8").replace(/export /g, "");
+const characterModelCode = fs.readFileSync("char/js/model.js", "utf8")
+  .replace(/^import[\s\S]*?;\r?\n/gm, "")
+  .replace(/export /g, "");
 const repositoryCode = fs.readFileSync("char/js/archive/repository.js", "utf8")
   .replace(/^import[\s\S]*?;\r?\n/gm, "")
   .replace(/import\.meta\.url/g, '"https://example.test/cassiansLog/char/js/archive/repository.js"')
@@ -44,7 +47,7 @@ const context = {
 };
 context.campaignStorageKey = (key) => key;
 vm.createContext(context);
-vm.runInContext(`${storageCode}\n${textCode}\n${statusCode}\n${storageKeyCode}\n${repositoryCode}\nglobalThis.api = { storedCharacters, migrateLegacyPortrait, isBundledCharacter, applyNewCharacterSetup, applyImportedCharacterSetup, createCharacter };`, context);
+vm.runInContext(`${storageCode}\n${textCode}\n${statusCode}\n${storageKeyCode}\n${characterModelCode}\n${repositoryCode}\nglobalThis.api = { storedCharacters, migrateLegacyPortrait, isBundledCharacter, applyNewCharacterSetup, applyImportedCharacterSetup, createCharacter };`, context);
 
 const characters = context.api.storedCharacters();
 assert.equal(characters.cassian.portrait, "char/cassian/portrait.jpg");
@@ -118,7 +121,11 @@ assert.equal(imported.hp.temp, 0);
 (async () => {
   const created = await context.api.createCharacter({ name: "Cloud Hero", level: 2, starterMode: "blank" });
   assert.equal(created.cloudSaved, true);
+  assert.equal(created.character.characterSchemaVersion, 2);
+  assert.equal(created.character.build.mode, "manual");
+  assert.equal(created.character.build.status, "complete");
   assert.equal(cloudWrites.at(-1).url, "api/characters/cloud-hero");
+  assert.equal(cloudWrites.at(-1).value.document.characterSchemaVersion, 2);
   assert.equal(cloudWrites.at(-1).value.source, "custom");
   assert.equal(JSON.parse(values.get("dnd-characters"))["cloud-hero"].name, "Cloud Hero");
 

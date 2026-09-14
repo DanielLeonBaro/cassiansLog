@@ -84,7 +84,7 @@ assert.ok(fs.existsSync("admin/index.html"), "The admin route must exist.");
 assert.ok(fs.readFileSync("shared/js/site-header.js", "utf8").includes("admin/"), "Role-aware navigation must include Admin.");
 assert.ok(fs.readFileSync("shared/js/site-header.js", "utf8").includes('id: "wiki"'), "Role-aware navigation must include Wiki.");
 assert.ok(fs.existsSync("login/index.html"), "The authentication route must exist.");
-const desktopPageWidthClass = "lg:max-w-[100rem]";
+const desktopPageWidthClass = "lg:max-w-[110rem]";
 assert.ok(fs.readFileSync("login/index.html", "utf8").includes(desktopPageWidthClass), "Login must use the shared wide desktop page width.");
 assert.ok(fs.existsSync("shared/js/account-menu.js"), "The shared Me account panel must exist.");
 assert.ok(fs.readFileSync("shared/js/site-header.js", "utf8").includes("mountAccountMenu"), "The site header must mount the Me account panel.");

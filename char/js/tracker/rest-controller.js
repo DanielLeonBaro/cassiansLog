@@ -1,6 +1,7 @@
 // Coordinates rest confirmation, resource resets, refresh, and save timing.
 import { resetDeathSaves } from "./death-saves.js";
 import { getRestDetails } from "./rest.js";
+import { applyCharacterRest } from "../rules/runtime.js";
 
 export function createRestController({
   character,
@@ -14,7 +15,61 @@ export function createRestController({
   let pendingRest = null;
   let toastTimer = null;
 
+  function rulesRest(kind) {
+    const items = getAllCharacterItems();
+    const slots = getSpellSlots();
+    const itemDefinitions = items.map((item, index) => ({
+      ...item,
+      id: item.id || `tracker-item-${index}`,
+    }));
+    const slotDefinitions = slots.map((slot, index) => ({
+      ...slot,
+      id: slot.id || `tracker-slot-${index}`,
+    }));
+    const result = applyCharacterRest({
+      kind,
+      ruleset: character.build.ruleset,
+      sheet: {
+        hp: character.hp,
+        hitDice: character.hitDice || [],
+        resources: itemDefinitions,
+        spellcasting: { slots: slotDefinitions },
+      },
+      runtime: {
+        hp: character.hp,
+        deathSaves: character.deathSaves,
+        hitDice: character.hitDice || [],
+        uses: itemDefinitions.filter((item) => item.uses).map((item) => ({ id: item.id, current: item.uses.current })),
+        slots: slotDefinitions.map((slot) => ({ id: slot.id, current: slot.current })),
+        conditions: character.conditions,
+        concentration: character.concentration,
+        exhaustion: character.exhaustion,
+        restEligibility: character.restEligibility,
+      },
+    });
+    if (!result.applied) return false;
+    character.hp.current = result.runtime.hp.current;
+    character.hp.temp = result.runtime.hp.temp;
+    character.deathSaves = result.runtime.deathSaves;
+    character.hitDice = result.runtime.hitDice;
+    character.conditions = result.runtime.conditions;
+    character.concentration = result.runtime.concentration;
+    character.exhaustion = result.runtime.exhaustion;
+    const uses = new Map(result.runtime.uses.map((item) => [item.id, item.current]));
+    itemDefinitions.forEach((definition, index) => {
+      if (items[index].uses && uses.has(definition.id)) items[index].uses.current = uses.get(definition.id);
+    });
+    const restoredSlots = new Map(result.runtime.slots.map((slot) => [slot.id, slot.current]));
+    slotDefinitions.forEach((definition, index) => {
+      if (restoredSlots.has(definition.id)) slots[index].current = restoredSlots.get(definition.id);
+    });
+    save();
+    refresh();
+    return true;
+  }
+
   function shortRest() {
+    if (character.build?.mode === "rules") return rulesRest("short");
     getAllCharacterItems()
       .filter((item) => item.uses?.reset === "short")
       .forEach((item) => { item.uses.current = item.uses.max; });
@@ -28,6 +83,7 @@ export function createRestController({
   }
 
   function longRest() {
+    if (character.build?.mode === "rules") return rulesRest("long");
     getAllCharacterItems()
       .filter((item) => item.uses)
       .forEach((item) => { item.uses.current = item.uses.max; });
@@ -78,10 +134,11 @@ export function createRestController({
   function confirmRest() {
     if (!pendingRest) return;
     const rest = pendingRest;
-    if (rest.kind === "short") shortRest();
-    else longRest();
+    const applied = rest.kind === "short" ? shortRest() : longRest();
     closeRestDialog();
-    showRestToast(rest.toast);
+    showRestToast(applied === false
+      ? "Rest not completed: current HP must be at least 1."
+      : rest.toast);
   }
 
   function setText(id, value) {
