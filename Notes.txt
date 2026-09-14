@@ -12,6 +12,7 @@
 
 ##Priorities
 - More juice to admin; characters assigned to users
+- Fix Responsiveness, or improve it, so tablet and phone views are better
 
 ##In Progress (Out of Tokens)
 
