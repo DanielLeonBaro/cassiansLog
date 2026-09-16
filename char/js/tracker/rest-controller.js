@@ -14,6 +14,7 @@ export function createRestController({
 }) {
   let pendingRest = null;
   let toastTimer = null;
+  let returnFocus = null;
 
   function rulesRest(kind) {
     const items = getAllCharacterItems();
@@ -95,7 +96,8 @@ export function createRestController({
     refresh();
   }
 
-  function requestRest(kind) {
+  function requestRest(kind, trigger = null) {
+    returnFocus = trigger || documentRoot.activeElement || null;
     pendingRest = getRestDetails(character, getAllCharacterItems(), getSpellSlots(), kind);
     setText("rest-dialog-title", `Confirm ${pendingRest.title.toLowerCase()}`);
     setText("rest-dialog-duration", pendingRest.duration);
@@ -115,11 +117,14 @@ export function createRestController({
 
   function closeRestDialog() {
     const dialog = documentRoot.getElementById("rest-dialog");
-    if (!dialog || dialog.classList.contains("hidden")) return;
+    if (!dialog || dialog.classList.contains("hidden")) return false;
     dialog.classList.add("hidden");
     dialog.classList.remove("flex");
     documentRoot.body.classList.remove("overflow-hidden");
     pendingRest = null;
+    if (returnFocus?.isConnected !== false) returnFocus?.focus?.();
+    returnFocus = null;
+    return true;
   }
 
   function showRestToast(message) {

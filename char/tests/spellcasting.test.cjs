@@ -60,6 +60,13 @@ function loadCharacter(source) {
     writeCloudJSON: async () => ({ ok: true }),
     applyV1CharacterSheetOrder() {},
     refreshCharacterSheetTabs() {},
+    createV4SpellFilterState: () => ({ search: "", level: "", preparation: "", repertoire: "" }),
+    createV4InventoryFilterState: () => ({ search: "", status: "", container: "" }),
+    v4InventoryItemMatches: () => true,
+    v4InventoryItemModel: (item) => item,
+    v4InventorySummary: () => ({ count: 0, attuned: 0, attunementLimit: 3, weight: null, capacity: null, encumbrance: "not calculated" }),
+    spellMatchesV4Filters: () => true,
+    spellRepertoireLabels: () => ["Manual entry"],
     localStorage: {
       getItem: (key) => storage.get(key) ?? null,
       setItem: (key, value) => storage.set(key, value),

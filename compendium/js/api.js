@@ -1,5 +1,6 @@
 // Exposes the small supported Compendium surface used by integrations.
 export {
+  applyRulesMetadata,
   loadCompendiumCatalog,
   loadCompendiumCategory,
   resetCompendiumCache,

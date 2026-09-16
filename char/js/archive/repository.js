@@ -221,3 +221,20 @@ export async function createCharacter(setup) {
     return { character, cloudSaved: false, cloudError };
   }
 }
+
+export async function persistCharacterDocument(character, { source = "custom" } = {}) {
+  if (!character?.id) throw new TypeError("A character id is required.");
+  const stored = storedCharacters();
+  stored[character.id] = cloneJSON(character);
+  writeJSON(CHARACTERS_KEY, stored);
+  if (isLocalRuntimeHost()) return { character: cloneJSON(character), cloudSaved: true, cloudError: null, local: true };
+  try {
+    await writeCloudJSON(`api/characters/${encodeURIComponent(character.id)}`, {
+      document: cloneJSON(character),
+      source,
+    });
+    return { character: cloneJSON(character), cloudSaved: true, cloudError: null };
+  } catch (cloudError) {
+    return { character: cloneJSON(character), cloudSaved: false, cloudError };
+  }
+}

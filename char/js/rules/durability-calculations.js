@@ -73,11 +73,19 @@ function unsupported(record, warnings, detail = "durability stat expression") {
 }
 
 function ruleNumber(record, core) {
-  const number = strictNumber(record.rule?.value);
-  if (number !== null) return record.rule?.perLevel === true ? number * core.level : number;
-  const expression = normalized(record.rule?.value);
+  const rawValue = record.rule?.value?.type === "table"
+    ? record.rule.value.values?.[record.active?.level]
+    : record.rule?.value;
+  const number = strictNumber(rawValue);
+  if (number !== null) {
+    if (record.rule?.perClassLevel === true) return number * Number(record.active?.level || 0);
+    return record.rule?.perLevel === true ? number * core.level : number;
+  }
+  const expression = normalized(rawValue);
   if (expression === "level") return core.level;
   if (expression === "proficiency") return core.proficiency;
+  if (expression === "proficiency:half") return Math.floor(core.proficiency / 2);
+  if (expression === "proficiency:half:up") return Math.ceil(core.proficiency / 2);
   const ability = expression.match(/^(strength|dexterity|constitution|intelligence|wisdom|charisma|str|dex|con|int|wis|cha):modifier$/);
   if (!ability) return null;
   const aliases = {
@@ -265,7 +273,12 @@ function classifyRules(records, core, warnings) {
       unsupported(record, warnings);
       return;
     }
-    const item = { value, source: ruleSource(record, value) };
+    const item = {
+      value,
+      source: ruleSource(record, value),
+      stackingGroup: text(record.rule?.stackingGroup),
+      stacking: normalized(record.rule?.stacking),
+    };
     if (["hp", "additional:hp:max"].includes(name)) values.hp.push(item);
     else if (name === "ac:misc") values.ac.push(item);
     else if (["initiative", "initiative:misc"].includes(name)) values.initiative.push(item);
@@ -431,11 +444,22 @@ export function calculateDurabilityCharacterValues({
 }) {
   const warnings = warningCollector();
   const trace = {};
-  const armorEquipped = (inventory?.armor?.sources || []).some((source) => source.kind === "equipment");
+  const bodyArmorType = normalized(inventory?.armor?.bodyArmorType);
+  const bodyArmorEquipped = Boolean(bodyArmorType);
+  const shieldEquipped = inventory?.armor?.hasShield === true;
+  const armorEquipped = bodyArmorEquipped || shieldEquipped;
   const records = [...collectApplicableStatRules({ graph, catalog, warnings }), ...extraStatRecords]
-    .map((record) => text(record.rule?.equipped) && record.equipmentResolved === undefined
-      ? { ...record, equipmentResolved: normalized(record.rule.equipped) === "armor" && armorEquipped }
-      : record);
+    .map((record) => {
+      if (!text(record.rule?.equipped) || record.equipmentResolved !== undefined) return record;
+      const condition = normalized(record.rule.equipped);
+      return {
+        ...record,
+        equipmentResolved: condition === "armor" ? armorEquipped
+          : condition === "no-armor" ? !armorEquipped
+            : condition === "no-body-armor" ? !bodyArmorEquipped
+              : condition === "no-heavy-armor" ? bodyArmorType !== "heavy" : false,
+      };
+    });
   const classified = classifyRules(records, core, warnings);
   const hpResult = hitPoints(
     document,
@@ -448,12 +472,23 @@ export function calculateDurabilityCharacterValues({
     trace,
   );
 
+  const groupedAc = new Map();
+  const ungroupedAc = [];
+  classified.ac.forEach((item) => {
+    if (!item.stackingGroup) {
+      ungroupedAc.push(item);
+      return;
+    }
+    const current = groupedAc.get(item.stackingGroup);
+    if (!current || (item.stacking !== "first" && item.value > current.value)) groupedAc.set(item.stackingGroup, item);
+  });
+  const appliedAc = [...ungroupedAc, ...groupedAc.values()];
   const acSources = [...(inventory?.armor?.sources || [{ kind: "base", sourceId: "rules.ac", label: "Unarmored AC base", value: 10 }, {
     kind: "ability",
     sourceId: "stats.dex.modifier",
     label: "Dexterity modifier",
     value: core.stats.dex.modifier,
-  }]), ...classified.ac.map((item) => item.source)];
+  }]), ...appliedAc.map((item) => item.source)];
   const acResult = overrideResolver.number(
     "ac",
     acSources.reduce((sum, source) => sum + source.value, 0),

@@ -104,4 +104,43 @@ rulesCharacter.hp.current = 0;
 assert.equal(rulesController.longRest(), false);
 assert.equal(rulesSaves, 2);
 
+function classes(initial = []) {
+  const values = new Set(initial);
+  return {
+    add: (...names) => names.forEach((name) => values.add(name)),
+    remove: (...names) => names.forEach((name) => values.delete(name)),
+    contains: (name) => values.has(name),
+  };
+}
+let triggerFocus = 0;
+let confirmFocus = 0;
+const trigger = { isConnected: true, focus: () => { triggerFocus += 1; } };
+const dialogElements = new Map([
+  ["rest-dialog", { classList: classes(["hidden"]) }],
+  ["rest-dialog-title", {}],
+  ["rest-dialog-duration", {}],
+  ["rest-dialog-description", {}],
+  ["rest-dialog-effects", { replaceChildren() {} }],
+  ["confirm-rest", { focus: () => { confirmFocus += 1; } }],
+]);
+const focusDocument = {
+  activeElement: trigger,
+  body: { classList: classes() },
+  createElement: () => ({}),
+  getElementById: (id) => dialogElements.get(id) || null,
+};
+const focusController = createRestController({
+  character,
+  documentRoot: focusDocument,
+  getAllCharacterItems: () => items,
+  getSpellSlots: () => slots,
+  refresh: () => {},
+  save: () => {},
+});
+focusController.requestRest("short");
+assert.equal(confirmFocus, 1, "Rest confirmation should receive focus.");
+assert.equal(focusController.closeRestDialog(), true);
+assert.equal(triggerFocus, 1, "Closing rest confirmation should restore trigger focus.");
+assert.equal(focusController.closeRestDialog(), false, "Closing an already hidden rest dialog should be a no-op.");
+
 console.log("Character rest-controller tests passed.");

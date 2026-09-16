@@ -2,10 +2,11 @@
 import { readJSON, writeJSON } from "../../shared/js/storage.js";
 import { readCloudJSON, writeCloudJSON } from "../../shared/js/cloud-store.js";
 import { cloneJSON } from "../../shared/js/text.js";
-import { currentCampaign, currentCampaignSlug } from "../../shared/js/campaign-context.js";
+import { campaignCanManage, currentCampaign, currentCampaignSlug } from "../../shared/js/campaign-context.js";
 import { isLocalRuntimeHost } from "../../shared/js/runtime-host.js";
 import { defaultNpcVisibility, projectNpcForPlayer } from "../../shared/js/npc-visibility.js";
 import { applyImportedCharacterSetup, applyNewCharacterSetup } from "../../char/js/archive/repository.js";
+import { normalizeCharacterDocument } from "../../char/js/model.js";
 import { NPCS_STORAGE_KEY } from "../../char/js/storage-keys.js";
 
 export function storedNpcRecords() {
@@ -88,6 +89,36 @@ export async function createNpc(setup) {
     return { record, cloudSaved: true };
   } catch (cloudError) {
     return { record, cloudSaved: false, cloudError };
+  }
+}
+
+export async function createBuiltNpc(value, {
+  canManage = campaignCanManage,
+  cloudWrite = writeCloudJSON,
+  localOnly = isLocalRuntimeHost(),
+} = {}) {
+  if (!await canManage()) throw new Error("Campaign DM access required.");
+  const document = normalizeCharacterDocument(value);
+  if (!document.id || document.build.mode !== "rules" || document.build.status !== "complete") {
+    throw new Error("Complete rules-built NPC with a valid ID is required.");
+  }
+  const records = storedNpcRecords();
+  if (records[document.id]) throw new Error("That NPC ID already exists in this campaign.");
+  const record = { document: cloneJSON(document), visibility: defaultNpcVisibility(), playerVisible: false };
+  records[document.id] = cloneJSON(record);
+  writeJSON(NPCS_STORAGE_KEY, records);
+  if (localOnly) return { record, id: document.id, document: cloneJSON(document), cloudSaved: true };
+  try {
+    await cloudWrite(`api/npcs/${encodeURIComponent(document.id)}`, { ...record, createOnly: true });
+    return { record, id: document.id, document: cloneJSON(document), cloudSaved: true };
+  } catch (cloudError) {
+    if (cloudError?.status === 409) {
+      const recovery = storedNpcRecords();
+      delete recovery[document.id];
+      writeJSON(NPCS_STORAGE_KEY, recovery);
+      throw cloudError;
+    }
+    return { record, id: document.id, document: cloneJSON(document), cloudSaved: false, cloudError };
   }
 }
 

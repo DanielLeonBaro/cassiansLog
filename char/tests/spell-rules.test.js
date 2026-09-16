@@ -268,4 +268,30 @@ const result5e = evaluateCharacter({
 assert.equal(result5e.sheet.spellcasting.casterLevel, 4, "2014 half casters round down in multiclass slot math");
 assert.deepEqual(result5e.sheet.spellcasting.slots.map((slot) => slot.max), [4, 3]);
 
+const paladinProfile5e = {
+  id: "paladin",
+  name: "Paladin",
+  ability: "cha",
+  spellList: "Paladin",
+  progression: "half-up",
+  multiclassProgression: "half-down",
+  minimumLevel: 2,
+  repertoire: "prepared",
+  ritual: "none",
+  prepared: { type: "ability-plus-half-level-down", minimum: 1 },
+};
+const paladin5e = catalogEntry({ id: "paladin5", name: "Paladin", type: "Class", ruleset: "5e", spellcasting: paladinProfile5e });
+const soloPaladin = evaluateCharacter({
+  character: automaticCharacter("5e", [{ classId: "paladin5", level: 3 }]),
+  catalog: [paladin5e],
+});
+assert.equal(soloPaladin.sheet.spellcasting.casterLevel, 2, "2014 Paladin uses its class slot table equivalent when single-classed");
+assert.deepEqual(soloPaladin.sheet.spellcasting.slots.map((slot) => slot.max), [3]);
+assert.equal(soloPaladin.sheet.spellcasting.profiles[0].preparedLimit, 4);
+const firstLevelPaladin = evaluateCharacter({
+  character: automaticCharacter("5e", [{ classId: "paladin5", level: 1 }]),
+  catalog: [paladin5e],
+});
+assert.equal(firstLevelPaladin.sheet.spellcasting.enabled, false, "2014 Paladin spellcasting starts at level 2");
+
 console.log("Character spell rules tests passed.");

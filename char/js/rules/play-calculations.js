@@ -55,6 +55,17 @@ function expressionValue(expression, core) {
       const level = Number(expression.level === "class" ? core.level : core.level);
       return finiteInteger(expression.values?.[level]);
     }
+    if (expression.type === "ability-modifier") {
+      const aliases = {
+        strength: "str", dexterity: "dex", constitution: "con",
+        intelligence: "int", wisdom: "wis", charisma: "cha",
+      };
+      const ability = aliases[normalized(expression.ability)] || normalized(expression.ability);
+      const modifier = finiteInteger(core.stats[ability]?.modifier);
+      if (modifier === null) return null;
+      const minimum = finiteInteger(expression.minimum);
+      return minimum === null ? modifier : Math.max(minimum, modifier);
+    }
     return null;
   }
   const value = normalized(expression).replace(/^\{\{/, "").replace(/\}\}$/, "");
@@ -69,6 +80,13 @@ function expressionValue(expression, core) {
     intelligence: "int", wisdom: "wis", charisma: "cha",
   };
   return core.stats[aliases[match[1]] || match[1]]?.modifier ?? null;
+}
+
+function tableText(value, level) {
+  if (value && typeof value === "object" && value.type === "table") {
+    return text(value.values?.[level]);
+  }
+  return text(value);
 }
 
 function parsedUsage(entry, core) {
@@ -246,6 +264,7 @@ export function calculatePlayCharacterValues({ graph, catalog, core, runtime, ov
     const resourceDefinitions = Array.isArray(entry.rules?.resources) ? entry.rules.resources : [];
     resourceDefinitions.forEach((rule, ruleIndex) => {
       if (active.level < (finiteInteger(rule.level) || 1)) return;
+      if (finiteInteger(rule.maximumLevel) !== null && active.level > finiteInteger(rule.maximumLevel)) return;
       const maximum = expressionValue(rule.max, { ...core, level: active.level });
       if (maximum === null || maximum < 1 || !text(rule.id)) {
         warnings.add({ code: "unsupported-rule-expression", path: `catalog.${entry.id}.rules.resources.${ruleIndex}`, entryId: entry.id, sourceId: entry.id, blocking: true, message: `${entry.name || entry.id} has an invalid resource rule.` });
@@ -257,10 +276,11 @@ export function calculatePlayCharacterValues({ graph, catalog, core, runtime, ov
       const uses = {
         current,
         max: maximumResult.value,
-        reset: text(rule.reset) || "long",
+        reset: tableText(rule.reset, active.level) || "long",
         ...(rule.recovery ? { recovery: rule.recovery } : {}),
       };
-      resources.push({ id: resourceId, definitionId: entry.id, name: text(rule.name) || rule.id, category: text(rule.category) || "Feature", action: text(rule.action) || "Other", uses, description: text(rule.description) });
+      const die = tableText(rule.die, active.level);
+      resources.push({ id: resourceId, definitionId: entry.id, name: text(rule.name) || rule.id, category: text(rule.category) || "Feature", action: text(rule.action) || "Other", uses, ...(die ? { die } : {}), description: text(rule.description) });
       trace[`resources.${resourceId}.max`] = maximumResult.trace;
       trace[`resources.${resourceId}.current`] = { value: current, sources: [{ kind: savedUses.has(resourceId) ? "runtime" : "default", sourceId: savedUses.has(resourceId) ? `runtime.uses.${resourceId}` : `resources.${resourceId}.max`, label: `${text(rule.name) || rule.id} remaining uses`, value: current }] };
     });
@@ -272,7 +292,8 @@ export function calculatePlayCharacterValues({ graph, catalog, core, runtime, ov
         warnings.add({ code: "unsupported-rule-expression", path: `catalog.${entry.id}.rules.actions.${ruleIndex}`, entryId: entry.id, sourceId: entry.id, blocking: true, message: `${entry.name || entry.id} has an invalid action rule.` });
         return;
       }
-      const resourceId = text(rule.resourceId) ? `rule-resource:${entry.id}:${rule.resourceId}` : "";
+      const resourceSourceId = text(rule.resourceSourceId) || entry.id;
+      const resourceId = text(rule.resourceId) ? `rule-resource:${resourceSourceId}:${rule.resourceId}` : "";
       const resource = resources.find((item) => item.id === resourceId);
       actions.push({
         id: `rule-action:${entry.id}:${rule.id}`,
@@ -282,10 +303,10 @@ export function calculatePlayCharacterValues({ graph, catalog, core, runtime, ov
         action,
         range: text(rule.range),
         attack: text(rule.attack),
-        damage: text(rule.damage),
-        healing: text(rule.healing),
+        damage: tableText(rule.damage, active.level),
+        healing: tableText(rule.healing, active.level),
         description: text(rule.description),
-        ...(resource ? { resourceId, uses: { ...resource.uses } } : {}),
+        ...(resource ? { resourceId, uses: { ...resource.uses }, ...(resource.die ? { die: resource.die } : {}) } : {}),
       });
     });
   });

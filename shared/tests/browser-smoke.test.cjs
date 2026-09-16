@@ -477,6 +477,397 @@ async function main() {
       "Imported Quick Setup did not close",
     );
     console.log("Browser smoke passed: D&D Beyond page import");
+
+    await execute(`
+      localStorage.removeItem("dnd-character-build-drafts-v1");
+      localStorage.removeItem("dnd-character-build-drafts-v1:campaign:aotr");
+      document.getElementById("add-character").click();
+      document.getElementById("detailed-build-entry").click();
+      return true;
+    `);
+    await waitFor(
+      `
+        const shell = document.getElementById("character-builder-shell");
+        const states = [...document.querySelectorAll("[data-builder-step-state]")].map((node) => node.dataset.builderStepState);
+        return !shell.hidden
+          && document.querySelector('[data-builder-step="home"]').getAttribute("aria-current") === "step"
+          && ["complete", "incomplete", "warning", "blocked"].every((state) => states.includes(state))
+          && document.getElementById("character-builder-save-status").textContent.includes("synced");
+      `,
+      "Detailed Character Builder shell did not open and save",
+    );
+    await waitFor(
+      `
+        const filters = document.getElementById("builder-ruleset-and-filters");
+        return filters && !filters.disabled
+          && document.getElementById("builder-filter-summary").textContent.includes("compatible entries available for 2014 rules");
+      `,
+      "Character Builder Home filters did not load for 2014 rules",
+    );
+    await execute(`
+      const progression = document.getElementById("builder-preference-progression");
+      progression.value = "milestone";
+      progression.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    `);
+    await waitFor(
+      `
+        const stored = JSON.parse(localStorage.getItem("dnd-character-build-drafts-v1:campaign:aotr") || "{}");
+        return Object.values(stored)[0]?.document?.build?.preferences?.progression === "milestone"
+          && document.getElementById("character-builder-save-status").textContent.includes("synced");
+      `,
+      "Character Builder Home preference did not save",
+    );
+    await execute(`
+      const publisher = document.getElementById("builder-filter-publisher");
+      publisher.value = [...publisher.options].find((option) => option.value.includes("Wizards"))?.value || "";
+      publisher.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    `);
+    await waitFor(
+      'return document.getElementById("builder-filter-publisher")?.value.includes("Wizards") && !document.getElementById("builder-filter-automation").disabled;',
+      "Character Builder publisher filter did not apply",
+    );
+    await execute(`
+      const automation = document.getElementById("builder-filter-automation");
+      automation.value = "rules-ready";
+      automation.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    `);
+    await waitFor(
+      `
+        const sources = document.getElementById("builder-filter-sources");
+        return document.getElementById("builder-filter-automation")?.value === "rules-ready"
+          && [...sources.options].some((option) => option.value.includes("Player") && !option.value.includes("2024"));
+      `,
+      "Character Builder automation and publication filters were not mutually consistent",
+    );
+    await execute(`
+      const sources = document.getElementById("builder-filter-sources");
+      const source = [...sources.options].find((option) => option.value.includes("Player") && !option.value.includes("2024"));
+      source.selected = true;
+      sources.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    `);
+    await waitFor(
+      `
+        const stored = JSON.parse(localStorage.getItem("dnd-character-build-drafts-v1:campaign:aotr") || "{}");
+        return Object.values(stored)[0]?.document?.build?.preferences?.enabledSources?.length === 1;
+      `,
+      "Character Builder publication filter did not save",
+    );
+    await execute('document.getElementById("builder-ruleset-5-5e").click(); return true;');
+    await waitFor(
+      `
+        const preview = document.getElementById("builder-ruleset-change-preview");
+        return !preview.hidden
+          && preview.textContent.includes("Rulesets never mix")
+          && preview.textContent.includes("incompatible")
+          && document.activeElement === document.getElementById("builder-ruleset-change-title");
+      `,
+      "Character Builder ruleset change preview did not open",
+    );
+    await execute('document.getElementById("builder-ruleset-change-cancel").click(); return true;');
+    await waitFor(
+      `
+        return document.getElementById("builder-ruleset-5e").checked
+          && document.getElementById("builder-filter-sources").selectedOptions.length === 1;
+      `,
+      "Cancelling the ruleset preview changed the draft",
+    );
+    await execute('document.getElementById("builder-ruleset-5-5e").click(); return true;');
+    await waitFor('return !document.getElementById("builder-ruleset-change-preview").hidden;', "Ruleset preview did not reopen");
+    await execute('document.getElementById("builder-ruleset-change-confirm").click(); return true;');
+    await waitFor(
+      `
+        const stored = JSON.parse(localStorage.getItem("dnd-character-build-drafts-v1:campaign:aotr") || "{}");
+        const build = Object.values(stored)[0]?.document?.build;
+        return build?.ruleset === "5.5e"
+          && build.preferences.enabledSources.length === 0
+          && document.getElementById("builder-ruleset-5-5e").checked
+          && document.getElementById("builder-filter-summary").textContent.includes("2024 rules")
+          && document.getElementById("character-builder-save-status").textContent.includes("synced");
+      `,
+      "Confirmed ruleset change did not clear incompatible filters and save 2024 rules",
+    );
+    console.log("Browser smoke passed: Character Builder Home preferences, filters, and ruleset safety");
+    await execute(`
+      document.querySelector('[data-builder-step="class"]').click();
+      return true;
+    `);
+    await waitFor(
+      `
+        const stored = JSON.parse(localStorage.getItem("dnd-character-build-drafts-v1:campaign:aotr") || "{}");
+        const draft = Object.values(stored)[0];
+        return draft?.currentStep === "class"
+          && draft?.sync?.state === "saved"
+          && document.querySelector('[data-builder-step="class"]').getAttribute("aria-current") === "step"
+          && document.activeElement === document.getElementById("character-builder-step-title");
+      `,
+      "Builder navigation did not save or move focus",
+    );
+    await execute(`
+      const select = document.getElementById("builder-class-choice");
+      select.value = "phb24ClassFighter";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    `);
+    await waitFor(
+      `
+        const stored = JSON.parse(localStorage.getItem("dnd-character-build-drafts-v1:campaign:aotr") || "{}");
+        return Object.values(stored)[0]?.document?.build?.levels?.[0]?.classId === "phb24ClassFighter"
+          && document.getElementById("builder-class-level")
+          && document.getElementById("character-builder-save-status").textContent.includes("synced");
+      `,
+      "2024 Fighter choice did not save",
+    );
+    await execute(`
+      const level = document.getElementById("builder-class-level");
+      level.value = "3";
+      level.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    `);
+    await waitFor(
+      `
+        const stored = JSON.parse(localStorage.getItem("dnd-character-build-drafts-v1:campaign:aotr") || "{}");
+        return Object.values(stored)[0]?.document?.build?.levels?.[0]?.level === 3
+          && document.getElementById("builder-subclass-choice")
+          && document.getElementById("character-builder-save-status").textContent.includes("synced");
+      `,
+      "Fighter level gate did not reveal subclass choices",
+    );
+    await execute(`
+      const subclass = document.getElementById("builder-subclass-choice");
+      subclass.value = "phb24SubclassChampion";
+      subclass.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    `);
+    await waitFor(
+      `
+        const stored = JSON.parse(localStorage.getItem("dnd-character-build-drafts-v1:campaign:aotr") || "{}");
+        return Object.values(stored)[0]?.document?.build?.levels?.[0]?.subclassId === "phb24SubclassChampion"
+          && document.getElementById("character-builder-save-status").textContent.includes("synced");
+      `,
+      "2024 Champion choice did not save",
+    );
+
+    async function completeBuilderChoices(step) {
+      for (let guard = 0; guard < 12; guard += 1) {
+        const pending = await execute(`
+          const fieldset = document.querySelector('[data-builder-choice-state="incomplete"]');
+          if (!fieldset) return null;
+          const minimum = Number(fieldset.dataset.builderChoiceMinimum || 0);
+          const controls = [...fieldset.querySelectorAll('[data-builder-choice-key]:not(:disabled)')];
+          controls.slice(0, minimum).forEach((control) => { control.checked = true; });
+          controls[0]?.dispatchEvent(new Event("change", { bubbles: true }));
+          return fieldset.dataset.builderRuleChoice;
+        `);
+        if (!pending) return;
+        await waitFor(
+          `return document.getElementById("character-builder-save-status").textContent.includes("synced")
+            && !document.querySelector('[data-builder-rule-choice="${pending}"][data-builder-choice-state="incomplete"]');`,
+          `${step} choice ${pending} did not save`,
+        );
+      }
+      throw new Error(`${step} choices did not complete.`);
+    }
+
+    await completeBuilderChoices("Class");
+    await execute('document.querySelector(\'[data-builder-step="background"]\').click(); return true;');
+    await waitFor('return Boolean(document.getElementById("builder-background-choice"));', "Background step did not render");
+    await execute(`
+      const select = document.getElementById("builder-background-choice");
+      select.value = "phb24BackgroundSoldier";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    `);
+    await waitFor('return Boolean(document.querySelector("[data-builder-rule-choice]")) && document.getElementById("character-builder-save-status").textContent.includes("synced");', "2024 Soldier choice did not save");
+    await completeBuilderChoices("Background");
+
+    await execute('document.querySelector(\'[data-builder-step="species"]\').click(); return true;');
+    await waitFor('return Boolean(document.getElementById("builder-species-choice"));', "Species/Race step did not render");
+    await execute(`
+      const select = document.getElementById("builder-species-choice");
+      select.value = "phb24RaceHuman";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    `);
+    await waitFor('return Boolean(document.querySelector("[data-builder-rule-choice]")) && document.getElementById("character-builder-save-status").textContent.includes("synced");', "2024 Human choice did not save");
+    await completeBuilderChoices("Species/Race");
+    await waitFor(
+      `
+        const stored = JSON.parse(localStorage.getItem("dnd-character-build-drafts-v1:campaign:aotr") || "{}");
+        const build = Object.values(stored)[0]?.document?.build;
+        return build?.levels?.[0]?.classId === "phb24ClassFighter"
+          && build.levels[0].subclassId === "phb24SubclassChampion"
+          && build.backgroundId === "phb24BackgroundSoldier"
+          && build.speciesId === "phb24RaceHuman"
+          && Object.keys(build.selections).length >= 8
+          && ["class", "background", "species"].every((step) => document.querySelector('[data-builder-step="' + step + '"] [data-builder-step-state]').dataset.builderStepState === "complete");
+      `,
+      "First-slice Class, Background, Species/Race choices did not complete and persist",
+    );
+    console.log("Browser smoke passed: Character Builder first-slice class and origin choices");
+    await execute('document.getElementById("close-dialog").click(); return true;');
+    await waitFor(
+      'return document.getElementById("character-dialog").classList.contains("hidden");',
+      "Detailed Character Builder did not close",
+    );
+    await execute(`
+      document.getElementById("add-character").click();
+      document.getElementById("detailed-build-entry").click();
+      return true;
+    `);
+    await waitFor(
+      `
+        return document.querySelector('[data-builder-step="abilities"]').getAttribute("aria-current") === "step"
+          && document.activeElement === document.getElementById("character-builder-step-title");
+      `,
+      "Detailed Character Builder did not resume the next incomplete Abilities step",
+    );
+    await command("POST", "/window/rect", { width: 375, height: 800 });
+    const mobileBuilder = await execute(`
+      const progress = document.getElementById("character-builder-progress");
+      return {
+        columns: getComputedStyle(progress).gridTemplateColumns.split(" ").length,
+        overflow: document.documentElement.scrollWidth > innerWidth + 1,
+        controlsVisible: ["character-builder-quick-setup", "character-builder-back", "character-builder-next"]
+          .every((id) => document.getElementById(id).getBoundingClientRect().width > 0),
+      };
+    `);
+    assert.deepEqual(mobileBuilder, { columns: 1, overflow: false, controlsVisible: true }, "Detailed Character Builder should remain usable without horizontal overflow on mobile.");
+    await command("POST", "/window/rect", { width: 1280, height: 900 });
+
+    await execute('document.getElementById("builder-ability-method-point-buy").click(); return true;');
+    await waitFor(
+      `
+        const stored = JSON.parse(localStorage.getItem("dnd-character-build-drafts-v1:campaign:aotr") || "{}");
+        const build = Object.values(stored)[0]?.document?.build;
+        return build?.abilityScores?.method === "point-buy"
+          && Object.values(build.abilityScores.base).every((score) => score === 8)
+          && document.getElementById("builder-ability-status").textContent.includes("27 of 27");
+      `,
+      "Point-buy method did not initialize and save",
+    );
+    await execute(`
+      const strength = document.getElementById("builder-ability-str");
+      strength.value = "15";
+      strength.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    `);
+    await waitFor('return document.getElementById("builder-ability-status")?.textContent.includes("18 of 27");', "Point-buy cost did not recalculate");
+    await execute('document.getElementById("builder-ability-method-manual").click(); return true;');
+    await waitFor('return Boolean(document.getElementById("builder-ability-str")?.getAttribute("max") === "30");', "Manual ability method did not render");
+    await execute('document.getElementById("builder-ability-method-rolled").click(); return true;');
+    await waitFor('return Boolean(document.getElementById("builder-roll-abilities"));', "Rolled ability method did not render");
+    await execute('document.getElementById("builder-roll-abilities").click(); return true;');
+    await waitFor(
+      `
+        const stored = JSON.parse(localStorage.getItem("dnd-character-build-drafts-v1:campaign:aotr") || "{}");
+        const scores = Object.values(stored)[0]?.document?.build?.abilityScores;
+        return scores?.method === "rolled" && scores.rolls.length === 6 && scores.rolls.every((score) => score >= 3 && score <= 18);
+      `,
+      "Rolled scores were not stored",
+    );
+    await execute('document.getElementById("builder-ability-method-standard").click(); return true;');
+    await waitFor(
+      `
+        const stored = JSON.parse(localStorage.getItem("dnd-character-build-drafts-v1:campaign:aotr") || "{}");
+        const scores = Object.values(stored)[0]?.document?.build?.abilityScores;
+        return scores?.method === "standard"
+          && Object.values(scores.base).sort((a, b) => b - a).join(",") === "15,14,13,12,10,8"
+          && document.querySelector('[data-builder-step="abilities"] [data-builder-step-state]').dataset.builderStepState === "complete";
+      `,
+      "Standard array did not complete and save",
+    );
+
+    await execute('document.querySelector(\'[data-builder-step="equipment"]\').click(); return true;');
+    await waitFor('return Boolean(document.getElementById("character-builder-equipment"));', "Equipment step did not render");
+    await execute('document.getElementById("builder-equipment-method-gold").click(); return true;');
+    await waitFor('return document.getElementById("builder-equipment-method-gold")?.checked;', "Starting gold method did not save");
+    await execute(`
+      const gp = document.getElementById("builder-currency-gp");
+      gp.value = "100";
+      gp.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    `);
+    await waitFor(
+      `
+        const stored = JSON.parse(localStorage.getItem("dnd-character-build-drafts-v1:campaign:aotr") || "{}");
+        return Object.values(stored)[0]?.document?.build?.currency?.gp === 100
+          && document.querySelector('[data-builder-step="equipment"] [data-builder-step-state]').dataset.builderStepState === "complete";
+      `,
+      "Starting gold did not save",
+    );
+
+    await execute('document.querySelector(\'[data-builder-step="description"]\').click(); return true;');
+    await waitFor('return Boolean(document.getElementById("character-builder-description"));', "Description step did not render");
+    await execute(`
+      const name = document.getElementById("builder-character-name");
+      name.value = "Task Sixteen Browser Hero";
+      name.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    `);
+    await waitFor('return document.getElementById("builder-character-id")?.value === "task-sixteen-browser-hero";', "Character name did not generate a clean ID");
+    await execute(`
+      const backstory = document.getElementById("builder-description-backstory");
+      backstory.value = "Browser-reviewed builder character.";
+      backstory.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    `);
+    await waitFor('return document.getElementById("builder-description-status")?.textContent.includes("1 descriptive field");', "Description did not save");
+    await execute(`
+      const id = document.getElementById("builder-character-id");
+      id.value = "cassian";
+      id.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    `);
+    await waitFor('return document.getElementById("builder-character-id")?.value === "cassian" && document.getElementById("character-builder-save-status").textContent.includes("synced");', "Collision test ID did not save");
+
+    await execute('document.querySelector(\'[data-builder-step="review"]\').click(); return true;');
+    await waitFor(
+      `
+        const finish = document.getElementById("builder-finish");
+        return Boolean(finish && !finish.disabled)
+          && document.getElementById("builder-review-summary-title")
+          && document.getElementById("builder-finish-title");
+      `,
+      "Complete draft did not enable Review Finish",
+    );
+    await execute('document.getElementById("builder-finish").click(); return true;');
+    await waitFor(
+      `
+        return document.getElementById("builder-finalize-error")?.textContent.includes("already exists")
+          && document.getElementById("builder-finish")?.textContent.includes("Retry")
+          && document.activeElement === document.getElementById("builder-finalize-error");
+      `,
+      "Finalization collision did not preserve the draft and expose retry",
+    );
+    await execute('document.querySelector(\'[data-builder-step="description"]\').click(); return true;');
+    await waitFor('return Boolean(document.getElementById("builder-character-id"));', "Could not return to Description after collision");
+    await execute(`
+      const id = document.getElementById("builder-character-id");
+      id.value = "task-sixteen-browser-hero";
+      id.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    `);
+    await waitFor('return document.getElementById("builder-character-id")?.value === "task-sixteen-browser-hero" && document.getElementById("character-builder-save-status").textContent.includes("synced");', "Corrected Character ID did not save");
+    await execute('document.querySelector(\'[data-builder-step="review"]\').click(); return true;');
+    await waitFor('return Boolean(document.getElementById("builder-finish") && !document.getElementById("builder-finish").disabled);', "Corrected draft did not return to finishable Review");
+    await execute('document.getElementById("builder-finish").click(); return true;');
+    await waitFor(
+      `
+        const drafts = JSON.parse(localStorage.getItem("dnd-character-build-drafts-v1:campaign:aotr") || "{}");
+        return location.pathname === "/c/aotr/char/task-sixteen-browser-hero/"
+          && window.character?.id === "task-sixteen-browser-hero"
+          && window.character?.build?.status === "complete"
+          && window.character?.currency?.gp === 100
+          && window.character?.backstory === "Browser-reviewed builder character."
+          && Object.keys(drafts).length === 0;
+      `,
+      "Successful builder finalization did not materialize, redirect, and remove the draft",
+    );
+    console.log("Browser smoke passed: Character Builder abilities, equipment, description, collision retry, and Finish");
     }
 
     if (includesTag("@themes")) {
@@ -676,20 +1067,576 @@ async function main() {
       return { value: textarea.value, start: textarea.selectionStart, end: textarea.selectionEnd };
     `);
     assert.deepEqual(characterNoteFormatting, { value: "****", start: 2, end: 2 }, "Character Notes Bold should place the cursor inside the markers.");
+
+    await execute(`
+      const settings = JSON.stringify({ characterSheetStyle: "v4", characterSheetStyleOverrides: { cassian: "v4" }, sections: {}, openWrites: true });
+      localStorage.setItem("cassianslog-runtime-settings", settings);
+      localStorage.setItem("cassianslog-runtime-settings:campaign:aotr", settings);
+      return true;
+    `);
+    await navigate("/c/aotr/char/cassian/");
+    await waitFor(
+      'return document.documentElement.dataset.characterSheetStyle === "v4" && document.querySelectorAll("[data-v4-tab]").length === 5 && document.querySelectorAll(".v4-ability").length === 6;',
+      "V4 tracker did not load",
+    );
+    const v4Core = await execute(`
+      const liveIds = ["characterDescription", "combatAccordion", "quickStatsCard", "hpManager", "death-saves-section", "combatResources", "spellcastingSection", "preparedSpellsSection", "inventory-page", "notesSection"];
+      const actionTab = document.querySelector('[data-v4-tab="actions"]');
+      actionTab.focus();
+      actionTab.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+      const keyboardTab = document.activeElement?.dataset.v4Tab;
+      const keyboardPanel = [...document.querySelectorAll("[data-v4-panel]")].find((panel) => !panel.hidden)?.dataset.v4Panel;
+      document.querySelector('[data-v4-tab="actions"]').click();
+      return {
+        tabs: [...document.querySelectorAll("[data-v4-tab]")].map((tab) => tab.textContent.trim()),
+        keyboardTab,
+        keyboardPanel,
+        activePanel: [...document.querySelectorAll("[data-v4-panel]")].find((panel) => !panel.hidden)?.dataset.v4Panel,
+        liveNodesUnique: liveIds.every((id) => document.querySelectorAll("#" + id).length === 1),
+        abilityCount: document.querySelectorAll(".v4-ability").length,
+        hasRolls: Boolean(document.querySelector('.v4-ability [data-roll-formula]') && document.querySelector('.v4-skill-list [data-roll-formula]')),
+        summaryTitles: [...document.querySelectorAll("#v4-summary-details h2")].map((heading) => heading.textContent.trim()),
+        background: document.getElementById("v4-background-content")?.textContent.trim(),
+        identity: document.getElementById("character-name")?.textContent.trim(),
+        deathSavesVisible: !document.getElementById("death-saves-section").classList.contains("hidden"),
+      };
+    `);
+    assert.deepEqual(v4Core.tabs, ["Actions", "Spells", "Inventory", "Features & Traits", "Extras"]);
+    assert.equal(v4Core.keyboardTab, "spells", "V4 tabs should support ArrowRight focus movement.");
+    assert.equal(v4Core.keyboardPanel, "spells", "V4 keyboard navigation should activate the matching panel.");
+    assert.equal(v4Core.activePanel, "actions");
+    assert.equal(v4Core.liveNodesUnique, true, "V4 must reuse each live tracker node exactly once.");
+    assert.equal(v4Core.abilityCount, 6);
+    assert.equal(v4Core.hasRolls, true);
+    assert.deepEqual(v4Core.summaryTitles, ["Speed", "Senses", "Proficiencies & Languages", "Defenses"]);
+    assert.equal(v4Core.background, "Noble", "V4 background should render.");
+    assert.equal(v4Core.identity, "Cassian Aurelius von Bloodington III");
+    assert.equal(v4Core.deathSavesVisible, true, "V4 should keep death saves available beside HP.");
+    await command("POST", "/window/rect", { width: 375, height: 800 });
+    const mobileV4 = await execute(`return {
+      columns: getComputedStyle(document.getElementById("v4-core-grid")).gridTemplateColumns.split(" ").length,
+      overflow: document.documentElement.scrollWidth > innerWidth,
+      tabsScrollable: getComputedStyle(document.getElementById("v4-tabs")).overflowX === "auto",
+    };`);
+    assert.deepEqual(mobileV4, { columns: 1, overflow: false, tabsScrollable: true }, "V4 should collapse without page overflow on mobile.");
+    await command("POST", "/window/rect", { width: 1280, height: 900 });
+    console.log("Browser smoke passed: V4 core summary, tabs, live-node reuse, and mobile layout");
+
+    const v4Filters = await execute(`
+      document.querySelector('[data-collapse-target="combatFiltersCollapse"]').click();
+      const filter = document.querySelector('#combat-filters [data-filter-key="usage"]');
+      const counts = {};
+      for (const value of ["attack", "action", "bonus-action", "reaction", "other", "limited"]) {
+        filter.value = value;
+        filter.dispatchEvent(new Event("change", { bubbles: true }));
+        counts[value] = document.querySelectorAll("#resources-container [data-v4-action-card]").length;
+      }
+      filter.value = "";
+      filter.dispatchEvent(new Event("change", { bubbles: true }));
+      return { options: [...filter.options].map((option) => option.value), counts };
+    `);
+    assert.deepEqual(v4Filters.options, ["", "attack", "action", "bonus-action", "reaction", "other", "limited"]);
+    Object.entries(v4Filters.counts).forEach(([filter, count]) => assert.ok(count > 0, `V4 ${filter} filter should match Cassian's actions.`));
+
+    const v4UseCancel = await execute(`
+      const use = document.querySelector('[data-v4-action-card="action-surge"] [data-tracker-action="request-use"]');
+      const before = window.character.actions.find((item) => item.id === "action-surge").uses.current;
+      use.click();
+      const opened = !document.getElementById("v4-use-dialog").classList.contains("hidden")
+        && document.activeElement === document.getElementById("v4-use-confirm");
+      document.getElementById("v4-use-cancel").click();
+      return {
+        before,
+        after: window.character.actions.find((item) => item.id === "action-surge").uses.current,
+        opened,
+        closed: document.getElementById("v4-use-dialog").classList.contains("hidden"),
+        focusRestored: document.activeElement === use,
+      };
+    `);
+    assert.deepEqual(v4UseCancel, { before: 1, after: 1, opened: true, closed: true, focusRestored: true }, "Cancel should preserve the resource and restore focus.");
+    await execute(`
+      document.querySelector('[data-v4-action-card="action-surge"] [data-tracker-action="request-use"]').click();
+      document.getElementById("v4-use-confirm").click();
+      return true;
+    `);
+    await waitFor(`return window.character.actions.find((item) => item.id === "action-surge").uses.current === 0
+      && document.getElementById("v4-use-dialog").classList.contains("hidden")
+      && document.activeElement?.dataset.id === "action-surge"
+      && document.getElementById("v4-action-status").textContent.includes("0 of 1 remaining");`, "Confirmed V4 action use did not consume one resource and restore focus");
+
+    const conditionAdded = await execute(`
+      const input = document.getElementById("v4-condition-name");
+      input.value = "Frightened";
+      document.getElementById("v4-condition-form").requestSubmit();
+      return window.character.conditions.some((condition) => condition.name === "Frightened")
+        && document.getElementById("v4-condition-list").textContent.includes("Frightened");
+    `);
+    assert.equal(conditionAdded, true, "V4 should add conditions through the runtime state.");
+    await execute(`document.querySelector('[data-tracker-action="remove-condition"][data-condition="Frightened"]').click(); return true;`);
+    await waitFor('return !window.character.conditions.some((condition) => condition.name === "Frightened") && !document.getElementById("v4-condition-list").textContent.includes("Frightened");', "V4 condition removal did not persist");
+
+    const restCancel = await execute(`
+      const trigger = document.getElementById("shortRest-btn");
+      trigger.click();
+      const opened = !document.getElementById("rest-dialog").classList.contains("hidden")
+        && document.activeElement === document.getElementById("confirm-rest");
+      document.getElementById("cancel-rest").click();
+      return {
+        uses: window.character.actions.find((item) => item.id === "action-surge").uses.current,
+        opened,
+        focusRestored: document.activeElement === trigger,
+      };
+    `);
+    assert.deepEqual(restCancel, { uses: 0, opened: true, focusRestored: true }, "Cancelled rest should preserve state and restore focus.");
+    await execute('document.getElementById("shortRest-btn").click(); document.getElementById("confirm-rest").click(); return true;');
+    await waitFor('return window.character.actions.find((item) => item.id === "action-surge").uses.current === 1 && document.activeElement === document.getElementById("shortRest-btn");', "Confirmed short rest did not restore the eligible resource and focus");
+
+    const v4AttackRoll = await execute(`
+      document.querySelector('[data-v4-action-card="shortsword-action"] [data-roll-label="Shortsword Attack"]').click();
+      return document.getElementById("dice-roller-result").textContent.replace(/\\s+/g, " ").trim();
+    `);
+    assert.match(v4AttackRoll, /^\d+ \+ 8 = \d+$/, "V4 attack controls should reuse the existing dice roller.");
+    await execute('document.getElementById("dice-roller-close").click(); localStorage.setItem("cassianslog-local-user-v1", "localhost-player-02"); return true;');
+    await navigate("/c/aotr/char/cassian/");
+    await waitFor('return document.documentElement.dataset.characterSheetStyle === "v4" && document.body.dataset.characterCanEdit === "false" && document.querySelector("[data-v4-action-card]");', "Read-only V4 tracker did not load");
+    const readOnlyV4 = await execute(`
+      const use = document.querySelector('[data-v4-action-card="action-surge"] [data-tracker-action="request-use"]');
+      const before = window.character.actions.find((item) => item.id === "action-surge").uses.current;
+      use.click();
+      return {
+        useDisabled: use.disabled,
+        conditionDisabled: document.getElementById("v4-condition-name").disabled,
+        restDisabled: document.getElementById("shortRest-btn").disabled,
+        unchanged: window.character.actions.find((item) => item.id === "action-surge").uses.current === before,
+        dialogClosed: document.getElementById("v4-use-dialog").classList.contains("hidden"),
+        rollEnabled: !document.querySelector('[data-v4-action-card="shortsword-action"] [data-roll-label="Shortsword Attack"]').disabled,
+      };
+    `);
+    assert.deepEqual(readOnlyV4, { useDisabled: true, conditionDisabled: true, restDisabled: true, unchanged: true, dialogClosed: true, rollEnabled: true }, "Read-only V4 should block mutations while keeping dice available.");
+    await execute('localStorage.setItem("cassianslog-local-user-v1", "localhost-admin"); return true;');
+    console.log("Browser smoke passed: V4 filters, action confirmation, conditions, rests, dice, and read-only authority");
+
+    await execute(`
+      const settings = JSON.stringify({ characterSheetStyle: "v4", characterSheetStyleOverrides: { cassian: "v4", karma: "v4" }, sections: {}, openWrites: true });
+      localStorage.setItem("cassianslog-runtime-settings", settings);
+      localStorage.setItem("cassianslog-runtime-settings:campaign:aotr", settings);
+      return true;
+    `);
+    await navigate("/c/aotr/char/karma/");
+    await waitFor('return window.character?.id === "karma" && document.querySelectorAll("[data-v4-spell-card]").length > 10;', "Karma V4 Spells did not load");
+    await execute(`
+      const characters = JSON.parse(localStorage.getItem("dnd-characters:campaign:aotr") || "{}");
+      const document = structuredClone(window.character);
+      document.spellcasting.profiles.find((profile) => profile.id === "cleric").preparedLimit = 20;
+      const bane = document.spells.find((spell) => spell.id === "bane");
+      Object.assign(bane, { known: true, repertoire: ["known"], prepared: true, preparationRequired: true, castable: true, concentration: true, slotOptions: ["slot-1", "slot-2"] });
+      const healing = document.spells.find((spell) => spell.id === "healing-word");
+      Object.assign(healing, { spellbook: true, repertoire: ["spellbook"], prepared: false, preparationRequired: true, castable: false, slotOptions: ["slot-1", "slot-2"] });
+      const ritual = document.spells.find((spell) => spell.id === "gentle-repose");
+      Object.assign(ritual, { spellbook: true, repertoire: ["spellbook"], prepared: false, preparationRequired: true, castable: false, ritual: true, ritualCastable: true, slotOptions: ["slot-2"] });
+      document.spellcasting.slots.find((slot) => slot.id === "slot-1").current = 1;
+      document.spellcasting.slots.find((slot) => slot.id === "slot-2").current = 3;
+      characters.karma = document;
+      localStorage.setItem("dnd-characters:campaign:aotr", JSON.stringify(characters));
+      return true;
+    `);
+    await navigate("/c/aotr/char/karma/");
+    await waitFor(`return document.querySelector('[data-v4-spell-card="bane"]')?.textContent.includes("Known") && document.querySelector('[data-v4-spell-card="gentle-repose"]')?.textContent.includes("Spellbook");`, "V4 known and spellbook distinctions did not render");
+    await execute('document.querySelector("[data-v4-tab=spells]").click(); return true;');
+    const spellFilters = await execute(`
+      const search = document.querySelector('[data-v4-spell-filter="search"]');
+      const level = document.querySelector('[data-v4-spell-filter="level"]');
+      const repertoire = document.querySelector('[data-v4-spell-filter="repertoire"]');
+      search.value = "gentle";
+      search.dispatchEvent(new Event("input", { bubbles: true }));
+      level.value = "2";
+      level.dispatchEvent(new Event("change", { bubbles: true }));
+      repertoire.value = "spellbook";
+      repertoire.dispatchEvent(new Event("change", { bubbles: true }));
+      const result = {
+        count: document.querySelectorAll("#v4-spell-list [data-v4-spell-card]").length,
+        name: document.querySelector("#v4-spell-list [data-v4-spell-card] strong")?.textContent,
+      };
+      document.querySelector('[data-tracker-action="reset-spell-filters"]').click();
+      return result;
+    `);
+    assert.deepEqual(spellFilters, { count: 1, name: "Gentle Repose" }, "V4 spell search, level, and repertoire filters should combine.");
+
+    await execute('document.querySelector("[data-v4-spell-card=healing-word] [data-tracker-action=prepared-spell]").click(); return true;');
+    await waitFor(`return window.character.spells.find((spell) => spell.id === "healing-word").prepared === true && document.querySelector('[data-v4-spell-card="healing-word"] [data-tracker-action="prepared-spell"]').getAttribute("aria-checked") === "true";`, "V4 spell preparation did not persist");
+
+    const spellCastCancel = await execute(`
+      const trigger = document.querySelector('[data-v4-spell-card="bane"] [data-tracker-action="request-spell-cast"]');
+      const before = window.character.spellcasting.slots.find((slot) => slot.id === "slot-2").current;
+      trigger.click();
+      const slot = document.getElementById("v4-spell-slot");
+      slot.value = "slot:slot-2";
+      slot.dispatchEvent(new Event("change", { bubbles: true }));
+      const opened = !document.getElementById("v4-spell-cast-dialog").classList.contains("hidden")
+        && document.activeElement === document.getElementById("v4-spell-cast-confirm");
+      document.getElementById("v4-spell-cast-cancel").click();
+      return {
+        before,
+        after: window.character.spellcasting.slots.find((item) => item.id === "slot-2").current,
+        opened,
+        focusRestored: document.activeElement === trigger,
+      };
+    `);
+    assert.deepEqual(spellCastCancel, { before: 3, after: 3, opened: true, focusRestored: true }, "Cancelled spell casting should preserve slots and restore focus.");
+    await execute(`
+      document.querySelector('[data-v4-spell-card="bane"] [data-tracker-action="request-spell-cast"]').click();
+      const slot = document.getElementById("v4-spell-slot");
+      slot.value = "slot:slot-2";
+      slot.dispatchEvent(new Event("change", { bubbles: true }));
+      document.getElementById("v4-spell-cast-confirm").click();
+      return true;
+    `);
+    await waitFor(`return window.character.spellcasting.slots.find((slot) => slot.id === "slot-2").current === 2
+      && window.character.concentration?.id === "bane"
+      && document.getElementById("v4-condition-list").textContent.includes("Concentrating: Bane")
+      && document.getElementById("v4-spell-status").textContent.includes("upcast by 1")
+      && document.activeElement?.dataset.id === "bane";`, "V4 upcast did not consume the selected slot, set concentration, announce, and restore focus");
+
+    const ritualCast = await execute(`
+      const before = window.character.spellcasting.slots.find((slot) => slot.id === "slot-2").current;
+      document.querySelector('[data-v4-spell-card="gentle-repose"] [data-tracker-action="request-spell-cast"]').click();
+      const ritualSelected = document.querySelector('input[name="v4-spell-cast-mode"][value="ritual"]').checked;
+      const slotHidden = document.getElementById("v4-spell-slot").classList.contains("hidden");
+      document.getElementById("v4-spell-cast-confirm").click();
+      return {
+        before,
+        after: window.character.spellcasting.slots.find((slot) => slot.id === "slot-2").current,
+        ritualSelected,
+        slotHidden,
+        announced: document.getElementById("v4-spell-status").textContent.includes("as a ritual"),
+      };
+    `);
+    assert.deepEqual(ritualCast, { before: 2, after: 2, ritualSelected: true, slotHidden: true, announced: true }, "Ritual casting should consume no slot.");
+    const spellDamageRoll = await execute(`
+      document.querySelector('[data-v4-spell-card="sacred-flame"] [data-roll-label="Sacred Flame Damage"]').click();
+      return document.getElementById("dice-roller-result").textContent.replace(/\\s+/g, " ").trim();
+    `);
+    assert.match(spellDamageRoll, /^\d+ = \d+$/, "V4 spell damage should reuse the dice roller.");
+    await execute('document.getElementById("dice-roller-close").click(); localStorage.setItem("cassianslog-local-user-v1", "localhost-player-02"); return true;');
+    await navigate("/c/aotr/char/karma/");
+    await waitFor('return document.body.dataset.characterCanEdit === "false" && document.querySelector("[data-v4-spell-card=healing-word]");', "Read-only V4 Spells did not load");
+    const readOnlySpells = await execute(`return {
+      castDisabled: document.querySelector('[data-v4-spell-card="bane"] [data-tracker-action="request-spell-cast"]').disabled,
+      prepareDisabled: document.querySelector('[data-v4-spell-card="healing-word"] [data-tracker-action="prepared-spell"]').disabled,
+      filterEnabled: !document.querySelector('[data-v4-spell-filter="search"]').disabled,
+      diceEnabled: !document.querySelector('[data-v4-spell-card="sacred-flame"] [data-roll-label="Sacred Flame Damage"]').disabled,
+    };`);
+    assert.deepEqual(readOnlySpells, { castDisabled: true, prepareDisabled: true, filterEnabled: true, diceEnabled: true }, "Read-only V4 should block spell mutations while preserving filters and dice.");
+    await execute('localStorage.setItem("cassianslog-local-user-v1", "localhost-admin"); return true;');
+    console.log("Browser smoke passed: V4 spell filtering, preparation, upcasting, ritual, concentration, dice, focus, and read-only authority");
+
+    await execute(`
+      const characters = JSON.parse(localStorage.getItem("dnd-characters:campaign:aotr") || "{}");
+      const document = structuredClone(window.character);
+      document.currency = { cp: 4, sp: 3, ep: 2, gp: 25, pp: 1 };
+      document.inventoryWeight = 40;
+      document.encumbrance = { mode: "variant", capacity: 120, status: "normal" };
+      document.inventory = [
+        { instanceId: "pack", definitionId: "backpack", name: "Backpack", quantity: 1, automatic: true, weight: 5, unitWeight: 5, containerId: "", containerCapacity: 30, contentsWeight: 0, canEquip: false, canAttune: false },
+        { instanceId: "blade", definitionId: "blade", name: "Silver Blade", quantity: 1, automatic: true, weight: 3, unitWeight: 3, containerId: "", containerCapacity: null, canEquip: true, canAttune: false },
+        { instanceId: "boots", definitionId: "boots", name: "Swift Boots", quantity: 1, automatic: true, weight: 2, unitWeight: 2, containerId: "", containerCapacity: null, canEquip: true, canAttune: true },
+        { instanceId: "ring-one", definitionId: "ring-one", name: "Ring One", quantity: 1, automatic: true, weight: 0, unitWeight: 0, containerId: "", containerCapacity: null, canEquip: false, canAttune: true },
+        { instanceId: "ring-two", definitionId: "ring-two", name: "Ring Two", quantity: 1, automatic: true, weight: 0, unitWeight: 0, containerId: "", containerCapacity: null, canEquip: false, canAttune: true },
+        { instanceId: "ring-three", definitionId: "ring-three", name: "Ring Three", quantity: 1, automatic: true, weight: 0, unitWeight: 0, containerId: "", containerCapacity: null, canEquip: false, canAttune: true },
+        { instanceId: "wand", definitionId: "wand", name: "Unstable Wand", quantity: 1, automatic: false, weight: null, unitWeight: null, containerId: "", containerCapacity: null, canEquip: false, canAttune: false, charges: { current: 2, max: 2, reset: "long" } }
+      ];
+      characters.karma = document;
+      localStorage.setItem("dnd-characters:campaign:aotr", JSON.stringify(characters));
+      localStorage.removeItem("dnd-karma-state:campaign:aotr");
+      return true;
+    `);
+    await navigate("/c/aotr/char/karma/");
+    await waitFor('return document.querySelectorAll("[data-v4-inventory-item]").length === 7;', "V4 Inventory did not load rules inventory");
+    await execute('document.querySelector("[data-v4-tab=inventory]").click(); return true;');
+    const inventoryFilters = await execute(`
+      const search = document.querySelector('[data-v4-inventory-filter="search"]');
+      const status = document.querySelector('[data-v4-inventory-filter="status"]');
+      search.value = "wand";
+      search.dispatchEvent(new Event("input", { bubbles: true }));
+      status.value = "manual";
+      status.dispatchEvent(new Event("change", { bubbles: true }));
+      const result = {
+        count: document.querySelectorAll("[data-v4-inventory-item]").length,
+        name: document.querySelector("[data-v4-inventory-item] strong")?.textContent,
+        currency: document.getElementById("currency-container").textContent.replace(/\s+/g, " ").trim(),
+      };
+      document.querySelector('[data-tracker-action="reset-inventory-filters"]').click();
+      return result;
+    `);
+    assert.equal(inventoryFilters.count, 1);
+    assert.equal(inventoryFilters.name, "Unstable Wand");
+    assert.match(inventoryFilters.currency, /GP: 25/);
+    const inventoryMutation = await execute(`
+      document.querySelector('[data-v4-inventory-item="1"] [data-tracker-action="inventory-quantity"][data-delta="1"]').click();
+      document.querySelector('[data-v4-inventory-item="1"] [data-tracker-action="inventory-runtime"][data-field="equipped"]').click();
+      const container = document.querySelector('[data-v4-inventory-item="1"] [data-v4-inventory-container]');
+      container.value = "pack";
+      container.dispatchEvent(new Event("change", { bubbles: true }));
+      for (const index of [2, 3, 4, 5]) document.querySelector('[data-v4-inventory-item="' + index + '"] [data-tracker-action="inventory-runtime"][data-field="attuned"]').click();
+      const runtimeKey = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index)).find((key) => key.includes("dnd-karma-state") && key.includes("campaign:aotr"));
+      const runtime = JSON.parse(localStorage.getItem(runtimeKey) || "{}");
+      return {
+        weight: [...document.querySelectorAll("#v4-inventory-summary dd")][1].textContent,
+        blade: runtime.inventory.find((item) => item.instanceId === "blade"),
+        attuned: runtime.inventory.filter((item) => item.attuned).length,
+        warning: document.getElementById("v4-inventory-status").textContent,
+      };
+    `);
+    assert.match(inventoryMutation.weight, /^43 lb\. \/ 120 lb\.$/);
+    assert.equal(inventoryMutation.blade.quantity, 2);
+    assert.equal(inventoryMutation.blade.equipped, true);
+    assert.equal(inventoryMutation.blade.containerId, "pack");
+    assert.equal(inventoryMutation.attuned, 3);
+    assert.match(inventoryMutation.warning, /no more than three items/i);
+    const chargeCancel = await execute(`
+      const trigger = document.querySelector('[data-v4-inventory-item="6"] [data-tracker-action="request-item-charge"]');
+      trigger.click();
+      const opened = document.activeElement === document.getElementById("v4-inventory-charge-confirm");
+      document.getElementById("v4-inventory-charge-cancel").click();
+      return { opened, focusRestored: document.activeElement === trigger, charges: trigger.closest("[data-v4-inventory-item]").textContent.includes("2/2 charges") };
+    `);
+    assert.deepEqual(chargeCancel, { opened: true, focusRestored: true, charges: true });
+    await execute('document.querySelector(\'[data-v4-inventory-item="6"] [data-tracker-action="request-item-charge"]\').click(); document.getElementById("v4-inventory-charge-confirm").click(); return true;');
+    await waitFor('return document.querySelector(\'[data-v4-inventory-item="6"]\').textContent.includes("1/2 charges");', "V4 item charge did not persist");
+    await command("POST", "/window/rect", { width: 375, height: 800 });
+    assert.equal(await execute('return document.documentElement.scrollWidth <= innerWidth;'), true, "V4 Inventory should not overflow on mobile.");
+    await command("POST", "/window/rect", { width: 1280, height: 900 });
+    await navigate("/c/aotr/char/karma/");
+    await waitFor('return document.querySelector(\'[data-v4-inventory-item="1"]\')?.textContent.includes("×2") && document.querySelector(\'[data-v4-inventory-item="6"]\')?.textContent.includes("1/2 charges");', "V4 inventory runtime did not survive refresh");
+    await execute('localStorage.setItem("cassianslog-local-user-v1", "localhost-player-02"); return true;');
+    await navigate("/c/aotr/char/karma/");
+    await waitFor('return document.body.dataset.characterCanEdit === "false" && document.querySelector("[data-v4-inventory-item]");', "Read-only V4 Inventory did not load");
+    const readOnlyInventory = await execute(`return {
+      quantityDisabled: document.querySelector('[data-tracker-action="inventory-quantity"]').disabled,
+      containerDisabled: document.querySelector('[data-v4-inventory-container]').disabled,
+      chargeDisabled: document.querySelector('[data-tracker-action="request-item-charge"]').disabled,
+      filterEnabled: !document.querySelector('[data-v4-inventory-filter="search"]').disabled,
+      editDisabled: document.querySelector('[data-character-editor-section="inventory"]').disabled,
+    };`);
+    assert.deepEqual(readOnlyInventory, { quantityDisabled: true, containerDisabled: true, chargeDisabled: true, filterEnabled: true, editDisabled: true });
+    await execute('localStorage.setItem("cassianslog-local-user-v1", "localhost-admin"); return true;');
+    console.log("Browser smoke passed: V4 inventory filters, totals, currency, containers, equip, attunement, charges, persistence, mobile, and read-only authority");
+
+    await execute(`
+      const characters = JSON.parse(localStorage.getItem("dnd-characters:campaign:aotr") || "{}");
+      const document = structuredClone(window.character);
+      document.class = "Cleric";
+      document.subclass = "Grave Domain";
+      document.race = "Tiefling";
+      document.background = "Wayfinder";
+      document.proficiencies = { armor: ["Light Armor"], tools: ["Herbalism Kit"] };
+      document.languages = ["Common", "Infernal"];
+      document.build = { ...(document.build || {}), selections: { ...(document.build?.selections || {}), "cleric-feature:choice": ["Preserve Life"] }, description: { ...(document.build?.description || {}), personalityTraits: "I listen before I speak.", backstory: "Mapped the old roads." } };
+      document.resources = [...(document.resources || []).filter((item) => item.id !== "grave-focus"), { id: "grave-focus", name: "Grave Focus", category: "Resource", action: "Other", uses: { current: 2, max: 2, reset: "long" } }];
+      document.features = [
+        { id: "cleric-feature", name: "Channel Divinity", type: "Class Feature", source: "Cleric", resourceId: "grave-focus", description: "Channel divine power." },
+        { id: "circle", name: "Circle of Mortality", type: "Subclass", source: "Grave Domain", selections: ["Spare the Dying"], description: "Aid creatures near death." },
+        { id: "legacy", name: "Infernal Legacy", category: "Racial Trait", source: "Tiefling", description: "A fiendish inheritance." },
+        { id: "wayfinder", name: "Wayfinder", category: "Background Feature", source: "Wayfinder", description: "Find paths through wild places." },
+        { id: "observant", name: "Observant", category: "Feat", description: "Notice small details." }
+      ];
+      document.extras = [
+        { id: "wolf", name: "Trail Wolf", type: "companion", sourceId: "companion-wolf", ac: 13, speed: "40 ft.", hp: { current: 5, max: 5, temp: 0 }, description: "A loyal trail companion." },
+        { id: "owl", name: "Night Owl", type: "familiar", sourceId: "find-familiar", ac: 11, hp: { current: 1, max: 1, temp: 0 }, description: "A silent familiar." },
+        { id: "bear-form", name: "Brown Bear", type: "wild-shape", sourceId: "wild-shape-bear", ac: 11, hp: { current: 34, max: 34, temp: 0 }, description: "A recorded wild shape." },
+        { id: "wagon", name: "Wayfinder Wagon", type: "vehicle", sourceId: "wagon", ac: 15, hp: { current: 20, max: 30, temp: 0 }, uses: { current: 2, max: 3, reset: "manual" }, description: "Carries field supplies." },
+        { id: "token", name: "Speaking Token", type: "custom", source: "Manual", description: "A custom story companion." }
+      ];
+      characters.karma = document;
+      localStorage.setItem("dnd-characters:campaign:aotr", JSON.stringify(characters));
+      return true;
+    `);
+    await navigate("/c/aotr/char/karma/");
+    await waitFor('return document.querySelectorAll("[data-v4-feature]").length === 5 && document.querySelectorAll("[data-v4-extra]").length === 5;', "V4 Features and Extras did not load");
+    const contentSummary = await execute(`return {
+      featureGroups: [...document.querySelectorAll("#v4-feature-groups > section > h3")].map((item) => item.textContent.replace(/\\s+/g, " ").trim()),
+      extraGroups: [...document.querySelectorAll("#v4-extra-groups > section > h3")].map((item) => item.textContent.replace(/\\s+/g, " ").trim()),
+      proficiencies: document.getElementById("v4-proficiencies-title").parentElement.textContent.replace(/\\s+/g, " ").trim(),
+      background: document.getElementById("v4-background-content").textContent.replace(/\\s+/g, " ").trim(),
+    };`);
+    assert.deepEqual(contentSummary.featureGroups, ["Class 1", "Subclass 1", "Species / Race 1", "Background 1", "Feats 1"]);
+    assert.deepEqual(contentSummary.extraGroups, ["Companions 1", "Familiars 1", "Wild Shapes 1", "Vehicles 1", "Custom Extras 1"]);
+    assert.match(contentSummary.proficiencies, /Light Armor/);
+    assert.match(contentSummary.proficiencies, /Infernal/);
+    assert.match(contentSummary.background, /I listen before I speak/);
+    assert.match(contentSummary.background, /Mapped the old roads/);
+    await execute('document.querySelector("[data-v4-tab=features]").click(); return true;');
+    const featureDetail = await execute(`
+      const trigger = document.querySelector('[data-v4-feature="circle"] [data-tracker-action="open-v4-detail"]');
+      trigger.click();
+      const result = {
+        title: document.getElementById("v4-detail-title").textContent,
+        selection: document.getElementById("v4-detail-content").textContent.includes("Spare the Dying"),
+        closeFocused: document.activeElement === document.getElementById("v4-detail-close"),
+      };
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      result.focusRestored = document.activeElement === trigger;
+      return result;
+    `);
+    assert.deepEqual(featureDetail, { title: "Circle of Mortality", selection: true, closeFocused: true, focusRestored: true });
+    await execute('document.querySelector(\'[data-v4-feature="cleric-feature"] [data-tracker-action="resource"][data-delta="-1"]\').click(); document.querySelector("[data-v4-tab=extras]").click(); return true;');
+    const extraTracking = await execute(`
+      document.querySelector('[data-v4-extra="wolf"] [data-tracker-action="extra-hp"][data-delta="-1"]').click();
+      document.querySelector('[data-v4-extra="wagon"] [data-tracker-action="resource"][data-delta="-1"]').click();
+      const trigger = document.querySelector('[data-v4-extra="wagon"] [data-tracker-action="open-v4-detail"]');
+      trigger.click();
+      const result = {
+        wolf: window.character.extras.find((item) => item.id === "wolf").hp.current,
+        wagonUses: window.character.extras.find((item) => item.id === "wagon").uses.current,
+        focus: document.activeElement === document.getElementById("v4-detail-close"),
+        detail: document.getElementById("v4-detail-content").textContent.replace(/\\s+/g, " ").trim(),
+      };
+      document.getElementById("v4-detail-close").click();
+      result.focusRestored = document.activeElement === trigger;
+      document.getElementById("note-title").value = "Route";
+      document.getElementById("note-body").value = "North road is clear.";
+      document.getElementById("save-note-btn").click();
+      result.note = document.getElementById("notes-container").textContent.includes("North road is clear.");
+      return result;
+    `);
+    assert.equal(extraTracking.wolf, 4);
+    assert.equal(extraTracking.wagonUses, 1);
+    assert.equal(extraTracking.focus, true);
+    assert.match(extraTracking.detail, /HP\s*20\/30/);
+    assert.match(extraTracking.detail, /Uses\s*1\/3/);
+    assert.equal(extraTracking.focusRestored, true);
+    assert.equal(extraTracking.note, true);
+    await command("POST", "/window/rect", { width: 375, height: 800 });
+    assert.equal(await execute('return document.documentElement.scrollWidth <= innerWidth;'), true, "V4 Features and Extras should not overflow on mobile.");
+    await command("POST", "/window/rect", { width: 1280, height: 900 });
+    await navigate("/c/aotr/char/karma/");
+    await waitFor('return window.character.extras?.find((item) => item.id === "wolf")?.hp.current === 4 && window.character.extras?.find((item) => item.id === "wagon")?.uses.current === 1;', "V4 Extra runtime did not survive refresh");
+    await execute('localStorage.setItem("cassianslog-local-user-v1", "localhost-player-02"); return true;');
+    await navigate("/c/aotr/char/karma/");
+    await waitFor('return document.body.dataset.characterCanEdit === "false" && document.querySelector("[data-v4-feature]") && document.querySelector("[data-v4-extra]");', "Read-only V4 Features and Extras did not load");
+    const readOnlyContent = await execute(`
+      const detail = document.querySelector('[data-v4-extra="wagon"] [data-tracker-action="open-v4-detail"]');
+      detail.click();
+      return {
+        detailEnabled: !detail.disabled,
+        drawerOpen: !document.getElementById("v4-detail-dialog").classList.contains("hidden"),
+        hpDisabled: document.querySelector('[data-v4-extra="wolf"] [data-tracker-action="extra-hp"]').disabled,
+        usesDisabled: document.querySelector('[data-v4-extra="wagon"] [data-tracker-action="resource"]').disabled,
+        editDisabled: document.querySelector('#v4-extras-browser [data-character-editor-section="features"]').disabled,
+      };
+    `);
+    assert.deepEqual(readOnlyContent, { detailEnabled: true, drawerOpen: true, hpDisabled: true, usesDisabled: true, editDisabled: true });
+    await execute('document.getElementById("v4-detail-close").click(); localStorage.setItem("cassianslog-local-user-v1", "localhost-admin"); return true;');
+    console.log("Browser smoke passed: V4 feature groups, selections, resources, Extras, Background, proficiencies, Notes, details, persistence, mobile, focus, and read-only authority");
+
+    await execute(`
+      const characters = JSON.parse(localStorage.getItem("dnd-characters:campaign:aotr") || "{}");
+      const document = structuredClone(characters.karma || window.character);
+      document.class = "Fighter";
+      document.subclass = "";
+      document.race = "Human";
+      document.background = "Soldier";
+      document.level = 3;
+      document.ac = 17;
+      document.hp = { max: 31, current: 23, temp: 4 };
+      document.inventory = [{ id: "unknown-token", name: "Unknown Token", quantity: 1 }];
+      document.spells = [{ id: "manual-spell", name: "Manual Spell", level: 1, prepared: true }];
+      document.build = { ...(document.build || {}), mode: "manual", status: "complete", ruleset: "5e" };
+      delete document.build.conversion;
+      delete document.importSnapshot;
+      characters.karma = document;
+      localStorage.setItem("dnd-characters:campaign:aotr", JSON.stringify(characters));
+      return true;
+    `);
+    await navigate("/c/aotr/char/karma/");
+    await waitFor('return Boolean(document.getElementById("v4-conversion-open"));', "V4 conversion action did not load");
+    const conversionCancel = await execute(`
+      const before = JSON.stringify(window.character);
+      const trigger = document.getElementById("v4-conversion-open");
+      trigger.focus();
+      trigger.click();
+      return { before, rulesetFocused: document.activeElement === document.getElementById("v4-conversion-ruleset") };
+    `);
+    assert.equal(conversionCancel.rulesetFocused, true);
+    await waitFor('return document.getElementById("v4-conversion-confirm")?.disabled === false && document.getElementById("v4-conversion-status")?.textContent.includes("matched");', "V4 conversion preview did not finish");
+    const conversionPreview = await execute(`
+      const groups = [...document.querySelectorAll("[data-conversion-group]")].map((section) => ({
+        id: section.dataset.conversionGroup,
+        count: Number(section.querySelector("[data-conversion-count]").textContent),
+        text: section.textContent.replace(/\\s+/g, " ").trim(),
+      }));
+      document.getElementById("v4-conversion-cancel").click();
+      return {
+        groups,
+        unchanged: JSON.stringify(window.character) === arguments[0],
+        focusRestored: document.activeElement === document.getElementById("v4-conversion-open"),
+      };
+    `, [conversionCancel.before]);
+    assert.deepEqual(conversionPreview.groups.map((group) => group.id), ["matched", "unresolved", "added", "removed", "changed"]);
+    assert.match(conversionPreview.groups.find((group) => group.id === "matched").text, /Fighter/);
+    assert.match(conversionPreview.groups.find((group) => group.id === "matched").text, /Human/);
+    assert.match(conversionPreview.groups.find((group) => group.id === "matched").text, /Soldier/);
+    assert.match(conversionPreview.groups.find((group) => group.id === "unresolved").text, /Ability score bases/);
+    assert.equal(conversionPreview.unchanged, true, "Cancel must leave the exact source document untouched.");
+    assert.equal(conversionPreview.focusRestored, true);
+    await execute('document.getElementById("v4-conversion-open").click(); return true;');
+    await waitFor('return document.getElementById("v4-conversion-confirm")?.disabled === false;', "V4 conversion confirmation did not become ready");
+    await execute('document.getElementById("v4-conversion-confirm").click(); return true;');
+    await waitFor('return window.character.build?.mode === "rules" && Boolean(window.character.build?.conversion?.rollbackDocument) && document.getElementById("v4-conversion-open")?.dataset.mode === "rollback";', "V4 conversion did not save rollback data");
+    const convertedState = await execute(`
+      const stored = JSON.parse(localStorage.getItem("dnd-characters:campaign:aotr") || "{}").karma;
+      return {
+        hp: window.character.hp,
+        ac: window.character.ac,
+        mode: stored.build.mode,
+        status: stored.build.status,
+        rollbackExact: JSON.stringify(stored.build.conversion.rollbackDocument) === arguments[0],
+        removed: stored.build.conversion.preview.removed.length,
+      };
+    `, [conversionCancel.before]);
+    assert.deepEqual(convertedState.hp, JSON.parse(conversionCancel.before).hp, "Conversion must preserve the live pre-conversion HP snapshot.");
+    assert.equal(convertedState.ac, 17);
+    assert.equal(convertedState.mode, "rules");
+    assert.equal(convertedState.status, "incomplete");
+    assert.equal(convertedState.rollbackExact, true);
+    assert.equal(convertedState.removed, 0);
+    await execute('document.getElementById("v4-conversion-open").click(); document.getElementById("v4-conversion-confirm").click(); return true;');
+    await waitFor('return window.character.build?.mode === "manual" && document.getElementById("v4-conversion-open")?.dataset.mode === "convert";', "V4 conversion rollback did not restore the manual snapshot");
+    assert.equal(await execute('return JSON.stringify(window.character) === arguments[0];', [conversionCancel.before]), true, "Rollback must restore the exact pre-conversion document.");
+    await execute('localStorage.setItem("cassianslog-local-user-v1", "localhost-player-02"); return true;');
+    await navigate("/c/aotr/char/karma/");
+    await waitFor('return document.body.dataset.characterCanEdit === "false";', "Read-only conversion fixture did not load");
+    assert.equal(await execute('return Boolean(document.getElementById("v4-conversion-open"));'), false, "Read-only viewers must not receive conversion controls.");
+    await execute('localStorage.setItem("cassianslog-local-user-v1", "localhost-admin"); return true;');
+    console.log("Browser smoke passed: V4 reviewed conversion preview, cancel, preserved totals, rollback, persistence, and read-only authority");
     }
 
     if (includesTag("@npcs")) {
-    if (!includesTag("@characters")) {
-      await navigate("/char/cassian/");
-      await waitFor('return window.character?.id === "cassian";', "NPC fixture character did not load");
-    }
+    await navigate("/char/cassian/");
+    await waitFor('return window.character?.id === "cassian";', "NPC fixture character did not load");
     await execute(`
       const template = JSON.parse(JSON.stringify(window.character));
-      const shown = { ...template, id: "known-npc", name: "Known NPC", ac: 19, background: "Player-hidden secret" };
+      const shown = {
+        ...template,
+        id: "known-npc",
+        name: "Known NPC",
+        ac: 19,
+        background: "Player-hidden secret",
+        features: [{ name: "Public Feature", description: "Hidden feature detail", source: "NPC stat block" }],
+      };
+      delete shown.build;
+      delete shown.characterSchemaVersion;
       const hidden = { ...template, id: "hidden-npc", name: "Hidden NPC" };
       localStorage.setItem("dnd-npcs:campaign:aotr", JSON.stringify({
-        "known-npc": { document: shown, visibility: { name: true }, playerVisible: true },
+        "known-npc": { document: shown, visibility: { name: true, "actions.0.name": true, "features.0.name": true }, playerVisible: true },
         "hidden-npc": { document: hidden, visibility: { name: true }, playerVisible: false },
+      }));
+      localStorage.setItem("cassianslog-runtime-settings:campaign:aotr", JSON.stringify({
+        characterSheetStyle: "v1",
+        characterSheetStyleOverrides: {},
+        npcSheetStyleOverrides: { "known-npc": "v4" },
+        sections: {},
+        openWrites: true,
       }));
       localStorage.setItem("cassianslog-local-user-v1", "localhost-admin");
       return true;
@@ -700,6 +1647,73 @@ async function main() {
       'return document.querySelectorAll("#npcs article").length === 2;',
       'return !document.getElementById("add-npc").classList.contains("hidden") && document.body.textContent.includes("Shown to players") && document.body.textContent.includes("Hidden from players");',
     );
+    await execute(`
+      localStorage.setItem("dnd-npc-build-drafts-v1:campaign:aotr", JSON.stringify({
+        "draft-rules-browser-npc": {
+          draftId: "draft-rules-browser-npc",
+          currentStep: "review",
+          createdAt: "2026-09-16T00:00:00.000Z",
+          updatedAt: "2026-09-16T00:00:00.000Z",
+          sync: { state: "saved", error: "" },
+          document: {
+            id: "rules-browser-npc",
+            name: "Rules Browser NPC",
+            status: "Draft",
+            hp: { max: 0, current: 0, temp: 0 },
+            characterSchemaVersion: 2,
+            build: {
+              version: 1,
+              mode: "rules",
+              status: "incomplete",
+              ruleset: "5e",
+              preferences: { hitPoints: "fixed", encumbrance: "none", coinWeight: true, prerequisites: true, enabledSources: [] },
+              levels: [{ classId: "phbClassFighter", subclassId: "", level: 1, hitPointRolls: [] }],
+              speciesId: "phbRaceHuman",
+              backgroundId: "phbBackgroundSoldier",
+              abilityScores: { method: "standard", base: { str: 15, dex: 14, con: 13, int: 12, wis: 10, cha: 8 } },
+              selections: {
+                "phbClassFighter:selection:0": ["athletics", "perception"],
+                "phbClassFighter:selection:1": ["defense"],
+                "phbRaceHuman:selection:0": ["elvish"],
+                "phbBackgroundSoldier:selection:0": ["dice-set"]
+              },
+              spells: { knownIds: [], spellbookIds: [], assignments: {} },
+              inventory: [],
+              description: { backstory: "Built through shared Character rules." },
+              overrides: {}
+            }
+          }
+        }
+      }));
+      document.getElementById("add-npc").click();
+      document.getElementById("detailed-build-entry").click();
+      return true;
+    `);
+    await waitFor(
+      `return document.querySelector('[data-builder-step="review"]')?.getAttribute("aria-current") === "step"
+        && document.getElementById("builder-finish")
+        && !document.getElementById("builder-finish").disabled
+        && document.getElementById("builder-review-summary-title")?.textContent.includes("NPC summary")
+        && document.getElementById("character-builder-save-status")?.textContent.includes("browser");`,
+      "Rules-built NPC draft did not resume at finishable Review",
+    );
+    await command("POST", "/window/rect", { width: 375, height: 800 });
+    assert.equal(await execute('return document.documentElement.scrollWidth <= innerWidth + 1;'), true, "Rules-built NPC builder must not overflow mobile width.");
+    await command("POST", "/window/rect", { width: 1280, height: 900 });
+    await execute('document.getElementById("builder-finish").click(); return true;');
+    await waitFor(
+      `return location.pathname === "/c/aotr/npc/rules-browser-npc/"
+        && window.character?.build?.mode === "rules"
+        && window.character?.build?.status === "complete"
+        && window.character?.hp?.max === 12
+        && window.character?.resources?.some((resource) => resource.name === "Second Wind")
+        && document.body.dataset.npcPlayerVisible === "false"
+        && Object.keys(JSON.parse(localStorage.getItem("dnd-npc-build-drafts-v1:campaign:aotr") || "{}")).length === 0;`,
+      "Rules-built NPC did not materialize, remain hidden, redirect, and remove its draft",
+    );
+    console.log("Browser smoke passed: rules-built NPC shared builder, engine, runtime, privacy, and mobile layout");
+    await navigate("/c/aotr/npc/");
+    await waitFor('return document.querySelectorAll("#npcs article").length === 3;', "Rules-built NPC did not return in the manager archive");
     await execute(`
       document.getElementById("add-npc").click();
       document.getElementById("dnd-beyond-import-toggle").click();
@@ -732,20 +1746,51 @@ async function main() {
     await smoke(
       "NPC tracker field controls",
       "/c/aotr/npc/known-npc/",
-      'return window.character?.id === "known-npc" && Boolean(document.getElementById("edit-character-toggle"));',
+      'return window.character?.id === "known-npc" && document.documentElement.dataset.characterSheetStyle === "v4" && document.getElementById("v4-sheet")?.dataset.v4Entity === "npc" && Boolean(document.getElementById("edit-character-toggle"));',
       `
         document.getElementById("edit-character-toggle").click();
         const hasRoll = Boolean(document.querySelector('[data-roll-label="Shortsword Attack"]'));
         const initial = document.querySelector('[data-npc-field-visibility="name"]')?.textContent.includes("Shown")
           && document.querySelector('[data-npc-field-visibility="ac"]')?.textContent.includes("Hidden");
+        const v4Selected = document.getElementById("editor-character-sheet-style")?.value === "v4";
+        const npcCopy = document.getElementById("character-editor")?.textContent.includes("NPC tracker layout");
         document.querySelector('[data-npc-visibility-preset="show-all"]').click();
         const showsAll = document.querySelector('[data-npc-field-visibility="ac"]')?.textContent.includes("Shown");
         document.querySelector('[data-npc-visibility-preset="hide-all"]').click();
         document.querySelector('[data-npc-field-visibility="name"]').click();
-        return hasRoll && initial && showsAll && Boolean(document.querySelector("[data-npc-player-visible]:checked"));
+        const checks = {
+          hasRoll,
+          initial,
+          showsAll,
+          v4Selected,
+          npcCopy,
+          noConversion: !document.getElementById("v4-conversion-open"),
+          playerVisible: Boolean(document.querySelector("[data-npc-player-visible]:checked")),
+        };
+        return Object.values(checks).every(Boolean) ? true : JSON.stringify(checks);
       `,
     );
-    await execute('document.getElementById("editor-cancel").click(); localStorage.setItem("cassianslog-local-user-v1", "localhost-player-01"); return true;');
+    await execute('window.confirm = () => true; document.getElementById("editor-cancel").click(); return true;');
+    await command("POST", "/window/rect", { width: 375, height: 800 });
+    const npcV4Themes = await execute(`
+      document.getElementById("theme-toggle").click();
+      document.querySelector('[data-theme-reverse="false"]').click();
+      document.querySelector('[data-theme-font="auto"]').click();
+      document.querySelector('[data-theme-card="evil-cassian"]').click();
+      const lightMode = document.documentElement.dataset.theme;
+      const lightToken = getComputedStyle(document.documentElement).getPropertyValue("--theme-background").trim();
+      document.querySelector('[data-theme-card="cassians-classic"]').click();
+      const darkMode = document.documentElement.dataset.theme;
+      const darkToken = getComputedStyle(document.documentElement).getPropertyValue("--theme-background").trim();
+      document.querySelector("[data-theme-dialog]").dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      return {
+        noOverflow: document.documentElement.scrollWidth <= innerWidth + 1,
+        themed: lightMode === "light" && darkMode === "dark" && lightToken !== darkToken,
+      };
+    `);
+    assert.deepEqual(npcV4Themes, { noOverflow: true, themed: true }, "Freeform NPC V4 should support mobile width and both themes.");
+    await command("POST", "/window/rect", { width: 1280, height: 900 });
+    await execute('localStorage.setItem("cassianslog-local-user-v1", "localhost-player-01"); return true;');
     await smoke(
       "NPC player privacy",
       "/c/aotr/npc/",
@@ -755,8 +1800,24 @@ async function main() {
     await smoke(
       "NPC player field redaction",
       "/c/aotr/npc/known-npc/",
-      'return window.character?.id === "known-npc" && document.body.dataset.characterCanEdit === "false" && document.getElementById("character-name")?.textContent.trim() === "Known NPC" && !document.getElementById("edit-character-toggle");',
-      'return document.getElementById("character-name").textContent.trim() === "Known NPC" && !document.body.textContent.includes("Player-hidden secret") && !document.getElementById("edit-character-toggle");',
+      'return window.character?.id === "known-npc" && document.documentElement.dataset.characterSheetStyle === "v4" && document.body.dataset.characterCanEdit === "false" && document.getElementById("character-name")?.textContent.trim() === "Known NPC" && !document.getElementById("edit-character-toggle");',
+      `
+        const detail = document.querySelector('[data-v4-feature="feature-1"] [data-tracker-action="open-v4-detail"]');
+        const use = document.querySelector('[data-v4-action-card] [data-tracker-action="request-use"]');
+        const nonMutatingEnabled = Boolean(detail && !detail.disabled);
+        detail?.click();
+        return document.getElementById("character-name").textContent.trim() === "Known NPC"
+          && document.getElementById("v4-sheet")?.dataset.v4Entity === "npc"
+          && !window.character.build
+          && !document.getElementById("v4-conversion-open")
+          && !document.body.textContent.includes("Player-hidden secret")
+          && !document.body.textContent.includes("Hidden feature detail")
+          && !document.getElementById("edit-character-toggle")
+          && Boolean(use?.disabled)
+          && nonMutatingEnabled
+          && !document.getElementById("v4-detail-dialog").classList.contains("hidden")
+          && document.getElementById("v4-detail-content").textContent.includes("No description recorded");
+      `,
     );
     await execute('localStorage.setItem("cassianslog-local-user-v1", "localhost-admin"); return true;');
     }
@@ -1263,6 +2324,7 @@ async function main() {
       ["Tracker V1", "/c/aotr/char/cassian/", 'return document.documentElement.dataset.characterSheetStyle === "v1" && Boolean(document.getElementById("edit-character-toggle"));', "v1", ["@characters"]],
       ["Tracker V2", "/c/aotr/char/cassian/", 'return document.documentElement.dataset.characterSheetStyle === "v2" && Boolean(document.getElementById("v2-sheet-layout"));', "v2", ["@characters"]],
       ["Tracker V3", "/c/aotr/char/cassian/", 'return document.documentElement.dataset.characterSheetStyle === "v3" && Boolean(document.getElementById("v3-sheet-grid"));', "v3", ["@character-layout"]],
+      ["Tracker V4", "/c/aotr/char/cassian/", 'return document.documentElement.dataset.characterSheetStyle === "v4" && Boolean(document.getElementById("v4-sheet"));', "v4", ["@characters"]],
       ["Player Screen", "/player-screen/", 'return Boolean(document.getElementById("screen-grid"));', "", ["@screens"]],
       ["DM Screen", "/dm-screen/", 'return Boolean(document.getElementById("screen-grid"));', "", ["@screens"]],
       ["Combat & Loot", "/combat-loot/", 'return document.getElementById("tracker-list").children.length > 0;', "", ["@combat"]],

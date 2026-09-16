@@ -29,6 +29,31 @@ const SKILLS = [
   ["Survival", "wis", "Survival"],
 ];
 
+function withDndBeyondSnapshot(sheet, method) {
+  const clone = (value) => JSON.parse(JSON.stringify(value));
+  return {
+    ...sheet,
+    importSnapshot: {
+      version: 1,
+      source: "dnd-beyond",
+      method,
+      automation: "manual",
+      totals: clone({
+        level: sheet.level,
+        ac: sheet.ac,
+        hp: sheet.hp,
+        initiative: sheet.initiative,
+        proficiency: sheet.proficiency,
+        passivePerception: sheet.passivePerception,
+        darkvision: sheet.darkvision,
+        stats: sheet.stats,
+        spellcasting: sheet.spellcasting,
+        currency: sheet.currency,
+      }),
+    },
+  };
+}
+
 const ACTIVATIONS = {
   1: "Action",
   2: "No Action",
@@ -426,7 +451,7 @@ export function mapDndBeyondPayload(payload) {
   const perception = stats.wis.skills.find((skill) => skill.name === "Perception")?.modifier ?? stats.wis.modifier;
   const speeds = character.race?.weightSpeeds?.override || character.race?.weightSpeeds?.normal || {};
   const senses = modifiers.filter((item) => item.subType === "darkvision");
-  return {
+  return withDndBeyondSnapshot({
     name: String(character.name).trim(), status: "Active",
     portrait: character.decorations?.avatarUrl || "",
     class: classNames.join(" / "), subclass: subclassNames.join(" / "),
@@ -454,7 +479,7 @@ export function mapDndBeyondPayload(payload) {
       attunement: Boolean(item.isAttuned), wearable: Boolean(item.equipped),
     })),
     currency: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0, ...(character.currencies || {}) },
-  };
+  }, "public-page");
 }
 
 function fieldMap(entries) {
@@ -572,7 +597,7 @@ export function mapDndBeyondPdfFields(entries) {
   const maxHP = number(fields.get("MaxHP"), 1);
   const saveDC = number(fields.get("spellSaveDC0"));
   const attackBonus = number(fields.get("spellAtkBonus0"));
-  return {
+  return withDndBeyondSnapshot({
     name, status: "Active", class: classLevels.map((match) => match[1].trim()).join(" / ") || classLevel.replace(/\s+\d+(?:\s*$|\s*[/,])/g, "").trim(),
     subclass: "", race: fields.get("RACE") || fields.get("RACE2") || "", level,
     experience: number(fields.get("EXPERIENCE POINTS")), background: fields.get("BACKGROUND") || fields.get("BACKGROUND2") || "",
@@ -589,7 +614,7 @@ export function mapDndBeyondPdfFields(entries) {
     },
     inventory,
     currency: Object.fromEntries(["cp", "sp", "ep", "gp", "pp"].map((coin) => [coin, number(fields.get(coin.toUpperCase()))])),
-  };
+  }, "pdf");
 }
 
 export async function importDndBeyondPdf(file) {

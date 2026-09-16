@@ -47,7 +47,7 @@ const context = {
 };
 context.campaignStorageKey = (key) => key;
 vm.createContext(context);
-vm.runInContext(`${storageCode}\n${textCode}\n${statusCode}\n${storageKeyCode}\n${characterModelCode}\n${repositoryCode}\nglobalThis.api = { storedCharacters, migrateLegacyPortrait, isBundledCharacter, applyNewCharacterSetup, applyImportedCharacterSetup, createCharacter };`, context);
+vm.runInContext(`${storageCode}\n${textCode}\n${statusCode}\n${storageKeyCode}\n${characterModelCode}\n${repositoryCode}\nglobalThis.api = { storedCharacters, migrateLegacyPortrait, isBundledCharacter, applyNewCharacterSetup, applyImportedCharacterSetup, createCharacter, persistCharacterDocument };`, context);
 
 const characters = context.api.storedCharacters();
 assert.equal(characters.cassian.portrait, "char/cassian/portrait.jpg");
@@ -140,10 +140,20 @@ assert.equal(imported.hp.temp, 0);
   assert.equal(importedCreated.character.actions[0].name, "Wild Shape");
   assert.equal(JSON.parse(values.get("dnd-characters"))["beyond-hero"].actions[0].name, "Wild Shape");
 
+  const convertedDocument = { ...created.character, build: { ...created.character.build, mode: "rules", conversion: { rollbackDocument: created.character } } };
+  const convertedSaved = await context.api.persistCharacterDocument(convertedDocument, { source: "custom" });
+  assert.equal(convertedSaved.cloudSaved, true);
+  assert.equal(JSON.parse(values.get("dnd-characters"))["cloud-hero"].build.mode, "rules");
+  assert.equal(cloudWrites.at(-1).value.document.build.conversion.rollbackDocument.name, "Cloud Hero");
+
   failCloudWrite = true;
   const localOnly = await context.api.createCharacter({ name: "Local Hero", level: 1, starterMode: "starter" });
   assert.equal(localOnly.cloudSaved, false);
   assert.equal(JSON.parse(values.get("dnd-characters"))["local-hero"].name, "Local Hero");
+  convertedDocument.name = "Locally Recovered Hero";
+  const pendingConversion = await context.api.persistCharacterDocument(convertedDocument);
+  assert.equal(pendingConversion.cloudSaved, false);
+  assert.equal(JSON.parse(values.get("dnd-characters"))["cloud-hero"].name, "Locally Recovered Hero", "conversion must save locally before a cloud failure");
   console.log("Character repository, creation, and legacy portrait migration tests passed.");
 })().catch((error) => {
   console.error(error);

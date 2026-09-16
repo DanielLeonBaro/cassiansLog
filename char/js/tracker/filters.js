@@ -14,6 +14,16 @@ export const FILTER_FOCUS_OPTIONS = [
   { value: "resource", label: "Resources" },
 ];
 
+export const ACTION_USAGE_OPTIONS = [
+  { value: "", label: "Any action type" },
+  { value: "attack", label: "Attacks" },
+  { value: "action", label: "Actions" },
+  { value: "bonus-action", label: "Bonus actions" },
+  { value: "reaction", label: "Reactions" },
+  { value: "other", label: "Other" },
+  { value: "limited", label: "Limited use" },
+];
+
 export function createFilterState() {
   return {
     search: "",
@@ -22,6 +32,7 @@ export function createFilterState() {
     level: "",
     category: "",
     action: "",
+    usage: "",
   };
 }
 
@@ -34,11 +45,24 @@ export function itemMatchesFilters(record, state) {
   ) return false;
   if (state.category && item.category !== state.category) return false;
   if (state.action && item.action !== state.action) return false;
+  if (state.usage && !matchesUsage(item, state.usage)) return false;
   if (state.focus && !matchesFocus(record, state.focus)) return false;
   const terms = normalizeFilterText(state.search).split(/\s+/).filter(Boolean);
   if (!terms.length) return true;
   const haystack = itemFilterText(record);
   return terms.every((term) => haystack.includes(term));
+}
+
+export function matchesUsage(item, usage) {
+  switch (usage) {
+    case "attack": return Boolean(item.attack);
+    case "action": return item.action === "Action";
+    case "bonus-action": return item.action === "Bonus Action";
+    case "reaction": return item.action === "Reaction";
+    case "other": return !["Action", "Bonus Action", "Reaction"].includes(item.action);
+    case "limited": return Boolean(item.uses || item.resourceId || item.slotLevel);
+    default: return true;
+  }
 }
 
 export function matchesFocus(record, focus) {

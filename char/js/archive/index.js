@@ -7,6 +7,7 @@ import { createCharacter, listCharacters, removeCharacter } from "./repository.j
 import { importDndBeyondPage, importDndBeyondPdf } from "./dnd-beyond-import.js";
 import { initializeDiceRoller } from "../../../shared/js/dice/index.js";
 import { campaignCanManage, campaignPagePath, currentCampaignSlug } from "../../../shared/js/campaign-context.js";
+import { initializeCharacterBuilderShell } from "../builder/index.js";
 
 export async function initializeCharacterArchive() {
   mountSiteHeader({ activePage: "characters" });
@@ -34,6 +35,7 @@ export async function initializeCharacterArchive() {
   let importedCharacter = null;
   let importing = false;
   let creating = false;
+  const builder = initializeCharacterBuilderShell();
   const canManage = currentCampaignSlug() ? await campaignCanManage() : true;
   const controller = createDialogController(dialog, {
     form,
@@ -58,6 +60,7 @@ export async function initializeCharacterArchive() {
       importURLButton.disabled = false;
       importPDFButton.disabled = false;
       submitButton.disabled = false;
+      builder?.reset();
     },
   });
 

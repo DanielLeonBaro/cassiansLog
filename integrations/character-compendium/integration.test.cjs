@@ -35,12 +35,17 @@ assert.equal(character.inventory.length, 1);
 assert.equal(character.inventory[0].quantity, 2);
 
 const adapter = fs.readFileSync("integrations/character-compendium/index.js", "utf8");
+const builderAdapter = fs.readFileSync("integrations/character-compendium/builder.js", "utf8");
 assert.match(adapter, /registerCharacterEditorExtension/);
+assert.match(adapter, /registerCharacterBuilderCatalogProvider/);
 assert.match(adapter, /optional Compendium integration is unavailable/);
 assert.match(adapter, /data-compendium-target/);
 assert.match(adapter, /Add another/, "Inventory entries should remain addable so quantity can increase.");
+assert.match(builderAdapter, /registerCharacterBuilderCatalogProvider/);
+assert.match(builderAdapter, /loadCompendiumCatalog/);
 
 const editor = fs.readFileSync("char/js/editor/index.js", "utf8");
 assert.doesNotMatch(editor, /compendium/i, "The Character editor core must not contain Compendium behavior.");
+assert.doesNotMatch(fs.readFileSync("char/js/builder/index.js", "utf8"), /compendium\/js/, "Character Builder core must use its optional catalog-provider seam.");
 
 console.log("Optional Character–Compendium integration tests passed.");

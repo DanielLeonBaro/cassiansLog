@@ -5,7 +5,7 @@ import { currentLocalUser, LOCAL_ADMIN_USER, LOCAL_TEST_USERS, LOCAL_USERS } fro
 const CAMPAIGN_PATH = /^\/c\/([a-z]{2,48})(?:\/|$)/;
 const CAMPAIGN_SLUG = /^[a-z]{2,48}$/;
 const CAMPAIGN_API_RESOURCES = new Set([
-  "characters", "npcs", "wiki", "music", "combat-loot", "public-initiative", "screens", "settings",
+  "characters", "character-build-drafts", "npcs", "wiki", "music", "combat-loot", "public-initiative", "screens", "settings",
 ]);
 
 let contextPromise;

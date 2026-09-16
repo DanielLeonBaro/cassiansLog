@@ -204,7 +204,7 @@ async function styleRoute(request, env, id, access) {
   if (request.method !== "PUT") return error("Method not allowed.", 405);
   if (!canManageCampaign(access)) return error("Campaign DM access required.", 403);
   const style = (await bodyJSON(request))?.style;
-  if (!CHARACTER_SHEET_STYLES.has(style)) return error("Character sheet style must be v1, v2, or v3.");
+  if (!CHARACTER_SHEET_STYLES.has(style)) return error("Character sheet style must be v1, v2, v3, or v4.");
   const row = await env.DB.prepare("SELECT settings_json FROM campaign_settings WHERE campaign_id = ?").bind(access.campaign.id).first();
   const settings = parseStored(row?.settings_json, {});
   settings.characterSheetStyleOverrides = { ...(settings.characterSheetStyleOverrides || {}), [id]: style };

@@ -31,6 +31,7 @@ async function loadSettings(label, fetchImplementation) {
   assert.equal(module.normalizeCharacterSheetStyle("v1"), "v1");
   assert.equal(module.normalizeCharacterSheetStyle("v2"), "v2");
   assert.equal(module.normalizeCharacterSheetStyle("v3"), "v3");
+  assert.equal(module.normalizeCharacterSheetStyle("v4"), "v4");
   assert.equal(module.normalizeCharacterSheetStyle("unknown"), "v1");
   const remote = await module.runtimeSettingsReady;
   assert.equal(remote.characterSheetStyle, "v2");
@@ -39,6 +40,9 @@ async function loadSettings(label, fetchImplementation) {
   assert.equal(module.resolveCharacterSheetStyle(remote, "ally"), "v2");
   assert.equal(module.resolveCharacterSheetStyle(remote, "karma"), "v2");
   assert.equal(module.resolveCharacterSheetStyle({ characterSheetStyle: "v1", characterSheetStyleOverrides: { karma: "v3" } }, "karma"), "v3");
+  assert.equal(module.resolveCharacterSheetStyle({ characterSheetStyle: "v1", characterSheetStyleOverrides: { karma: "v4" } }, "karma"), "v4");
+  assert.equal(module.resolveNpcSheetStyle({ characterSheetStyle: "v4" }, "monster"), "v4", "NPCs should inherit the campaign V4 tracker style.");
+  assert.equal(module.resolveNpcSheetStyle({ characterSheetStyle: "v1", npcSheetStyleOverrides: { monster: "v4" } }, "monster"), "v4");
 
   module = await loadSettings("legacy", async (url) => {
     assert.equal(url, "api/settings");
@@ -107,6 +111,15 @@ async function loadSettings(label, fetchImplementation) {
   );
   const localV3Save = await module.saveCharacterSheetStyleOverride("ally", "v3");
   assert.equal(localV3Save.style, "v3");
+  const localV4Save = await module.saveCharacterSheetStyleOverride("ally", "v4");
+  assert.equal(localV4Save.style, "v4");
+  const localNpcV4Save = await module.saveCharacterSheetStyleOverride("monster", "v4", { kind: "npc" });
+  assert.equal(localNpcV4Save.style, "v4");
+  assert.deepEqual(
+    JSON.parse(values.get(module.LOCAL_RUNTIME_SETTINGS_KEY)).npcSheetStyleOverrides,
+    { monster: "v4" },
+    "Local NPC style changes should stay separate from Character overrides.",
+  );
 
   if (originalLocation === undefined) delete global.location;
   else global.location = originalLocation;

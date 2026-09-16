@@ -18,6 +18,32 @@ assert.match(views.renderResourceCard({
   category: "Feature",
   uses: { current: 0, max: 1, reset: "short" },
 }), /data-id="second-wind"[\s\S]*0\/1[\s\S]*Short Rest/);
+assert.doesNotMatch(views.renderResourceCard({ id: "plain", name: "Plain" }), /request-use/);
+const v4Views = createTrackerViews({
+  formatReset: (reset) => reset,
+  formatSpellLevel: (level) => `Level ${level}`,
+  getPreparedCount: () => 0,
+  getSpellcastingProfile: () => null,
+  getSpells: () => [],
+  isAlwaysPreparedSpell: () => false,
+  isV4: () => true,
+});
+assert.match(v4Views.renderResourceCard({ id: "action-surge", name: "Action Surge" }), /data-tracker-action="request-use"[\s\S]*data-id="action-surge"[\s\S]*aria-label="Use Action Surge"/);
+const v4Spell = v4Views.renderV4SpellCard({
+  id: "detect-magic",
+  name: "Detect Magic",
+  level: 1,
+  school: "Divination",
+  spellbook: true,
+  ritual: true,
+  ritualCastable: true,
+  concentration: true,
+  prepared: false,
+});
+assert.match(v4Spell, /Spellbook/);
+assert.match(v4Spell, /Ritual/);
+assert.match(v4Spell, /Concentration/);
+assert.match(v4Spell, /data-tracker-action="request-spell-cast"/);
 assert.match(views.renderSpellSlot({ id: "slot-1", level: 1, current: 1, max: 2 }, { name: "Wizard" }), /data-id="slot-1"[\s\S]*1\/2/);
 assert.match(views.renderPreparedProfile({ id: "wizard", name: "Wizard", preparedLimit: 2 }), /Fire Bolt[\s\S]*Cantrip · always ready/);
 assert.match(views.renderAbilityCard({ name: "Slash", category: "Attack", action: "Action" }), /Search Google for Slash/);

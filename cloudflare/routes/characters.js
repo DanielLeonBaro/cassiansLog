@@ -125,7 +125,7 @@ export async function characterRoute(request, env, id, tail) {
   }
   if (tail === "style" && request.method === "PUT") {
     const body = await bodyJSON(request);
-    if (!CHARACTER_SHEET_STYLES.has(body?.style)) return error("Character sheet style must be v1, v2, or v3.");
+    if (!CHARACTER_SHEET_STYLES.has(body?.style)) return error("Character sheet style must be v1, v2, v3, or v4.");
     const settings = await loadSettings(env);
     settings.characterSheetStyleOverrides = { ...settings.characterSheetStyleOverrides, [id]: body.style };
     const saved = await saveSettings(env, settings);

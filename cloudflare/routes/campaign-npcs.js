@@ -1,9 +1,10 @@
 // Handles campaign NPC trackers, server-side player redaction, runtime state, and layouts.
 import { canManageCampaign } from "../campaigns.js";
 import { bodyJSON, error, json, parseStored, safeId } from "../http.js";
-import { CHARACTER_SHEET_STYLES } from "../settings.js";
 import { normalizeV3Layout, validV3Layout } from "../../shared/js/v3-layout.js";
 import { normalizeNpcVisibility, projectNpcForPlayer } from "../../shared/js/npc-visibility.js";
+
+const NPC_SHEET_STYLES = new Set(["v1", "v2", "v3", "v4"]);
 
 function managerRequired(access) {
   return canManageCampaign(access) ? null : error("Campaign DM access required.", 403);
@@ -58,6 +59,7 @@ async function npcDocument(request, env, id, access) {
     const now = new Date().toISOString();
     const existing = await env.DB.prepare("SELECT id FROM campaign_npcs WHERE campaign_id = ? AND id = ?")
       .bind(campaignId, id).first();
+    if (body.createOnly === true && existing) return error("That NPC ID already exists in this campaign.", 409);
     await env.DB.prepare(
       `INSERT INTO campaign_npcs (campaign_id, id, document_json, visibility_json, player_visible, active, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, 1, ?, ?) ON CONFLICT(campaign_id, id) DO UPDATE SET
@@ -133,7 +135,7 @@ async function styleRoute(request, env, id, access) {
   const denied = managerRequired(access);
   if (denied) return denied;
   const style = (await bodyJSON(request))?.style;
-  if (!CHARACTER_SHEET_STYLES.has(style)) return error("NPC tracker style must be v1, v2, or v3.");
+  if (!NPC_SHEET_STYLES.has(style)) return error("NPC tracker style must be v1, v2, v3, or v4.");
   const row = await env.DB.prepare("SELECT settings_json FROM campaign_settings WHERE campaign_id = ?")
     .bind(access.campaign.id).first();
   const settings = parseStored(row?.settings_json, {});

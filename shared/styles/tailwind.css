@@ -630,6 +630,723 @@
     @apply min-w-0;
   }
 
+  #v4-sheet {
+    @apply grid gap-4;
+  }
+
+  [data-character-sheet-style="v4"] #characterDescription {
+    @apply mb-0 border-blood-500/40 bg-theme-surface/90 shadow-2xl;
+  }
+
+  [data-character-sheet-style="v4"] #characterDescription > .p-5 > div {
+    @apply items-center text-left;
+  }
+
+  [data-character-sheet-style="v4"] #characterDescription #character-portrait {
+    @apply h-24 w-24 rounded-xl border-2 border-blood-500/60 sm:h-28 sm:w-28;
+  }
+
+  .v4-character-actions {
+    @apply flex flex-wrap items-center justify-end gap-2;
+  }
+
+  .v4-character-actions #editor-toggle-slot {
+    @apply contents;
+  }
+
+  .v4-conversion-open {
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-sky-600 bg-sky-600/10 px-3 text-sm font-bold text-sky-700 transition hover:bg-sky-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:text-sky-300;
+  }
+
+  #v4-core {
+    @apply grid gap-4;
+  }
+
+  #v4-core-grid {
+    @apply grid min-w-0 gap-4 xl:grid-cols-[minmax(20rem,4fr)_minmax(0,8fr)];
+  }
+
+  .v4-core-column {
+    @apply grid min-w-0 content-start gap-4;
+  }
+
+  [data-character-sheet-style="v4"] #combatAccordion,
+  [data-character-sheet-style="v4"] #quickStatsCard,
+  [data-character-sheet-style="v4"] #hpManager,
+  [data-character-sheet-style="v4"] #death-saves-section,
+  [data-character-sheet-style="v4"] #combatResources,
+  [data-character-sheet-style="v4"] #spellcastingSection,
+  [data-character-sheet-style="v4"] #preparedSpellsSection,
+  [data-character-sheet-style="v4"] #notesSection {
+    @apply mb-0;
+  }
+
+  [data-character-sheet-style="v4"] #combatAccordion > div > h2,
+  [data-character-sheet-style="v4"] #inventoryAccordion > div > h2 {
+    @apply hidden;
+  }
+
+  [data-character-sheet-style="v4"] #skillsCollapse,
+  [data-character-sheet-style="v4"] #inventoryCollapse {
+    display: block !important;
+  }
+
+  [data-character-sheet-style="v4"] #skillsCollapse > div,
+  [data-character-sheet-style="v4"] #inventoryCollapse > div {
+    @apply p-0;
+  }
+
+  .v4-section-title,
+  .v4-summary-card > h2,
+  .v4-secondary-card > h2,
+  .v4-empty-panel > h2 {
+    @apply border-b border-theme-border bg-theme-surface-strong px-4 py-3 font-display font-bold;
+  }
+
+  .v4-ability-grid {
+    @apply grid grid-cols-2 gap-2 p-3 sm:grid-cols-3 xl:grid-cols-2;
+  }
+
+  .v4-ability {
+    @apply grid min-w-0 grid-cols-[auto_1fr] items-center gap-2 rounded-xl border border-theme-border bg-theme-surface px-3 py-2 text-center;
+  }
+
+  .v4-ability > span {
+    @apply row-span-2 inline-flex h-9 w-9 items-center justify-center rounded-full bg-blood-500 text-xs font-black text-on-accent;
+  }
+
+  .v4-ability > strong {
+    @apply text-xl;
+  }
+
+  .v4-roll,
+  .v4-save-roll {
+    @apply inline-flex min-h-9 items-center justify-center rounded-lg border border-theme-border px-2 text-xs font-bold transition hover:border-blood-500 hover:text-blood-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold;
+  }
+
+  .v4-save-roll {
+    @apply col-span-2;
+  }
+
+  .v4-skill-list {
+    @apply grid gap-px bg-theme-border sm:grid-cols-2 xl:grid-cols-1;
+  }
+
+  .v4-skill-list > li {
+    @apply bg-theme-surface;
+  }
+
+  .v4-skill-roll {
+    @apply flex min-h-10 w-full items-center justify-between gap-3 px-4 py-2 text-left text-sm transition hover:bg-blood-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold;
+  }
+
+  .v4-skill-roll > span {
+    @apply flex min-w-0 items-center gap-2;
+  }
+
+  .v4-skill-roll i {
+    @apply text-blood-500;
+  }
+
+  .v4-skill-roll small {
+    @apply rounded bg-theme-surface-strong px-1.5 py-0.5 text-[.65rem] font-bold text-theme-muted;
+  }
+
+  [data-character-sheet-style="v4"] #quickStatsCard > .p-5 {
+    @apply p-3;
+  }
+
+  [data-character-sheet-style="v4"] #quick-stats-grid {
+    @apply grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-8;
+  }
+
+  [data-character-sheet-style="v4"] #quick-stats-grid > div {
+    @apply rounded-xl border border-theme-border bg-theme-surface px-2 py-3;
+  }
+
+  .v4-hp-grid {
+    @apply grid min-w-0 gap-4 lg:grid-cols-2;
+  }
+
+  .v4-summary-details {
+    @apply grid gap-3 sm:grid-cols-2;
+  }
+
+  .v4-summary-card,
+  .v4-secondary-card,
+  .v4-empty-panel {
+    @apply min-w-0 overflow-hidden rounded-2xl border border-theme-border bg-theme-surface/90 shadow-card;
+  }
+
+  .v4-summary-list {
+    @apply flex flex-wrap gap-2 p-4;
+  }
+
+  .v4-summary-list > li {
+    @apply rounded-full border border-theme-border bg-theme-surface-strong px-2.5 py-1 text-xs font-bold;
+  }
+
+  .v4-empty {
+    @apply p-4 text-sm text-theme-muted;
+  }
+
+  .v4-conditions > ul {
+    @apply flex flex-wrap gap-2 p-4 pb-2;
+  }
+
+  .v4-conditions > ul > li:not(.v4-empty) {
+    @apply inline-flex items-center overflow-hidden rounded-full border border-blood-500/40 bg-blood-500/10 text-xs font-bold;
+  }
+
+  .v4-conditions > ul > li > span {
+    @apply px-3 py-1.5;
+  }
+
+  .v4-conditions > ul button {
+    @apply border-l border-blood-500/30 px-2 py-1.5 text-blood-500 hover:bg-blood-500 hover:text-on-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold;
+  }
+
+  .v4-condition-buttons {
+    @apply inline-flex p-0;
+  }
+
+  #v4-condition-form {
+    @apply border-t border-theme-border p-4;
+  }
+
+  #v4-condition-form > label {
+    @apply mb-1 block text-xs font-bold uppercase tracking-wide text-theme-muted;
+  }
+
+  #v4-condition-form > div {
+    @apply flex min-w-0 gap-2;
+  }
+
+  #v4-condition-form input {
+    @apply min-w-0 grow rounded-xl border border-theme-border bg-theme-surface px-3 py-2 text-theme-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold;
+  }
+
+  #v4-condition-form button {
+    @apply rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-on-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold;
+  }
+
+  .v4-tabs {
+    @apply sticky top-16 z-20 flex w-full gap-1 overflow-x-auto rounded-2xl border border-theme-border bg-theme-surface/95 p-1 shadow-card backdrop-blur-xl;
+    scrollbar-width: thin;
+  }
+
+  .v4-tab {
+    @apply inline-flex min-h-11 shrink-0 grow items-center justify-center gap-2 rounded-xl border border-transparent px-3 py-2 text-sm font-bold text-theme-muted transition hover:bg-blood-500/10 hover:text-blood-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold;
+  }
+
+  .v4-tab[aria-selected="true"] {
+    @apply border-blood-500 bg-blood-500 text-on-accent shadow-sm;
+  }
+
+  .v4-panel {
+    @apply grid min-w-0 gap-4;
+  }
+
+  .v4-panel:focus-visible,
+  .v4-secondary-card:focus-visible {
+    @apply outline-none ring-2 ring-gold;
+  }
+
+  .v4-panel[hidden] {
+    display: none !important;
+  }
+
+  .v4-spell-browser {
+    @apply min-w-0 overflow-hidden rounded-2xl border border-theme-border bg-theme-surface/90 shadow-card;
+  }
+
+  .v4-spell-browser-header {
+    @apply flex flex-wrap items-center justify-between gap-3 border-b border-theme-border bg-theme-surface-strong px-5 py-4;
+  }
+
+  .v4-spell-browser-header h2 {
+    @apply font-display text-lg font-bold;
+  }
+
+  .v4-spell-browser-header p {
+    @apply text-xs font-bold text-theme-muted;
+  }
+
+  .v4-spell-filters {
+    @apply grid gap-3 border-b border-theme-border p-4 sm:grid-cols-2 lg:grid-cols-4;
+  }
+
+  .v4-spell-filters label > span,
+  #v4-spell-cast-modes > legend {
+    @apply mb-1 block text-xs font-bold uppercase tracking-wide text-theme-muted;
+  }
+
+  .v4-spell-filters input,
+  .v4-spell-filters select {
+    @apply w-full rounded-xl border border-theme-border bg-theme-surface px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold;
+  }
+
+  .v4-spell-filters > button {
+    @apply min-h-10 self-end rounded-xl border border-theme-border px-3 py-2 text-sm font-bold transition hover:border-blood-500 hover:text-blood-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold lg:col-start-4;
+  }
+
+  .v4-spell-list {
+    @apply grid min-w-0 gap-4 p-4 lg:grid-cols-2;
+  }
+
+  .v4-inventory-browser {
+    @apply min-w-0 overflow-hidden rounded-2xl border border-theme-border bg-theme-surface/90 shadow-card;
+  }
+
+  .v4-inventory-header {
+    @apply flex flex-wrap items-start justify-between gap-4 border-b border-theme-border bg-theme-surface-strong px-5 py-4;
+  }
+
+  .v4-inventory-header h2 {
+    @apply font-display text-lg font-bold;
+  }
+
+  .v4-inventory-header > div > p {
+    @apply text-xs font-bold text-theme-muted;
+  }
+
+  #v4-inventory-summary {
+    @apply grid grid-cols-2 gap-2 sm:grid-cols-4;
+  }
+
+  #v4-inventory-summary > div {
+    @apply min-w-24 rounded-xl border border-theme-border bg-theme-surface px-3 py-2;
+  }
+
+  #v4-inventory-summary dt {
+    @apply text-[10px] font-black uppercase tracking-wide text-theme-muted;
+  }
+
+  #v4-inventory-summary dd {
+    @apply mt-0.5 text-sm font-bold capitalize;
+  }
+
+  .v4-inventory-filters {
+    @apply grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4;
+  }
+
+  .v4-inventory-filters label > span,
+  .v4-inventory-container > span {
+    @apply mb-1 block text-xs font-bold uppercase tracking-wide text-theme-muted;
+  }
+
+  .v4-inventory-filters input,
+  .v4-inventory-filters select,
+  .v4-inventory-container select {
+    @apply w-full rounded-xl border border-theme-border bg-theme-surface px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold;
+  }
+
+  .v4-inventory-filters > button {
+    @apply min-h-10 self-end rounded-xl border border-theme-border px-3 py-2 text-sm font-bold transition hover:border-blood-500 hover:text-blood-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold;
+  }
+
+  [data-character-sheet-style="v4"] #inventoryAccordion > div > h2 {
+    @apply hidden;
+  }
+
+  [data-character-sheet-style="v4"] #inventoryAccordion > div,
+  [data-character-sheet-style="v4"] #inventoryCollapse {
+    @apply border-0 bg-transparent shadow-none;
+  }
+
+  [data-character-sheet-style="v4"] #inventoryCollapse > div {
+    @apply p-0;
+  }
+
+  [data-character-sheet-style="v4"] #inventory-container {
+    @apply lg:grid-cols-2;
+  }
+
+  .v4-inventory-stepper {
+    @apply inline-flex shrink-0 items-center overflow-hidden rounded-xl border border-theme-border bg-theme-surface;
+  }
+
+  .v4-inventory-stepper button {
+    @apply min-h-10 min-w-10 font-black transition hover:bg-blood-500 hover:text-on-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold;
+  }
+
+  .v4-inventory-stepper output {
+    @apply min-w-10 border-x border-theme-border px-2 text-center text-sm font-bold;
+  }
+
+  .v4-inventory-controls {
+    @apply mt-3 grid gap-2 sm:grid-cols-2;
+  }
+
+  .v4-inventory-toggle {
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-theme-border px-3 py-2 text-sm font-bold transition hover:border-blood-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold;
+  }
+
+  .v4-inventory-toggle[aria-checked="true"] {
+    @apply border-emerald-600 bg-emerald-600 text-white;
+  }
+
+  .v4-inventory-container {
+    @apply sm:col-span-2;
+  }
+
+  .v4-inventory-charges {
+    @apply mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-theme-border bg-theme-surface-strong px-3 py-2 text-sm font-bold;
+  }
+
+  .v4-inventory-charges button {
+    @apply min-h-10 rounded-xl bg-blood-500 px-3 py-2 text-sm font-bold text-on-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  #v4-inventory-charge-availability {
+    @apply rounded-xl border border-theme-border bg-theme-surface-strong px-3 py-2 text-sm font-bold;
+  }
+
+  .v4-content-browser {
+    @apply min-w-0 overflow-hidden rounded-2xl border border-theme-border bg-theme-surface/90 shadow-card;
+  }
+
+  .v4-content-header {
+    @apply flex flex-wrap items-center justify-between gap-3 border-b border-theme-border bg-theme-surface-strong px-5 py-4;
+  }
+
+  .v4-content-header h2 {
+    @apply font-display text-lg font-bold;
+  }
+
+  .v4-content-header p {
+    @apply text-xs font-bold text-theme-muted;
+  }
+
+  .v4-content-header > button,
+  .v4-detail-open {
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-blood-500 px-3 py-2 text-sm font-bold text-blood-500 transition hover:bg-blood-500 hover:text-on-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold;
+  }
+
+  .v4-content-groups {
+    @apply grid min-w-0 gap-4 p-4;
+  }
+
+  .v4-content-groups > section > h3 {
+    @apply mb-2 flex items-center gap-2 font-display text-lg font-bold;
+  }
+
+  .v4-content-groups > section > h3 > span {
+    @apply rounded-full bg-blood-500 px-2 py-0.5 text-xs text-on-accent;
+  }
+
+  .v4-content-groups > section > div {
+    @apply grid gap-3 lg:grid-cols-2;
+  }
+
+  .v4-content-card {
+    @apply grid min-w-0 gap-3 rounded-2xl border border-theme-border bg-theme-surface-strong p-4;
+  }
+
+  .v4-content-card > div:first-child {
+    @apply flex flex-wrap items-start justify-between gap-2;
+  }
+
+  .v4-content-card > div:first-child > strong {
+    @apply font-display font-bold;
+  }
+
+  .v4-content-card > div:first-child > span {
+    @apply text-xs font-bold text-theme-muted;
+  }
+
+  .v4-feature-selections {
+    @apply flex flex-wrap items-center gap-2 text-xs;
+  }
+
+  .v4-feature-selections > span {
+    @apply rounded-full border border-theme-border px-2 py-1;
+  }
+
+  .v4-feature-resource,
+  .v4-extra-hp {
+    @apply flex flex-wrap items-center justify-between gap-2 rounded-xl border border-theme-border px-3 py-2 text-sm font-bold;
+  }
+
+  .v4-feature-resource > div,
+  .v4-extra-hp > div {
+    @apply inline-flex overflow-hidden rounded-lg border border-theme-border;
+  }
+
+  .v4-feature-resource button,
+  .v4-extra-hp button {
+    @apply min-h-9 min-w-9 font-black transition hover:bg-blood-500 hover:text-on-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold;
+  }
+
+  .v4-detail-dialog {
+    @apply fixed inset-0 z-[70] justify-end bg-black/70;
+  }
+
+  .v4-detail-sidebar {
+    @apply h-full w-full max-w-xl overflow-y-auto border-l border-theme-border bg-theme-surface text-theme-text shadow-2xl;
+  }
+
+  .v4-detail-sidebar > header {
+    @apply sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-theme-border bg-theme-surface/95 px-5 py-4 backdrop-blur-xl;
+  }
+
+  #v4-detail-eyebrow {
+    @apply text-xs font-black uppercase tracking-widest text-blood-500;
+  }
+
+  #v4-detail-title {
+    @apply font-display text-2xl font-bold;
+  }
+
+  #v4-detail-close {
+    @apply inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-theme-border hover:border-blood-500 hover:text-blood-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold;
+  }
+
+  #v4-detail-content {
+    @apply grid gap-4 p-5;
+  }
+
+  #v4-detail-content > section,
+  .v4-detail-stats {
+    @apply rounded-2xl border border-theme-border bg-theme-surface-strong p-4;
+  }
+
+  #v4-detail-content h3 {
+    @apply mb-2 font-display font-bold;
+  }
+
+  #v4-detail-content ul {
+    @apply list-disc space-y-1 pl-5 text-sm;
+  }
+
+  #v4-detail-content p {
+    @apply whitespace-pre-wrap text-sm leading-relaxed;
+  }
+
+  .v4-detail-stats {
+    @apply grid grid-cols-2 gap-3;
+  }
+
+  .v4-detail-stats dt,
+  #v4-background-content dt {
+    @apply text-xs font-black uppercase tracking-wide text-theme-muted;
+  }
+
+  .v4-detail-stats dd,
+  #v4-background-content dd {
+    @apply mt-1 text-sm font-bold;
+  }
+
+  #v4-background-content {
+    @apply grid gap-3;
+  }
+
+  #v4-background-content > strong {
+    @apply font-display text-lg text-theme-text;
+  }
+
+  #v4-background-content > dl {
+    @apply grid gap-3;
+  }
+
+  #v4-background-content > dl > div {
+    @apply rounded-xl border border-theme-border bg-theme-surface-strong p-3;
+  }
+
+  .v4-spell-cast {
+    @apply inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-on-accent transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .v4-spell-prepare {
+    @apply inline-flex min-h-10 items-center gap-2 rounded-full border border-theme-border px-3 py-2 text-xs font-bold transition hover:border-blood-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold;
+  }
+
+  .v4-spell-prepare > span {
+    @apply relative h-5 w-9 rounded-full bg-stone-300 after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition;
+  }
+
+  .v4-spell-prepare[aria-checked="true"] > span {
+    @apply bg-emerald-600 after:translate-x-4;
+  }
+
+  .v4-spell-warning {
+    @apply mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-700 dark:text-amber-300;
+  }
+
+  .v4-use-action {
+    @apply inline-flex min-h-10 items-center justify-center rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-on-accent transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .v4-use-dialog {
+    @apply fixed inset-0 z-50 items-center justify-center bg-black/70 p-4;
+  }
+
+  .v4-use-dialog-card {
+    @apply grid max-h-[90vh] w-full max-w-md gap-4 overflow-y-auto rounded-2xl border border-theme-border bg-theme-surface p-5 text-theme-text shadow-2xl;
+  }
+
+  .v4-dialog-kicker {
+    @apply text-xs font-black uppercase tracking-widest text-blood-500;
+  }
+
+  .v4-use-dialog-card h2 {
+    @apply font-display text-2xl font-bold;
+  }
+
+  .v4-use-dialog-card label {
+    @apply text-xs font-bold uppercase tracking-wide text-theme-muted;
+  }
+
+  #v4-use-resource {
+    @apply w-full rounded-xl border border-theme-border bg-theme-surface-strong px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold disabled:opacity-70;
+  }
+
+  #v4-spell-slot {
+    @apply w-full rounded-xl border border-theme-border bg-theme-surface-strong px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold;
+  }
+
+  #v4-spell-cast-modes {
+    @apply grid gap-2 sm:grid-cols-2;
+  }
+
+  #v4-spell-cast-modes > label {
+    @apply flex items-center gap-2 rounded-xl border border-theme-border bg-theme-surface-strong px-3 py-2 text-sm font-bold;
+  }
+
+  #v4-spell-cast-availability {
+    @apply rounded-xl border border-theme-border bg-theme-surface-strong px-3 py-2 text-sm font-bold;
+  }
+
+  #v4-use-availability {
+    @apply rounded-xl border border-theme-border bg-theme-surface-strong px-3 py-2 text-sm font-bold;
+  }
+
+  .v4-use-boundary {
+    @apply text-xs text-theme-muted;
+  }
+
+  .v4-use-dialog-actions {
+    @apply flex flex-wrap justify-end gap-2;
+  }
+
+  .v4-use-dialog-actions button {
+    @apply min-h-10 rounded-xl border border-theme-border px-4 py-2 text-sm font-bold transition hover:border-blood-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  #v4-use-confirm {
+    @apply border-blood-500 bg-blood-500 text-on-accent;
+  }
+
+  .v4-conversion-card {
+    @apply flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-theme-border bg-theme-surface text-theme-text shadow-2xl;
+  }
+
+  .v4-conversion-card > header,
+  .v4-conversion-card > footer {
+    @apply flex items-center justify-between gap-3 border-theme-border px-5 py-4;
+  }
+
+  .v4-conversion-card > header {
+    @apply border-b;
+  }
+
+  .v4-conversion-card > footer {
+    @apply justify-end border-t;
+  }
+
+  .v4-conversion-card h2 {
+    @apply font-display text-2xl font-bold;
+  }
+
+  #v4-conversion-close,
+  .v4-conversion-card > footer button {
+    @apply inline-flex min-h-10 items-center justify-center rounded-xl border border-theme-border px-4 py-2 text-sm font-bold transition hover:border-blood-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  #v4-conversion-close {
+    @apply min-w-10 px-2;
+  }
+
+  #v4-conversion-confirm {
+    @apply border-blood-500 bg-blood-500 text-on-accent;
+  }
+
+  .v4-conversion-body {
+    @apply grid gap-4 overflow-y-auto p-5;
+  }
+
+  #v4-conversion-ruleset-label {
+    @apply grid max-w-xs gap-1 text-xs font-black uppercase tracking-wide text-theme-muted;
+  }
+
+  #v4-conversion-ruleset {
+    @apply rounded-xl border border-theme-border bg-theme-surface-strong px-3 py-2 text-sm normal-case tracking-normal text-theme-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold;
+  }
+
+  #v4-conversion-status {
+    @apply rounded-xl border border-sky-600/30 bg-sky-600/10 px-4 py-3 text-sm font-bold;
+  }
+
+  .v4-conversion-preview {
+    @apply grid gap-3 md:grid-cols-2;
+  }
+
+  .v4-conversion-preview > section {
+    @apply rounded-2xl border border-theme-border bg-theme-surface-strong p-4;
+  }
+
+  .v4-conversion-preview h3 {
+    @apply font-display font-bold;
+  }
+
+  .v4-conversion-preview h3 > span {
+    @apply ml-1 rounded-full bg-theme-surface px-2 py-0.5 text-xs text-theme-muted;
+  }
+
+  .v4-conversion-preview ul {
+    @apply mt-3 grid list-disc gap-2 pl-5 text-sm;
+  }
+
+  .v4-empty-panel > p,
+  #v4-background-content {
+    @apply p-4 text-sm text-theme-muted;
+  }
+
+  #v4-secondary {
+    @apply grid gap-4 lg:grid-cols-2;
+  }
+
+  #v4-notes-host > #notesSection {
+    @apply border-0 bg-transparent shadow-none;
+  }
+
+  @media (max-width: 639px) {
+    [data-character-sheet-style="v4"] main {
+      @apply px-2 pt-3;
+    }
+
+    [data-character-sheet-style="v4"] #characterDescription > .p-5 > div {
+      @apply grid grid-cols-[auto_minmax(0,1fr)] gap-3;
+    }
+
+    [data-character-sheet-style="v4"] #characterDescription #character-portrait {
+      @apply h-20 w-20;
+    }
+
+    .v4-character-actions {
+      @apply col-span-2 justify-start border-t border-theme-border pt-3;
+    }
+
+    .v4-character-actions > button,
+    .v4-character-actions #editor-toggle-slot > button {
+      @apply grow;
+    }
+
+    .v4-tab {
+      @apply grow-0 px-3;
+    }
+  }
+
   .tracker-card-header > strong {
     @apply min-w-0 grow basis-40 break-words leading-snug;
   }

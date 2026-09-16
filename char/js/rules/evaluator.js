@@ -42,6 +42,28 @@ function selectedValues(value) {
   return values.map((item) => text(String(item))).filter(Boolean);
 }
 
+function selectedOptionIds(build) {
+  return new Set(Object.values(build?.selections || {}).flatMap((value) => selectedValues(value)));
+}
+
+function inlineOptionAvailability(option, build, context) {
+  const availability = staticAvailability(option, build);
+  if (!availability.available) return availability;
+  const minimumLevel = Math.trunc(Number(option?.minimumLevel ?? option?.level));
+  if (Number.isFinite(minimumLevel) && minimumLevel > context.level) {
+    return { available: false, reason: "level-gated" };
+  }
+  const required = Array.isArray(option?.requiresOptions)
+    ? option.requiresOptions
+    : text(option?.requiresOptions).split("|");
+  const requiredIds = required.map((value) => text(String(value))).filter(Boolean);
+  if (build?.preferences?.prerequisites !== false
+    && requiredIds.length && !requiredIds.every((id) => selectedOptionIds(build).has(id))) {
+    return { available: false, reason: "prerequisite-unmet" };
+  }
+  return { available: true, reason: "" };
+}
+
 function createCatalogIndex(catalog) {
   const entries = listFromCatalog(catalog).filter((entry) => entry && typeof entry === "object" && text(entry.id));
   const byId = new Map();
@@ -247,8 +269,9 @@ function choiceDraft(source, selection, selectionIndex, build, catalogIndex, con
   const key = characterChoiceKey(source.id, selectionIndex);
   const values = selectedValues(build.selections[key]);
   const options = optionsForSelection(selection, catalogIndex).map((option) => {
-    if (!option.entry) return option;
-    const availability = staticAvailability(option.entry, build);
+    const availability = option.entry
+      ? staticAvailability(option.entry, build)
+      : inlineOptionAvailability(option, build, context);
     return availability.available ? option : {
       ...option,
       available: false,

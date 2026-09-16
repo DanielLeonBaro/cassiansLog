@@ -13,6 +13,7 @@ import {
 import { bodyJSON, error, json } from "../http.js";
 import { hashPassword, userFromRequest, verifyPassword } from "../user-auth.js";
 import { campaignCharacterRoute, listCampaignCharacters } from "./campaign-characters.js";
+import { campaignCharacterBuildDraftRoute } from "./character-build-drafts.js";
 import { campaignNpcRoute, listCampaignNpcs } from "./campaign-npcs.js";
 import { campaignContentRoute } from "./campaign-content.js";
 import { campaignScreenRoute } from "./campaign-screens.js";
@@ -223,6 +224,9 @@ export async function campaignRoute(request, env, parts) {
         ? (request.method === "GET" ? listCampaignCharacters(env, access) : error("Method not allowed.", 405))
         : campaignCharacterRoute(request, env, parts.slice(2), access);
     }
+    if (parts[1] === "character-build-drafts") {
+      return campaignCharacterBuildDraftRoute(request, env, parts.slice(2), access);
+    }
     if (parts[1] === "npcs") {
       return parts.length === 2
         ? (request.method === "GET" ? listCampaignNpcs(env, access) : error("Method not allowed.", 405))
@@ -234,6 +238,9 @@ export async function campaignRoute(request, env, parts) {
     }
     return error("Campaign route not found.", 404);
   } catch (caught) {
+    if (/character_build_drafts/i.test(String(caught?.message || caught))) {
+      return error("Character Builder draft storage is unavailable. Apply migration 0017.", 503);
+    }
     if (/campaign_npcs|campaign_npc_runtime|campaign_user_npc_layouts/i.test(String(caught?.message || caught))) {
       return error("NPC storage is unavailable. Apply migration 0016.", 503);
     }

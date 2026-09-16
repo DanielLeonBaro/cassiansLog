@@ -1,7 +1,7 @@
 // Loads, normalizes, publishes, and updates D1-backed runtime settings.
 import { bodyJSON, error, json, parseStored, safeId } from "./http.js";
 
-export const CHARACTER_SHEET_STYLES = new Set(["v1", "v2", "v3"]);
+export const CHARACTER_SHEET_STYLES = new Set(["v1", "v2", "v3", "v4"]);
 const DEFAULT_SECTIONS = {
   characters: true, npcs: true, "player-screen": true, "dm-screen": true,
   "combat-loot": true, "public-initiative": true,

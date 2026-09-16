@@ -1,5 +1,6 @@
 // Registers optional Compendium lookup controls with the character editor.
 import { registerCharacterEditorExtension } from "../../char/js/editor/extensions.js";
+import { registerCharacterBuilderCatalogProvider } from "../../char/js/builder/catalog-provider.js";
 import { filterCompendiumEntries, loadCompendiumCatalog } from "../../compendium/js/api.js";
 import { applySectionVisibility } from "../../shared/js/sections.js";
 import { escapeAttribute, escapeHTML } from "../../shared/js/text.js";
@@ -220,4 +221,5 @@ function addEntry(event) {
   renderResults();
 }
 
+registerCharacterBuilderCatalogProvider(loadCompendiumCatalog);
 registerCharacterEditorExtension({ id: "compendium", mount, afterRender });

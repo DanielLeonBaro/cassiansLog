@@ -3,6 +3,7 @@ import { normalizeSpellcastingData } from "./spellcasting-model.js";
 import { applyDamage, applyHealing, applyTemporaryHitPoints, totalHitPoints } from "./hit-points.js";
 import { hasActiveFilters, uniqueValues } from "./filter-utilities.js";
 import {
+  ACTION_USAGE_OPTIONS,
   FILTER_FOCUS_OPTIONS,
   createFilterState,
   itemMatchesFilters,
@@ -13,13 +14,51 @@ import { createTrackerViews } from "./views.js";
 import { createNotesController } from "./notes.js";
 import { createTrackerState, normalizeCharacterFlag } from "./state.js";
 import { escapeHTML, sanitizeIdentifier, setText, trackerUI as ui } from "./rendering.js";
-import { applyV1CharacterSheetOrder, refreshCharacterSheetTabs, refreshV3CharacterSheetLayout } from "./layout.js";
+import { applyV1CharacterSheetOrder, refreshCharacterSheetTabs, refreshV3CharacterSheetLayout, refreshV4CharacterSheetLayout } from "./layout.js";
 import { initializeDiceRoller } from "../../../shared/js/dice/index.js";
 import { diceHistoryStorageKey } from "../storage-keys.js";
 import { modifierRollFormula, renderRollButton } from "./rolls.js";
+import { renderV4CoreSummary, renderV4Stats } from "./v4-layout.js";
+import { consumeV4ActionUse, planV4ActionUse } from "./v4-actions.js";
+import {
+  consumeV4SpellCast,
+  createV4SpellFilterState,
+  planV4SpellCast,
+  spellMatchesV4Filters,
+} from "./v4-spells.js";
+import {
+  createV4InventoryFilterState,
+  v4InventoryItemMatches,
+  v4InventoryItemModel,
+  v4InventorySummary,
+} from "./v4-inventory.js";
+import { v4DetailRecord, v4ExtraGroups, v4FeatureGroups } from "./v4-content.js";
+import { setRuntimeConcentration, setRuntimeCondition } from "../rules/runtime.js";
+import { loadCharacterBuilderCatalog } from "../builder/catalog-provider.js";
+import {
+  applyCharacterAutomationPreview,
+  canRollbackCharacterAutomation,
+  previewCharacterAutomation,
+  rollbackCharacterAutomation,
+} from "../conversion.js";
+import { persistCharacterDocument } from "../archive/repository.js";
 
 const character = window.character;
 let diceRoller = null;
+let pendingV4Use = null;
+let v4UseReturnFocus = null;
+let v4UseReturnId = "";
+let v4SpellFilters = createV4SpellFilterState();
+let pendingV4SpellCast = null;
+let v4SpellReturnFocus = null;
+let v4SpellReturnId = "";
+let v4InventoryFilters = createV4InventoryFilterState();
+let pendingV4InventoryCharge = null;
+let v4InventoryChargeReturnFocus = null;
+let v4DetailReturnFocus = null;
+let pendingV4Conversion = null;
+let v4ConversionReturnFocus = null;
+let v4ConversionRequest = 0;
 if (!character.hp || typeof character.hp !== "object") character.hp = { current: 0, temp: 0, max: 0 };
 character.hp.current = Number.isFinite(Number(character.hp.current)) ? Number(character.hp.current) : 0;
 character.hp.temp = Number.isFinite(Number(character.hp.temp)) ? Number(character.hp.temp) : 0;
@@ -82,10 +121,14 @@ const {
 });
 const {
   renderInventoryItem,
+  renderV4InventoryItem,
+  renderV4Feature,
+  renderV4Extra,
   renderAbilityCard,
   renderPreparedProfile,
   renderResourceCard,
   renderSpellSlot,
+  renderV4SpellCard,
 } = createTrackerViews({
   formatReset,
   formatSpellLevel,
@@ -93,6 +136,7 @@ const {
   getSpellcastingProfile,
   getSpells: () => character.spells || [],
   isAlwaysPreparedSpell,
+  isV4: () => document.documentElement?.dataset?.characterSheetStyle === "v4",
 });
 function initializeApp() {
   diceRoller = initializeDiceRoller({ historyKey: diceHistoryStorageKey(character.id) });
@@ -118,10 +162,15 @@ function refreshUI() {
   loadSpellcasting();
   loadPreparedSpells();
   loadAbilities();
+  loadV4Spells();
+  loadV4Content();
+  loadV4ConversionAction();
   loadInventory();
   notesController.render();
+  if (document.documentElement?.dataset?.characterSheetStyle === "v4") renderV4CoreSummary(character);
   applyV1CharacterSheetOrder(character);
   if (typeof refreshV3CharacterSheetLayout === "function") refreshV3CharacterSheetLayout();
+  if (typeof refreshV4CharacterSheetLayout === "function") refreshV4CharacterSheetLayout();
   refreshCharacterSheetTabs();
 }
 function loadCharacterFlags() {
@@ -185,7 +234,7 @@ function loadHP() {
 }
 function loadDeathSaves() {
   const section = document.getElementById("death-saves-section");
-  section?.classList.toggle("hidden", character.hp.current > 0);
+  section?.classList.toggle("hidden", document.documentElement.dataset.characterSheetStyle !== "v4" && character.hp.current > 0);
   ["failures", "successes"].forEach((kind) => {
     document.querySelectorAll(`[data-death-save="${kind}"]`).forEach((button) => {
       const active = Number(button.dataset.index) < character.deathSaves[kind];
@@ -244,6 +293,10 @@ function stepInput(id, delta) {
 function loadStats() {
   const container = document.getElementById("skills-container");
   if (!container) return;
+  if (document.documentElement?.dataset?.characterSheetStyle === "v4") {
+    renderV4Stats(container, character);
+    return;
+  }
   if (document.documentElement.dataset.characterSheetStyle === "v2") {
     renderV2Stats(container);
     return;
@@ -365,7 +418,7 @@ function renderFilterControls(scope, records) {
       <div id="${scope}FiltersCollapse" class="hidden">
         <div class="border-t border-stone-200/90 p-4 dark:border-white/10">
           <p class="mb-4 text-sm text-stone-500 dark:text-stone-400">Use any filters you need.</p>
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-7">
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-8">
             <label class="min-w-0 sm:col-span-2">
               <span class="${labelClass}">Search</span>
               <span class="relative block">
@@ -411,6 +464,9 @@ function renderFilterControls(scope, records) {
               fieldClass,
               labelClass,
             )}
+            ${scope === "combat" && document.documentElement?.dataset?.characterSheetStyle === "v4"
+              ? renderFilterSelect("usage", "Action type", ACTION_USAGE_OPTIONS, fieldClass, labelClass)
+              : ""}
           </div>
         </div>
       </div>
@@ -514,6 +570,307 @@ function changeResource(id, delta) {
   saveState();
   refreshUI();
 }
+
+function canEditCharacter() {
+  return document.body?.dataset?.characterCanEdit !== "false";
+}
+
+function loadV4ConversionAction() {
+  if (document.documentElement?.dataset?.characterSheetStyle !== "v4") return;
+  const host = document.getElementById("v4-character-actions");
+  if (!host) return;
+  let button = document.getElementById("v4-conversion-open");
+  const characterMode = character.build?.mode || "manual";
+  const rollback = characterMode === "rules" && canRollbackCharacterAutomation(character);
+  const available = document.body?.dataset?.trackerKind !== "npc"
+    && canEditCharacter()
+    && (characterMode !== "rules" || rollback);
+  if (!available) {
+    button?.remove();
+    return;
+  }
+  if (!button) {
+    button = document.createElement("button");
+    button.id = "v4-conversion-open";
+    button.type = "button";
+    button.className = "v4-conversion-open";
+    host.appendChild(button);
+  }
+  button.dataset.mode = rollback ? "rollback" : "convert";
+  button.innerHTML = rollback
+    ? '<i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i><span>Restore manual snapshot</span>'
+    : '<i class="bi bi-diagram-3-fill" aria-hidden="true"></i><span>Convert to automatic</span>';
+}
+
+function conversionValue(value) {
+  if (value === "" || value === null || value === undefined) return "None";
+  return String(value);
+}
+
+function conversionListText(group, item) {
+  if (group === "matched") return `${item.label}: ${item.sourceValue} → ${item.definitionName}`;
+  if (group === "unresolved") return `${item.label}: ${item.sourceValue || "Not recorded"} — ${item.reason}`;
+  if (group === "added") return `${item.path}: ${item.label || item.value}`;
+  if (group === "removed") return `${item.path || item.label || item.value}`;
+  return `${item.path}: ${conversionValue(item.before)} → ${conversionValue(item.after)}`;
+}
+
+function renderV4ConversionPreview(preview) {
+  ["matched", "unresolved", "added", "removed", "changed"].forEach((group) => {
+    const items = preview[group] || [];
+    const count = document.querySelector(`[data-conversion-count="${group}"]`);
+    if (count) count.textContent = String(items.length);
+    const list = document.querySelector(`[data-conversion-list="${group}"]`);
+    if (list) list.innerHTML = items.length
+      ? items.map((item) => `<li>${escapeHTML(conversionListText(group, item))}</li>`).join("")
+      : '<li class="v4-empty">None.</li>';
+  });
+}
+
+async function loadV4ConversionPreview() {
+  const request = ++v4ConversionRequest;
+  const ruleset = document.getElementById("v4-conversion-ruleset")?.value || "5e";
+  const confirm = document.getElementById("v4-conversion-confirm");
+  if (confirm) confirm.disabled = true;
+  setText("v4-conversion-status", "Loading reviewed Compendium mappings…");
+  try {
+    const catalog = await loadCharacterBuilderCatalog();
+    if (request !== v4ConversionRequest) return;
+    pendingV4Conversion = {
+      mode: "convert",
+      preview: previewCharacterAutomation(character, catalog, { ruleset }),
+    };
+    renderV4ConversionPreview(pendingV4Conversion.preview);
+    setText("v4-conversion-status", `${pendingV4Conversion.preview.matched.length} matched; ${pendingV4Conversion.preview.unresolved.length} unresolved. Conversion keeps current totals and opens an incomplete automatic build.`);
+    if (confirm) confirm.disabled = false;
+  } catch (error) {
+    if (request !== v4ConversionRequest) return;
+    console.error("Could not preview Character conversion:", error);
+    pendingV4Conversion = null;
+    setText("v4-conversion-status", "The Compendium is unavailable. Nothing changed; try again later.");
+  }
+}
+
+function openV4Conversion(trigger) {
+  if (!canEditCharacter()) return false;
+  const dialog = document.getElementById("v4-conversion-dialog");
+  if (!dialog) return false;
+  v4ConversionReturnFocus = trigger || document.activeElement;
+  const rollback = trigger?.dataset.mode === "rollback" && canRollbackCharacterAutomation(character);
+  const rulesetLabel = document.getElementById("v4-conversion-ruleset-label");
+  const preview = document.getElementById("v4-conversion-preview");
+  const confirm = document.getElementById("v4-conversion-confirm");
+  if (rollback) {
+    pendingV4Conversion = { mode: "rollback" };
+    setText("v4-conversion-title", "Restore manual snapshot");
+    setText("v4-conversion-description", "This replaces the converted document with the exact copy saved immediately before conversion. Runtime tracker state is separate and is not changed.");
+    setText("v4-conversion-status", "Rollback copy is ready.");
+    rulesetLabel?.classList.add("hidden");
+    preview?.classList.add("hidden");
+    if (confirm) {
+      confirm.textContent = "Restore snapshot";
+      confirm.disabled = false;
+    }
+  } else {
+    pendingV4Conversion = null;
+    setText("v4-conversion-title", "Convert to automatic");
+    setText("v4-conversion-description", "Only exact rules-ready matches are added. Your current sheet totals remain unchanged until the builder is complete.");
+    rulesetLabel?.classList.remove("hidden");
+    preview?.classList.remove("hidden");
+    if (confirm) confirm.textContent = "Convert safely";
+    const ruleset = document.getElementById("v4-conversion-ruleset");
+    if (ruleset) ruleset.value = character.build?.ruleset === "5.5e" ? "5.5e" : "5e";
+    loadV4ConversionPreview();
+  }
+  dialog.classList.remove("hidden");
+  dialog.classList.add("flex");
+  document.body.classList.add("overflow-hidden");
+  (rollback ? confirm : document.getElementById("v4-conversion-ruleset"))?.focus();
+  return true;
+}
+
+function closeV4Conversion({ restoreFocus = true } = {}) {
+  const dialog = document.getElementById("v4-conversion-dialog");
+  if (!dialog || dialog.classList.contains("hidden")) return false;
+  v4ConversionRequest += 1;
+  dialog.classList.add("hidden");
+  dialog.classList.remove("flex");
+  document.body.classList.remove("overflow-hidden");
+  pendingV4Conversion = null;
+  if (restoreFocus) {
+    const target = v4ConversionReturnFocus?.isConnected
+      ? v4ConversionReturnFocus
+      : document.getElementById("v4-conversion-open");
+    target?.focus();
+  }
+  v4ConversionReturnFocus = null;
+  return true;
+}
+
+function replaceCharacterDocument(next) {
+  Object.keys(character).forEach((key) => delete character[key]);
+  Object.assign(character, next);
+  window.character = character;
+}
+
+async function confirmV4Conversion() {
+  if (!pendingV4Conversion || !canEditCharacter()) return false;
+  const confirm = document.getElementById("v4-conversion-confirm");
+  if (confirm) confirm.disabled = true;
+  setText("v4-conversion-status", "Saving locally…");
+  const previous = JSON.parse(JSON.stringify(character));
+  const next = pendingV4Conversion.mode === "rollback"
+    ? rollbackCharacterAutomation(character)
+    : applyCharacterAutomationPreview(pendingV4Conversion.preview);
+  replaceCharacterDocument(next);
+  const source = document.body?.dataset?.characterShell && document.body.dataset.characterShell !== "template"
+    ? "bundled"
+    : "custom";
+  let result;
+  try {
+    result = await persistCharacterDocument(character, { source });
+  } catch (error) {
+    replaceCharacterDocument(previous);
+    console.error("Could not save Character conversion locally:", error);
+    setText("v4-conversion-status", "Nothing changed because the local save failed. Free storage space and try again.");
+    if (confirm) confirm.disabled = false;
+    return false;
+  }
+  closeV4Conversion({ restoreFocus: false });
+  refreshUI();
+  if (result.cloudError) console.error("Character conversion saved locally but not to D1:", result.cloudError);
+  document.getElementById("v4-conversion-open")?.focus();
+  return true;
+}
+
+function announceV4(id, message) {
+  const status = document.getElementById(id);
+  if (status) status.textContent = message;
+}
+
+function renderV4UseDialog(plan) {
+  setText("v4-use-title", `Use ${plan.name}`);
+  setText("v4-use-description", plan.limited
+    ? "Confirm the resource that will be consumed."
+    : "Confirm this at-will action.");
+  setText("v4-use-availability", plan.message);
+  const select = document.getElementById("v4-use-resource");
+  const label = document.getElementById("v4-use-resource-label");
+  if (select) {
+    select.innerHTML = plan.options.map((option) => `<option value="${escapeHTML(option.id)}"${option.id === plan.selectedId ? " selected" : ""}>${escapeHTML(option.label)} — ${option.current}/${option.max}</option>`).join("");
+    select.classList.toggle("hidden", !plan.limited || plan.options.length === 0);
+    select.disabled = plan.options.length < 2;
+  }
+  label?.classList.toggle("hidden", !plan.limited || plan.options.length === 0);
+  const confirm = document.getElementById("v4-use-confirm");
+  if (confirm) confirm.disabled = !plan.canConfirm;
+}
+
+function requestV4ActionUse(id, trigger) {
+  if (!canEditCharacter()) {
+    announceV4("v4-action-status", "Read-only viewers cannot use actions.");
+    return false;
+  }
+  pendingV4Use = planV4ActionUse(character, id);
+  if (!pendingV4Use.item) {
+    announceV4("v4-action-status", pendingV4Use.message);
+    return false;
+  }
+  v4UseReturnFocus = trigger || document.activeElement;
+  v4UseReturnId = id;
+  renderV4UseDialog(pendingV4Use);
+  const dialog = document.getElementById("v4-use-dialog");
+  dialog?.classList.remove("hidden");
+  dialog?.classList.add("flex");
+  document.body.classList.add("overflow-hidden");
+  (pendingV4Use.canConfirm ? document.getElementById("v4-use-confirm") : document.getElementById("v4-use-cancel"))?.focus();
+  return true;
+}
+
+function closeV4UseDialog({ restoreFocus = true } = {}) {
+  const dialog = document.getElementById("v4-use-dialog");
+  if (!dialog || dialog.classList.contains("hidden")) return false;
+  dialog.classList.add("hidden");
+  dialog.classList.remove("flex");
+  document.body.classList.remove("overflow-hidden");
+  pendingV4Use = null;
+  if (restoreFocus) {
+    const target = v4UseReturnFocus?.isConnected
+      ? v4UseReturnFocus
+      : document.querySelector(`[data-tracker-action="request-use"][data-id="${sanitizeIdentifier(v4UseReturnId)}"]`);
+    target?.focus();
+  }
+  v4UseReturnFocus = null;
+  v4UseReturnId = "";
+  return true;
+}
+
+function selectV4UseResource(selectionId) {
+  if (!pendingV4Use?.item) return;
+  pendingV4Use = planV4ActionUse(character, pendingV4Use.item.id, selectionId);
+  renderV4UseDialog(pendingV4Use);
+}
+
+function confirmV4ActionUse() {
+  if (!pendingV4Use?.item || !canEditCharacter()) return false;
+  const name = pendingV4Use.name;
+  const result = consumeV4ActionUse(character, pendingV4Use.item.id, pendingV4Use.selectedId);
+  if (!result.applied) {
+    pendingV4Use = result.plan;
+    renderV4UseDialog(pendingV4Use);
+    return false;
+  }
+  const consumed = result.consumed;
+  const spell = (character.spells || []).find((item) => item.id === pendingV4Use.item.id);
+  if (spell?.concentration) character.concentration = { id: spell.id, name: spell.name };
+  if (consumed || spell?.concentration) {
+    saveState();
+    refreshUI();
+  }
+  closeV4UseDialog();
+  announceV4("v4-action-status", consumed
+    ? `Used ${name}. ${consumed.label} now has ${Math.max(0, consumed.current - 1)} of ${consumed.max} remaining.`
+    : `Used ${name}. No resource was consumed.`);
+  return true;
+}
+
+function addV4Condition(name) {
+  const normalized = String(name || "").trim();
+  if (!normalized || !canEditCharacter()) return false;
+  character.conditions = setRuntimeCondition({ conditions: character.conditions }, { name: normalized }, true).conditions;
+  saveState();
+  refreshUI();
+  announceV4("v4-condition-status", `${normalized} added.`);
+  return true;
+}
+
+function removeV4Condition(name) {
+  if (!canEditCharacter()) return false;
+  const condition = (character.conditions || []).find((item) => String(item?.name || item) === name) || { name };
+  character.conditions = setRuntimeCondition({ conditions: character.conditions }, condition, false).conditions;
+  saveState();
+  refreshUI();
+  announceV4("v4-condition-status", `${name} removed.`);
+  return true;
+}
+
+function clearV4Concentration() {
+  if (!canEditCharacter() || !character.concentration) return false;
+  character.concentration = setRuntimeConcentration({ concentration: character.concentration }, null).concentration;
+  saveState();
+  refreshUI();
+  announceV4("v4-condition-status", "Concentration cleared.");
+  return true;
+}
+
+function changeV4Exhaustion(delta) {
+  if (!canEditCharacter()) return false;
+  character.exhaustion = Math.max(0, Math.min(6, (Number(character.exhaustion) || 0) + delta));
+  saveState();
+  refreshUI();
+  announceV4("v4-condition-status", `Exhaustion is now ${character.exhaustion}.`);
+  return true;
+}
 function loadSpellcasting() {
   const section = document.getElementById("spellcastingSection");
   const profilesContainer = document.getElementById("spellcasting-profiles");
@@ -580,6 +937,30 @@ function loadPreparedSpells() {
     );
   setText("prepared-spells-total", `(${totals.join(" · ")})`);
 }
+
+function loadV4Spells() {
+  if (document.documentElement?.dataset?.characterSheetStyle !== "v4") return;
+  const container = document.getElementById("v4-spell-list");
+  if (!container) return;
+  const spells = character.spells || [];
+  const visible = spells.filter((spell) => spellMatchesV4Filters(spell, v4SpellFilters));
+  container.innerHTML = visible.length
+    ? visible.map(renderV4SpellCard).join("")
+    : '<p class="v4-empty">No spells match these filters.</p>';
+  setText("v4-spell-count", `${visible.length} of ${spells.length}`);
+}
+
+function updateV4SpellFilter(key, value) {
+  if (!Object.prototype.hasOwnProperty.call(v4SpellFilters, key)) return;
+  v4SpellFilters[key] = value;
+  loadV4Spells();
+}
+
+function resetV4SpellFilters() {
+  v4SpellFilters = createV4SpellFilterState();
+  document.querySelectorAll("[data-v4-spell-filter]").forEach((control) => { control.value = ""; });
+  loadV4Spells();
+}
 function togglePreparedSpell(id) {
   const spell = (character.spells || []).find((item) => item.id === id);
   const profile = getSpellcastingProfile(spell?.source);
@@ -596,6 +977,96 @@ function togglePreparedSpell(id) {
   spell.prepared = !spell.prepared;
   saveState();
   refreshUI();
+}
+
+function renderV4SpellCastDialog(plan) {
+  setText("v4-spell-cast-title", `Cast ${plan.name}`);
+  setText("v4-spell-cast-description", plan.spell?.description || "Confirm how this spell will be cast.");
+  setText("v4-spell-cast-availability", plan.message);
+  const ritualOption = document.getElementById("v4-spell-ritual-option");
+  ritualOption?.classList.toggle("hidden", !plan.ritualAvailable);
+  const mode = document.querySelector(`input[name="v4-spell-cast-mode"][value="${plan.mode}"]`);
+  if (mode) mode.checked = true;
+  const slot = document.getElementById("v4-spell-slot");
+  const slotLabel = document.getElementById("v4-spell-slot-label");
+  const showSlot = plan.mode === "standard" && plan.options.length > 0;
+  if (slot) {
+    slot.innerHTML = plan.options.map((option) => `<option value="${escapeHTML(option.id)}"${option.id === plan.selectedId ? " selected" : ""}>${escapeHTML(option.label)} — ${option.current}/${option.max}</option>`).join("");
+    slot.classList.toggle("hidden", !showSlot);
+  }
+  slotLabel?.classList.toggle("hidden", !showSlot);
+  const confirm = document.getElementById("v4-spell-cast-confirm");
+  if (confirm) confirm.disabled = !plan.canConfirm;
+}
+
+function requestV4SpellCast(id, trigger) {
+  if (!canEditCharacter()) {
+    announceV4("v4-spell-status", "Read-only viewers cannot cast spells.");
+    return false;
+  }
+  pendingV4SpellCast = planV4SpellCast(character, id);
+  if (!pendingV4SpellCast.spell) {
+    announceV4("v4-spell-status", pendingV4SpellCast.message);
+    return false;
+  }
+  v4SpellReturnFocus = trigger || document.activeElement;
+  v4SpellReturnId = id;
+  renderV4SpellCastDialog(pendingV4SpellCast);
+  const dialog = document.getElementById("v4-spell-cast-dialog");
+  dialog?.classList.remove("hidden");
+  dialog?.classList.add("flex");
+  document.body.classList.add("overflow-hidden");
+  (pendingV4SpellCast.canConfirm ? document.getElementById("v4-spell-cast-confirm") : document.getElementById("v4-spell-cast-cancel"))?.focus();
+  return true;
+}
+
+function closeV4SpellCastDialog({ restoreFocus = true } = {}) {
+  const dialog = document.getElementById("v4-spell-cast-dialog");
+  if (!dialog || dialog.classList.contains("hidden")) return false;
+  dialog.classList.add("hidden");
+  dialog.classList.remove("flex");
+  document.body.classList.remove("overflow-hidden");
+  pendingV4SpellCast = null;
+  if (restoreFocus) {
+    const target = v4SpellReturnFocus?.isConnected
+      ? v4SpellReturnFocus
+      : document.querySelector(`[data-tracker-action="request-spell-cast"][data-id="${sanitizeIdentifier(v4SpellReturnId)}"]`);
+    target?.focus();
+  }
+  v4SpellReturnFocus = null;
+  v4SpellReturnId = "";
+  return true;
+}
+
+function changeV4SpellCastSelection({ mode, optionId } = {}) {
+  if (!pendingV4SpellCast?.spell) return;
+  pendingV4SpellCast = planV4SpellCast(character, pendingV4SpellCast.spell.id, {
+    mode: mode || pendingV4SpellCast.mode,
+    optionId: optionId ?? pendingV4SpellCast.selectedId,
+  });
+  renderV4SpellCastDialog(pendingV4SpellCast);
+}
+
+function confirmV4SpellCast() {
+  if (!pendingV4SpellCast?.spell || !canEditCharacter()) return false;
+  const name = pendingV4SpellCast.name;
+  const result = consumeV4SpellCast(character, pendingV4SpellCast.spell.id, {
+    mode: pendingV4SpellCast.mode,
+    optionId: pendingV4SpellCast.selectedId,
+  });
+  if (!result.applied) {
+    setText("v4-spell-cast-availability", result.warning);
+    return false;
+  }
+  saveState();
+  refreshUI();
+  closeV4SpellCastDialog();
+  const cast = result.cast;
+  const detail = cast.ritual ? " as a ritual"
+    : cast.upcastBy > 0 ? ` at level ${cast.castLevel}, upcast by ${cast.upcastBy}`
+      : cast.slotId ? ` using a level ${cast.castLevel} slot` : "";
+  announceV4("v4-spell-status", `Cast ${name}${detail}.`);
+  return true;
 }
 function getPreparedCount(profileId) {
   return (character.spells || []).filter(
@@ -707,11 +1178,174 @@ function loadInventory() {
   const container = document.getElementById("inventory-container");
   if (!container) return;
   const inventory = character.inventory || [];
+  if (document.documentElement?.dataset?.characterSheetStyle === "v4") {
+    document.getElementById("inventoryCollapse")?.classList.remove("hidden");
+    const models = inventory.map((item, index) => v4InventoryItemModel(item, trackerState.getInventoryItemState(index), inventory));
+    const visible = models.map((item, index) => ({ item, index }))
+      .filter(({ item }) => v4InventoryItemMatches(item, v4InventoryFilters));
+    container.innerHTML = visible.length
+      ? visible.map(({ item, index }) => renderV4InventoryItem(item, index)).join("")
+      : '<p class="v4-empty">No inventory matches these filters.</p>';
+    setText("v4-inventory-count", `${visible.length} of ${models.length}`);
+    renderV4InventorySummary(models);
+    renderV4InventoryContainerFilter(models);
+    return;
+  }
   container.innerHTML = inventory.length
     ? inventory
         .map((item, index) => renderInventoryItem(item, index, trackerState.getInventoryItemState(index)))
         .join("")
     : '<p class="text-stone-500 dark:text-stone-400">Inventory is empty.</p>';
+}
+
+function renderV4InventorySummary(models) {
+  const summary = v4InventorySummary(character, models);
+  const host = document.getElementById("v4-inventory-summary");
+  if (!host) return;
+  const weight = summary.weight === null ? "Not calculated" : `${summary.weight} lb.${summary.capacity === null ? "" : ` / ${summary.capacity} lb.`}`;
+  host.innerHTML = `<div><dt>Items</dt><dd>${summary.count}</dd></div><div><dt>Weight</dt><dd>${escapeHTML(weight)}</dd></div><div><dt>Burden</dt><dd>${escapeHTML(summary.encumbrance.replaceAll("-", " "))}</dd></div><div><dt>Attuned</dt><dd>${summary.attuned}/${summary.attunementLimit}</dd></div>`;
+}
+
+function renderV4InventoryContainerFilter(models) {
+  const select = document.getElementById("v4-inventory-container-filter");
+  if (!select) return;
+  const options = models.filter((item) => item.containerCapacity !== null && item.containerCapacity !== undefined);
+  const value = v4InventoryFilters.container;
+  select.innerHTML = `<option value="">Any location</option><option value="loose">Not contained</option><option value="contained">Inside a container</option>${options.map((item) => `<option value="${escapeHTML(item.instanceId)}">Inside ${escapeHTML(item.name)}</option>`).join("")}`;
+  select.value = value;
+}
+
+function updateV4InventoryFilter(key, value) {
+  if (!Object.prototype.hasOwnProperty.call(v4InventoryFilters, key)) return;
+  v4InventoryFilters[key] = value;
+  loadInventory();
+}
+
+function resetV4InventoryFilters() {
+  v4InventoryFilters = createV4InventoryFilterState();
+  document.querySelectorAll("[data-v4-inventory-filter]").forEach((control) => { control.value = ""; });
+  loadInventory();
+}
+
+function changeV4InventoryItem(index, changes) {
+  if (!canEditCharacter()) return false;
+  const result = trackerState.updateInventoryItemState(index, changes);
+  if (!result.applied) {
+    announceV4("v4-inventory-status", result.warning?.message || "Inventory was not changed.");
+    return false;
+  }
+  saveState();
+  loadInventory();
+  announceV4("v4-inventory-status", "Inventory updated.");
+  return true;
+}
+
+function requestV4InventoryCharge(index, trigger) {
+  if (!canEditCharacter()) return false;
+  const item = (character.inventory || [])[index];
+  const state = trackerState.getInventoryItemState(index);
+  if (!item?.charges || !state.charges) return false;
+  pendingV4InventoryCharge = { index, name: item.name || "item" };
+  v4InventoryChargeReturnFocus = trigger || document.activeElement;
+  setText("v4-inventory-charge-title", `Use ${pendingV4InventoryCharge.name}`);
+  setText("v4-inventory-charge-description", "Confirm spending one tracked charge.");
+  setText("v4-inventory-charge-availability", `${state.charges.current} of ${item.charges.max} charges available.`);
+  const dialog = document.getElementById("v4-inventory-charge-dialog");
+  dialog?.classList.remove("hidden");
+  dialog?.classList.add("flex");
+  document.body.classList.add("overflow-hidden");
+  document.getElementById("v4-inventory-charge-confirm")?.focus();
+  return true;
+}
+
+function closeV4InventoryChargeDialog() {
+  const dialog = document.getElementById("v4-inventory-charge-dialog");
+  if (!dialog || dialog.classList.contains("hidden")) return false;
+  dialog.classList.add("hidden");
+  dialog.classList.remove("flex");
+  document.body.classList.remove("overflow-hidden");
+  const target = v4InventoryChargeReturnFocus;
+  pendingV4InventoryCharge = null;
+  v4InventoryChargeReturnFocus = null;
+  target?.isConnected && target.focus();
+  return true;
+}
+
+function confirmV4InventoryCharge() {
+  if (!pendingV4InventoryCharge || !canEditCharacter()) return false;
+  const { index, name } = pendingV4InventoryCharge;
+  const result = trackerState.spendInventoryItemCharge(index);
+  if (!result.applied) {
+    announceV4("v4-inventory-status", result.warning?.message || "The charge was not used.");
+    return false;
+  }
+  saveState();
+  closeV4InventoryChargeDialog();
+  loadInventory();
+  announceV4("v4-inventory-status", `${name} used one charge.`);
+  return true;
+}
+
+function loadV4Content() {
+  if (document.documentElement?.dataset?.characterSheetStyle !== "v4") return;
+  const featureHost = document.getElementById("v4-feature-groups");
+  const featureGroups = v4FeatureGroups(character);
+  if (featureHost) featureHost.innerHTML = featureGroups.length
+    ? featureGroups.map((group) => `<section aria-labelledby="v4-feature-group-${group.id}"><h3 id="v4-feature-group-${group.id}">${escapeHTML(group.label)} <span>${group.features.length}</span></h3><div>${group.features.map(renderV4Feature).join("")}</div></section>`).join("")
+    : '<p class="v4-empty">No features recorded.</p>';
+  const extraHost = document.getElementById("v4-extra-groups");
+  const extraGroups = v4ExtraGroups(character);
+  if (extraHost) extraHost.innerHTML = extraGroups.length
+    ? extraGroups.map((group) => `<section aria-labelledby="v4-extra-group-${group.id}"><h3 id="v4-extra-group-${group.id}">${escapeHTML(group.label)} <span>${group.extras.length}</span></h3><div>${group.extras.map(renderV4Extra).join("")}</div></section>`).join("")
+    : '<div class="v4-empty"><strong>No extras recorded.</strong><p>Add a companion, familiar, wild shape, vehicle, or custom extra through Edit features.</p></div>';
+}
+
+function changeV4ExtraHP(id, delta) {
+  if (!canEditCharacter()) return false;
+  const extra = (character.extras || []).find((item) => item.id === id);
+  if (!extra?.hp) return false;
+  extra.hp.current = Math.max(0, Math.min(Number(extra.hp.max) || 0, (Number(extra.hp.current) || 0) + delta));
+  saveState();
+  loadV4Content();
+  announceV4("v4-extra-status", `${extra.name} has ${extra.hp.current} of ${extra.hp.max} hit points.`);
+  return true;
+}
+
+function renderV4Detail(record) {
+  setText("v4-detail-eyebrow", record.eyebrow);
+  setText("v4-detail-title", record.name);
+  const content = document.getElementById("v4-detail-content");
+  if (!content) return;
+  const stats = record.stats.length
+    ? `<dl class="v4-detail-stats">${record.stats.map(([label, value]) => `<div><dt>${escapeHTML(label)}</dt><dd>${escapeHTML(value)}</dd></div>`).join("")}</dl>` : "";
+  const selections = record.selections.length
+    ? `<section><h3>Current selections</h3><ul>${record.selections.map((selection) => `<li>${escapeHTML(selection)}</li>`).join("")}</ul></section>` : "";
+  content.innerHTML = `${stats}<section><h3>Description</h3><p>${escapeHTML(record.description)}</p></section>${selections}`;
+}
+
+function openV4Detail(kind, id, trigger) {
+  const record = v4DetailRecord(character, kind, id);
+  if (!record) return false;
+  v4DetailReturnFocus = trigger || document.activeElement;
+  renderV4Detail(record);
+  const dialog = document.getElementById("v4-detail-dialog");
+  dialog?.classList.remove("hidden");
+  dialog?.classList.add("flex");
+  document.body.classList.add("overflow-hidden");
+  document.getElementById("v4-detail-close")?.focus();
+  return true;
+}
+
+function closeV4Detail() {
+  const dialog = document.getElementById("v4-detail-dialog");
+  if (!dialog || dialog.classList.contains("hidden")) return false;
+  dialog.classList.add("hidden");
+  dialog.classList.remove("flex");
+  document.body.classList.remove("overflow-hidden");
+  const target = v4DetailReturnFocus;
+  v4DetailReturnFocus = null;
+  target?.isConnected && target.focus();
+  return true;
 }
 function loadCurrency() {
   const container = document.getElementById("currency-container");
@@ -740,6 +1374,21 @@ function setupEvents() {
     else if (action === "stable") changeStable();
     else if (action === "edit-note") notesController.edit(Number(target.dataset.index));
     else if (action === "delete-note") notesController.remove(Number(target.dataset.index));
+    else if (action === "request-use") requestV4ActionUse(target.dataset.id, target);
+    else if (action === "remove-condition") removeV4Condition(target.dataset.condition);
+    else if (action === "clear-concentration") clearV4Concentration();
+    else if (action === "exhaustion") changeV4Exhaustion(Number(target.dataset.delta));
+    else if (action === "request-spell-cast") requestV4SpellCast(target.dataset.id, target);
+    else if (action === "reset-spell-filters") resetV4SpellFilters();
+    else if (action === "reset-inventory-filters") resetV4InventoryFilters();
+    else if (action === "inventory-runtime") changeV4InventoryItem(Number(target.dataset.index), { [target.dataset.field]: target.getAttribute("aria-checked") !== "true" });
+    else if (action === "inventory-quantity") {
+      const index = Number(target.dataset.index);
+      changeV4InventoryItem(index, { quantity: trackerState.getInventoryItemState(index).quantity + Number(target.dataset.delta) });
+    } else if (action === "request-item-charge") requestV4InventoryCharge(Number(target.dataset.index), target);
+    else if (action === "open-v4-detail") openV4Detail(target.dataset.kind, target.dataset.id, target);
+    else if (action === "extra-hp") changeV4ExtraHP(target.dataset.id, Number(target.dataset.delta));
+    else if (action === "open-conversion") openV4Conversion(target);
   });
   on("damage-btn", "click", () => {
     damageHP(getHPAmount());
@@ -757,13 +1406,70 @@ function setupEvents() {
   on("hp-increase-btn", "click", () => stepInput("hp-amount", 1));
   on("temp-decrease-btn", "click", () => stepInput("temp-input", -1));
   on("temp-increase-btn", "click", () => stepInput("temp-input", 1));
-  on("shortRest-btn", "click", () => requestRest("short"));
-  on("longRest-btn", "click", () => requestRest("long"));
+  on("shortRest-btn", "click", (event) => requestRest("short", event.currentTarget));
+  on("longRest-btn", "click", (event) => requestRest("long", event.currentTarget));
   on("confirm-rest", "click", confirmRest);
   on("cancel-rest", "click", closeRestDialog);
   on("close-rest-dialog", "click", closeRestDialog);
   document.getElementById("rest-dialog")?.addEventListener("click", (event) => {
     if (event.target.id === "rest-dialog") closeRestDialog();
+  });
+  on("v4-use-confirm", "click", confirmV4ActionUse);
+  on("v4-use-cancel", "click", closeV4UseDialog);
+  on("v4-use-resource", "change", (event) => selectV4UseResource(event.target.value));
+  document.getElementById("v4-use-dialog")?.addEventListener("click", (event) => {
+    if (event.target.id === "v4-use-dialog") closeV4UseDialog();
+  });
+  document.getElementById("v4-condition-form")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const input = document.getElementById("v4-condition-name");
+    if (addV4Condition(input?.value)) input.value = "";
+  });
+  document.getElementById("v4-spell-filters")?.addEventListener("input", (event) => {
+    const control = event.target.closest("input[data-v4-spell-filter]");
+    if (control) updateV4SpellFilter(control.dataset.v4SpellFilter, control.value);
+  });
+  document.getElementById("v4-spell-filters")?.addEventListener("change", (event) => {
+    const control = event.target.closest("select[data-v4-spell-filter]");
+    if (control) updateV4SpellFilter(control.dataset.v4SpellFilter, control.value);
+  });
+  on("v4-spell-cast-confirm", "click", confirmV4SpellCast);
+  on("v4-spell-cast-cancel", "click", closeV4SpellCastDialog);
+  on("v4-spell-slot", "change", (event) => changeV4SpellCastSelection({ optionId: event.target.value }));
+  document.getElementById("v4-spell-cast-modes")?.addEventListener("change", (event) => {
+    if (event.target.name === "v4-spell-cast-mode") changeV4SpellCastSelection({ mode: event.target.value, optionId: "" });
+  });
+  document.getElementById("v4-spell-cast-dialog")?.addEventListener("click", (event) => {
+    if (event.target.id === "v4-spell-cast-dialog") closeV4SpellCastDialog();
+  });
+  document.getElementById("v4-inventory-browser")?.addEventListener("input", (event) => {
+    const control = event.target.closest("input[data-v4-inventory-filter]");
+    if (control) updateV4InventoryFilter(control.dataset.v4InventoryFilter, control.value);
+  });
+  document.getElementById("v4-inventory-browser")?.addEventListener("change", (event) => {
+    const control = event.target.closest("select[data-v4-inventory-filter]");
+    if (control) updateV4InventoryFilter(control.dataset.v4InventoryFilter, control.value);
+  });
+  document.getElementById("inventory-container")?.addEventListener("change", (event) => {
+    const control = event.target.closest("[data-v4-inventory-container]");
+    if (control) changeV4InventoryItem(Number(control.dataset.index), { containerId: control.value });
+  });
+  on("v4-inventory-charge-confirm", "click", confirmV4InventoryCharge);
+  on("v4-inventory-charge-cancel", "click", closeV4InventoryChargeDialog);
+  document.getElementById("v4-inventory-charge-dialog")?.addEventListener("click", (event) => {
+    if (event.target.id === "v4-inventory-charge-dialog") closeV4InventoryChargeDialog();
+  });
+  on("v4-detail-close", "click", closeV4Detail);
+  document.getElementById("v4-detail-dialog")?.addEventListener("click", (event) => {
+    if (event.target.id === "v4-detail-dialog") closeV4Detail();
+  });
+  on("v4-conversion-open", "click", (event) => openV4Conversion(event.currentTarget));
+  on("v4-conversion-confirm", "click", confirmV4Conversion);
+  on("v4-conversion-cancel", "click", closeV4Conversion);
+  on("v4-conversion-close", "click", closeV4Conversion);
+  on("v4-conversion-ruleset", "change", loadV4ConversionPreview);
+  document.getElementById("v4-conversion-dialog")?.addEventListener("click", (event) => {
+    if (event.target.id === "v4-conversion-dialog") closeV4Conversion();
   });
   on("save-note-btn", "click", notesController.saveFromInputs);
   document.querySelectorAll("[data-collapse-target]").forEach((button) => {
@@ -804,7 +1510,12 @@ function setupEvents() {
   });
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
-    closeRestDialog();
+    if (closeV4Conversion()) return;
+    if (closeV4Detail()) return;
+    if (closeV4InventoryChargeDialog()) return;
+    if (closeV4SpellCastDialog()) return;
+    if (closeV4UseDialog()) return;
+    if (closeRestDialog()) return;
     navigationButton?.setAttribute("aria-expanded", "false");
     navigationMenu?.classList.add("hidden");
     navigationButton?.focus();
@@ -881,6 +1592,7 @@ function getAllCharacterItems() {
     ...(character.spells || []),
     ...(character.features || []),
     ...(character.resources || []),
+    ...(character.extras || []),
   ];
 }
 function getSpellSlots() {

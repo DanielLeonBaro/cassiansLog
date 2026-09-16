@@ -75,6 +75,7 @@ global.fetch = async () => ({ ok: true, json: async () => ({ characterSheetStyle
   }
   assert.doesNotMatch(layout, /cloneNode|outerHTML/, "V2 must not clone tracker controls.");
   assert.match(layout, /export function applyV3CharacterSheetLayout/, "V3 should move the same tracker nodes into a personal grid.");
+  assert.match(layout, /applyV4CharacterSheetLayout/, "V4 should use its additive live-node layout.");
   assert.match(layout, /v3Controller\.grid\.appendChild\(tile\)/, "V3 should reorder tile wrappers by reference.");
   assert.match(styles, /grid-template-columns: repeat\(var\(--v3-columns, 2\)/, "V3 should use the selected desktop column count.");
   assert.match(styles, /grid-column: span var\(--v3-span, 1\)/, "V3 tiles should use their selected span.");

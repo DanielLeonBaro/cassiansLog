@@ -58,8 +58,8 @@
         <p class="text-xs font-bold uppercase tracking-[.16em] text-blood-500">Character controls</p>
         <h2 class="font-display text-2xl font-bold">Character sheet style</h2>
         <p class="mt-1 text-sm text-stone-500 dark:text-stone-400">Choose the legacy site default. Campaign-specific layouts stay in each campaign's Manage page.</p>
-        <fieldset class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <legend class="mb-3 font-bold sm:col-span-3">Default for all characters</legend>
+        <fieldset class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <legend class="mb-3 font-bold sm:col-span-2 xl:col-span-4">Default for all characters</legend>
           <label class="cursor-pointer rounded-xl border border-stone-300 p-4 transition has-[:checked]:border-blood-500 has-[:checked]:bg-blood-500/10 dark:border-white/15">
             <span class="flex items-start gap-3">
               <input id="character-style-v1" name="character-sheet-style" value="v1" type="radio" class="mt-1 h-5 w-5 accent-red-700">
@@ -76,6 +76,12 @@
             <span class="flex items-start gap-3">
               <input id="character-style-v2" name="character-sheet-style" value="v2" type="radio" class="mt-1 h-5 w-5 accent-red-700">
               <span><strong class="block">Style v2</strong><small class="text-stone-500 dark:text-stone-400">D&amp;D Beyond-inspired responsive sheet</small></span>
+            </span>
+          </label>
+          <label class="cursor-pointer rounded-xl border border-stone-300 p-4 transition has-[:checked]:border-blood-500 has-[:checked]:bg-blood-500/10 dark:border-white/15">
+            <span class="flex items-start gap-3">
+              <input id="character-style-v4" name="character-sheet-style" value="v4" type="radio" class="mt-1 h-5 w-5 accent-red-700">
+              <span><strong class="block">Style v4</strong><small class="text-stone-500 dark:text-stone-400">Rules-aware summary and primary tracker tabs</small></span>
             </span>
           </label>
         </fieldset>

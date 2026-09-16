@@ -116,7 +116,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
   }
 
   function renderFeatures() {
-    return `<div class="space-y-8">${renderNode(draft.features || [], ["features"], "features")}${renderNode(draft.resources || [], ["resources"], "resources")}</div>`;
+    return `<div class="space-y-8">${renderNode(draft.features || [], ["features"], "features")}${renderNode(draft.resources || [], ["resources"], "resources")}${renderNode(draft.extras || [], ["extras"], "extras")}</div>`;
   }
 
   function renderInventory() {
@@ -173,11 +173,11 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     const metadataKeys = ["bundledUpdate", "bundledUpdateVersions"].filter((key) => draft[key] !== undefined);
     const customKeys = Object.keys(draft).filter((key) => !sectionTopLevelKeys.has(key));
     return `<div class="space-y-6">
-      <div class="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-stone-700 dark:text-stone-200"><strong class="block">Advanced character data</strong><span class="mt-1 block">Technical IDs are read-only. Custom fields remain editable so homebrew data is never discarded.</span></div>
-      ${(canManage || draftStyle === "v3") ? `<section class="${classes.panel}"><h3 class="font-display text-lg font-bold">Character tracker layout</h3><p class="mt-1 text-sm text-stone-500 dark:text-stone-400">${canManage ? `The style choice applies to ${escapeHTML(draft.name || "this character")}.` : "The campaign DM controls the style; this grid is personal to you."}</p>${canManage ? `<label class="mt-4 block"><span class="mb-1 block text-xs font-bold text-stone-500 dark:text-stone-400">Style</span><select id="editor-character-sheet-style" class="${classes.field}"><option value="v1" ${draftStyle === "v1" ? "selected" : ""}>Style v1</option><option value="v2" ${draftStyle === "v2" ? "selected" : ""}>Style v2</option><option value="v3" ${draftStyle === "v3" ? "selected" : ""}>Style v3</option></select></label>${renderV1SectionOrder()}` : ""}${renderV3LayoutBuilder()}</section>` : ""}
-      <section class="${classes.panel}"><h3 class="mb-4 font-display text-lg font-bold">Character ID</h3>${renderPrimitive(draft.id, ["id"], "id", { readOnly: !canManage })}</section>
+      <div class="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-stone-700 dark:text-stone-200"><strong class="block">Advanced ${npcMode ? "NPC" : "character"} data</strong><span class="mt-1 block">Technical IDs are read-only. Custom fields remain editable so homebrew data is never discarded.</span></div>
+      ${(canManage || draftStyle === "v3") ? `<section class="${classes.panel}"><h3 class="font-display text-lg font-bold">${npcMode ? "NPC" : "Character"} tracker layout</h3><p class="mt-1 text-sm text-stone-500 dark:text-stone-400">${canManage ? `The style choice applies to ${escapeHTML(draft.name || `this ${entityLabel.toLowerCase()}`)}.` : "The campaign DM controls the style; this grid is personal to you."}</p>${canManage ? `<label class="mt-4 block"><span class="mb-1 block text-xs font-bold text-stone-500 dark:text-stone-400">Style</span><select id="editor-character-sheet-style" class="${classes.field}"><option value="v1" ${draftStyle === "v1" ? "selected" : ""}>Style v1</option><option value="v2" ${draftStyle === "v2" ? "selected" : ""}>Style v2</option><option value="v3" ${draftStyle === "v3" ? "selected" : ""}>Style v3</option><option value="v4" ${draftStyle === "v4" ? "selected" : ""}>Style v4</option></select></label>${renderV1SectionOrder()}` : ""}${renderV3LayoutBuilder()}</section>` : ""}
+      <section class="${classes.panel}"><h3 class="mb-4 font-display text-lg font-bold">${npcMode ? "NPC" : "Character"} ID</h3>${renderPrimitive(draft.id, ["id"], "id", { readOnly: !canManage })}</section>
       ${metadataKeys.length ? `<section class="${classes.panel}"><h3 class="mb-4 font-display text-lg font-bold">System metadata</h3><div class="space-y-4">${metadataKeys.map((key) => renderPrimitive(JSON.stringify(draft[key], null, 2), [key], key, { readOnly: true })).join("")}</div></section>` : ""}
-      <section class="${classes.panel}"><h3 class="mb-1 font-display text-lg font-bold">Custom fields</h3><p class="mb-4 text-sm text-stone-500 dark:text-stone-400">Fields outside the standard character schema appear here.</p>${customKeys.length ? `<div class="space-y-4">${customKeys.map((key) => renderNode(draft[key], [key], key)).join("")}</div>` : '<p class="rounded-xl border border-dashed border-stone-300 px-4 py-6 text-center text-sm text-stone-500 dark:border-white/15">No custom fields on this character.</p>'}</section>
+      <section class="${classes.panel}"><h3 class="mb-1 font-display text-lg font-bold">Custom fields</h3><p class="mb-4 text-sm text-stone-500 dark:text-stone-400">Fields outside the standard ${npcMode ? "NPC" : "character"} schema appear here.</p>${customKeys.length ? `<div class="space-y-4">${customKeys.map((key) => renderNode(draft[key], [key], key)).join("")}</div>` : `<p class="rounded-xl border border-dashed border-stone-300 px-4 py-6 text-center text-sm text-stone-500 dark:border-white/15">No custom fields on this ${entityLabel.toLowerCase()}.</p>`}</section>
     </div>`;
   }
 
@@ -215,7 +215,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     const scrollTop = fields.scrollTop;
     fields.innerHTML = `<div data-editor-extensions></div>
       <div class="grid items-start gap-5 lg:grid-cols-[15rem_minmax(0,1fr)]">
-        <nav class="hidden space-y-2 lg:block" role="tablist" aria-orientation="vertical" aria-label="Character editor sections">${sectionDefinitions.map(({ id, label, icon }) => `<button id="editor-tab-${id}" type="button" role="tab" data-editor-section-button="${id}" aria-controls="editor-panel-${id}" class="flex w-full items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-left text-sm font-bold transition hover:bg-stone-200 dark:hover:bg-white/10"><i class="bi ${icon}" aria-hidden="true"></i><span>${label}</span></button>`).join("")}</nav>
+        <nav class="hidden space-y-2 lg:block" role="tablist" aria-orientation="vertical" aria-label="${npcMode ? "NPC" : "Character"} editor sections">${sectionDefinitions.map(({ id, label, icon }) => `<button id="editor-tab-${id}" type="button" role="tab" data-editor-section-button="${id}" aria-controls="editor-panel-${id}" class="flex w-full items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-left text-sm font-bold transition hover:bg-stone-200 dark:hover:bg-white/10"><i class="bi ${icon}" aria-hidden="true"></i><span>${label}</span></button>`).join("")}</nav>
         <div class="min-w-0">
           <label class="mb-5 block lg:hidden"><span class="mb-1 block text-xs font-bold uppercase tracking-wide text-stone-500">Editor section</span><select id="editor-mobile-section" class="${classes.field}">${sectionDefinitions.map(({ id, label }) => `<option value="${id}">${label}</option>`).join("")}</select></label>
           ${sectionDefinitions.map(({ id, label }) => `<section id="editor-panel-${id}" data-editor-section="${id}" role="tabpanel" aria-labelledby="editor-tab-${id}" aria-label="${label}" class="space-y-5">${sectionRenderers[id]()}</section>`).join("")}
@@ -262,11 +262,11 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     overlay.innerHTML = `<div class="flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-stone-300 bg-parchment shadow-2xl dark:border-white/15 dark:bg-ink">
       <header class="flex items-center justify-between gap-3 border-b border-stone-300 p-3 dark:border-white/10 sm:p-4">
         <div class="flex min-w-0 items-center gap-3">
-          <button id="editor-portrait-button" data-editor-portrait type="button" class="group relative shrink-0" aria-label="Upload a new character portrait">
+          <button id="editor-portrait-button" data-editor-portrait type="button" class="group relative shrink-0" aria-label="Upload a new ${entityLabel} portrait">
             <img id="editor-portrait" data-editor-portrait-preview src="${escapeAttribute(window.character.portrait || "shared/assets/bat.ico")}" class="h-14 w-14 rounded-xl border border-stone-300 object-cover group-hover:ring-4 group-hover:ring-blood-500 dark:border-white/15 sm:h-16 sm:w-16" alt="">
             <span class="absolute inset-0 flex items-center justify-center rounded-xl bg-black/50 text-white opacity-0 transition group-hover:opacity-100"><i class="bi bi-camera-fill"></i></span>
           </button>
-          <div class="min-w-0"><h2 id="editor-title" class="truncate font-display text-xl font-bold sm:text-2xl">Edit character sheet</h2><p id="editor-character-name" class="truncate text-sm text-stone-500">${escapeHTML(window.character.name || "Character")}</p></div>
+          <div class="min-w-0"><h2 id="editor-title" class="truncate font-display text-xl font-bold sm:text-2xl">${npcMode ? "Edit NPC tracker" : "Edit character sheet"}</h2><p id="editor-character-name" class="truncate text-sm text-stone-500">${escapeHTML(window.character.name || (npcMode ? "NPC" : "Character"))}</p></div>
         </div>
         <button id="editor-close" type="button" class="rounded-xl p-3 hover:bg-stone-200 dark:hover:bg-white/10" aria-label="Close editor"><i class="bi bi-x-lg"></i></button>
       </header>
@@ -326,7 +326,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
       if (event.target.matches("[data-npc-player-visible]")) draftPlayerVisible = event.target.checked;
       if (event.target.id === "editor-mobile-section") activateSection(event.target.value);
       if (event.target.id === "editor-character-sheet-style") {
-        draftStyle = ["v1", "v2", "v3"].includes(event.target.value) ? event.target.value : "v1";
+        draftStyle = ["v1", "v2", "v3", "v4"].includes(event.target.value) ? event.target.value : "v1";
         renderEditorFields();
       }
       if (event.target.id === "editor-v3-columns") {
@@ -371,7 +371,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     draftVisibility = { ...baselineVisibility };
     baselinePlayerVisible = document.body.dataset.npcPlayerVisible === "true";
     draftPlayerVisible = baselinePlayerVisible;
-    baselineStyle = ["v1", "v2", "v3"].includes(document.documentElement.dataset.characterSheetStyle) ? document.documentElement.dataset.characterSheetStyle : "v1";
+    baselineStyle = ["v1", "v2", "v3", "v4"].includes(document.documentElement.dataset.characterSheetStyle) ? document.documentElement.dataset.characterSheetStyle : "v1";
     draftStyle = baselineStyle;
     baselineV3Layout = currentV3CharacterSheetLayout();
     draftV3Layout = normalizeV3Layout(baselineV3Layout);
@@ -399,7 +399,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     parent[path.at(-1)] = input.type === "checkbox" ? input.checked
       : typeof current === "number" ? Number(input.value) : input.value;
     if (path.length === 1 && path[0] === "name") {
-      document.getElementById("editor-character-name").textContent = input.value || "Character";
+      document.getElementById("editor-character-name").textContent = input.value || entityLabel;
       input.removeAttribute("aria-invalid");
       document.getElementById("editor-validation-status").textContent = "";
     }
@@ -709,7 +709,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     if (characterCloudError) {
       if (styleChanged && isLocalRuntimeHost()) {
         try {
-          await saveCharacterSheetStyleOverride(character.id, selectedStyle);
+          await saveCharacterSheetStyleOverride(character.id, selectedStyle, { kind: npcMode ? "npc" : "character" });
           window.location.reload();
           return;
         } catch (styleError) {
@@ -725,7 +725,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     }
     if (styleChanged) {
       try {
-        await saveCharacterSheetStyleOverride(character.id, selectedStyle);
+        await saveCharacterSheetStyleOverride(character.id, selectedStyle, { kind: npcMode ? "npc" : "character" });
         window.location.reload();
       } catch (error) {
         console.error("Could not save the character sheet style:", error);

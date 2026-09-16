@@ -7,6 +7,12 @@ import { campaignPagePath } from "../../shared/js/campaign-context.js";
 import { characterDescription } from "../../char/js/archive/repository.js";
 import { importDndBeyondPage, importDndBeyondPdf } from "../../char/js/archive/dnd-beyond-import.js";
 import { escapeAttribute, escapeHTML } from "../../shared/js/text.js";
+import { initializeCharacterBuilderShell } from "../../char/js/builder/index.js";
+import {
+  finalizeNpcBuildDraft,
+  saveNpcBuildDraft,
+  storedNpcBuildDrafts,
+} from "./builder-draft-repository.js";
 import { createNpc, listNpcs, removeNpc, setNpcPlayerVisible } from "./repository.js";
 
 mountSiteHeader({ activePage: "npcs" });
@@ -32,6 +38,13 @@ let importedCharacter = null;
 let importing = false;
 let creating = false;
 let canManage = false;
+const builder = initializeCharacterBuilderShell({
+  saveDraft: saveNpcBuildDraft,
+  readDrafts: storedNpcBuildDrafts,
+  finalizeDraft: finalizeNpcBuildDraft,
+  entityKind: "npc",
+  cloudDrafts: false,
+});
 const dialog = createDialogController(document.getElementById("npc-dialog"), {
   form,
   initialFocus: document.getElementById("new-npc-name"),
@@ -55,6 +68,7 @@ const dialog = createDialogController(document.getElementById("npc-dialog"), {
     importPDFButton.disabled = false;
     document.getElementById("create-npc-submit").disabled = false;
     document.getElementById("npc-form-status").textContent = "";
+    builder?.reset();
   },
 });
 

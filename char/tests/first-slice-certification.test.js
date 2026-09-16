@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { evaluateCharacter } from "../js/rules/engine.js";
 import { applyCharacterRest } from "../js/rules/runtime.js";
-import { applyRulesMetadata } from "../../compendium/js/repository.js";
+import { applyRulesMetadata } from "../../compendium/js/api.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const dataRoot = path.resolve(here, "../../compendium/data");

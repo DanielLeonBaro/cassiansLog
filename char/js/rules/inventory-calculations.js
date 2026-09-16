@@ -316,7 +316,7 @@ export function prepareCharacterInventory({ document, catalog, graph, runtime } 
   return {
     instances,
     statRecords: itemStatRecords(instances, graph, warnings),
-    currency: currency(runtime?.currency ?? document.currency),
+    currency: currency(runtime?.currency ?? document.build.currency ?? document.currency),
     warnings: warnings.sorted(),
   };
 }
@@ -336,7 +336,12 @@ function armorClass(instances, core, warnings) {
   const dexValue = dexterity === "none" ? 0 : dexterity === "max-2" ? Math.min(2, dex) : dex;
   if (dexterity !== "none") sources.push({ kind: "ability", sourceId: "stats.dex.modifier", label: "Dexterity modifier", value: dexValue });
   if (shield) sources.push({ kind: "equipment", sourceId: shield.instanceId, label: `${shield.name} shield bonus`, value: shield.profile.armor.bonus });
-  return { value: sources.reduce((sum, source) => sum + source.value, 0), sources };
+  return {
+    value: sources.reduce((sum, source) => sum + source.value, 0),
+    sources,
+    bodyArmorType: selected?.profile.armor.type || "",
+    hasShield: Boolean(shield),
+  };
 }
 
 function characterSize(document, graph, catalog) {
@@ -381,6 +386,37 @@ function encumbrance(document, graph, catalog, core, weight, warnings) {
 
 function formatBonus(value) {
   return `${value >= 0 ? "+" : ""}${value}`;
+}
+
+function tableValue(value, level) {
+  if (value?.type === "table") return value.values?.[level];
+  return value;
+}
+
+function abilityId(value) {
+  const aliases = {
+    strength: "str", dexterity: "dex", constitution: "con",
+    intelligence: "int", wisdom: "wis", charisma: "cha",
+  };
+  const id = normalized(value);
+  return aliases[id] || id;
+}
+
+function unarmedProfile(graph, catalog, core) {
+  const candidates = activeRuleEntries(graph, catalog).flatMap(({ entry, active }) => {
+    const rule = entry.rules?.combat?.unarmed;
+    if (!rule || typeof rule !== "object") return [];
+    const damage = text(tableValue(rule.damage, active.level));
+    if (!/^\d+d\d+$/.test(damage)) return [];
+    const abilities = (Array.isArray(rule.abilities) ? rule.abilities : [rule.ability])
+      .map(abilityId)
+      .filter((id) => core.stats[id]);
+    if (!abilities.length) return [];
+    const selectedAbility = [...abilities].sort((left, right) =>
+      core.stats[right].modifier - core.stats[left].modifier || abilities.indexOf(left) - abilities.indexOf(right))[0];
+    return [{ entry, damage, abilityId: selectedAbility, die: Number(damage.split("d")[1]) || 0 }];
+  });
+  return candidates.sort((left, right) => right.die - left.die || left.entry.id.localeCompare(right.entry.id))[0] || null;
 }
 
 function weaponActions(instances, graph, catalog, core, trace, ruleset) {
@@ -441,14 +477,23 @@ function weaponActions(instances, graph, catalog, core, trace, ruleset) {
       ]),
     };
   });
-  const attackBonus = core.stats.str.modifier + core.proficiency;
-  const damageValue = Math.max(1, 1 + core.stats.str.modifier);
+  const profile = unarmedProfile(graph, catalog, core);
+  const unarmedAbilityId = profile?.abilityId || "str";
+  const unarmedAbility = core.stats[unarmedAbilityId] || core.stats.str;
+  const attackBonus = unarmedAbility.modifier + core.proficiency;
+  const damageValue = profile
+    ? `${profile.damage}${unarmedAbility.modifier ? formatBonus(unarmedAbility.modifier) : ""}`
+    : String(Math.max(1, 1 + unarmedAbility.modifier));
   const unarmed = {
     id: "unarmed-strike", name: "Unarmed Strike", category: "Weapon", action: "Action", range: "Melee",
     attack: `${formatBonus(attackBonus)} vs AC`, attackBonus, damage: `${damageValue} Bludgeoning`, properties: [], mastery: "", masteryActive: false, proficient: true,
     effects: ruleset === "5.5e" ? ["Damage", "Grapple", "Shove"] : ["Damage"],
   };
-  trace["actions.unarmed-strike.attack"] = { value: attackBonus, sources: [{ kind: "ability", sourceId: "stats.str.modifier", label: "STR modifier", value: core.stats.str.modifier }, { kind: "proficiency", sourceId: "proficiency", label: "Proficiency", value: core.proficiency }] };
+  trace["actions.unarmed-strike.attack"] = { value: attackBonus, sources: [{ kind: "ability", sourceId: `stats.${unarmedAbilityId}.modifier`, label: `${unarmedAbilityId.toUpperCase()} modifier`, value: unarmedAbility.modifier }, { kind: "proficiency", sourceId: "proficiency", label: "Proficiency", value: core.proficiency }] };
+  trace["actions.unarmed-strike.damage"] = { value: unarmed.damage, sources: [
+    ...(profile ? [{ kind: "rules", sourceId: profile.entry.id, label: profile.entry.name, value: profile.damage }] : [{ kind: "base", sourceId: "rules.unarmed", label: "Unarmed Strike base", value: 1 }]),
+    { kind: "ability", sourceId: `stats.${unarmedAbilityId}.modifier`, label: `${unarmedAbilityId.toUpperCase()} modifier`, value: unarmedAbility.modifier },
+  ] };
   return [...actions, unarmed];
 }
 
@@ -502,7 +547,7 @@ export function calculateInventoryCharacterValues({ document, graph, catalog, co
     charges: item.charges,
   }));
   const carriedWeight = weights.equipmentWeight;
-  const coins = prepared?.currency || currency(document.currency);
+  const coins = prepared?.currency || currency(document.build.currency ?? document.currency);
   const coinCount = Object.values(coins).reduce((sum, value) => sum + value, 0);
   const coinWeight = document.build.preferences.coinWeight ? coinCount / 50 : 0;
   const totalWeight = carriedWeight + coinWeight;

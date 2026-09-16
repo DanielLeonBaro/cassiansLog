@@ -13,9 +13,9 @@ This is the durable specification and progress log for the D&D Beyond-style Char
 
 ## Status
 
-- Current milestone: Foundation
-- Completed through: Task 5
-- Next task: Task 6 — durability, movement, senses, defenses, and overrides
+- Current milestone: Final audit
+- Completed through: Task 31
+- Next task: Task 32 — final acceptance audit
 - Initial vertical slice: Fighter, Wizard, Human, Sage, and Soldier, levels 1–5, in `5e` and `5.5e`
 - Final core target: all twelve core classes, levels 1–20, with multiclassing
 
@@ -140,6 +140,10 @@ Legacy fields remain present. A rules-aware character adds this source-of-truth 
       coinWeight: true,
       prerequisites: true,
       enabledSources: [],
+      contentFilters: {
+        publisher: "",
+        automation: "" | "rules-ready" | "partial" | "manual",
+      },
     },
     levels: [
       { classId: "", subclassId: "", level: 1, hitPointRolls: [] },
@@ -149,6 +153,7 @@ Legacy fields remain present. A rules-aware character adds this source-of-truth 
     abilityScores: {
       method: "standard" | "point-buy" | "manual" | "rolled",
       base: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
+      rolls: [15, 14, 13, 12, 10, 8], // present for stored rolled scores
     },
     selections: {},
     spells: {
@@ -161,6 +166,8 @@ Legacy fields remain present. A rules-aware character adds this source-of-truth 
     inventory: [
       { instanceId: "", definitionId: "", quantity: 1, containerId: "" },
     ],
+    equipmentMethod: "equipment" | "gold",
+    currency: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
     description: {},
     overrides: {
       "path.to.value": { value: 0, reason: "" },
@@ -322,31 +329,31 @@ Each row is a complete stopping point. The `Verification` column is the minimum 
 | 9 | Done | Inventory instances, currency, weight, containers, equip/attune, weapons, and modifiers. `RUL-003`, `RUL-005` | Instance identity, nesting, encumbrance, attunement, attack tests; `npm test -- @characters`. |
 | 10 | Done | Certify Fighter and Wizard levels 1–5 in both editions. `RUL-001`–`RUL-004`, `RUL-006`–`RUL-011` | Level-by-level golden fixtures and unresolved-rule report; stop when both classes are rules-ready for the slice. |
 | 11 | Done | Certify Human, Sage, and Soldier in both editions; complete first-slice fixtures. `RUL-001`–`RUL-003`, `RUL-007`–`RUL-011` | Cross-product first-slice fixtures including Gwendoline snapshot regression. |
-| 12 | To Do | Draft local persistence, additive D1 migration, APIs, auth, finalization, and collision handling. `BLD-004`, `BLD-012`, `CMP-006`, `CMP-007` | Fresh/upgraded/idempotent migration; local/cloud success/failure; API method/auth/role/409 tests; `npm test -- @characters @campaigns`. |
-| 13 | To Do | Accessible builder shell, progress navigation, autosave status, resume, dirty/failure recovery. `BLD-001`–`BLD-004`, `BLD-013` | Model/UI/browser tests; `npm run build:site`; `npm run test:browser -- @characters`. |
-| 14 | To Do | Home preferences and ruleset/source/coverage filters. `BLD-005`, `BLD-006`, `BLD-013` | Filter/state/change-preview tests and browser flows in both rulesets. |
-| 15 | To Do | Class, Background, and Species/Race steps. `BLD-002`, `BLD-007`, `BLD-009`, `BLD-013` | First-slice choice, invalid choice, navigation, persistence, and accessibility flows. |
-| 16 | To Do | Abilities, Equipment, Description, and Review/Finish steps. `BLD-008`–`BLD-013` | All ability methods, equipment alternatives, review blockers/warnings, finalize/retry browser flows. |
-| 17 | To Do | Register opt-in V4 and build responsive core summary. `V4-001`–`V4-004`, `V4-011`, `V4-012`, `CMP-001` | Settings/role/layout tests, built output, desktop/mobile, both themes, V1–V3 regression. |
-| 18 | To Do | V4 Actions, conditions, rests, resources, and dice. `V4-005`, `V4-010`–`V4-012`, `RUL-006` | Roll/use/confirmation/cancel/read-only/rest browser tests. |
-| 19 | To Do | V4 Spells, preparation, and casting. `V4-006`, `V4-010`–`V4-012` | Known/prepared/spellbook/slot/upcast/concentration/read-only browser tests. |
-| 20 | To Do | V4 Inventory, currency, containers, equip, and attunement. `V4-007`, `V4-011`, `V4-012` | Inventory mutation, derived totals, limits, persistence, role, and mobile browser tests. |
-| 21 | To Do | V4 Features, Extras, proficiencies, Background, Notes, and detail sidebars. `V4-008`, `V4-009`, `V4-011`, `V4-012` | Group/detail/extras/notes/focus/read-only browser tests. |
-| 22 | To Do | Legacy and D&D Beyond conversion previews, cancellation, rollback copy, and unresolved mapping. `CMP-002`–`CMP-005`, `RUL-010` | No-mutation cancel, exact manual open, snapshot import, mapping, rollback, Gwendoline tests. |
-| 23 | To Do | Fighter/Wizard levels 6–20 and their multiclass combination. `RUL-001`–`RUL-011` | Per-level class fixtures, spell-slot multiclass boundaries, unresolved coverage zero for certified scope. |
-| 24 | To Do | Certify Cleric and Paladin. `RUL-001`–`RUL-011` | Both-edition level fixtures, preparation, channel resources, multiclass regression. |
-| 25 | To Do | Certify Druid and Ranger. `RUL-001`–`RUL-011`, `V4-009` | Both-edition fixtures, wild shape/extras, half-caster and multiclass regression. |
-| 26 | To Do | Certify Bard and Sorcerer. `RUL-001`–`RUL-011` | Both-edition fixtures, expertise/inspiration/metamagic and multiclass regression. |
-| 27 | To Do | Certify Warlock pact and invocation behavior. `RUL-001`–`RUL-011` | Pact slots, rests, invocations, prepared/known differences, multiclass regression. |
-| 28 | To Do | Certify Barbarian and Monk. `RUL-001`–`RUL-011` | Rage/focus resources, unarmored defense/movement, martial actions, multiclass regression. |
-| 29 | To Do | Certify Rogue and complete all-core cross-class/multiclass regression. `RUL-001`–`RUL-011` | Both-edition Rogue fixtures plus representative pairwise/caster-level regressions and full core coverage report. |
-| 30 | To Do | Character-built NPC mode using the shared engine. `NPC-001`, `NPC-003` | Campaign isolation, role, runtime, rules, and browser tests; no freeform presentation changes. |
-| 31 | To Do | V4 presentation for freeform NPCs with visibility/redaction preservation. `NPC-002`, `NPC-003` | Existing import/freeform regression, player projection/redaction, DM edit, mobile/theme browser tests. |
-| 32 | To Do | Final accessibility, responsive, theme, role, migration, rollback, built-output, and compatibility audit. All IDs | Full `npm test`, `npm run build:site`, full browser suite, `git diff --check`, fresh/upgraded migration proof, and dated D&D Beyond re-audit. |
+| 12 | Done | Draft local persistence, additive D1 migration, APIs, auth, finalization, and collision handling. `BLD-004`, `BLD-012`, `CMP-006`, `CMP-007` | Fresh/upgraded/idempotent migration; local/cloud success/failure; API method/auth/role/409 tests; `npm test -- @characters @campaigns`. |
+| 13 | Done | Accessible builder shell, progress navigation, autosave status, resume, dirty/failure recovery. `BLD-001`–`BLD-004`, `BLD-013` | Model/UI/browser tests; `npm run build:site`; `npm run test:browser -- @characters`. |
+| 14 | Done | Home preferences and ruleset/source/coverage filters. `BLD-005`, `BLD-006`, `BLD-013` | Filter/state/change-preview tests and browser flows in both rulesets. |
+| 15 | Done | Class, Background, and Species/Race steps. `BLD-002`, `BLD-007`, `BLD-009`, `BLD-013` | First-slice choice, invalid choice, navigation, persistence, and accessibility flows. |
+| 16 | Done | Abilities, Equipment, Description, and Review/Finish steps. `BLD-008`–`BLD-013` | All ability methods, equipment alternatives, review blockers/warnings, finalize/retry browser flows. |
+| 17 | Done | Register opt-in V4 and build responsive core summary. `V4-001`–`V4-004`, `V4-011`, `V4-012`, `CMP-001` | Settings/role/layout tests, built output, desktop/mobile, both themes, V1–V3 regression. |
+| 18 | Done | V4 Actions, conditions, rests, resources, and dice. `V4-005`, `V4-010`–`V4-012`, `RUL-006` | Roll/use/confirmation/cancel/read-only/rest browser tests. |
+| 19 | Done | V4 Spells, preparation, and casting. `V4-006`, `V4-010`–`V4-012` | Known/prepared/spellbook/slot/upcast/concentration/read-only browser tests. |
+| 20 | Done | V4 Inventory, currency, containers, equip, and attunement. `V4-007`, `V4-011`, `V4-012` | Inventory mutation, derived totals, limits, persistence, role, and mobile browser tests. |
+| 21 | Done | V4 Features, Extras, proficiencies, Background, Notes, and detail sidebars. `V4-008`, `V4-009`, `V4-011`, `V4-012` | Group/detail/extras/notes/focus/read-only browser tests. |
+| 22 | Done | Legacy and D&D Beyond conversion previews, cancellation, rollback copy, and unresolved mapping. `CMP-002`–`CMP-005`, `RUL-010` | No-mutation cancel, exact manual open, snapshot import, mapping, rollback, Gwendoline tests. |
+| 23 | Done | Fighter/Wizard levels 6–20 and their multiclass combination. `RUL-001`–`RUL-011` | Per-level class fixtures, spell-slot multiclass boundaries, unresolved coverage zero for certified scope. |
+| 24 | Done | Certify Cleric and Paladin. `RUL-001`–`RUL-011` | Both-edition level fixtures, preparation, channel resources, multiclass regression. |
+| 25 | Done | Certify Druid and Ranger. `RUL-001`–`RUL-011`, `V4-009` | Both-edition fixtures, wild shape/extras, half-caster and multiclass regression. |
+| 26 | Done | Certify Bard and Sorcerer. `RUL-001`–`RUL-011` | Both-edition fixtures, expertise/inspiration/metamagic and multiclass regression. |
+| 27 | Done | Certify Warlock pact and invocation behavior. `RUL-001`–`RUL-011` | Pact slots, rests, invocations, prepared/known differences, multiclass regression. |
+| 28 | Done | Certify Barbarian and Monk. `RUL-001`–`RUL-011` | Rage/focus resources, unarmored defense/movement, martial actions, multiclass regression. |
+| 29 | Done | Certify Rogue and complete all-core cross-class/multiclass regression. `RUL-001`–`RUL-011` | Both-edition Rogue fixtures plus representative pairwise/caster-level regressions and full core coverage report. |
+| 30 | Done | Character-built NPC mode using the shared engine. `NPC-001`, `NPC-003` | Campaign isolation, role, runtime, rules, and browser tests; no freeform presentation changes. |
+| 31 | Done | V4 presentation for freeform NPCs with visibility/redaction preservation. `NPC-002`, `NPC-003` | Existing import/freeform regression, player projection/redaction, DM edit, mobile/theme browser tests. |
+| 32 | In Progress | Final accessibility, responsive, theme, role, migration, rollback, built-output, and compatibility audit. All IDs | Full `npm test`, `npm run build:site`, full browser suite, `git diff --check`, fresh/upgraded migration proof, and dated D&D Beyond re-audit. |
 
 ## In Progress
 
-None. Task 12 is next: add local builder drafts, additive D1 storage/APIs, authorization, atomic finalization, and collision handling.
+Task 32 — run the final acceptance audit, fix only acceptance-blocking regressions, and record dated evidence.
 
 ## Done
 
@@ -464,6 +471,174 @@ None. Task 12 is next: add local builder drafts, additive D1 storage/APIs, autho
 - Moved Gwendoline’s trusted import totals into a durable snapshot fixture and kept the existing API import regression tied to it.
 - Generated certification report now contains 14 `rules-ready` entries with zero unresolved certified rules. No builder UI, D1 schema/API, seed application, deployment, or remote mutation was started.
 
+### Task 12 — Builder draft persistence and safe finalization
+
+- Added `dnd-character-build-drafts-v1` local-first persistence. Valid changes write to campaign-scoped localStorage before cloud synchronization and retain saved, pending, failed, retry, and pending-delete state.
+- Added global and campaign per-user D1 draft tables through additive migration `0017_character_build_drafts.sql`. Draft ID, normalized schema-v2 document, current step, build status/version, and timestamps remain isolated by user and campaign.
+- Added authenticated `GET|PUT|DELETE /api/character-build-drafts/:draftId` and `POST /api/character-build-drafts/:draftId/finalize`, plus equivalent campaign routes. Existing campaign URL rewriting now recognizes the draft resource.
+- Finalization requires a complete schema-v2 document and valid Character ID, uses plain inserts instead of upserts, treats active or inactive IDs as occupied, returns `409` on collision, and removes the draft in the same D1 batch as Character creation.
+- Campaign player finalization assigns the creator. DM/Admin finalization keeps existing manager authority without redundant editor rows. AOTR finalization mirrors the legacy Character table in the same batch.
+- Cloud save/delete/finalize failures preserve local recovery. Local-host finalization checks the merged Character list before writing and never overwrites local recovery data.
+- Added migration and repository/API fixtures proving local-before-cloud save, retry, cloud recovery, delete failure, global/campaign/user isolation, auth, role behavior, legacy mirroring, collision preservation, and transaction rollback. No remote migration, seed, deployment, or D1 mutation occurred.
+
+### Task 13 — Accessible builder shell and recovery
+
+- Added Detailed Build to the existing New Character dialog without replacing Quick Setup, blank creation, D&D Beyond URL import, or PDF import.
+- Added the eight-step responsive shell with complete, incomplete, warning, and blocked progress states; Back, Next, and direct navigation preserve the active draft.
+- Added deterministic step-state and resume models. A saved incomplete step reopens as the current step; a completed current step advances to the first incomplete required step.
+- Reused Task 12 local-first persistence for every navigation edit. The UI announces local save before cloud synchronization and exposes saved, interrupted, failed, and explicit retry states.
+- Added accessible current-step semantics, live save announcements, focus movement to each step heading, modal focus restoration, keyboard-safe controls, and a mobile one-column progress layout.
+- Added model, UI-contract, and Firefox browser coverage for entry, all progress states, local save, direct navigation, focus, close/reopen resume, Quick Setup return, and 375 px layout without horizontal overflow.
+- Stopped before Task 14 Home preferences and content filters. No migration, seed, deployment, commit, push, or remote mutation occurred.
+
+### Task 14 — Home preferences and content safety
+
+- Added autosaved Home controls for progression, hit-point method, encumbrance, coin weight, and prerequisite enforcement.
+- Added edition-isolated Compendium filters derived from generated metadata: ruleset, publisher, publication/source, and `rules-ready`/`partial`/`manual` automation coverage. No publisher, publication, or count is hardcoded.
+- Added mutually consistent faceting. Ruleset limits publishers; publisher limits coverage counts; publisher plus coverage limit publications; unavailable dependent filters clear explicitly.
+- Added accessible multi-publication selection plus an Enable all shown sources control. Persisted `enabledSources` continues driving the existing rules evaluator.
+- Added a no-mutation ruleset preview. Switching editions lists incompatible classes, subclasses, species, backgrounds, choices, spells, items, containers, sources, filters, and ruleset-specific preferences before confirmation; Cancel leaves the draft unchanged.
+- Confirmed edition changes clear only proven-incompatible catalog references, preserve unknown/manual references and edition-neutral ability scores, mark the build incomplete, and save through the existing local-first draft path.
+- Added a Character-owned optional catalog-provider seam and a Character–Compendium adapter using Compendium's public API. Character Builder core does not import private Compendium modules.
+- Added model, normalization, provider, integration, UI-contract, architecture, and Firefox browser coverage. Stopped before Task 15 Class, Background, and Species/Race choices. No migration, seed, deployment, commit, push, or remote mutation occurred.
+
+### Task 15 — Class and origin choices
+
+- Added catalog-driven Class, Background, and Species/Race selectors that honor the Home ruleset, publisher, publication/source, and automation filters without hardcoded option lists.
+- Added the certified levels 1–5 class slice, data-linked subclass gates, and edition-safe subclass filtering. Wrong-edition roots, wrong-class subclasses, out-of-slice levels, and unavailable rule options are rejected without mutating the draft.
+- Rendered evaluator-owned proficiency, feature, feat/ASI, species, and background choices with required counts, level gates, duplicate prevention, prerequisite reasons, and visible incomplete/invalid states.
+- Kept partial/manual roots and inline options selectable when allowed by Home filters. Each remains visibly marked; missing effects are never guessed.
+- Root changes clear only dependent source selections, while level-gated choices remain recoverable and subclasses clear when the level falls below their gate.
+- Progress now reflects missing evaluator choices, required subclasses, invalid blockers, non-blocking manual warnings, and complete root steps. Every accepted edit uses the existing local-first autosave and focus-restoration path.
+- Added real first-slice model coverage for Fighter, Wizard, Champion/Evoker, Human, Sage, and Soldier in both editions, plus accessible UI contracts and a Firefox choose/save/close/resume/mobile flow. Stopped before Task 16. No migration, seed, deployment, commit, push, or remote mutation occurred.
+
+### Task 16 — Completion steps and safe Finish
+
+- Added Standard Array, 27-point buy, manual, and stored 4d6-drop-lowest ability methods. Method-specific bounds, standard-score uniqueness, point costs, overspend rejection, autosave, and progress states are enforced without engine-side randomness.
+- Added starting-equipment and starting-gold modes, five-denomination build currency, Compendium-backed stable inventory instances, quantity/remove controls, edition/source/coverage filtering, and visible partial/manual no-guessed-effects labels. Switching methods preserves existing work.
+- Added builder-time spell repertoire choices to eligible class steps. Cantrip, known-spell, and spellbook limits use engine profiles; preparation remains runtime state.
+- Added required Character identity plus appearance, personality, story, allies, organizations, and notes fields. Clean IDs derive from names but remain editable and collision-checked.
+- Added Review summary, blocking structural issues, non-blocking automation/manual notices, overrides, and materialized automatic legacy projection. Optional equipment/story data and manual notices do not block Finish.
+- Finish now persists the complete materialized draft, uses Task 12 collision-safe finalization, redirects to the clean campaign Character URL, preserves the draft after failure, and exposes a focusable Retry Finish error path.
+- Added model, accessible UI-contract, and Firefox coverage for all ability methods, equipment/gold preservation, Wizard repertoire, warnings/blockers, Fighter finalization, `409` collision recovery, retry, draft removal, materialized flat values, mobile layout, and existing Character regressions. Stopped before Task 17. No migration, seed, deployment, commit, push, or remote mutation occurred.
+
+### Task 17 — Opt-in V4 and core summary
+
+- Registered `v4` additively across global/campaign settings, Admin controls, per-character overrides, and the Character editor. Task 31 later extends the same contract to NPCs.
+- Added a responsive Cassian-themed V4 hierarchy with identity, level/XP, six abilities, saves, skills, proficiency, initiative, AC, movement, HP/temp HP/death saves, senses, proficiencies/languages, defenses, conditions, Background, and Notes.
+- Added accessible Actions, Spells, Inventory, Features & Traits, and Extras tabs with roving keyboard focus. V4 moves the existing live tracker sections; it does not clone stateful controls or alter V1–V3 layout ownership.
+- Added pure summary-model, DOM-contract, settings, role, layout, build, Firefox desktop/mobile, both-theme, and V1–V3 regression coverage. No deployment, remote mutation, commit, or push occurred.
+
+### Task 18 — Actions and runtime interactions
+
+- Added V4 action-type filtering for attacks, actions, bonus actions, reactions, other timing, and limited-use entries while retaining the existing search/source/focus/category filters.
+- Added an accessible confirmation dialog for at-will actions, linked resources, embedded use pools, and explicitly declared spell-slot use. Cancellation preserves state; confirmation consumes exactly one selected use; no target damage is applied.
+- Added condition add/remove, concentration clear, exhaustion controls, ruleset-aware rest resets, live announcements, Escape/cancel behavior, and trigger-focus restoration.
+- Kept V1–V3 action rendering unchanged. Read-only V4 disables mutation controls while leaving dice rolls available.
+- Added pure action-use/filter tests, UI contracts, rest-focus tests, and Firefox coverage for filters, cancellation, consumption, conditions, short rests, dice, authority, themes, and mobile layout. No deployment, remote mutation, commit, or push occurred.
+
+### Task 19 — Spells, preparation, and casting
+
+- Added a V4 spell repertoire browser with search plus level, preparation, and known/spellbook/granted filters.
+- Added spell cards with profile, level, school, known, spellbook, granted, prepared, always-prepared, ritual, concentration, cantrip-scaling, automation-warning, attack/damage dice, and detail indicators.
+- Added preparation toggles using existing profile limits and persisted runtime state. Fixed preparation-aware castability so newly prepared automatic spells do not retain a stale unavailable state.
+- Added an accessible casting dialog for cantrips, explicit uses, slots, upcasting, and ritual casting. Confirmation consumes only the selected slot/use, establishes concentration when required, announces the result, restores focus, and never applies target damage or healing.
+- V4 read-only mode now preserves tabs, spell filters, and dice while disabling preparation, casting, conditions, rests, resources, and other mutations. V1–V3 read-only behavior remains unchanged.
+- Added pure spell-filter/casting tests, UI contracts, tracker-view coverage, and Firefox flows for known/spellbook display, preparation, cancel/no-mutation, selected-slot upcasting, rituals, concentration, dice, focus, responsive themes, and read-only authority. No deployment, remote mutation, commit, or push occurred.
+
+### Task 20 — Inventory and equipment runtime
+
+- Added a V4 inventory browser with search, status, and container-location filters plus visible item, carried-weight, encumbrance, and attunement totals.
+- Added rules-inventory quantity, container, equip, attune, and charge controls using the existing pure runtime validators. The three-item and duplicate-item attunement limits, container validity/cycles, and charge bounds remain engine-owned.
+- Preserved legacy/manual inventory behavior and reused the existing Character editor for item and currency authoring. Partial entries show `Manual rules`; no missing weight or equipment effect is guessed.
+- Added charge-use confirmation, cancel/no-mutation, Escape/focus restoration, immediate local plus best-effort D1 runtime persistence, and read-only mutation guards while keeping filters enabled.
+- Added pure inventory model/totals/filter tests, rich runtime-state persistence coverage, UI contracts, and Firefox flows for filtering, currency, quantity-derived weight, containers, equipment, attunement limit, charges, refresh, mobile, and read-only authority. No deployment, remote mutation, commit, or push occurred.
+
+### Task 21 — Features, Extras, and details
+
+- Added conservative feature grouping for Class, Subclass, Species/Race, Background, Feats, and Other using stored source metadata. Current selections and linked/embedded resource trackers remain visible and mutable through existing runtime persistence.
+- Added typed companion, familiar, wild-shape, vehicle, and custom Extra records with HP/use tracking. Existing Character editor collection controls now create and edit Extras; Compendium-sourced records retain their source IDs without guessed behavior.
+- Expanded Background presentation with stored personality, ideals, bonds, flaws, backstory, allies, organizations, and notes while retaining the compact legacy background name. Proficiencies/languages and the existing Notes editor remain in the V4 hierarchy.
+- Added one accessible feature/Extra detail drawer with close, backdrop, Escape, and trigger-focus restoration. Read-only viewers retain detail access while all feature, Extra, note, and editor mutations remain blocked by existing authority.
+- Added pure grouping/detail tests, Extra editor/runtime persistence coverage, UI contracts, and Firefox flows for all groups, selections, resources, all Extra types, HP/uses, Background, proficiencies, Notes, drawer focus, refresh, mobile, and read-only authority. No deployment, remote mutation, commit, or push occurred.
+
+### Task 22 — Reviewed conversion and rollback
+
+- Added a pure manual-to-rules conversion preview that reports matched, unresolved, added, removed, and changed values without mutating the source Character. Only exact-name entries for the selected ruleset with `rules-ready` certification can map automatically.
+- Class levels, subclass, species/race, background, and rules-ready inventory instances map conservatively. Flat multiclass totals, ability-score bases, spell repertoire roles, ambiguous entries, and partial/manual content remain explicit unresolved work; no effect is guessed.
+- Conversion preserves the live flat sheet, creates an incomplete automatic build, and stores the exact pre-conversion document plus reviewed preview as rollback data. Restore replaces the converted document with that exact copy.
+- D&D Beyond page and PDF imports now carry explicit manual snapshot metadata and cloned trusted totals. Gwendoline HP, AC, initiative, senses, skills, attack, resource, spellcasting, and personality regressions remain unchanged.
+- Added an accessible V4 preview/restore dialog with ruleset selection, loading/failure status, cancellation and trigger-focus restoration. Local save occurs before best-effort D1 synchronization; a local failure restores the in-memory source. Read-only viewers and NPCs receive no conversion action.
+- Added pure conversion, importer, repository, integration, UI-contract, and Firefox coverage. No unsupported D&D Beyond internal API dependency, migration, seed, deployment, remote mutation, commit, or push was added or performed.
+
+### Task 23 — Fighter/Wizard levels 1–20 and multiclass
+
+- Extended Fighter, Champion, Wizard, and Evocation/Evoker reviewed certification through level 20 in both rulesets.
+- Added full level tables for attacks, critical range, class resources, Weapon Mastery, cantrips, prepared spells, spellbook minimums, and standard spell slots.
+- Added level-gated ASI/Epic Boon and subclass Fighting Style choices plus all class/subclass feature milestones.
+- Replaced the level 1–5 golden fixture with a level 1–20 fixture and proved all 80 single-class/edition cases plus Fighter 5/Wizard 5 multiclass calculations.
+
+### Task 24 — Cleric/Paladin certification
+
+- Certified Cleric, Life Domain, Paladin, and Oath of Devotion from levels 1–20 for 2014 and 2024 rules.
+- Added data-driven spell preparation, cantrips, single-class half-caster slots, Channel Divinity, Lay On Hands, rests, attacks, features, ASI/Epic Boon, Divine Order, Blessed Strikes, Fighting Style, and Weapon Mastery rules.
+- Added explicit 2014 Paladin metadata for half-up single-class slots and half-down multiclass contribution; the engine now reads both values without class-name hardcoding.
+- Proved subclass actions spend their parent class Channel Divinity pool. Domain/oath spell lists remain visible nonblocking manual warnings until their spell entries are certified; no grants are guessed.
+- Added 80 single-class/edition golden cases plus Cleric 5/Paladin 5 multiclass fixtures for both editions.
+
+### Task 25 — Druid/Ranger certification
+
+- Certified Druid, Circle of the Land, Ranger, and Hunter from levels 1–20 for both editions.
+- Added Druid preparation/cantrips, Wild Shape resources/rests, Land choices, Ranger known/prepared limits, Favored Enemy, Expertise, Roving movement, Fighting Style, Weapon Mastery, and Hunter choices.
+- Added generic rule-generated Extras so Wild Shape appears in the existing V4 Extras hierarchy without hardcoded class rendering.
+- Reused explicit single-class/multiclass half-caster progression metadata for 2014 Ranger and proved Druid 5/Ranger 5 slot boundaries in both editions.
+- Uncertified Circle spells, Hunter's Mark, and 2014 Favored Enemy languages remain visible nonblocking manual branches.
+
+### Task 26 — Bard/Sorcerer certification
+
+- Certified Bard, College of Lore, Sorcerer, and Draconic subclasses from levels 1–20 for both editions.
+- Added Bard known/prepared tables, Jack of All Trades, Expertise, Bardic Inspiration uses/die/rest scaling, Lore skills, Cutting Words, and explicit cross-list spell warnings.
+- Added Sorcerer known/prepared tables, Sorcery Points, Innate Sorcery, edition-specific Metamagic choices, Draconic HP/AC, ancestry/affinity choices, and explicit manual conversion/recovery/spell warnings.
+- Extended declarative resources with ability-modifier minimums, level-based reset/die tables, and action die projection. Added class-level HP scaling and unarmored equipment conditions without class-name hardcoding.
+- Added 80 single-class/edition golden cases plus Bard 5/Sorcerer 5 multiclass fixtures. Draconic HP uses Sorcerer level rather than total character level.
+
+### Task 27 — Warlock certification
+
+- Certified Warlock, The Fiend, and Fiend Patron from levels 1–20 for both editions.
+- Added Pact Magic slot tables, short-rest recovery, 2014 known versus 2024 prepared repertoire, cantrips, patron timing, resource tracking, and Fiend features.
+- Added declarative inline-choice level and pact prerequisites. Uncertified invocation effects, patron spells, Mystic Arcanum, and targeted/recovery mechanics remain clear manual branches; no effects are guessed.
+- Added 40 single-class/edition golden cases plus Warlock 5/Wizard 5 separate-pool multiclass fixtures. Pact slots recover on short rest; standard spell slots do not.
+
+### Task 28 — Barbarian/Monk certification
+
+- Certified Barbarian, Path of the Berserker, Monk, and Open Hand from levels 1–20 for both editions.
+- Added Rage/Ki/Focus resource and rest behavior, martial actions, Martial Arts dice, exact unarmed attack/damage, Unarmored Defense, Unarmored/Fast Movement, saves, Weapon Mastery, and subclass resources.
+- Added generic equipment gates for no body armor, no armor or shield, and no heavy armor. Multiclass Unarmored Defense uses the first granted formula rather than stacking.
+- Added 80 single-class/edition golden cases plus Barbarian 5/Monk 5 multiclass fixtures. Conditional Rage state, capped capstones, Monk-weapon substitution, multi-point Focus use, and target effects remain visible manual branches.
+
+### Task 29 — Rogue and all-core certification
+
+- Certified Rogue and Thief from levels 1–20 for both editions, including Sneak Attack, Expertise, Cunning Action, Weapon Mastery, Cunning/Devious Strike visibility, Slippery Mind, Stroke of Luck, Fast Hands, and 2024 Climb Speed.
+- Kept Sneak Attack eligibility, Reliable Talent roll floors, damage mitigation, target effects, Thief magic-item exceptions, and extra initiative turns as explicit nonblocking manual branches.
+- Added 40 single-class/edition golden cases plus Rogue 5/Warlock 5 Pact Magic regressions. Together with the five existing paired suites, every core class is exercised in cross-class combinations.
+- Upgraded the generated certification report to list all twelve core classes by edition and expose `allCoreClassesCertified`; all 24 class entries and 12 representative subclasses are rules-ready.
+
+### Task 30 — Character-built NPC mode
+
+- Reused the Character builder, schema-v2 normalization, rules engine, and runtime projections for a new Detailed Build path in the existing NPC archive; Quick Setup and D&D Beyond import remain unchanged.
+- Added campaign-scoped local NPC drafts with resume, immediate persistence, local-only status, and deletion only after successful finalization. No new D1 migration or remote draft API was introduced.
+- Finalization requires a complete rules-mode build and DM/Admin authority, materializes the shared flat compatibility projection, creates the NPC hidden by default, and preserves a recoverable local NPC after non-collision cloud failures.
+- Added create-only campaign NPC writes. ID collisions return `409` without overwriting an existing NPC or deleting the draft; player writes remain forbidden and player projections redact the build source.
+- Added direct, API, UI-contract, and real-browser coverage for campaign isolation, roles, collisions, failure recovery, shared calculations/runtime, privacy, refresh, and 375px layout. Freeform/V4 NPC presentation remains Task 31.
+
+### Task 31 — V4 freeform NPC presentation
+
+- Enabled `v4` in NPC style resolution and the manager-only campaign NPC style route. NPC overrides remain separate from Character overrides, and unknown styles remain rejected.
+- Reused the live V4 hierarchy for existing freeform/stat-block NPC documents without adding a `build` block, recalculating values, or forcing conversion. Rules-built NPCs continue using the same presentation.
+- Added NPC-aware summary/tab accessibility labels and editor wording while preserving the existing Character labels and V1–V3 behavior.
+- Preserved server/local player projection as the only source for read-only NPC rendering. Hidden fields and descriptions never enter the player V4 document; mutation controls remain disabled while safe filtering and detail inspection remain usable.
+- Added model, UI-contract, settings, route, and Firefox coverage for DM style authority, player denial, freeform no-mutation, redaction, read-only controls, 375px layout, and actual light/dark theme palettes.
+
 ## Verification Log
 
 - 2026-09-13 — Task 1 pre-edit repository state: branch `main`, commit `0ad6eb1`; only `.playwright-cli/` was untracked.
@@ -524,6 +699,113 @@ None. Task 12 is next: add local builder drafts, additive D1 storage/APIs, autho
 - 2026-09-14 — Task 11 build verification: `npm run build:site` passed. Existing Browserslist age warning remained non-fatal; generated output stayed local.
 - 2026-09-14 — Task 11 whitespace verification: `git diff --check` passed.
 - 2026-09-14 — Task 11 automation boundary: open 2014 Variant Human and 2024 Origin Feat branches warn as manual; 2024 Sage’s Magic Initiate spell choices warn as manual until spell entries are certified. No effect is guessed.
+- 2026-09-14 — Task 12 platform verification: current Cloudflare Workers guidance, D1 prepared/batch APIs, migrations guidance, and `@cloudflare/workers-types@5.20260914.1` signatures were checked before implementation. D1 access uses bound prepared statements; finalization uses an awaited batch.
+- 2026-09-14 — Task 12 direct checks: migration, local repository, and API/finalization suites passed. Fixtures prove additive/idempotent migration, per-user/campaign isolation, pending/saved/failed states, retries, local/cloud recovery, auth, player assignment, DM authority, AOTR mirroring, occupied inactive IDs, `409`, and forced batch rollback.
+- 2026-09-14 — Task 12 focused verification: `npm test -- @characters @campaigns` passed all 38 selected suites. The intentional offline settings-fallback diagnostic appeared and its suite passed.
+- 2026-09-14 — Task 12 build verification: `npm run build:site` passed. Existing Browserslist age warning remained non-fatal; generated output stayed local.
+- 2026-09-14 — Task 12 whitespace verification: `git diff --check` passed after all Task 12 source and progress-log edits.
+- 2026-09-14 — Task 12 remote boundary: migration `0017` exists locally but was not applied to local or remote Wrangler D1. No seed, deployment, commit, push, or external mutation occurred.
+- 2026-09-14 — Task 13 direct checks: builder model, accessible UI contract, existing Quick Setup/editor UI, draft repository, and changed-module syntax checks passed.
+- 2026-09-14 — Task 13 focused verification: `npm test -- @characters` passed all 36 selected suites. The intentional offline settings-fallback diagnostic appeared and its suite passed.
+- 2026-09-14 — Task 13 build verification: `npm run build:site` passed and included the new builder modules and responsive/theme-aware Tailwind classes. Existing Browserslist age warning remained non-fatal.
+- 2026-09-14 — Task 13 browser verification: `npm run test:browser -- @characters` passed in headless Firefox after the expected sandbox `listen EPERM` required the permitted localhost run. It proved entry-path preservation, all four progress states, saved navigation, heading focus, close/reopen resume, Quick Setup return, and 375 px no-overflow layout; the existing Character tracker and desktop/mobile Standard/Reversed audits also passed.
+- 2026-09-14 — Task 13 whitespace verification: `git diff --check` passed before the final progress-log update; a final check followed the update.
+- 2026-09-14 — Task 14 direct checks: schema normalization, Home filter/preference model, ruleset preview, accessible UI contracts, optional catalog provider, Character–Compendium adapter, class/origin certification regressions, changed-module syntax, and architecture boundaries passed.
+- 2026-09-14 — Task 14 focused verification: `npm test -- @characters @compendium` passed all 46 selected suites. The intentional offline settings-fallback diagnostic appeared and its suite passed.
+- 2026-09-14 — Task 14 build verification: `npm run build:site` passed and included the builder Home, catalog provider, integration adapter, and generated responsive/theme-aware CSS. Existing Browserslist age warning remained non-fatal.
+- 2026-09-14 — Task 14 browser verification: `npm run test:browser -- @characters` passed in headless Firefox. It proved 2014 and 2024 flows, preference/source/filter persistence, mutually consistent facets, preview focus, no-mutation cancellation, confirmed incompatible-source cleanup, autosave, resume, mobile layout, and existing Character regressions.
+- 2026-09-14 — Task 14 whitespace verification: `git diff --check` passed before the final progress-log update; a final check followed the update.
+- 2026-09-14 — Task 15 direct checks: choice models for both editions, invalid selections, subclass links and gates, evaluator counts, progress states, accessible UI contracts, shell regression, rules evaluator, changed-module syntax, and architecture boundaries passed.
+- 2026-09-14 — Task 15 focused verification: `npm test -- @characters @compendium` passed all 48 selected suites. The intentional offline settings-fallback diagnostic appeared and its suite passed.
+- 2026-09-14 — Task 15 build verification: `npm run build:site` passed and included the choice-step modules and generated responsive/theme-aware CSS. Existing Browserslist age warning remained non-fatal.
+- 2026-09-14 — Task 15 browser verification: `npm run test:browser -- @characters` passed in headless Firefox after the expected sandbox `listen EPERM` required the permitted localhost run. It proved 2024 Fighter/Champion, Soldier, Human, evaluator choices, autosave, complete progress, close/reopen resume to Abilities, mobile layout, and existing Character regressions; unit fixtures proved both editions.
+- 2026-09-14 — Task 15 whitespace verification: `git diff --check` passed before the progress-log update; a final check follows Task 16.
+- 2026-09-14 — Task 16 direct checks: all new builder completion/controller modules passed `node --check`; completion model, accessible UI, schema normalization, shell model, and inventory rules tests passed directly.
+- 2026-09-14 — Task 16 fixture coverage: Standard Array assignment/swapping, point-buy budget and overspend, manual bounds, deterministic rolled bounds, equipment instances/quantities/gold/preservation, 2024 Fighter final materialization, 2014 Wizard cantrip/spellbook repertoire, manual warnings, blockers, overrides, and invalid identity passed.
+- 2026-09-14 — Task 16 focused verification: `npm test -- @characters @compendium` passed all 50 selected suites. The intentional offline settings-fallback diagnostic appeared and its suite passed.
+- 2026-09-14 — Task 16 build verification: `npm run build:site` passed after the final source edit and included all completion-step modules plus generated responsive/theme-aware CSS. Existing Browserslist age warning remained non-fatal.
+- 2026-09-14 — Task 16 browser verification: `npm run test:browser -- @characters` passed in headless Firefox after the expected sandbox `listen EPERM` required the permitted localhost run. It proved all four ability methods, stored rolls, point-buy math, starting gold, description/ID generation, Review, an occupied-ID failure, focusable retry, successful finalization, materialized sheet values, draft removal, 375 px layout, and existing Character regressions.
+- 2026-09-14 — Task 16 browser correction: the first run exposed that the finalize-error paragraph could not receive programmatic focus. Adding `tabindex="-1"` fixed focus restoration; the complete rerun passed.
+- 2026-09-14 — Task 16 whitespace verification: `git diff --check` passed after source/test edits; the final progress-log check followed this entry.
+- 2026-09-14 — Task 17 direct verification: V4 summary/model/UI tests, settings, layout, editor, architecture, and syntax checks passed.
+- 2026-09-14 — Task 17 focused verification: all 97 suites selected by `npm test -- @characters @campaigns @character-layout @core` passed until the existing sandbox-only localhost `listen EPERM` in the static-route suite; all preceding Character, settings, Worker, migration, and compatibility suites passed.
+- 2026-09-14 — Task 17 build verification: `npm run build:site` passed. Existing Browserslist age warning remained non-fatal.
+- 2026-09-14 — Task 17 browser verification: `npm run test:browser -- @characters` passed in permitted headless Firefox after the expected sandbox `listen EPERM`. It proved five V4 tabs, keyboard switching, one live node per tracker section, core data/rolls, death-save visibility, 375 px layout, no overflow, V1/V2/V4 alignment, and Standard/Reversed themes.
+- 2026-09-14 — Task 17 whitespace verification: `git diff --check` passed before moving Task 18 to In Progress.
+- 2026-09-15 — Task 18 direct verification: filter, tracker-view, action-use, action/runtime UI, rest-controller, V4 summary, V4 layout, and syntax tests passed.
+- 2026-09-15 — Task 18 focused verification: `npm test -- @characters` passed all 47 selected suites. The intentional offline settings-fallback diagnostic appeared and its suite passed.
+- 2026-09-15 — Task 18 build verification: `npm run build:site` passed with generated V4 dialog/control CSS. Existing Browserslist age warning remained non-fatal.
+- 2026-09-15 — Task 18 browser verification: `npm run test:browser -- @characters` passed in permitted headless Firefox. It proved all six action filters, confirmation/cancel, exact resource consumption, condition persistence/removal, rest cancellation/reset, dice reuse, focus restoration, read-only blocking, desktop/mobile alignment, and Standard/Reversed themes.
+- 2026-09-15 — Task 18 browser correction: one rerun exposed an asynchronous readiness race before six V4 abilities rendered. The wait now requires the completed ability grid; the full rerun passed.
+- 2026-09-15 — Task 19 direct verification: V4 spell interaction, V4 spell UI, tracker-view, spellcasting-harness, and syntax tests passed.
+- 2026-09-15 — Task 19 focused verification: `npm test -- @characters` passed all 49 selected suites. The intentional offline settings-fallback diagnostic appeared and its suite passed.
+- 2026-09-15 — Task 19 build verification: `npm run build:site` passed with the generated spell-browser, preparation, and casting styles. Existing Browserslist age warning remained non-fatal.
+- 2026-09-15 — Task 19 browser verification: `npm run test:browser -- @characters` passed in permitted headless Firefox. It proved combined spell filters, known/spellbook distinctions, preparation persistence, cast cancellation, level-2 upcasting, exact slot consumption, ritual no-slot casting, concentration, spell damage dice, focus restoration, read-only filtering/dice, mutation blocking, desktop/mobile alignment, and Standard/Reversed themes.
+- 2026-09-15 — Task 19 corrections: the focused test harness needed the new filter initializer, and one browser selector string needed quote correction. Both complete reruns passed.
+- 2026-09-15 — Task 19 whitespace verification: `git diff --check` passed after source, test, build-output, and progress-log changes.
+- 2026-09-15 — Task 20 focused verification: `npm test -- @characters` passed all 51 selected suites. The intentional offline settings-fallback diagnostic appeared and its suite passed.
+- 2026-09-15 — Task 20 build verification: `npm run build:site` passed with generated inventory-browser and runtime-control styles. Existing Browserslist age warning remained non-fatal.
+- 2026-09-15 — Task 20 browser verification: `npm run test:browser -- @characters` passed in permitted headless Firefox after the expected sandbox `listen EPERM`. It proved combined inventory filters, currency display, quantity-derived weight, container moves, equip state, the three-item attunement limit, charge cancellation/consumption, focus restoration, refresh persistence, 375 px no-overflow, read-only mutation blocking, and enabled filters.
+- 2026-09-15 — Task 20 whitespace verification: `git diff --check` passed before moving Task 21 to In Progress.
+- 2026-09-15 — Task 21 focused verification: `npm test -- @characters` passed all 53 selected suites. The intentional offline settings-fallback diagnostic appeared and its suite passed.
+- 2026-09-15 — Task 21 build verification: `npm run build:site` passed with generated feature, Extra, Background, and detail-drawer styles. Existing Browserslist age warning remained non-fatal.
+- 2026-09-15 — Task 21 browser verification: `npm run test:browser -- @characters` passed in permitted headless Firefox. It proved all five feature groups, selections, linked resources, all five Extra groups, Extra HP/uses, rich Background, proficiencies/languages, Notes, detail close/Escape/focus, runtime refresh, 375 px no-overflow, read-only detail access, mutation blocking, desktop/mobile alignment, and Standard/Reversed themes.
+- 2026-09-15 — Task 21 browser corrections: the first run removed the letter `s` because an embedded regex needed escaped backslashes; the next reached a whitespace-insensitive detail assertion. Both test-only corrections were followed by a complete green rerun.
+- 2026-09-15 — Task 21 whitespace verification: `git diff --check` passed before moving Task 22 to In Progress.
+- 2026-09-15 — Task 22 direct verification: conversion, D&D Beyond import, repository, integration, UI-contract, and changed-module syntax tests passed. Fixtures prove no-mutation preview/cancel, ruleset separation, partial/manual rejection, multiclass ambiguity, preserved flat values/unknown fields, exact rollback cloning, Gwendoline totals, and local-before-cloud persistence.
+- 2026-09-15 — Task 22 focused verification: `npm test -- @characters` passed all 55 selected suites. The intentional offline settings-fallback diagnostic appeared and its suite passed.
+- 2026-09-15 — Task 22 build verification: `npm run build:site` passed with generated conversion-dialog styles. Existing Browserslist age warning remained non-fatal.
+- 2026-09-15 — Task 22 browser verification: `npm run test:browser -- @characters` passed in permitted headless Firefox after the expected sandbox `listen EPERM`. It proved all five preview groups, reviewed Fighter/Human/Soldier matching, explicit unresolved values, exact cancel, preserved live totals, incomplete automatic conversion, local rollback storage, exact restore, focus, read-only authority, and desktop/mobile Standard/Reversed alignment.
+- 2026-09-15 — Task 22 browser correction: the first run correctly exposed existing runtime HP overriding the stored flat HP before conversion; the assertion now compares against the live pre-conversion snapshot. The complete rerun passed.
+- 2026-09-15 — Task 22 whitespace verification: `git diff --check` passed before this progress-log update; a final check followed it.
+- 2026-09-15 — Task 23 generation: `npm run build:compendium-metadata` built metadata for 15,191 entries with the extended reviewed certification ranges.
+- 2026-09-15 — Task 23 direct verification: `node char/tests/class-certification.test.js` passed Fighter/Wizard levels 1–20 in both rulesets plus Fighter 5/Wizard 5 multiclass boundaries.
+- 2026-09-15 — Task 23 focused verification: `npm test -- @characters @compendium` passed all 62 selected suites. The intentional offline settings-fallback diagnostic appeared and its suite passed.
+- 2026-09-15 — Task 23 whitespace verification: `git diff --check` passed before moving Task 24 to In Progress.
+- 2026-09-15 — Task 24 rules verification: current official 2014/2024 class tables were checked for preparation, slots, cantrips, Channel Divinity, Lay On Hands, subclass levels, and feature progression.
+- 2026-09-15 — Task 24 generation: `npm run build:compendium-metadata` built metadata for 15,191 entries; the certification report contains 22 certified entries and zero unresolved rules.
+- 2026-09-15 — Task 24 direct verification: spell-engine and Cleric/Paladin certification suites passed. Coverage includes 80 level/edition cases, 2014 single/multiclass half-caster rounding, parent-class Channel Divinity spending, recovery, and both-edition Cleric 5/Paladin 5 slots.
+- 2026-09-15 — Task 24 focused verification: `npm test -- @characters @compendium` passed all 63 selected suites. The intentional offline settings-fallback diagnostic appeared and its suite passed.
+- 2026-09-15 — Task 24 build verification: `npm run build:site` passed. Existing Browserslist age warning remained non-fatal.
+- 2026-09-15 — Task 24 whitespace verification: `git diff --check` passed before this progress-log update; a final check followed it.
+- 2026-09-15 — Task 25 generation: `npm run build:compendium-metadata` regenerated all 15,191 metadata entries with Druid/Ranger certification.
+- 2026-09-15 — Task 25 direct verification: `node char/tests/nature-class-certification.test.js` passed 80 level/edition cases, Wild Shape Extras, resource recovery, Land's Aid resource linkage, and Druid 5/Ranger 5 multiclass boundaries.
+- 2026-09-15 — Task 25 focused verification: `npm test -- @characters @compendium` passed all 64 selected suites. The intentional offline settings-fallback diagnostic appeared and its suite passed.
+- 2026-09-15 — Task 25 whitespace verification: `git diff --check` passed before moving Task 26 to In Progress.
+- 2026-09-15 — Task 26 rules verification: current official 2014/2024 class tables were checked for spell repertoire, cantrips, slots, Bardic Inspiration, Expertise, Metamagic, Sorcery Points, subclass timing, and feature progression.
+- 2026-09-15 — Task 26 generation: `npm run build:compendium-metadata` regenerated all 15,191 entries at catalog version `sha256-f89ab373b63db0da42d1`; the report contains 38 certified entries and zero unresolved rules.
+- 2026-09-15 — Task 26 direct verification: `node char/tests/arcane-class-certification.test.js` passed 80 level/edition cases, inspiration die/rest scaling, Jack of All Trades, Expertise, Metamagic, Draconic durability, and both Bard 5/Sorcerer 5 multiclass cases. The Task 25 nature-class suite also passed after shared expertise normalization.
+- 2026-09-15 — Task 26 focused verification: `npm test -- @characters @compendium` passed all 65 selected suites. The intentional offline settings-fallback diagnostic appeared and its suite passed.
+- 2026-09-15 — Task 26 build verification: `npm run build:site` passed. Existing Browserslist age warning remained non-fatal.
+- 2026-09-15 — Task 26 whitespace verification: `git diff --check` passed before this progress-log update; a final check followed it.
+- 2026-09-15 — Task 27 rules verification: current official 2014/2024 class tables were checked for Pact Magic, slots, repertoire, cantrips, Eldritch Invocation counts and prerequisites, patron timing, and Fiend progression.
+- 2026-09-15 — Task 27 generation: `npm run build:compendium-metadata` regenerated all 15,191 entries at catalog version `sha256-58d4e3ed275531564106`; the report contains 42 certified entries and zero unresolved rules.
+- 2026-09-15 — Task 27 direct verification: `node char/tests/warlock-class-certification.test.js` passed 40 level/edition cases, invocation prerequisite and level gates, Pact Magic rests, 2024 Magical Cunning resource recovery, and both Warlock 5/Wizard 5 multiclass cases.
+- 2026-09-15 — Task 27 focused verification: `npm test -- @characters @compendium` passed all 66 selected suites. The intentional offline settings-fallback diagnostic appeared and its suite passed.
+- 2026-09-15 — Task 27 build verification: `npm run build:site` passed. Existing Browserslist age warning remained non-fatal.
+- 2026-09-15 — Task 27 whitespace verification: `git diff --check` passed after this progress-log update.
+- 2026-09-15 — Task 28 rules verification: current official 2014/2024 class tables were checked for Rage, Rage damage and recovery, Martial Arts dice, Ki/Focus, movement, Unarmored Defense, save DCs, subclass timing, Berserker, and Open Hand progression.
+- 2026-09-15 — Task 28 generation: `npm run build:compendium-metadata` regenerated all 15,191 entries at catalog version `sha256-25dbb8fd4f9da146a961`; the report contains 50 certified entries and zero unresolved rules.
+- 2026-09-15 — Task 28 direct verification: the rules-engine, inventory, Fighter/Wizard, Warlock, Barbarian/Monk, and Compendium-metadata suites passed. The new suite covers 80 level/edition cases, martial dice/actions, resource recovery, all armor gates, first-formula Unarmored Defense, and both Barbarian 5/Monk 5 multiclass cases.
+- 2026-09-15 — Task 28 focused verification: `npm test -- @characters @compendium` passed all 67 selected suites. The intentional offline settings-fallback diagnostic appeared and its suite passed.
+- 2026-09-15 — Task 28 build verification: `npm run build:site` passed. Existing Browserslist age warning remained non-fatal.
+- 2026-09-15 — Task 28 whitespace verification: `git diff --check` passed after this progress-log update.
+- 2026-09-16 — Task 29 rules verification: current official 2014/2024 Rogue and Thief tables were checked for hit die, proficiencies, Expertise, Sneak Attack, subclass timing, Cunning Action/Strike, Reliable Talent, Slippery Mind, Stroke of Luck, and Thief progression.
+- 2026-09-16 — Task 29 generation: `npm run build:compendium-metadata` regenerated all 15,191 entries at catalog version `sha256-27e0181ca9b2ff4af6ac`; the report contains 54 certified entries, all twelve core classes in both editions, and zero unresolved certified rules.
+- 2026-09-16 — Task 29 direct verification: `node char/tests/rogue-class-certification.test.js` passed 40 level/edition cases, Sneak Attack/Expertise/save/resource boundaries, both Rogue 5/Warlock 5 multiclass cases, and the generated all-core report.
+- 2026-09-16 — Task 29 focused verification: `npm test -- @characters @compendium` passed all 68 selected suites.
+- 2026-09-16 — Task 29 build verification: `npm run build:site` passed. Existing Browserslist age warning remained non-fatal.
+- 2026-09-16 — Task 29 whitespace verification: `git diff --check` passed before moving Task 30 to In Progress.
+- 2026-09-16 — Task 30 direct verification: NPC draft/repository, NPC builder UI, Character builder UI, and campaign route tests passed. Coverage includes campaign-scoped drafts, shared Fighter calculations/runtime, manager enforcement, hidden defaults, local/cloud collision behavior, offline recovery, build redaction, and no-overwrite guarantees.
+- 2026-09-16 — Task 30 focused verification: `npm test -- @characters @npcs @campaigns @compendium` passed all 75 selected suites. The intentional offline settings-fallback diagnostic appeared and its suite passed.
+- 2026-09-16 — Task 30 browser verification: `npm run test:browser -- @npcs` passed all focused Firefox flows, including Detailed Build finalization, 375px no-overflow layout, hidden defaults, runtime projection, import, edit controls, and player redaction. The first sandboxed attempt hit expected localhost `listen EPERM`; the permitted rerun passed.
+- 2026-09-16 — Task 30 build verification: `npm run build:site` passed. Existing Browserslist age warning remained non-fatal.
+- 2026-09-16 — Task 30 whitespace verification: `git diff --check` passed before this progress-log update; a final check followed it.
+- 2026-09-16 — Task 31 direct verification: syntax checks plus the freeform NPC model/UI, runtime settings, campaign route, Character editor, and V4 layout suites passed. Freeform input remained unchanged and unconverted; projected feature details contained no hidden description.
+- 2026-09-16 — Task 31 focused verification: `npm test -- @characters @npcs @campaigns` passed all 70 selected suites. The intentional offline settings-fallback diagnostic appeared and its suite passed.
+- 2026-09-16 — Task 31 browser verification: `npm run test:browser -- @npcs` passed all focused Firefox flows. The freeform NPC used V4 as DM and player, stayed conversion-free, preserved editor visibility controls, disabled mutations, allowed safe details, redacted hidden background/feature text, fit 375px, and rendered with real light/dark palettes.
+- 2026-09-16 — Task 31 build verification: `npm run build:site` passed. Existing Browserslist age warning remained non-fatal.
+- 2026-09-16 — Task 31 whitespace verification: `git diff --check` passed after the progress-log update.
 
 For every later task, record the command, result, relevant fixture/browser scenario, and any known pre-existing warning. Do not replace older evidence.
 
@@ -531,14 +813,14 @@ For every later task, record the command, result, relevant fixture/browser scena
 
 ### Current state
 
-- Catalog version: `sha256-66622fa7953f5b2e5953`.
-- Total: 15,191 entries; 14 `rules-ready`, 6,094 `partial`, and 9,083 `manual`.
+- Catalog version: `sha256-27e0181ca9b2ff4af6ac`.
+- Total: 15,191 entries; 54 `rules-ready`, 6,054 `partial`, and 9,083 `manual`.
 - Rulesets: 13,431 `5e`, 1,530 `5.5e`, and 230 shared/agnostic entries.
-- Dependencies: 13,071 resolved and 4,314 missing references. Missing references remain visible and prevent certification.
+- Dependencies: 12,747 resolved and 4,252 missing references. Missing references remain visible and prevent certification.
 - Stable IDs: 15,191 entries and original IDs; 0 missing IDs, collisions, or ambiguities.
 - Certification is stored in reviewed overlays. Uncertified parsed expressions remain partial/manual and cannot apply automatically.
 - The Task 4 evaluator can now validate strict rule graphs and choices, but production certification remains intentionally unchanged until the first-slice content tasks prove each entry.
-- Tasks 5–9 cover the core engine surfaces; Tasks 10–11 promote 14 proven class, subclass, species, and background entries. The generated first-slice report has zero unresolved rules inside this certified scope.
+- Tasks 5–9 cover the core engine surfaces; Tasks 10–11 and 23–29 promote 54 proven class, subclass, species, and background entries. The generated certification report confirms all twelve core classes in both editions and has zero unresolved rules inside this scope.
 - All entries remain browseable through the existing Compendium.
 - Generated detail lives in `compendium/data/coverage.json`, `rules-metadata.json`, `original-ids.json`, and `character-certification-report.json`.
 
@@ -573,6 +855,10 @@ Certification is explicit. Completing engine code does not automatically certify
 - Task 9 adds the pure inventory calculation module, additive engine inputs/projection, runtime inventory transitions, tests, and generated CSS changes. Reverting those Task 9 portions restores the Task 8 boundary; schema-v2 inventory data remains valid but inactive, and no stored Character, D1 data, Compendium certification, or remote system needs migration rollback.
 - Task 10 certification is reversible by removing the reviewed overlay registry, inline-choice/class projection additions, golden fixtures/report, and regenerating the metadata sidecars. No Character document, runtime record, D1 table, or remote data needs rollback.
 - Task 11 certification is reversible by removing the six origin overlays, origin projection/runtime additions, first-slice and Gwendoline fixtures, test registration, and regenerating metadata sidecars. Runtime inspiration remains additive; no stored Character, D1 table, or remote data needs rollback.
+- Task 12 rollback removes draft route/repository code and migration `0017`. If `0017` was applied later, export recovery first, then drop only `campaign_character_build_drafts` and `character_build_drafts`; final Character tables and existing V1–V3 data need no rewrite.
+- Task 22 is additive application code and import metadata. Converted Characters retain an embedded exact rollback document; use **Restore manual snapshot** before reverting if automatic conversion has been used. Reverting the conversion module/UI/import marker leaves unconverted legacy and D&D Beyond flat sheets unchanged.
+- Task 30 rollback removes the NPC builder draft repository, shared-builder NPC options, NPC Detailed Build wiring, and create-only route branch. Existing freeform NPCs and normal upsert writes remain unchanged; locally finalized rules-built NPCs retain valid flat compatibility fields and can continue opening in the legacy tracker.
+- Task 31 rollback removes NPC `v4` style acceptance/resolution, NPC-aware V4 labels/read-only exceptions, and focused tests. Stored freeform NPC documents need no rewrite because Task 31 never converts or changes their shape; remove any persisted NPC `v4` overrides or let older code normalize them to V1 before rolling application code back.
 - Before any remote D1 migration or deployment: obtain explicit approval, export/verify a recovery point, verify migration order, and record the exact rollback procedure here.
 - No remote operation has been performed for this project plan.
 

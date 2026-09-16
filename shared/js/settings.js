@@ -7,15 +7,16 @@ export { isLocalRuntimeHost } from "./runtime-host.js";
 
 export const DEFAULT_CHARACTER_SHEET_STYLE = "v1";
 export const LOCAL_RUNTIME_SETTINGS_KEY = "cassianslog-runtime-settings";
+export const CHARACTER_SHEET_STYLES = Object.freeze(["v1", "v2", "v3", "v4"]);
 
 export function normalizeCharacterSheetStyle(value) {
-  return ["v2", "v3"].includes(value) ? value : DEFAULT_CHARACTER_SHEET_STYLE;
+  return CHARACTER_SHEET_STYLES.includes(value) ? value : DEFAULT_CHARACTER_SHEET_STYLE;
 }
 
 export function normalizeCharacterSheetStyleOverrides(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   return Object.fromEntries(Object.entries(value).filter(([id, style]) => (
-    /^[a-z0-9][a-z0-9-]{0,127}$/i.test(id) && ["v1", "v2", "v3"].includes(style)
+    /^[a-z0-9][a-z0-9-]{0,127}$/i.test(id) && CHARACTER_SHEET_STYLES.includes(style)
   )));
 }
 
@@ -121,8 +122,8 @@ export async function saveCharacterSheetStyleOverride(characterId, style, { kind
   if (!/^[a-z0-9][a-z0-9-]{0,127}$/i.test(characterId || "")) {
     throw new TypeError("Character ID is invalid.");
   }
-  if (!["v1", "v2", "v3"].includes(style)) {
-    throw new TypeError("Character sheet style must be v1, v2, or v3.");
+  if (!CHARACTER_SHEET_STYLES.includes(style)) {
+    throw new TypeError("Character sheet style must be v1, v2, v3, or v4.");
   }
   if (!isLocalRuntimeHost()) {
     const resource = kind === "npc" ? "npcs" : "characters";

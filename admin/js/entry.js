@@ -432,6 +432,7 @@ function renderCharacterStyles(characters, overrides = {}) {
           <option value="v1"${selected === "v1" ? " selected" : ""}>Style v1</option>
           <option value="v2"${selected === "v2" ? " selected" : ""}>Style v2</option>
           <option value="v3"${selected === "v3" ? " selected" : ""}>Style v3</option>
+          <option value="v4"${selected === "v4" ? " selected" : ""}>Style v4</option>
         </select>
       </label>`;
   }).join("") || '<p class="text-sm text-stone-500">No characters are currently available for individual overrides.</p>';

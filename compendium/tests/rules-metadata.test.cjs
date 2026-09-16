@@ -133,6 +133,10 @@ const generatedReport = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../d
 assert.equal(generatedReport.certifiedEntries.length, Object.keys(CHARACTER_CERTIFICATIONS).length);
 assert.deepEqual(generatedReport.unresolvedRules, []);
 assert.ok(generatedReport.certifiedEntries.every((entry) => entry.status === "rules-ready"));
+assert.equal(generatedReport.allCoreClassesCertified, true);
+assert.equal(generatedReport.coreClasses.length, 12);
+assert.ok(generatedReport.coreClasses.every(({ editions }) =>
+  editions["5e"].status === "rules-ready" && editions["5.5e"].status === "rules-ready"));
 for (const originalId of [
   "ID_RACE_HUMAN", "ID_WOTC_PHB24_RACE_HUMAN", "ID_BACKGROUND_SAGE",
   "ID_WOTC_PHB24_BACKGROUND_SAGE", "ID_BACKGROUND_SOLDIER", "ID_WOTC_PHB24_BACKGROUND_SOLDIER",

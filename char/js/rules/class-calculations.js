@@ -13,7 +13,9 @@ function levelValue(value, level, fallback) {
 
 export function calculateClassCharacterValues({ graph, catalog }) {
   const features = [];
+  const extras = [];
   const sources = [];
+  const extraSources = [];
   const characterSources = { size: [], creatureType: [] };
   const warnings = [];
   const character = {};
@@ -36,6 +38,20 @@ export function calculateClassCharacterValues({ graph, catalog }) {
       features.push(value);
       sources.push({ kind: "rules", sourceId: entry.id, originalId: text(entry.originalId), label: value.name, value: value.id });
     });
+    (Array.isArray(entry.rules?.extras) ? entry.rules.extras : []).forEach((extra) => {
+      if (active.level < (Number(extra.level) || 1)) return;
+      const value = {
+        id: text(extra.id) || `${entry.id}:extra:${extras.length}`,
+        name: text(extra.name) || text(extra.id),
+        type: text(extra.type) || "custom",
+        source: text(entry.name) || entry.id,
+        sourceId: entry.id,
+        description: text(extra.description),
+        notes: text(extra.notes),
+      };
+      extras.push(value);
+      extraSources.push({ kind: "rules", sourceId: entry.id, originalId: text(entry.originalId), label: value.name, value: value.id });
+    });
     const characterRule = entry.rules?.character;
     if (characterRule && typeof characterRule === "object") {
       ["size", "creatureType"].forEach((key) => {
@@ -53,6 +69,7 @@ export function calculateClassCharacterValues({ graph, catalog }) {
     }
     (Array.isArray(entry.rules?.warnings) ? entry.rules.warnings : []).forEach((warning, warningIndex) => {
       if (!warning || typeof warning !== "object") return;
+      if (active.level < (Number(warning.level) || 1)) return;
       warnings.push({
         code: text(warning.code) || "manual-automation",
         path: text(warning.path) || `catalog.${entry.id}.rules.warnings.${warningIndex}`,
@@ -69,14 +86,17 @@ export function calculateClassCharacterValues({ graph, catalog }) {
   });
 
   features.sort((left, right) => left.level - right.level || left.name.localeCompare(right.name) || left.id.localeCompare(right.id));
+  extras.sort((left, right) => left.name.localeCompare(right.name) || left.id.localeCompare(right.id));
   const combat = { attacksPerAction, criticalThreshold };
   return {
     features,
+    extras,
     combat,
     character,
     rest,
     trace: {
       features: { value: features, sources },
+      extras: { value: extras, sources: extraSources },
       size: { value: character.size || "", sources: characterSources.size },
       creatureType: { value: character.creatureType || "", sources: characterSources.creatureType },
       "combat.attacksPerAction": { value: attacksPerAction, sources: sources.filter((source) => /extra attack/i.test(source.label)) },

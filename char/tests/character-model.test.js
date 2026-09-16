@@ -41,6 +41,7 @@ const manual = fixture("manual-character-v2.json");
 const normalizedManual = normalizeCharacterDocument(manual);
 assert.equal(normalizedManual.build.ruleset, "5.5e");
 assert.deepEqual(normalizedManual.build.preferences.enabledSources, ["phb-2024", "homebrew"]);
+assert.deepEqual(normalizedManual.build.preferences.contentFilters, { publisher: "", automation: "" });
 assert.equal(normalizedManual.build.preferences.customPreference, true);
 assert.equal(normalizedManual.build.levels[0].classId, "fighter-2024");
 assert.equal(normalizedManual.build.levels[0].subclassId, "champion-2024");
@@ -64,7 +65,7 @@ const malformed = normalizeCharacterDocument({
     mode: "unknown",
     status: "unknown",
     ruleset: "future",
-    preferences: [],
+    preferences: { contentFilters: { publisher: " Wizards ", automation: "future", customFilter: true } },
     levels: [null, { level: 500, hitPointRolls: ["", "nope", 6] }],
     abilityScores: { method: "unknown", base: { str: "nope", dex: "14" } },
     spells: {
@@ -82,6 +83,7 @@ assert.equal(malformed.build.version, 1);
 assert.equal(malformed.build.mode, "manual");
 assert.equal(malformed.build.status, "complete");
 assert.equal(malformed.build.ruleset, "5.5e");
+assert.deepEqual(malformed.build.preferences.contentFilters, { publisher: "Wizards", automation: "", customFilter: true });
 assert.equal(malformed.build.levels.length, 1);
 assert.equal(malformed.build.levels[0].level, 20);
 assert.deepEqual(malformed.build.levels[0].hitPointRolls, [6]);

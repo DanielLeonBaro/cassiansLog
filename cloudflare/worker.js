@@ -3,6 +3,7 @@ import { error, json, safeId } from "./http.js";
 import { publicSettings } from "./settings.js";
 import { adminRoute } from "./routes/admin.js";
 import { characterRoute, listCharacters } from "./routes/characters.js";
+import { characterBuildDraftRoute } from "./routes/character-build-drafts.js";
 import { combatRoute } from "./routes/combat-loot.js";
 import { campaignRoute } from "./routes/campaigns.js";
 import { compendiumCatalog, compendiumCategory } from "./routes/compendium.js";
@@ -62,6 +63,7 @@ function requiredPageRole(pathname) {
 function requiredApiRole(pathname) {
   if (pathname.startsWith("/api/dnd-beyond/characters")) return "characters";
   if (pathname.startsWith("/api/characters")) return "characters";
+  if (pathname.startsWith("/api/character-build-drafts")) return "characters";
   if (pathname.startsWith("/api/screens/player")) return "player-screen";
   if (pathname.startsWith("/api/screens/dm")) return "dm-screen";
   if (pathname.startsWith("/api/public-initiative")) return "public-initiative";
@@ -255,6 +257,10 @@ export async function handleRequest(request, env) {
     if (url.pathname.startsWith("/api/dnd-beyond/characters/")) {
       const id = decodeURIComponent(url.pathname.slice("/api/dnd-beyond/characters/".length));
       return dndBeyondCharacterRoute(request, id);
+    }
+    if (url.pathname === "/api/character-build-drafts" || url.pathname.startsWith("/api/character-build-drafts/")) {
+      const parts = url.pathname.slice("/api/character-build-drafts".length).split("/").filter(Boolean).map(decodeURIComponent);
+      return characterBuildDraftRoute(request, env, parts);
     }
     const legacyCampaignResponse = await legacyCampaignApi(request, env, url);
     if (legacyCampaignResponse) return legacyCampaignResponse;

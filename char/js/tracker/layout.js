@@ -9,6 +9,7 @@ import {
   V3_SECTION_DEFINITIONS,
   normalizeV3Layout,
 } from "../../../shared/js/v3-layout.js";
+import { applyV4CharacterSheetLayout, refreshV4CharacterSheetLayout } from "./v4-layout.js";
 
 const desktopQuery = window.matchMedia("(min-width: 1024px)");
 const tabDefinitions = [
@@ -166,8 +167,9 @@ export function refreshCharacterSheetTabs() {
 }
 
 export function placeCharacterSheetHeaderActions() {
-  if (!controller) return;
-  const host = document.getElementById("v2-character-actions");
+  const style = document.documentElement.dataset.characterSheetStyle;
+  if (style !== "v2" && style !== "v4") return;
+  const host = document.getElementById(style === "v4" ? "v4-character-actions" : "v2-character-actions");
   if (!host) return;
   ["shortRest-btn", "longRest-btn", "editor-toggle-slot"].forEach((id) => {
     const element = document.getElementById(id);
@@ -200,6 +202,10 @@ export function applyCharacterSheetLayout(settings = {}, characterId = "", kind 
     ? resolveNpcSheetStyle(settings, characterId)
     : resolveCharacterSheetStyle(settings, characterId);
   document.documentElement.dataset.characterSheetStyle = style;
+  if (style === "v4") {
+    applyConfiguredSections(settings.sections || {});
+    return applyV4CharacterSheetLayout() ? style : "v1";
+  }
   if (style !== "v2" || controller) return style;
 
   const combatPage = document.getElementById("combat-page");
@@ -336,6 +342,8 @@ export function refreshV3CharacterSheetLayout() {
   v3Controller.tiles.forEach((tile) => { tile.hidden = !v3TileHasContent(tile); });
   return true;
 }
+
+export { refreshV4CharacterSheetLayout };
 
 export function applyV1CharacterSheetOrder(character = {}) {
   if (document.documentElement.dataset.characterSheetStyle !== "v1") return false;

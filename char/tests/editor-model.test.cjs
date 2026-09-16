@@ -40,6 +40,9 @@ const { pathToFileURL } = require("node:url");
   assert.equal(inventory.quantity, 1);
   assert.equal(inventory.attunement, false);
   assert.equal(inventory.wearable, false);
+  const extra = createBlankCollectionItem(["extras"], [], original);
+  assert.equal(extra.type, "custom");
+  assert.match(extra.id, /^extra-/);
   console.log("Character editor draft and collection model tests passed.");
 })().catch((error) => {
   console.error(error);

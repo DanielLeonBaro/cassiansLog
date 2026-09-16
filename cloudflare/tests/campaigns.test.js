@@ -243,8 +243,38 @@ result = await call(env, cookies.alice, ["curseofstrahd", "npcs", "masked-one"],
   body: { document: npc, playerVisible: false, visibility: { name: true, "stats.dex.score": true, "actions.0.name": true } },
 });
 assert.equal(result.response.status, 200);
+result = await call(env, cookies.carol, ["curseofstrahd", "npcs", "masked-one", "style"], { method: "PUT", body: { style: "v4" } });
+assert.equal(result.response.status, 403, "Players cannot change an NPC tracker style.");
+result = await call(env, cookies.alice, ["curseofstrahd", "npcs", "masked-one", "style"], { method: "PUT", body: { style: "v4" } });
+assert.equal(result.response.status, 200, "Campaign DMs can opt a freeform NPC into V4.");
+result = await call(env, cookies.alice, ["curseofstrahd", "settings"]);
+assert.equal(result.body.settings.npcSheetStyleOverrides["masked-one"], "v4");
+result = await call(env, cookies.alice, ["curseofstrahd", "npcs", "masked-one", "style"], { method: "PUT", body: { style: "future" } });
+assert.equal(result.response.status, 400, "Unknown NPC tracker styles remain rejected.");
+result = await call(env, cookies.alice, ["curseofstrahd", "npcs", "masked-one"], {
+  method: "PUT",
+  body: { document: { ...npc, name: "Overwrite attempt" }, playerVisible: false, visibility: {}, createOnly: true },
+});
+assert.equal(result.response.status, 409, "Rules-built NPC finalization must not overwrite an occupied ID.");
+assert.equal(JSON.parse(database.prepare("SELECT document_json FROM campaign_npcs WHERE campaign_id = ? AND id = 'masked-one'").get(curseCampaignId).document_json).name, "Known Face");
+const rulesNpc = { ...npc, id: "rules-npc", name: "Rules NPC", build: { mode: "rules", status: "complete", ruleset: "5.5e" } };
+result = await call(env, cookies.carol, ["curseofstrahd", "npcs", "player-rules-npc"], {
+  method: "PUT",
+  body: { document: { ...rulesNpc, id: "player-rules-npc" }, playerVisible: false, visibility: { name: true }, createOnly: true },
+});
+assert.equal(result.response.status, 403, "Players cannot finalize rules-built NPCs.");
+result = await call(env, cookies.alice, ["curseofstrahd", "npcs", "rules-npc"], {
+  method: "PUT",
+  body: { document: rulesNpc, playerVisible: true, visibility: { name: true }, createOnly: true },
+});
+assert.equal(result.response.status, 200);
+result = await call(env, cookies.carol, ["curseofstrahd", "npcs", "rules-npc"]);
+assert.equal(result.body.document.name, "Rules NPC");
+assert.equal(result.body.document.build, undefined, "Player projection must redact hidden rules-build source data.");
+result = await call(env, cookies.alice, ["curseofstrahd", "npcs", "rules-npc", "visibility"], { method: "PUT", body: { playerVisible: false } });
+assert.equal(result.response.status, 200);
 result = await call(env, cookies.alice, ["curseofstrahd", "npcs"]);
-assert.equal(result.body.npcs.length, 1, "Campaign DMs keep hidden NPCs in their tracker archive.");
+assert.equal(result.body.npcs.length, 2, "Campaign DMs keep hidden and rules-built NPCs in their tracker archive.");
 assert.equal(result.body.npcs[0].document.secret, "Serves Strahd");
 result = await call(env, cookies.carol, ["curseofstrahd", "npcs"]);
 assert.equal(result.body.npcs.length, 0, "Players cannot list an NPC hidden at archive level.");

@@ -1,27 +1,28 @@
-#Task
+# Task
 
-##To do:
+## To do:
 - Sound effects soundboard. Make it so button shortcuts do it too
-- Make V2 better (V4)
+- Make V2 better (V5)
 - Show/Hide Characters to players but not to DM
 - V1/V3 Combat Resources should be in expandeables
-- Standarize sizes of cards everywhere, also specifically in CT V3
+- Standarize sizes (height) of cards everywhere, also specifically in CT V3
 - Characters from other campaigns don't show in admin
     - Visible pages or roles in admin are too generic, make it campaign specific or something
 - At the end of most of it, let's check all the code and rework it, see if something is not actually used, or made shorter, or code can be reused, etc.
 - Add button to change widht (90, 100, 110 rem)
+- Themes per character
 
-##Priorities
+## Priorities
 - More juice to admin; characters assigned to users
 - Fix Responsiveness, or improve it, so tablet and phone views are better
 - Fix V2 width (110 rem)
 
-##In Progress (Out of Tokens)
+## In Progress (Out of Tokens)
 
-#In Pause
+## In Pause
 - Rework what legacy is, i don't want any hardcodded stuff
 
-##Done
+## Done
 - Music Module
 - Standarize unit tests or automated cases in general and add tags to them so you don't always run them all, only for the affected components
 - Some checkboxes don't respect accent color in theme, in admin for instance
@@ -54,7 +55,7 @@
 
 ---
 
-#Themes
+# Themes
 
 select * from themes;
 id	name	background_name	background_hex	accent_name	accent_hex	protected	created_at	updated_at

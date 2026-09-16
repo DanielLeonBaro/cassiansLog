@@ -12,7 +12,7 @@ export const EDITOR_SECTION_DEFINITIONS = [
 export const CHARACTER_SECTION_KEYS = new Set([
   "portrait", "name", "status", "class", "subclass", "race", "level", "experience", "background", "alignment", "gender",
   "hp", "ac", "initiative", "proficiency", "walk", "fly", "passivePerception", "darkvision", "stats",
-  "actions", "trackers", "spellcasting", "spells", "features", "resources", "inventory", "currency",
+  "actions", "trackers", "spellcasting", "spells", "features", "resources", "extras", "inventory", "currency",
   "id", "bundledUpdate", "bundledUpdateVersions", "v1SectionOrder", "characterSchemaVersion", "build",
 ]);
 
@@ -25,6 +25,7 @@ export const COLLECTION_KNOWN_FIELDS = {
   spells: new Set(["id", "name", "category", "action", "level", "school", "source", "spellcasting", "slotLevel", "range", "attack", "damage", "duration", "components", "concentration", "prepared", "uses", "description"]),
   resources: new Set(["id", "name", "category", "action", "uses", "description"]),
   features: new Set(["id", "name", "category", "description"]),
+  extras: new Set(["id", "name", "type", "source", "sourceId", "ac", "speed", "hp", "uses", "description", "notes"]),
   inventory: new Set(["id", "name", "quantity", "description", "attunement", "wearable"]),
 };
 

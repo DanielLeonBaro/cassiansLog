@@ -48,6 +48,24 @@ assert.equal(apiCharacter.spellcasting.profiles[0].saveDC, 13);
 assert.equal(apiCharacter.spellcasting.profiles[0].attackBonus, 5);
 assert.deepEqual(apiCharacter.spellcasting.slots[0], { id: "slot-1-1", profileId: "dnd-beyond-spellcasting", level: 1, current: 3, max: 4, reset: "long" });
 assert.equal(apiCharacter.currency.gp, 12);
+assert.deepEqual(apiCharacter.importSnapshot, {
+  version: 1,
+  source: "dnd-beyond",
+  method: "public-page",
+  automation: "manual",
+  totals: {
+    level: apiCharacter.level,
+    ac: apiCharacter.ac,
+    hp: apiCharacter.hp,
+    initiative: apiCharacter.initiative,
+    proficiency: apiCharacter.proficiency,
+    passivePerception: apiCharacter.passivePerception,
+    darkvision: apiCharacter.darkvision,
+    stats: apiCharacter.stats,
+    spellcasting: apiCharacter.spellcasting,
+    currency: apiCharacter.currency,
+  },
+});
 
 // Regression: the public API returns base HP and derived modifiers, not the final sheet totals.
 const gwendoline = mapDndBeyondPayload({ data: {
@@ -123,6 +141,9 @@ assert.equal(gwendoline.spellcasting.profiles[0].ability, gwendolineFixture.spel
 assert.equal(gwendoline.spellcasting.profiles[0].saveDC, gwendolineFixture.spellcasting.saveDC);
 assert.deepEqual(gwendoline.spellcasting.slots.map((slot) => [slot.level, slot.current, slot.max]), gwendolineFixture.spellcasting.slots);
 assert.equal(gwendoline.features.some((feature) => feature.name === "Personality traits"), gwendolineFixture.personalityTraits);
+assert.equal(gwendoline.importSnapshot.automation, "manual");
+assert.deepEqual(gwendoline.importSnapshot.totals.hp, gwendolineFixture.hp);
+assert.equal(gwendoline.importSnapshot.totals.ac, gwendolineFixture.ac);
 
 const pdfCharacter = mapDndBeyondPdfFields([
   ["CharacterName", "Oskarr Gorunn"], ["CLASS  LEVEL", "Druid 3"], ["RACE", "Gray Dwarf (Duergar)"],
@@ -155,5 +176,9 @@ assert.equal(pdfCharacter.spells.find((spell) => spell.name === "Guidance").leve
 assert.equal(pdfCharacter.spells.find((spell) => spell.name === "Healing Word").level, 1);
 assert.equal(pdfCharacter.spellcasting.slots[0].max, 4);
 assert.equal(pdfCharacter.currency.gp, 20);
+assert.equal(pdfCharacter.importSnapshot.source, "dnd-beyond");
+assert.equal(pdfCharacter.importSnapshot.method, "pdf");
+assert.equal(pdfCharacter.importSnapshot.automation, "manual");
+assert.deepEqual(pdfCharacter.importSnapshot.totals.stats, pdfCharacter.stats);
 
 console.log("D&D Beyond character import conversion tests passed.");

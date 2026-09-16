@@ -143,6 +143,17 @@ function preparedLimit(rule, profile, core, warnings, entry, ruleIndex) {
       ],
     };
   }
+  if (configuration.type === "ability-plus-half-level-down") {
+    const abilityModifier = core.stats[profile.ability]?.modifier || 0;
+    const levelContribution = Math.floor(profile.level / 2);
+    return {
+      value: Math.max(minimum, abilityModifier + levelContribution),
+      sources: [
+        { kind: "ability", sourceId: `stats.${profile.ability}.modifier`, label: `${profile.name} spellcasting ability`, value: abilityModifier },
+        { kind: "class-level", sourceId: entry.id, originalId: text(entry.originalId), label: `Half ${profile.name} level, rounded down`, value: levelContribution },
+      ],
+    };
+  }
   if (configuration.type === "fixed") {
     const value = Math.max(minimum, integer(configuration.value) ?? 0);
     return { value, sources: [ruleSource(entry, value, { ruleIndex })] };
@@ -188,14 +199,17 @@ function collectProfiles(graph, catalog, core, overrideResolver, warnings, trace
     const entry = index.get(active.id);
     if (!entry || entry.automation?.status !== "rules-ready") return;
     profileRules(entry).forEach((rule, ruleIndex) => {
+      const minimumLevel = Math.max(1, integer(rule.minimumLevel) ?? 1);
+      if ((integer(active.level) ?? 1) < minimumLevel) return;
       const id = text(rule.id);
       const ability = ABILITY_ALIASES[normalized(rule.ability)];
       const progression = normalized(rule.progression);
       const repertoire = normalized(rule.repertoire);
       const ritual = normalized(rule.ritual || "none");
       const cantripScaling = normalized(rule.cantripScaling || "character");
+      const multiclassProgression = normalized(rule.multiclassProgression || progression);
       if (!id || !ability || !PROGRESSIONS.has(progression) || !REPERTOIRES.has(repertoire)
-        || !RITUAL_MODES.has(ritual) || !CANTRIP_SCALING.has(cantripScaling)) {
+        || !PROGRESSIONS.has(multiclassProgression) || !RITUAL_MODES.has(ritual) || !CANTRIP_SCALING.has(cantripScaling)) {
         warnings.add({
           code: "unsupported-rule-expression",
           path: `catalog.${entry.id}.rules.spellcasting.${ruleIndex}`,
@@ -226,6 +240,7 @@ function collectProfiles(graph, catalog, core, overrideResolver, warnings, trace
         spellList: text(rule.spellList) || text(rule.name) || text(entry.name) || id,
         level,
         progression,
+        multiclassProgression,
         repertoire,
         ritual,
         cantripScaling,
@@ -245,6 +260,7 @@ function collectProfiles(graph, catalog, core, overrideResolver, warnings, trace
       const attack = overrideResolver.number(`spellcasting.profiles.${id}.attackBonus`, core.proficiency + core.stats[ability].modifier, attackSources, { integer: true });
       const prepared = overrideResolver.number(`spellcasting.profiles.${id}.preparedLimit`, limit.value, limit.sources, { integer: true, minimum: 0 });
       const cantripLimit = repertoireLimit(rule.cantrips, profile);
+      const knownLimit = repertoireLimit(rule.known, profile);
       const spellbookMinimum = repertoireLimit(rule.spellbook, profile);
       profiles.push({
         ...profile,
@@ -254,6 +270,7 @@ function collectProfiles(graph, catalog, core, overrideResolver, warnings, trace
         attackBonus: attack.value,
         preparedLimit: prepared.value,
         cantripLimit,
+        knownLimit,
         spellbookMinimum,
         ...(rule.recovery ? { slotRecovery: {
           resourceId: `rule-resource:${entry.id}:${text(rule.recovery.id)}`,
@@ -265,6 +282,7 @@ function collectProfiles(graph, catalog, core, overrideResolver, warnings, trace
       trace[`spellcasting.profiles.${id}.attackBonus`] = attack.trace;
       trace[`spellcasting.profiles.${id}.preparedLimit`] = prepared.trace;
       trace[`spellcasting.profiles.${id}.cantripLimit`] = { value: cantripLimit, sources: [ruleSource(entry, cantripLimit, { ruleIndex, classLevel: profile.level })] };
+      trace[`spellcasting.profiles.${id}.knownLimit`] = { value: knownLimit, sources: [ruleSource(entry, knownLimit, { ruleIndex, classLevel: profile.level })] };
       trace[`spellcasting.profiles.${id}.spellbookMinimum`] = { value: spellbookMinimum, sources: [ruleSource(entry, spellbookMinimum, { ruleIndex, classLevel: profile.level })] };
     });
   });
@@ -282,11 +300,12 @@ export function pactSpellSlots(classLevel) {
   return row ? { count: row[0], level: row[1] } : { count: 0, level: 0 };
 }
 
-function casterLevelContribution(profile) {
-  if (profile.progression === "full") return profile.level;
-  if (profile.progression === "half-down") return Math.floor(profile.level / 2);
-  if (profile.progression === "half-up") return Math.ceil(profile.level / 2);
-  if (profile.progression === "third-down") return Math.floor(profile.level / 3);
+function casterLevelContribution(profile, isMulticlass = false) {
+  const progression = isMulticlass ? profile.multiclassProgression : profile.progression;
+  if (progression === "full") return profile.level;
+  if (progression === "half-down") return Math.floor(profile.level / 2);
+  if (progression === "half-up") return Math.ceil(profile.level / 2);
+  if (progression === "third-down") return Math.floor(profile.level / 3);
   return 0;
 }
 
@@ -301,11 +320,11 @@ function slotCurrent(saved, maximum) {
   return current === null ? maximum : Math.max(0, Math.min(maximum, current));
 }
 
-function calculateSlots(profiles, runtime, overrideResolver, trace) {
+function calculateSlots(profiles, runtime, overrideResolver, trace, isMulticlass) {
   const saved = runtimeSlots(runtime);
   const slots = [];
   const standardProfiles = profiles.filter((profile) => !["pact", "none"].includes(profile.progression));
-  const casterLevel = Math.min(20, standardProfiles.reduce((sum, profile) => sum + casterLevelContribution(profile), 0));
+  const casterLevel = Math.min(20, standardProfiles.reduce((sum, profile) => sum + casterLevelContribution(profile, isMulticlass), 0));
   const sharedProfileIds = standardProfiles.map((profile) => profile.id);
   standardSpellSlots(casterLevel).forEach((automaticMaximum, index) => {
     if (!automaticMaximum) return;
@@ -315,7 +334,7 @@ function calculateSlots(profiles, runtime, overrideResolver, trace) {
       kind: "class-level",
       sourceId: profile.sourceId,
       label: `${profile.name} spellcasting progression`,
-      value: casterLevelContribution(profile),
+      value: casterLevelContribution(profile, isMulticlass),
     }));
     const maximum = overrideResolver.number(`spellcasting.slots.${id}.max`, automaticMaximum, sources, { integer: true, minimum: 0 });
     const current = slotCurrent(saved.get(id), maximum.value);
@@ -592,6 +611,14 @@ function calculateSpells(document, graph, catalog, profiles, slots, core, runtim
       blocking: true,
       message: `${profile.name} has ${cantrips.length} cantrips but allows ${profile.cantripLimit}.`,
     });
+    const knownSpells = spells.filter((spell) => spell.source === profile.id && spell.level > 0 && spell.known && !spell.granted);
+    if (profile.knownLimit && knownSpells.length > profile.knownLimit) warnings.add({
+      code: "known-spell-limit",
+      path: `build.spells.${profile.id}`,
+      sourceId: profile.id,
+      blocking: true,
+      message: `${profile.name} knows ${knownSpells.length} spells but allows ${profile.knownLimit}.`,
+    });
   });
   return spells;
 }
@@ -600,7 +627,8 @@ export function calculateSpellcastingCharacterValues({ document, graph, catalog,
   const warnings = warningCollector();
   const trace = {};
   const profiles = collectProfiles(graph, catalog, core, overrideResolver, warnings, trace);
-  const { casterLevel, slots } = calculateSlots(profiles, runtime, overrideResolver, trace);
+  const isMulticlass = document.build.levels.filter((level) => Number(level.level) > 0).length > 1;
+  const { casterLevel, slots } = calculateSlots(profiles, runtime, overrideResolver, trace, isMulticlass);
   const spells = calculateSpells(document, graph, catalog, profiles, slots, core, runtime, warnings, trace);
   trace["spellcasting.casterLevel"] = {
     value: casterLevel,
@@ -608,7 +636,7 @@ export function calculateSpellcastingCharacterValues({ document, graph, catalog,
       kind: "class-level",
       sourceId: profile.sourceId,
       label: `${profile.name} caster-level contribution`,
-      value: casterLevelContribution(profile),
+      value: casterLevelContribution(profile, isMulticlass),
     })),
   };
   trace.spells = { value: spells, sources: spells.map((spell) => ({

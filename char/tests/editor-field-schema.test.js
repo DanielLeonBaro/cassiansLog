@@ -18,6 +18,7 @@ assert.equal(CHARACTER_SECTION_KEYS.has("characterSchemaVersion"), true);
 assert.equal(CHARACTER_SECTION_KEYS.has("build"), true);
 assert.equal(COLLECTION_KNOWN_FIELDS.spells.has("prepared"), true);
 assert.equal(COLLECTION_KNOWN_FIELDS.inventory.has("attunement"), true);
+assert.equal(COLLECTION_KNOWN_FIELDS.extras.has("type"), true);
 assert.equal(COLLECTION_KNOWN_FIELDS.inventory.has("wearable"), true);
 assert.equal(fieldTitle("saveDC"), "Save DC");
 assert.equal(fieldTitle("custom_field"), "Custom field");

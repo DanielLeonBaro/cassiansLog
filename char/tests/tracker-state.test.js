@@ -78,4 +78,46 @@ assert.deepEqual(
   "unknown runtime fields must survive load/save",
 );
 
+const automaticCharacter = {
+  id: "automatic-inventory-state-test",
+  hp: { current: 10, max: 10, temp: 0 },
+  deathSaves: {},
+  inventory: [
+    { instanceId: "pack", definitionId: "backpack", name: "Backpack", quantity: 1, automatic: true, containerId: "", canEquip: false, canAttune: false, containerCapacity: 30 },
+    { instanceId: "boots", definitionId: "boots", name: "Boots", quantity: 1, automatic: true, containerId: "", canEquip: true, canAttune: true, containerCapacity: null },
+    { instanceId: "ring-1", definitionId: "ring-1", name: "Ring 1", quantity: 1, automatic: true, canEquip: false, canAttune: true, containerCapacity: null },
+    { instanceId: "ring-2", definitionId: "ring-2", name: "Ring 2", quantity: 1, automatic: true, canEquip: false, canAttune: true, containerCapacity: null },
+    { instanceId: "ring-3", definitionId: "ring-3", name: "Ring 3", quantity: 1, automatic: true, canEquip: false, canAttune: true, containerCapacity: null },
+    { instanceId: "wand", definitionId: "wand", name: "Wand", quantity: 1, automatic: true, canEquip: false, canAttune: false, containerCapacity: null, charges: { current: 2, max: 2, reset: "long" } },
+  ],
+};
+const automatic = createTrackerState({ ...dependencies, character: automaticCharacter });
+assert.equal(automatic.updateInventoryItemState(1, { equipped: true, attuned: true }).applied, true);
+assert.equal(automatic.updateInventoryItemState(2, { attuned: true }).applied, true);
+assert.equal(automatic.updateInventoryItemState(3, { attuned: true }).applied, true);
+assert.equal(automatic.updateInventoryItemState(4, { attuned: true }).warning.code, "attunement-limit");
+assert.equal(automatic.updateInventoryItemState(1, { quantity: 2, containerId: "pack" }).applied, true);
+assert.deepEqual(automatic.getInventoryItemState(1), { quantity: 2, containerId: "pack", equipped: true, attuned: true });
+assert.equal(automatic.spendInventoryItemCharge(5).applied, true);
+assert.equal(automatic.getInventoryItemState(5).charges.current, 1);
+automatic.save();
+const automaticSaved = JSON.parse(localStorage.getItem("dnd-automatic-inventory-state-test-state"));
+assert.deepEqual(automaticSaved.inventory.find((item) => item.instanceId === "boots"), {
+  key: "instance:boots", instanceId: "boots", quantity: 2, containerId: "pack", equipped: true, attuned: true,
+});
+assert.equal(automaticSaved.inventory.find((item) => item.instanceId === "wand").charges.current, 1);
+
+automaticCharacter.extras = [{ id: "owl", name: "Owl", hp: { current: 3, max: 5, temp: 1 }, uses: { current: 1, max: 2 } }];
+const extraState = createTrackerState({
+  ...dependencies,
+  character: automaticCharacter,
+  getAllCharacterItems: () => automaticCharacter.extras,
+  findCharacterItem: (id) => automaticCharacter.extras.find((item) => item.id === id),
+});
+extraState.save();
+automaticCharacter.extras[0].hp.current = 5;
+automaticCharacter.extras[0].hp.temp = 0;
+extraState.load();
+assert.deepEqual(automaticCharacter.extras[0].hp, { current: 3, max: 5, temp: 1 });
+
 console.log("Character tracker inventory state tests passed.");

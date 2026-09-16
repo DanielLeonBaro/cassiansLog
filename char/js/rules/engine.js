@@ -37,6 +37,8 @@ function rulesSheet(document, graph, core, durability, play, magic, equipment, c
   const subclasses = activeRootNames(graph, catalog, "subclass");
   const species = activeRootNames(graph, catalog, "species");
   const backgrounds = activeRootNames(graph, catalog, "background");
+  const legacyExtras = Array.isArray(legacy.extras) ? legacy.extras : [];
+  const legacyExtraIds = new Set(legacyExtras.map((extra) => extra?.id).filter(Boolean));
   return {
     ...legacy,
     class: classes.join(" / "),
@@ -62,6 +64,7 @@ function rulesSheet(document, graph, core, durability, play, magic, equipment, c
     actions: [...equipment.actions, ...play.actions],
     resources: play.resources,
     features: classRules.features,
+    extras: [...legacyExtras, ...classRules.extras.filter((extra) => !legacyExtraIds.has(extra.id))],
     combat: classRules.combat,
     size: classRules.character.size || legacy.size || "",
     creatureType: classRules.character.creatureType || legacy.creatureType || "",

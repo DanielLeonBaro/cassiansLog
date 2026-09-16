@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const root = process.cwd();
 const features = new Set(["campaigns", "char", "combat-loot", "compendium", "music", "npc", "public-initiative", "screens", "wiki"]);
-const workerRouteFiles = ["admin", "campaigns", "characters", "combat-loot", "compendium", "music", "public-initiative", "screens", "themes", "wiki"]
+const workerRouteFiles = ["admin", "campaigns", "character-build-drafts", "characters", "combat-loot", "compendium", "music", "public-initiative", "screens", "themes", "wiki"]
   .map((name) => `cloudflare/routes/${name}.js`);
 const removedRoots = ["data", "js", "scripts", "tests", "config", "bootstrap", "src", "dist", "stuffToParse"];
 
@@ -39,7 +39,8 @@ for (const feature of features) {
       assert.ok(
         dependency === feature || dependency === "shared" || dependency === "external"
           || (["campaigns", "combat-loot", "screens"].includes(feature) && dependency === "integrations")
-          || (feature === "npc" && dependency === "char"),
+          || (feature === "npc" && dependency === "char")
+          || (file.startsWith(path.join("char", "tests")) && specifier.endsWith("compendium/js/api.js")),
         `${file} must not import ${dependency}: ${specifier}`,
       );
     }
@@ -61,6 +62,7 @@ assert.ok(fs.readFileSync("cloudflare/routes/campaigns.js", "utf8").includes("./
 
 const allowedIntegrationEntrypoints = new Set([
   path.normalize("char/js/archive/api.js"),
+  path.normalize("char/js/builder/catalog-provider.js"),
   path.normalize("char/js/editor/extensions.js"),
   path.normalize("compendium/js/api.js"),
   path.normalize("npc/js/api.js"),
@@ -96,6 +98,7 @@ assert.ok(!accountMenu.toLowerCase().includes("facebook"), "The Me account panel
 assert.ok(!fs.readFileSync("login/index.html", "utf8").toLowerCase().includes("facebook"), "Login must not offer Facebook.");
 assert.match(fs.readFileSync("admin/index.html", "utf8"), /name="character-sheet-style" value="v1"/);
 assert.match(fs.readFileSync("admin/index.html", "utf8"), /name="character-sheet-style" value="v2"/);
+assert.match(fs.readFileSync("admin/index.html", "utf8"), /name="character-sheet-style" value="v4"/);
 assert.match(fs.readFileSync("admin/index.html", "utf8"), /id="character-style-settings"/);
 const adminEntrypoint = fs.readFileSync("admin/js/entry.js", "utf8");
 const adminPage = fs.readFileSync("admin/index.html", "utf8");

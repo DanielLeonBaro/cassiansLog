@@ -12,7 +12,10 @@ const progressionModes = new Set(["xp", "milestone"]);
 const hitPointModes = new Set(["fixed", "manual"]);
 const encumbranceModes = new Set(["none", "standard", "variant"]);
 const abilityMethods = new Set(["standard", "point-buy", "manual", "rolled"]);
+const automationFilters = new Set(["", "rules-ready", "partial", "manual"]);
+const equipmentMethods = new Set(["equipment", "gold"]);
 const abilityIds = ["str", "dex", "con", "int", "wis", "cha"];
+const currencyIds = ["cp", "sp", "ep", "gp", "pp"];
 
 function isRecord(value) {
   return Object.prototype.toString.call(value) === "[object Object]";
@@ -43,6 +46,7 @@ function uniqueTextList(value) {
 
 function normalizePreferences(value, mode) {
   const preferences = cloneRecord(value);
+  const contentFilters = cloneRecord(preferences.contentFilters);
   return {
     ...preferences,
     progression: selected(preferences.progression, progressionModes, "xp"),
@@ -51,6 +55,11 @@ function normalizePreferences(value, mode) {
     coinWeight: preferences.coinWeight !== false,
     prerequisites: preferences.prerequisites !== false,
     enabledSources: uniqueTextList(preferences.enabledSources),
+    contentFilters: {
+      ...contentFilters,
+      publisher: text(contentFilters.publisher),
+      automation: selected(contentFilters.automation, automationFilters, ""),
+    },
   };
 }
 
@@ -117,6 +126,14 @@ function normalizeInventory(value) {
   }));
 }
 
+function normalizeCurrency(value) {
+  const currency = cloneRecord(value);
+  currencyIds.forEach((coin) => {
+    currency[coin] = Math.max(0, Math.trunc(finiteNumber(currency[coin], 0)));
+  });
+  return currency;
+}
+
 function normalizeOverrides(value) {
   if (!isRecord(value)) return {};
   return Object.fromEntries(Object.entries(value).flatMap(([path, candidate]) => {
@@ -129,7 +146,7 @@ function normalizeOverrides(value) {
   }));
 }
 
-function normalizeBuild(value, { defaultRuleset = "5e" } = {}) {
+function normalizeBuild(value, { defaultRuleset = "5e", defaultCurrency = {} } = {}) {
   const build = cloneRecord(value);
   const mode = selected(build.mode, buildModes, "manual");
   const fallbackRuleset = rulesets.has(defaultRuleset) ? defaultRuleset : "5e";
@@ -147,7 +164,9 @@ function normalizeBuild(value, { defaultRuleset = "5e" } = {}) {
     abilityScores: normalizeAbilityScores(build.abilityScores, mode),
     selections: cloneRecord(build.selections),
     spells: normalizeSpells(build.spells),
+    equipmentMethod: selected(build.equipmentMethod, equipmentMethods, "equipment"),
     inventory: normalizeInventory(build.inventory),
+    currency: normalizeCurrency(build.currency ?? defaultCurrency),
     description: cloneRecord(build.description),
     overrides: normalizeOverrides(build.overrides),
   };
@@ -158,7 +177,7 @@ export function normalizeCharacterDocument(value, options = {}) {
   return {
     ...character,
     characterSchemaVersion: CHARACTER_SCHEMA_VERSION,
-    build: normalizeBuild(character.build, options),
+    build: normalizeBuild(character.build, { ...options, defaultCurrency: character.currency }),
   };
 }
 

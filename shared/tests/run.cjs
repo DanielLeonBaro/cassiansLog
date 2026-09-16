@@ -18,12 +18,19 @@ const suites = [
   ["Theme catalog, normalization, and contrast", "shared/tests/theme.test.js"],
   ["Character storage keys", "char/tests/storage-keys.test.js"],
   ["Character schema-v2 normalization", "char/tests/character-model.test.js"],
+  ["Character conversion preview and rollback", "char/tests/conversion.test.js"],
   ["Character rules graph evaluator", "char/tests/rules-evaluator.test.js"],
   ["Character core rules engine", "char/tests/rules-engine.test.js"],
   ["Character rules runtime and rests", "char/tests/rules-runtime.test.js"],
   ["Character spell rules", "char/tests/spell-rules.test.js"],
   ["Character inventory rules", "char/tests/inventory-rules.test.js"],
-  ["Fighter and Wizard level 1-5 certification", "char/tests/class-certification.test.js"],
+  ["Fighter and Wizard level 1-20 certification", "char/tests/class-certification.test.js"],
+  ["Cleric and Paladin level 1-20 certification", "char/tests/divine-class-certification.test.js"],
+  ["Druid and Ranger level 1-20 certification", "char/tests/nature-class-certification.test.js"],
+  ["Bard and Sorcerer level 1-20 certification", "char/tests/arcane-class-certification.test.js"],
+  ["Warlock level 1-20 certification", "char/tests/warlock-class-certification.test.js"],
+  ["Barbarian and Monk level 1-20 certification", "char/tests/martial-class-certification.test.js"],
+  ["Rogue and Thief level 1-20 certification", "char/tests/rogue-class-certification.test.js"],
   ["First-slice Human, Sage, and Soldier certification", "char/tests/first-slice-certification.test.js"],
   ["Character rendering helpers", "char/tests/rendering.test.js"],
   ["Character load-error rendering", "char/tests/load-error.test.js"],
@@ -36,6 +43,20 @@ const suites = [
   ["Character editor field rendering", "char/tests/editor-field-renderer.test.js"],
   ["Spellcasting profiles and preparation", "char/tests/spellcasting.test.cjs"],
   ["Character repository and creation", "char/tests/repository.test.cjs"],
+  ["Character Builder shell model", "char/tests/builder-model.test.js"],
+  ["Character Builder accessible shell UI", "char/tests/builder-ui.test.cjs"],
+  ["Character Builder optional catalog provider", "char/tests/builder-catalog-provider.test.js"],
+  ["Character Builder Home preferences and filters", "char/tests/builder-home-model.test.js"],
+  ["Character Builder Home accessible UI", "char/tests/builder-home-ui.test.cjs"],
+  ["Character Builder Class and origin choices", "char/tests/builder-choice-model.test.js"],
+  ["Character Builder Class and origin accessible UI", "char/tests/builder-choice-ui.test.cjs"],
+  ["Character Builder completion models", "char/tests/builder-completion-model.test.js"],
+  ["Character Builder completion accessible UI", "char/tests/builder-completion-ui.test.cjs"],
+  ["Character Builder local draft persistence", "char/tests/builder-draft-repository.test.js"],
+  ["Rules-built NPC draft persistence", "npc/tests/builder.test.js"],
+  ["Rules-built NPC accessible builder UI", "npc/tests/builder-ui.test.cjs"],
+  ["V4 freeform NPC presentation", "npc/tests/v4.test.js"],
+  ["V4 freeform NPC accessible UI", "npc/tests/v4-ui.test.cjs"],
   ["D&D Beyond character import conversion", "char/tests/dnd-beyond-import.test.js"],
   ["Character JSON and filled PDF export", "char/tests/character-export.test.js"],
   ["Character editor draft model", "char/tests/editor-model.test.cjs"],
@@ -44,6 +65,17 @@ const suites = [
   ["V1 character section ordering", "char/tests/section-order.test.cjs"],
   ["V3 configurable character layout", "char/tests/v3-layout.test.js"],
   ["V3 personal layout persistence", "char/tests/v3-layout-repository.test.js"],
+  ["V4 Character core summary", "char/tests/v4-layout.test.js"],
+  ["V4 Character accessible layout", "char/tests/v4-layout-ui.test.cjs"],
+  ["V4 Character action use", "char/tests/v4-actions.test.js"],
+  ["V4 Character action and runtime UI", "char/tests/v4-actions-ui.test.cjs"],
+  ["V4 Character spell interactions", "char/tests/v4-spells.test.js"],
+  ["V4 Character spell UI", "char/tests/v4-spells-ui.test.cjs"],
+  ["V4 Character inventory model", "char/tests/v4-inventory.test.js"],
+  ["V4 Character inventory UI", "char/tests/v4-inventory-ui.test.cjs"],
+  ["V4 Character feature and Extras model", "char/tests/v4-content.test.js"],
+  ["V4 Character feature, Extras, and detail UI", "char/tests/v4-content-ui.test.cjs"],
+  ["V4 Character conversion preview UI", "char/tests/conversion-ui.test.cjs"],
   ["Dice formula parsing and rolling", "shared/tests/dice.test.js"],
   ["Combat and Loot model", "combat-loot/tests/model.test.js"],
   ["Combat party library", "combat-loot/tests/party-library.test.js"],
@@ -85,6 +117,8 @@ const suites = [
   ["Screen D1 migration and rollback compatibility", "cloudflare/tests/screens-migration.test.cjs", ["--no-warnings"]],
   ["Campaign D1 migration and legacy preservation", "cloudflare/tests/campaigns-migration.test.cjs", ["--no-warnings"]],
   ["Character-layout D1 migration compatibility", "cloudflare/tests/character-layouts-migration.test.cjs", ["--no-warnings"]],
+  ["Character Builder draft D1 migration compatibility", "cloudflare/tests/character-build-drafts-migration.test.cjs", ["--no-warnings"]],
+  ["Character Builder draft API and finalization", "cloudflare/tests/character-build-drafts.test.js", ["--no-warnings"]],
   ["Theme background D1 migration compatibility", "cloudflare/tests/theme-backgrounds-migration.test.cjs", ["--no-warnings"]],
   ["Theme D1 CRUD and assignments", "cloudflare/tests/themes.test.js"],
   ["Cloudflare Worker routing and write protection", "cloudflare/tests/worker.test.cjs"],
@@ -105,10 +139,12 @@ function run(title, command, args) {
 }
 
 function tagsForSuite(file) {
+  if (file.includes("character-build-drafts")) return ["@characters", "@campaigns"];
   if (file.includes("v3-layout") || file.includes("character-layout")) return ["@character-layout"];
   if (file.includes("dnd-beyond")) return ["@characters", "@npcs"];
   if (file.includes("compendium-integration")) return ["@compendium", "@screens"];
   if (file.startsWith("char/")) return ["@characters"];
+  if (file.startsWith("npc/")) return ["@npcs"];
   if (file.startsWith("combat-loot/")) return ["@combat"];
   if (file.startsWith("public-initiative/")) return ["@initiative"];
   if (file.startsWith("screens/")) return ["@screens"];

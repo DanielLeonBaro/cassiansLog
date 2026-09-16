@@ -401,7 +401,7 @@ const { pathToFileURL } = require("node:url");
     assert.equal(liveSettings.openWrites, openWrites);
   }
 
-  for (const characterSheetStyle of ["v1", "v2", "v3", "v1"]) {
+  for (const characterSheetStyle of ["v1", "v2", "v3", "v4", "v1"]) {
     const response = await handleRequest(new Request("https://example.test/api/admin/settings", {
       method: "PUT",
       headers: adminHeaders,

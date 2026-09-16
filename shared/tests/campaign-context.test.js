@@ -79,7 +79,7 @@ assert.equal(campaignApiPath("api/wiki"), "/api/campaigns/aotr/wiki");
 assert.equal(campaignApiPath("api/compendium/catalog"), "/api/compendium/catalog");
 assert.equal(campaignPagePath("char"), "/c/aotr/char/");
 assert.equal(campaignPath("sita", "wiki"), "/c/sita/wiki/");
-for (const resource of ["characters", "wiki", "music", "combat-loot", "public-initiative", "screens", "settings"]) {
+for (const resource of ["characters", "character-build-drafts", "wiki", "music", "combat-loot", "public-initiative", "screens", "settings"]) {
   assert.equal(campaignApiPath(`api/${resource}`), `/api/campaigns/aotr/${resource}`);
 }
 for (const page of ["char", "wiki", "music", "combat-loot", "public-initiative", "player-screen", "dm-screen", "compendium", "manage"]) {
