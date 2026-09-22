@@ -20,6 +20,11 @@ const character = {
   concentration: { id: "bless", name: "Bless" },
   exhaustion: 2,
   background: "Soldier",
+  build: {
+    mode: "rules",
+    status: "incomplete",
+    completionWarnings: [{ message: "Class is unfinished.", impact: "Class features may be missing." }],
+  },
 };
 const snapshot = structuredClone(character);
 const summary = v4SummaryModel(character);
@@ -30,11 +35,14 @@ assert.ok(summary.proficiencies.includes("Language: Common"));
 assert.deepEqual(summary.defenses, ["Resistance: Fire", "Immunity: Poisoned", "Vulnerability: Cold"]);
 assert.deepEqual(summary.conditions, ["Prone", "Grappled", "Exhaustion 2", "Concentrating: Bless"]);
 assert.equal(summary.background, "Soldier");
+assert.equal(summary.buildIncomplete, true);
+assert.equal(summary.completionWarnings[0].message, "Class is unfinished.");
 assert.deepEqual(character, snapshot, "Summary derivation must not mutate character data.");
 
 const empty = v4SummaryModel({});
 assert.deepEqual(empty.movement, []);
 assert.deepEqual(empty.conditions, []);
 assert.equal(empty.background, "—");
+assert.equal(empty.buildIncomplete, false);
 
 console.log("V4 Character summary model passed.");

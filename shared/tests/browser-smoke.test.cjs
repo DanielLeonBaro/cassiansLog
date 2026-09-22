@@ -238,6 +238,25 @@ async function main() {
       return eventually(() => execute(script), message);
     }
 
+    async function chooseBuilderCatalogOption(controlId, pickerId, entryId, query) {
+      return execute(`
+        const control = document.getElementById(arguments[0]);
+        if (control?.matches("select")) {
+          control.value = arguments[2];
+          control.dispatchEvent(new Event("change", { bubbles: true }));
+          return true;
+        }
+        const input = document.getElementById(arguments[1] + "-search");
+        if (!input) return false;
+        input.focus();
+        input.value = arguments[3];
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        const add = document.querySelector('[data-selection-add="' + arguments[2] + '"]:not(:disabled)');
+        add?.click();
+        return Boolean(add);
+      `, [controlId, pickerId, entryId, query]);
+    }
+
     async function smoke(label, route, readyScript, verifyScript) {
       await navigate(route);
       await waitFor(readyScript, `${label} did not become ready`);
@@ -478,13 +497,16 @@ async function main() {
     );
     console.log("Browser smoke passed: D&D Beyond page import");
 
+    await command("POST", "/window/rect", { width: 1280, height: 900 });
     await execute(`
       localStorage.removeItem("dnd-character-build-drafts-v1");
       localStorage.removeItem("dnd-character-build-drafts-v1:campaign:aotr");
       document.getElementById("add-character").click();
-      document.getElementById("detailed-build-entry").click();
       return true;
     `);
+    const quickSetupWidth = await execute('return document.getElementById("character-form").getBoundingClientRect().width;');
+    assert.ok(quickSetupWidth <= 675, "Quick Setup should retain compact max-w-2xl dialog width.");
+    await execute('document.getElementById("detailed-build-entry").click(); return true;');
     await waitFor(
       `
         const shell = document.getElementById("character-builder-shell");
@@ -496,6 +518,20 @@ async function main() {
       `,
       "Detailed Character Builder shell did not open and save",
     );
+    const detailedLayout = await execute(`
+      const form = document.getElementById("character-form");
+      const preview = document.getElementById("character-builder-preview");
+      return {
+        width: form.getBoundingClientRect().width,
+        mode: form.dataset.builderLayout,
+        columns: getComputedStyle(preview.parentElement).gridTemplateColumns.split(" ").length,
+        previewVisible: preview.getBoundingClientRect().width > 0,
+      };
+    `);
+    assert.equal(detailedLayout.mode, "detailed", "Detailed Build should expose its layout state.");
+    assert.equal(detailedLayout.columns, 3, "Detailed Build should use three desktop regions.");
+    assert.equal(detailedLayout.previewVisible, true, "Detailed Build preview region should remain visible.");
+    assert.ok(detailedLayout.width > quickSetupWidth + 300, "Detailed Build should be materially wider than Quick Setup.");
     await waitFor(
       `
         const filters = document.getElementById("builder-ruleset-and-filters");
@@ -538,24 +574,62 @@ async function main() {
       `
         const sources = document.getElementById("builder-filter-sources");
         return document.getElementById("builder-filter-automation")?.value === "rules-ready"
-          && [...sources.options].some((option) => option.value.includes("Player") && !option.value.includes("2024"));
+          && [...sources.querySelectorAll('[role="option"]')].some((option) => option.textContent.includes("Player") && !option.textContent.includes("2024"));
       `,
       "Character Builder automation and publication filters were not mutually consistent",
     );
     await execute(`
-      const sources = document.getElementById("builder-filter-sources");
-      const source = [...sources.options].find((option) => option.value.includes("Player") && !option.value.includes("2024"));
-      source.selected = true;
-      sources.dispatchEvent(new Event("change", { bubbles: true }));
+      const search = document.getElementById("builder-filter-sources-control-search");
+      search.focus();
+      search.value = "Player";
+      search.dispatchEvent(new Event("input", { bubbles: true }));
+      return true;
+    `);
+    await waitFor('return Boolean(document.querySelector("#builder-filter-sources [data-selection-details]"));', "Searchable source results did not open");
+    await execute('document.querySelector("#builder-filter-sources [data-selection-details]").click(); return true;');
+    await waitFor(`
+      const dialog = document.querySelector("#builder-filter-sources dialog");
+      return dialog?.open
+        && dialog.querySelector('a[href*="/compendium/"][href*="#"]')
+        && dialog.querySelector('a[href^="https://www.google.com/search"]');
+    `, "Searchable source details did not expose Compendium and Google actions");
+    await execute('document.querySelector("#builder-filter-sources dialog button").click(); return true;');
+    await execute(`
+      const search = document.getElementById("builder-filter-sources-control-search");
+      search.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
       return true;
     `);
     await waitFor(
       `
         const stored = JSON.parse(localStorage.getItem("dnd-character-build-drafts-v1:campaign:aotr") || "{}");
-        return Object.values(stored)[0]?.document?.build?.preferences?.enabledSources?.length === 1;
+        const remove = document.querySelector('#builder-filter-sources [aria-label^="Remove "]');
+        return Object.values(stored)[0]?.document?.build?.preferences?.enabledSources?.length === 1 && remove;
       `,
       "Character Builder publication filter did not save",
     );
+    const selectedSourceSummary = await execute(`
+      const remove = document.querySelector('#builder-filter-sources [aria-label^="Remove "]');
+      remove.focus();
+      return document.querySelector("#builder-filter-sources [data-selection-summary]").textContent;
+    `);
+    assert.match(selectedSourceSummary, /Enable builder content from/, "Selected chip focus should expose its summary.");
+    await execute('document.querySelector(\'#builder-filter-sources [aria-label^="Remove "]\').click(); return true;');
+    await waitFor(`
+      const stored = JSON.parse(localStorage.getItem("dnd-character-build-drafts-v1:campaign:aotr") || "{}");
+      return Object.values(stored)[0]?.document?.build?.preferences?.enabledSources?.length === 0
+        && document.activeElement === document.getElementById("builder-filter-sources-control-search");
+    `, "Removing a source chip did not save and restore search focus");
+    await execute(`
+      const search = document.getElementById("builder-filter-sources-control-search");
+      search.value = "Player";
+      search.dispatchEvent(new Event("input", { bubbles: true }));
+      search.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      return true;
+    `);
+    await waitFor(`
+      const stored = JSON.parse(localStorage.getItem("dnd-character-build-drafts-v1:campaign:aotr") || "{}");
+      return Object.values(stored)[0]?.document?.build?.preferences?.enabledSources?.length === 1;
+    `, "Keyboard source selection did not save after chip removal");
     await execute('document.getElementById("builder-ruleset-5-5e").click(); return true;');
     await waitFor(
       `
@@ -571,7 +645,7 @@ async function main() {
     await waitFor(
       `
         return document.getElementById("builder-ruleset-5e").checked
-          && document.getElementById("builder-filter-sources").selectedOptions.length === 1;
+          && document.querySelectorAll('#builder-filter-sources [aria-label^="Remove "]').length === 1;
       `,
       "Cancelling the ruleset preview changed the draft",
     );
@@ -606,12 +680,7 @@ async function main() {
       `,
       "Builder navigation did not save or move focus",
     );
-    await execute(`
-      const select = document.getElementById("builder-class-choice");
-      select.value = "phb24ClassFighter";
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-      return true;
-    `);
+    assert.equal(await chooseBuilderCatalogOption("builder-class-choice", "builder-class-picker", "phb24ClassFighter", "Fighter"), true);
     await waitFor(
       `
         const stored = JSON.parse(localStorage.getItem("dnd-character-build-drafts-v1:campaign:aotr") || "{}");
@@ -621,6 +690,18 @@ async function main() {
       `,
       "2024 Fighter choice did not save",
     );
+    await execute(`
+      const level = document.getElementById("builder-class-level");
+      level.value = "20";
+      level.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    `);
+    await waitFor(`
+      const stored = JSON.parse(localStorage.getItem("dnd-character-build-drafts-v1:campaign:aotr") || "{}");
+      return Object.values(stored)[0]?.document?.build?.levels?.[0]?.level === 20
+        && document.getElementById("builder-class-level")?.value === "20"
+        && document.getElementById("character-builder-save-status").textContent.includes("synced");
+    `, "Level 20 class choice did not save");
     await execute(`
       const level = document.getElementById("builder-class-level");
       level.value = "3";
@@ -636,12 +717,7 @@ async function main() {
       `,
       "Fighter level gate did not reveal subclass choices",
     );
-    await execute(`
-      const subclass = document.getElementById("builder-subclass-choice");
-      subclass.value = "phb24SubclassChampion";
-      subclass.dispatchEvent(new Event("change", { bubbles: true }));
-      return true;
-    `);
+    assert.equal(await chooseBuilderCatalogOption("builder-subclass-choice", "builder-subclass-picker", "phb24SubclassChampion", "Champion"), true);
     await waitFor(
       `
         const stored = JSON.parse(localStorage.getItem("dnd-character-build-drafts-v1:campaign:aotr") || "{}");
@@ -651,22 +727,32 @@ async function main() {
       "2024 Champion choice did not save",
     );
 
+    let sawSearchableBuilderChoice = false;
     async function completeBuilderChoices(step) {
       for (let guard = 0; guard < 12; guard += 1) {
         const pending = await execute(`
           const fieldset = document.querySelector('[data-builder-choice-state="incomplete"]');
           if (!fieldset) return null;
           const minimum = Number(fieldset.dataset.builderChoiceMinimum || 0);
+          const searchable = fieldset.querySelector('[data-searchable-selection]');
+          if (searchable) {
+            const before = searchable.querySelectorAll('[aria-label^="Remove "]').length;
+            searchable.querySelector('[data-selection-add]:not(:disabled)')?.click();
+            return { key: fieldset.dataset.builderRuleChoice, searchable: true, before };
+          }
           const controls = [...fieldset.querySelectorAll('[data-builder-choice-key]:not(:disabled)')];
           controls.slice(0, minimum).forEach((control) => { control.checked = true; });
           controls[0]?.dispatchEvent(new Event("change", { bubbles: true }));
-          return fieldset.dataset.builderRuleChoice;
+          return { key: fieldset.dataset.builderRuleChoice, searchable: false, before: 0 };
         `);
         if (!pending) return;
+        if (pending.searchable) sawSearchableBuilderChoice = true;
         await waitFor(
-          `return document.getElementById("character-builder-save-status").textContent.includes("synced")
-            && !document.querySelector('[data-builder-rule-choice="${pending}"][data-builder-choice-state="incomplete"]');`,
-          `${step} choice ${pending} did not save`,
+          `const fieldset = document.querySelector('[data-builder-rule-choice="${pending.key}"]');
+            const selected = fieldset?.querySelectorAll('[aria-label^="Remove "]').length || 0;
+            return document.getElementById("character-builder-save-status").textContent.includes("synced")
+              && (!fieldset || fieldset.dataset.builderChoiceState !== "incomplete" || selected > ${pending.before});`,
+          `${step} choice ${pending.key} did not save`,
         );
       }
       throw new Error(`${step} choices did not complete.`);
@@ -675,25 +761,16 @@ async function main() {
     await completeBuilderChoices("Class");
     await execute('document.querySelector(\'[data-builder-step="background"]\').click(); return true;');
     await waitFor('return Boolean(document.getElementById("builder-background-choice"));', "Background step did not render");
-    await execute(`
-      const select = document.getElementById("builder-background-choice");
-      select.value = "phb24BackgroundSoldier";
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-      return true;
-    `);
+    assert.equal(await chooseBuilderCatalogOption("builder-background-choice", "builder-background-picker", "phb24BackgroundSoldier", "Soldier"), true);
     await waitFor('return Boolean(document.querySelector("[data-builder-rule-choice]")) && document.getElementById("character-builder-save-status").textContent.includes("synced");', "2024 Soldier choice did not save");
     await completeBuilderChoices("Background");
 
     await execute('document.querySelector(\'[data-builder-step="species"]\').click(); return true;');
     await waitFor('return Boolean(document.getElementById("builder-species-choice"));', "Species/Race step did not render");
-    await execute(`
-      const select = document.getElementById("builder-species-choice");
-      select.value = "phb24RaceHuman";
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-      return true;
-    `);
+    assert.equal(await chooseBuilderCatalogOption("builder-species-choice", "builder-species-picker", "phb24RaceHuman", "Human"), true);
     await waitFor('return Boolean(document.querySelector("[data-builder-rule-choice]")) && document.getElementById("character-builder-save-status").textContent.includes("synced");', "2024 Human choice did not save");
     await completeBuilderChoices("Species/Race");
+    assert.equal(sawSearchableBuilderChoice, true, "High-cardinality rule choices should use searchable controls.");
     await waitFor(
       `
         const stored = JSON.parse(localStorage.getItem("dnd-character-build-drafts-v1:campaign:aotr") || "{}");
@@ -730,12 +807,13 @@ async function main() {
       const progress = document.getElementById("character-builder-progress");
       return {
         columns: getComputedStyle(progress).gridTemplateColumns.split(" ").length,
+        layoutColumns: getComputedStyle(document.getElementById("character-builder-preview").parentElement).gridTemplateColumns.split(" ").length,
         overflow: document.documentElement.scrollWidth > innerWidth + 1,
         controlsVisible: ["character-builder-quick-setup", "character-builder-back", "character-builder-next"]
           .every((id) => document.getElementById(id).getBoundingClientRect().width > 0),
       };
     `);
-    assert.deepEqual(mobileBuilder, { columns: 1, overflow: false, controlsVisible: true }, "Detailed Character Builder should remain usable without horizontal overflow on mobile.");
+    assert.deepEqual(mobileBuilder, { columns: 1, layoutColumns: 1, overflow: false, controlsVisible: true }, "Detailed Character Builder should remain usable without horizontal overflow on mobile.");
     await command("POST", "/window/rect", { width: 1280, height: 900 });
 
     await execute('document.getElementById("builder-ability-method-point-buy").click(); return true;');
@@ -749,12 +827,13 @@ async function main() {
       `,
       "Point-buy method did not initialize and save",
     );
-    await execute(`
+    const immediatePreview = await execute(`
       const strength = document.getElementById("builder-ability-str");
       strength.value = "15";
       strength.dispatchEvent(new Event("change", { bubbles: true }));
-      return true;
+      return document.querySelector('[data-preview-group="abilities"]')?.textContent || "";
     `);
+    assert.match(immediatePreview, /STR 17 \(\+3\)/, "Live preview should update derived values before draft persistence completes.");
     await waitFor('return document.getElementById("builder-ability-status")?.textContent.includes("18 of 27");', "Point-buy cost did not recalculate");
     await execute('document.getElementById("builder-ability-method-manual").click(); return true;');
     await waitFor('return Boolean(document.getElementById("builder-ability-str")?.getAttribute("max") === "30");', "Manual ability method did not render");
@@ -781,8 +860,49 @@ async function main() {
       "Standard array did not complete and save",
     );
 
+    await execute('document.querySelector(\'[data-builder-step="home"]\').click(); return true;');
+    await waitFor('return Boolean(document.getElementById("builder-filter-publisher"));', "Home filters did not render before equipment coverage");
+    await execute(`
+      const publisher = document.getElementById("builder-filter-publisher");
+      publisher.value = "";
+      publisher.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    `);
+    await waitFor('return document.getElementById("builder-filter-publisher")?.value === "";', "All publishers filter did not save");
+    await execute(`
+      const automation = document.getElementById("builder-filter-automation");
+      automation.value = "";
+      automation.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    `);
+    await waitFor('return document.getElementById("builder-filter-automation")?.value === "" && document.getElementById("character-builder-save-status").textContent.includes("synced");', "All automation coverage filter did not save");
     await execute('document.querySelector(\'[data-builder-step="equipment"]\').click(); return true;');
     await waitFor('return Boolean(document.getElementById("character-builder-equipment"));', "Equipment step did not render");
+    const equipmentPicker = await execute(`
+      const input = document.getElementById("builder-equipment-picker-search");
+      input.focus();
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      const add = document.querySelector("#builder-equipment-picker-results [data-selection-add]:not(:disabled)");
+      const row = add?.closest('[role="option"]');
+      const result = { available: Boolean(add), metadata: row?.textContent || "" };
+      add?.click();
+      return result;
+    `);
+    assert.equal(equipmentPicker.available, true, "Equipment should use the searchable Compendium picker.");
+    assert.match(equipmentPicker.metadata, /(5e|5\.5e|agnostic)/i, "Equipment results should expose ruleset metadata.");
+    assert.match(equipmentPicker.metadata, /(rules-ready|partial|manual)/i, "Equipment results should expose automation coverage.");
+    await waitFor('return Boolean(document.querySelector("[data-builder-inventory-instance]"));', "Searchable equipment selection did not add an inventory instance");
+    await execute(`
+      const quantity = document.querySelector("[data-builder-inventory-quantity]");
+      quantity.value = "2";
+      quantity.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    `);
+    await waitFor(`
+      const stored = JSON.parse(localStorage.getItem("dnd-character-build-drafts-v1:campaign:aotr") || "{}");
+      return Object.values(stored)[0]?.document?.build?.inventory?.[0]?.quantity === 2
+        && Boolean(document.querySelector("[data-builder-inventory-container]"));
+    `, "Equipment quantity/container controls did not persist and render");
     await execute('document.getElementById("builder-equipment-method-gold").click(); return true;');
     await waitFor('return document.getElementById("builder-equipment-method-gold")?.checked;', "Starting gold method did not save");
     await execute(`
@@ -835,6 +955,7 @@ async function main() {
       "Complete draft did not enable Review Finish",
     );
     await execute('document.getElementById("builder-finish").click(); return true;');
+    await execute('document.getElementById("builder-finish-confirm")?.click(); return true;');
     await waitFor(
       `
         return document.getElementById("builder-finalize-error")?.textContent.includes("already exists")
@@ -855,19 +976,141 @@ async function main() {
     await execute('document.querySelector(\'[data-builder-step="review"]\').click(); return true;');
     await waitFor('return Boolean(document.getElementById("builder-finish") && !document.getElementById("builder-finish").disabled);', "Corrected draft did not return to finishable Review");
     await execute('document.getElementById("builder-finish").click(); return true;');
+    await execute('document.getElementById("builder-finish-confirm")?.click(); return true;');
     await waitFor(
       `
         const drafts = JSON.parse(localStorage.getItem("dnd-character-build-drafts-v1:campaign:aotr") || "{}");
         return location.pathname === "/c/aotr/char/task-sixteen-browser-hero/"
           && window.character?.id === "task-sixteen-browser-hero"
-          && window.character?.build?.status === "complete"
+          && ["complete", "incomplete"].includes(window.character?.build?.status)
           && window.character?.currency?.gp === 100
           && window.character?.backstory === "Browser-reviewed builder character."
-          && Object.keys(drafts).length === 0;
+          && (window.character.build.status === "complete" ? Object.keys(drafts).length === 0 : Object.keys(drafts).length === 1);
       `,
-      "Successful builder finalization did not materialize, redirect, and remove the draft",
+      "Successful builder finalization did not materialize, redirect, and apply its completion-state draft policy",
     );
     console.log("Browser smoke passed: Character Builder abilities, equipment, description, collision retry, and Finish");
+
+    await execute(`
+      const source = structuredClone(window.character);
+      source.id = "unfinished-browser-hero";
+      source.name = "Unfinished Browser Hero";
+      source.class = "";
+      source.subclass = "";
+      source.race = "";
+      source.background = "";
+      source.build.status = "incomplete";
+      source.build.levels = [];
+      source.build.speciesId = "";
+      source.build.backgroundId = "";
+      source.build.abilityScores = { method: "manual", base: {} };
+      source.build.selections = {};
+      source.build.spells = { knownIds: [], spellbookIds: [], assignments: {} };
+      delete source.build.completionWarnings;
+      delete source.build.finalization;
+      localStorage.setItem("dnd-character-build-drafts-v1:campaign:aotr", JSON.stringify({
+        "draft-unfinished-browser": {
+          draftId: "draft-unfinished-browser",
+          document: source,
+          currentStep: "review",
+          status: "incomplete",
+          version: 1,
+          createdAt: "2026-09-21T00:00:00.000Z",
+          updatedAt: "2026-09-21T00:00:00.000Z",
+          sync: { state: "saved", error: "" },
+        },
+      }));
+      const settings = JSON.parse(localStorage.getItem("cassianslog-runtime-settings:campaign:aotr") || "{}");
+      settings.characterSheetStyleOverrides = { ...(settings.characterSheetStyleOverrides || {}), "unfinished-browser-hero": "v4" };
+      localStorage.setItem("cassianslog-runtime-settings:campaign:aotr", JSON.stringify(settings));
+      return true;
+    `);
+    await navigate("/c/aotr/char/");
+    await waitFor('return Boolean(document.getElementById("add-character"));', "Character archive did not reopen for incomplete Finish");
+    await execute('document.getElementById("add-character").click(); document.getElementById("detailed-build-entry").click(); return true;');
+    await waitFor(
+      `return document.querySelector('[data-builder-step="review"]')?.getAttribute("aria-current") === "step"
+        && document.getElementById("builder-finish")
+        && !document.getElementById("builder-finish").disabled
+        && document.body.textContent.includes("Pending choices and calculation impact");`,
+      "Incomplete Review did not allow Finish with impact warnings",
+    );
+    const beforeIncompleteConfirmation = await execute('return localStorage.getItem("dnd-character-build-drafts-v1:campaign:aotr");');
+    await execute('document.getElementById("builder-finish").click(); return true;');
+    await waitFor(
+      `return document.getElementById("builder-finish-confirmation")
+        && document.activeElement === document.getElementById("builder-finish-confirm-title")
+        && document.getElementById("builder-finish-confirmation").textContent.includes("may not be calculated");`,
+      "Incomplete Finish confirmation did not explain calculation impact",
+    );
+    await execute('document.getElementById("builder-finish-confirm-cancel").click(); return true;');
+    assert.equal(await execute('return localStorage.getItem("dnd-character-build-drafts-v1:campaign:aotr") === arguments[0] && document.activeElement === document.getElementById("builder-finish");', [beforeIncompleteConfirmation]), true, "Cancelling incomplete Finish must preserve exact draft and restore focus.");
+    await execute('document.getElementById("builder-finish").click(); return true;');
+    await execute('document.getElementById("builder-finish-confirm").click(); return true;');
+    await waitFor(
+      `return location.pathname === "/c/aotr/char/unfinished-browser-hero/"
+        && window.character?.build?.status === "incomplete"
+        && window.character?.build?.completionWarnings?.length >= 3
+        && Boolean(document.getElementById("v4-incomplete-build"))
+        && !document.getElementById("v4-incomplete-build").hidden
+        && Boolean(document.querySelector('#v4-incomplete-build a[href*="resumeBuilder=1"]'))
+        && Boolean(JSON.parse(localStorage.getItem("dnd-character-build-drafts-v1:campaign:aotr") || "{}")["draft-unfinished-browser"]);`,
+      "Incomplete Finish did not create V4 Character, retain draft, and show Resume Builder",
+    );
+    await execute('document.querySelector(\'#v4-incomplete-build a[href*="resumeBuilder=1"]\').click(); return true;');
+    await waitFor(
+      `return location.pathname === "/c/aotr/char/"
+        && !document.getElementById("character-builder-shell").hidden
+        && document.querySelector('[data-builder-step="review"]')?.getAttribute("aria-current") === "step";`,
+      "Resume Builder action did not reopen retained incomplete draft",
+    );
+    await execute(`
+      const key = "dnd-character-build-drafts-v1:campaign:aotr";
+      const drafts = JSON.parse(localStorage.getItem(key) || "{}");
+      const draft = drafts["draft-unfinished-browser"];
+      draft.currentStep = "class";
+      draft.document.build.ruleset = "5e";
+      draft.document.build.preferences.contentFilters = { publisher: "", automation: "" };
+      draft.document.build.preferences.enabledSources = [];
+      draft.document.build.levels = [{ classId: "phbClassWizard", subclassId: "", level: 1, hitPointRolls: [] }];
+      draft.document.build.selections = {};
+      draft.document.build.spells = { knownIds: [], spellbookIds: [], assignments: {} };
+      localStorage.setItem(key, JSON.stringify(drafts));
+      return true;
+    `);
+    await navigate("/c/aotr/char/");
+    await waitFor('return Boolean(document.getElementById("add-character"));', "Character archive did not reopen for spell selector test");
+    await execute('document.getElementById("add-character").click(); document.getElementById("detailed-build-entry").click(); return true;');
+    await waitFor(`return !document.getElementById("character-builder-shell").hidden
+      && document.querySelector('[data-builder-step="class"]');`, "Wizard draft builder shell did not reopen");
+    await execute('document.querySelector(\'[data-builder-step="class"]\').click(); return true;');
+    await waitFor(`
+      const cantrips = document.getElementById("builder-spells-0-cantrips-search");
+      const spellbook = document.getElementById("builder-spells-0-levelled-search");
+      const option = document.querySelector('#builder-spells-0-cantrips [role="option"]');
+      return cantrips && spellbook && option
+        && /Cantrip/.test(option.textContent)
+        && /(rules-ready|partial|manual)/.test(option.textContent);
+    `, "Wizard spell selectors did not expose searchable spell metadata");
+    await execute(`
+      const search = document.getElementById("builder-spells-0-cantrips-search");
+      search.focus();
+      search.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      return true;
+    `);
+    await waitFor(`
+      const drafts = JSON.parse(localStorage.getItem("dnd-character-build-drafts-v1:campaign:aotr") || "{}");
+      return drafts["draft-unfinished-browser"]?.document?.build?.spells?.knownIds?.length === 1
+        && document.querySelector('#builder-spells-0-cantrips [aria-label^="Remove "]');
+    `, "Keyboard cantrip selection did not add a removable spell chip");
+    await execute('document.querySelector(\'#builder-spells-0-cantrips [aria-label^="Remove "]\').click(); return true;');
+    await waitFor(`
+      const drafts = JSON.parse(localStorage.getItem("dnd-character-build-drafts-v1:campaign:aotr") || "{}");
+      return drafts["draft-unfinished-browser"]?.document?.build?.spells?.knownIds?.length === 0
+        && document.activeElement === document.getElementById("builder-spells-0-cantrips-search");
+    `, "Cantrip chip removal did not save and restore search focus");
+    console.log("Browser smoke passed: searchable spell add/remove, metadata, limits, and focus");
+    console.log("Browser smoke passed: incomplete Finish warning, cancel, retained draft, V4 warning, and resume");
     }
 
     if (includesTag("@themes")) {
@@ -1824,17 +2067,21 @@ async function main() {
 
     if (includesTag("@character-layout")) {
     await execute(`
-      localStorage.setItem("cassianslog-runtime-settings", JSON.stringify({ characterSheetStyle: "v3", characterSheetStyleOverrides: { cassian: "v3" }, sections: {}, openWrites: true }));
+      const v3Settings = JSON.stringify({ characterSheetStyle: "v3", characterSheetStyleOverrides: { cassian: "v3" }, sections: {}, openWrites: true });
+      localStorage.setItem("cassianslog-runtime-settings", v3Settings);
+      localStorage.setItem("cassianslog-runtime-settings:campaign:aotr", v3Settings);
       const sections = [
         ["character-overview", 2], ["quick-stats", 1], ["skills-and-saves", 3],
         ["hit-points", 1], ["combat", 1], ["inventory", 1],
         ["all-possibilities", 1], ["spellcasting", 1], ["notes", 1],
       ].map(([id, span]) => ({ id, span }));
-      localStorage.setItem("cassianslog-character-layout-v3:localhost-admin:cassian", JSON.stringify({ layout: { version: 1, columns: 3, sections }, pending: false }));
+      const v3Layout = JSON.stringify({ layout: { version: 1, columns: 3, sections }, pending: false });
+      localStorage.setItem("cassianslog-character-layout-v3:localhost-admin:cassian", v3Layout);
+      localStorage.setItem("cassianslog-character-layout-v3:localhost-admin:cassian:campaign:aotr", v3Layout);
       return true;
     `);
     await navigate("/char/cassian/");
-    await waitFor('return document.documentElement.dataset.characterSheetStyle === "v3" && document.querySelectorAll("[data-v3-section]").length === 9;', "V3 tracker did not load");
+    await waitFor('return document.documentElement.dataset.characterSheetStyle === "v3" && document.querySelectorAll("[data-v3-section]").length === 9 && !document.querySelector("[data-v3-section=spellcasting]").hidden;', "V3 tracker did not load");
     const threeColumnLayout = await execute(`
       const grid = document.getElementById("v3-sheet-grid");
       const tile = (id) => document.querySelector('[data-v3-section="' + id + '"]').getBoundingClientRect();

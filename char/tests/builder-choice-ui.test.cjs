@@ -12,6 +12,8 @@ for (const contract of [
   "data-builder-rule-choice",
   "data-builder-choice-key",
   "data-builder-choice-state",
+  "data-builder-searchable-choice",
+  "data-builder-searchable-root",
   "data-builder-coverage",
   "builder-choice-warnings-title",
 ]) assert.ok(view.includes(contract), `Choice steps should render ${contract}.`);
@@ -20,10 +22,16 @@ for (const step of ["class", "background", "species"]) {
 }
 
 assert.match(view, /<fieldset[\s\S]*<legend/, "Rule choices must use labelled fieldsets.");
+assert.match(view, /SEARCHABLE_CHOICE_THRESHOLD = 4/);
+assert.match(view, /mountSearchableSelection/);
+assert.match(view, /useSearchableRuleChoice/);
+assert.match(view, /useSearchableCatalogChoice/);
+assert.match(view, /Search subclasses/);
 assert.match(view, /focus-visible:ring-2 focus-visible:ring-gold/, "Controls must expose keyboard focus.");
 assert.match(view, /Cassian’s Log will not guess missing rule effects/);
 assert.match(view, /Only subclasses linked to/);
-assert.match(view, /Current certified builder slice: levels 1–5/);
+assert.match(view, /Levels 1–20 are available/);
+assert.match(view, /unautomated effects are never guessed/);
 assert.match(controller, /renderCharacterBuilderChoiceStep/);
 assert.match(controller, /applyBuilderRuleSelection/);
 assert.match(controller, /focusAfterRender\(focusId\)/);

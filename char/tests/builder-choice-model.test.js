@@ -83,6 +83,9 @@ for (const [ruleset, ids] of Object.entries({
     catalog,
   }).class, "complete");
 
+  document = applyBuilderClassLevel(document, catalog, 20);
+  assert.equal(document.build.levels[0].level, 20, `${ruleset} builder must support level 20`);
+  assert.deepEqual(applyBuilderClassLevel(document, catalog, 21), document, "levels above 20 must be rejected");
   document = applyBuilderClassLevel(document, catalog, 3);
   assert.ok(builderRootEntries(catalog, document, "subclass").some(({ id }) => id === ids.champion));
   assert.ok(!builderRootEntries(catalog, document, "subclass").some(({ id }) => id === ids.evoker), "subclasses must be linked to the selected class");
@@ -133,10 +136,27 @@ const manualCatalog = [{
   publisher: "Homebrew",
   publication: "Local",
   automation: { status: "manual" },
+  subclassLevel: 3,
+}, {
+  id: "manual-subclass",
+  name: "Manual Specialty",
+  type: "Archetype",
+  category: "subclasses",
+  ruleset: "5e",
+  publisher: "Homebrew",
+  publication: "Local",
+  automation: { status: "manual" },
+  parentClassIds: ["manual-class"],
 }];
 let manualDocument = createCharacterBuildDraft({ draftId: "manual-choice" }).document;
 manualDocument = applyBuilderRootSelection(manualDocument, manualCatalog, "class", "manual-class");
 assert.equal(manualDocument.build.levels[0].classId, "manual-class", "manual content remains selectable");
+manualDocument = applyBuilderClassLevel(manualDocument, manualCatalog, 3);
+assert.deepEqual(builderRootEntries(manualCatalog, manualDocument, "subclass").map(({ id }) => id), ["manual-subclass"], "generated parent links expose partial/manual subclasses");
+manualDocument = applyBuilderSubclassSelection(manualDocument, manualCatalog, "manual-subclass");
+assert.equal(manualDocument.build.levels[0].subclassId, "manual-subclass", "top-level generated subclass gates are enforced");
+manualDocument = applyBuilderClassLevel(manualDocument, manualCatalog, 2);
+assert.equal(manualDocument.build.levels[0].subclassId, "", "generated gate levels clear subclasses below their gate");
 assert.equal(characterBuilderStepStates(manualDocument, {
   evaluation: builderStepEvaluation(manualDocument, manualCatalog, "class").evaluation,
   catalog: manualCatalog,

@@ -25,7 +25,8 @@ for (const id of [
   "builder-ruleset-change-confirm",
 ]) assert.ok(home.includes(`id="${id}"`), `Builder Home should render ${id}.`);
 
-assert.match(home, /multiple size=\"6\" aria-describedby=\"builder-filter-sources-help\"/);
+assert.match(home, /mountSearchableSelection/);
+assert.match(home, /Search, add, or remove source chips/);
 assert.match(home, /role=\"status\" aria-live=\"polite\"/);
 assert.match(home, /tabindex=\"-1\"/);
 assert.match(home, /No selection enables every publication shown/);

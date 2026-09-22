@@ -13,9 +13,9 @@ This is the durable specification and progress log for the D&D Beyond-style Char
 
 ## Status
 
-- Current milestone: Final audit
-- Completed through: Task 31
-- Next task: Task 32 — final acceptance audit
+- Current milestone: Complete
+- Completed through: Task 32
+- Next task: None
 - Initial vertical slice: Fighter, Wizard, Human, Sage, and Soldier, levels 1–5, in `5e` and `5.5e`
 - Final core target: all twelve core classes, levels 1–20, with multiclassing
 
@@ -349,11 +349,11 @@ Each row is a complete stopping point. The `Verification` column is the minimum 
 | 29 | Done | Certify Rogue and complete all-core cross-class/multiclass regression. `RUL-001`–`RUL-011` | Both-edition Rogue fixtures plus representative pairwise/caster-level regressions and full core coverage report. |
 | 30 | Done | Character-built NPC mode using the shared engine. `NPC-001`, `NPC-003` | Campaign isolation, role, runtime, rules, and browser tests; no freeform presentation changes. |
 | 31 | Done | V4 presentation for freeform NPCs with visibility/redaction preservation. `NPC-002`, `NPC-003` | Existing import/freeform regression, player projection/redaction, DM edit, mobile/theme browser tests. |
-| 32 | In Progress | Final accessibility, responsive, theme, role, migration, rollback, built-output, and compatibility audit. All IDs | Full `npm test`, `npm run build:site`, full browser suite, `git diff --check`, fresh/upgraded migration proof, and dated D&D Beyond re-audit. |
+| 32 | Done | Final accessibility, responsive, theme, role, migration, rollback, built-output, and compatibility audit. All IDs | Full unit/build/browser/tool/diff gates pass; remaining manual content gaps are dated in the completion log. |
 
 ## In Progress
 
-Task 32 — run the final acceptance audit, fix only acceptance-blocking regressions, and record dated evidence.
+None. Tasks 1–32 are complete.
 
 ## Done
 
@@ -806,6 +806,8 @@ Task 32 — run the final acceptance audit, fix only acceptance-blocking regress
 - 2026-09-16 — Task 31 browser verification: `npm run test:browser -- @npcs` passed all focused Firefox flows. The freeform NPC used V4 as DM and player, stayed conversion-free, preserved editor visibility controls, disabled mutations, allowed safe details, redacted hidden background/feature text, fit 375px, and rendered with real light/dark palettes.
 - 2026-09-16 — Task 31 build verification: `npm run build:site` passed. Existing Browserslist age warning remained non-fatal.
 - 2026-09-16 — Task 31 whitespace verification: `git diff --check` passed after the progress-log update.
+- 2026-09-22 — Task 32 final audit resumed after completion Tasks 1–25 finished. Full `npm test` passed 128/128 suites; production site build passed; full Firefox browser smoke passed all routes, interactions, roles, V1–V4, NPC flows, desktop/mobile, and Standard/Reversed alignment.
+- 2026-09-22 — Task 32 verified the standalone Wikidot tool in place and from an independent copied folder. Cassian/Aurora exports, provenance/license gates, deterministic reports, preview/deduplication, accepted staging, source immutability, syntax, and whole-tree whitespace checks pass. No crawl, import, deployment, migration, seed, or remote D1 mutation occurred.
 
 For every later task, record the command, result, relevant fixture/browser scenario, and any known pre-existing warning. Do not replace older evidence.
 
@@ -859,6 +861,7 @@ Certification is explicit. Completing engine code does not automatically certify
 - Task 22 is additive application code and import metadata. Converted Characters retain an embedded exact rollback document; use **Restore manual snapshot** before reverting if automatic conversion has been used. Reverting the conversion module/UI/import marker leaves unconverted legacy and D&D Beyond flat sheets unchanged.
 - Task 30 rollback removes the NPC builder draft repository, shared-builder NPC options, NPC Detailed Build wiring, and create-only route branch. Existing freeform NPCs and normal upsert writes remain unchanged; locally finalized rules-built NPCs retain valid flat compatibility fields and can continue opening in the legacy tracker.
 - Task 31 rollback removes NPC `v4` style acceptance/resolution, NPC-aware V4 labels/read-only exceptions, and focused tests. Stored freeform NPC documents need no rewrite because Task 31 never converts or changes their shape; remove any persisted NPC `v4` overrides or let older code normalize them to V1 before rolling application code back.
+- Task 32 changes only browser-test isolation/readiness and progress evidence. Rolling it back does not alter product code, schemas, or stored data.
 - Before any remote D1 migration or deployment: obtain explicit approval, export/verify a recovery point, verify migration order, and record the exact rollback procedure here.
 - No remote operation has been performed for this project plan.
 

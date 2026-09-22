@@ -1,5 +1,6 @@
 // Builds the V4 tracker hierarchy from existing live tracker nodes and renders its core summary.
 import { escapeAttribute, escapeHTML } from "../../../shared/js/text.js";
+import { campaignPagePath } from "../../../shared/js/campaign-context.js";
 import { modifierRollFormula, renderRollButton } from "./rolls.js";
 import { v4BackgroundDetails } from "./v4-content.js";
 
@@ -73,6 +74,8 @@ export function v4SummaryModel(character = {}) {
     conditions: [...new Set(conditions)],
     background: text(character.background),
     backgroundDetails: v4BackgroundDetails(character),
+    buildIncomplete: character.build?.mode === "rules" && character.build?.status === "incomplete",
+    completionWarnings: Array.isArray(character.build?.completionWarnings) ? character.build.completionWarnings : [],
   };
 }
 
@@ -87,6 +90,18 @@ export function renderV4CoreSummary(character = {}, root = document) {
   const host = root.getElementById("v4-summary-details");
   if (!host) return false;
   const model = v4SummaryModel(character);
+  const buildNotice = root.getElementById("v4-incomplete-build");
+  if (buildNotice) {
+    buildNotice.hidden = !model.buildIncomplete;
+    if (model.buildIncomplete) {
+      const warningItems = model.completionWarnings.length
+        ? `<ul class="mt-2 list-disc space-y-1 pl-5">${model.completionWarnings.map((warning) => `<li><strong>${escapeHTML(warning.message || "Pending builder choice.")}</strong>${warning.impact ? ` ${escapeHTML(warning.impact)}` : ""}</li>`).join("")}</ul>`
+        : "<p class=\"mt-2\">Some builder choices remain unfinished, so automatic values and important features may be missing.</p>";
+      const resumeLink = document.body?.dataset?.characterCanEdit === "false" ? ""
+        : `<a class="mt-3 inline-flex rounded-xl border border-amber-700 px-3 py-2 text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-amber-300" href="${escapeAttribute(`${campaignPagePath(entityLabel() === "NPC" ? "npc" : "char")}?resumeBuilder=1`)}">Resume Builder</a>`;
+      buildNotice.innerHTML = `<strong>Character build incomplete.</strong>${warningItems}${resumeLink}`;
+    }
+  }
   host.innerHTML = [
     summaryCard("Speed", model.movement, "v4-speed"),
     summaryCard("Senses", model.senses, "v4-senses"),
@@ -292,6 +307,11 @@ export function applyV4CharacterSheetLayout() {
   const core = document.createElement("section");
   core.id = "v4-core";
   core.setAttribute("aria-label", `${entityLabel()} summary`);
+  const buildNotice = document.createElement("aside");
+  buildNotice.id = "v4-incomplete-build";
+  buildNotice.hidden = true;
+  buildNotice.className = "mb-4 rounded-2xl border border-amber-600/50 bg-amber-500/15 p-4 text-sm";
+  buildNotice.setAttribute("role", "status");
   const headerActions = document.createElement("div");
   headerActions.id = "v4-character-actions";
   headerActions.className = "v4-character-actions";
@@ -316,7 +336,7 @@ export function applyV4CharacterSheetLayout() {
   conditions.setAttribute("aria-labelledby", "v4-conditions-title");
   conditions.innerHTML = '<h2 id="v4-conditions-title">Conditions & Concentration</h2><ul id="v4-condition-list" aria-live="polite"></ul><form id="v4-condition-form"><label for="v4-condition-name">Add condition</label><div><input id="v4-condition-name" maxlength="80" autocomplete="off" placeholder="Condition name"><button type="submit">Add</button></div></form><p id="v4-condition-status" class="sr-only" role="status" aria-live="polite"></p>';
   vitals?.appendChild(conditions);
-  core.append(identity, coreGrid);
+  core.append(buildNotice, identity, coreGrid);
 
   const tabs = tablist();
   const panels = new Map(V4_TAB_DEFINITIONS.map(({ id }) => [id, panel(id)]));

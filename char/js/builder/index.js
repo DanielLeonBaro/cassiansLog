@@ -37,6 +37,7 @@ import {
   applyBuilderEquipmentMethod,
   equipmentStepValidation,
   removeBuilderInventoryItem,
+  updateBuilderInventoryContainer,
   updateBuilderInventoryQuantity,
 } from "./equipment-model.js";
 import { renderCharacterBuilderEquipment } from "./equipment.js";
@@ -45,6 +46,7 @@ import { renderCharacterBuilderDescription } from "./description.js";
 import { applyBuilderSpellSelection, builderSpellState } from "./spell-model.js";
 import { prepareCharacterBuildFinalization } from "./review-model.js";
 import { renderCharacterBuilderReview } from "./review.js";
+import { renderCharacterBuilderPreview } from "./preview.js";
 import { campaignPagePath } from "../../../shared/js/campaign-context.js";
 
 const stepCopy = {
@@ -88,6 +90,7 @@ export function initializeCharacterBuilderShell({
   const entityWithArticle = npcMode ? "an NPC" : "a character";
   const quickSetup = document.getElementById("quick-setup-panel");
   const shell = document.getElementById("character-builder-shell");
+  const builderForm = shell?.closest("form");
   const entryButton = document.getElementById("detailed-build-entry");
   const entryDescription = document.getElementById("detailed-build-entry-description");
   const progress = document.getElementById("character-builder-progress");
@@ -95,6 +98,7 @@ export function initializeCharacterBuilderShell({
   const stepDescription = document.getElementById("character-builder-step-description");
   const stepState = document.getElementById("character-builder-step-state");
   const stepContent = document.getElementById("character-builder-step-content");
+  const preview = document.getElementById("character-builder-preview");
   const saveStatus = document.getElementById("character-builder-save-status");
   const retryButton = document.getElementById("character-builder-retry");
   const backButton = document.getElementById("character-builder-back");
@@ -115,12 +119,19 @@ export function initializeCharacterBuilderShell({
   let pendingRuleset = null;
   let finalizing = false;
   let finalizeError = "";
+  let confirmingIncomplete = false;
   let evaluatedDocument = null;
   let evaluatedCatalog = null;
   let cachedEvaluation = null;
   let validatedDocument = null;
   let validatedCatalog = null;
   let cachedValidations = null;
+
+  function setDetailedLayout(active) {
+    builderForm?.classList.toggle("max-w-2xl", !active);
+    builderForm?.classList.toggle("max-w-[96rem]", active);
+    if (builderForm) builderForm.dataset.builderLayout = active ? "detailed" : "quick";
+  }
 
   function currentEvaluation() {
     if (!activeDraft || catalogLoading || catalogError) return null;
@@ -215,6 +226,13 @@ export function initializeCharacterBuilderShell({
     const index = CHARACTER_BUILDER_STEPS.findIndex(({ id }) => id === current);
     backButton.disabled = saving || finalizing || index === 0;
     nextButton.disabled = saving || finalizing || index === CHARACTER_BUILDER_STEPS.length - 1;
+    renderCharacterBuilderPreview(preview, {
+      document: activeDraft?.document,
+      entries: catalogEntries,
+      loading: catalogLoading,
+      error: catalogError,
+      entityName: npcMode ? "NPC" : "Character",
+    });
   }
 
   function focusAfterRender(id) {
@@ -263,6 +281,7 @@ export function initializeCharacterBuilderShell({
         onCurrencyChange: updateCurrency,
         onAddItem: addInventoryItem,
         onQuantityChange: updateInventoryQuantity,
+        onContainerChange: updateInventoryContainer,
         onRemoveItem: removeInventoryItem,
       });
       focusAfterRender(focusId);
@@ -287,8 +306,11 @@ export function initializeCharacterBuilderShell({
         disabled: saving,
         finalizing,
         finalizeError,
+        confirmingIncomplete,
         entityName: npcMode ? "NPC" : "Character",
         onFinish: finishCharacter,
+        onConfirmIncomplete: () => finishCharacter({ confirmIncomplete: true }),
+        onCancelIncomplete: cancelIncompleteFinish,
       });
       focusAfterRender(focusId);
       return;
@@ -335,6 +357,7 @@ export function initializeCharacterBuilderShell({
       await persist();
       return;
     }
+    renderProgress();
     renderStepContent();
   }
 
@@ -365,6 +388,7 @@ export function initializeCharacterBuilderShell({
     const next = normalizedCharacterBuilderStep(stepId, activeDraft?.currentStep);
     if (!activeDraft || saving || finalizing || next === activeDraft.currentStep) return;
     pendingRuleset = null;
+    confirmingIncomplete = false;
     activeDraft = { ...activeDraft, currentStep: next };
     renderProgress();
     renderStepContent();
@@ -385,6 +409,7 @@ export function initializeCharacterBuilderShell({
   async function updateChoiceDocument(nextDocument, focusId) {
     if (!activeDraft || saving) return;
     finalizeError = "";
+    confirmingIncomplete = false;
     activeDraft = { ...activeDraft, document: nextDocument };
     renderProgress();
     await persist({ focusId });
@@ -438,6 +463,10 @@ export function initializeCharacterBuilderShell({
     return updateChoiceDocument(updateBuilderInventoryQuantity(activeDraft.document, instanceId, quantity), focusId);
   }
 
+  function updateInventoryContainer(instanceId, containerId, focusId) {
+    return updateChoiceDocument(updateBuilderInventoryContainer(activeDraft.document, catalogEntries, instanceId, containerId), focusId);
+  }
+
   function removeInventoryItem(instanceId, focusId) {
     return updateChoiceDocument(removeBuilderInventoryItem(activeDraft.document, instanceId), focusId);
   }
@@ -446,13 +475,15 @@ export function initializeCharacterBuilderShell({
     return updateChoiceDocument(applyBuilderDescription(activeDraft.document, changes), focusId);
   }
 
-  async function finishCharacter() {
+  async function finishCharacter({ confirmIncomplete = false } = {}) {
     if (!activeDraft || saving || finalizing) return;
-    const prepared = prepareCharacterBuildFinalization(activeDraft.document, catalogEntries);
+    const prepared = prepareCharacterBuildFinalization(activeDraft.document, catalogEntries, { confirmIncomplete });
     if (!prepared.finalized) {
-      renderStepContent("builder-finish-title");
+      confirmingIncomplete = Boolean(prepared.confirmationRequired);
+      renderStepContent(confirmingIncomplete ? "builder-finish-confirm-title" : "builder-finish-title");
       return;
     }
+    confirmingIncomplete = false;
     finalizing = true;
     finalizeError = "";
     activeDraft = { ...activeDraft, currentStep: "review", document: prepared.document };
@@ -469,6 +500,11 @@ export function initializeCharacterBuilderShell({
       renderStepContent("builder-finalize-error");
       renderSaveState();
     }
+  }
+
+  function cancelIncompleteFinish() {
+    confirmingIncomplete = false;
+    renderStepContent("builder-finish");
   }
 
   function requestRulesetChange(nextRuleset, returnFocusId) {
@@ -505,6 +541,7 @@ export function initializeCharacterBuilderShell({
     }) : "home" };
     quickSetup.hidden = true;
     shell.hidden = false;
+    setDetailedLayout(true);
     kicker.textContent = "Detailed build";
     title.textContent = recovered ? `Continue your ${entityLabel}` : `Build ${entityWithArticle}`;
     description.textContent = "Move between steps freely. Valid changes save in this browser before cloud sync.";
@@ -521,8 +558,10 @@ export function initializeCharacterBuilderShell({
     pendingRuleset = null;
     finalizing = false;
     finalizeError = "";
+    confirmingIncomplete = false;
     shell.hidden = true;
     quickSetup.hidden = false;
+    setDetailedLayout(false);
     kicker.textContent = "Quick setup";
     title.textContent = `Create ${entityWithArticle}`;
     description.textContent = "Start with the essentials. You can change everything in the full editor.";
@@ -535,8 +574,10 @@ export function initializeCharacterBuilderShell({
     pendingRuleset = null;
     finalizing = false;
     finalizeError = "";
+    confirmingIncomplete = false;
     shell.hidden = true;
     quickSetup.hidden = false;
+    setDetailedLayout(false);
     kicker.textContent = "Quick setup";
     title.textContent = `Create ${entityWithArticle}`;
     description.textContent = "Start with the essentials. You can change everything in the full editor.";

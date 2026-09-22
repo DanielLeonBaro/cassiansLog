@@ -68,6 +68,12 @@ export function builderSpellState(value, entries = []) {
     if (profile.repertoire === "spellbook" && selectedLevelledIds.length < profile.spellbookMinimum) {
       errors.push(`${profile.name} spellbook needs at least ${profile.spellbookMinimum} spells.`);
     }
+    if (profile.repertoire !== "spellbook" && profile.knownLimit && selectedLevelledIds.length < profile.knownLimit) {
+      errors.push(`${profile.name} needs ${profile.knownLimit} known spells.`);
+    }
+    if (profile.repertoire !== "spellbook" && profile.knownLimit && selectedLevelledIds.length > profile.knownLimit) {
+      errors.push(`${profile.name} allows ${profile.knownLimit} known spells.`);
+    }
     return { ...profile, maximumSpellLevel, cantrips, levelled, selectedCantripIds, selectedLevelledIds, repertoireField, errors };
   });
   return {
@@ -86,7 +92,8 @@ export function applyBuilderSpellSelection(value, entries, profileId, kind, sele
   const options = kind === "cantrips" ? profile.cantrips : profile.levelled;
   const allowed = new Set(options.map(({ id }) => id));
   const values = [...new Set((Array.isArray(selectedIds) ? selectedIds : []).map(text).filter(Boolean))];
-  if (values.some((id) => !allowed.has(id)) || (kind === "cantrips" && values.length > profile.cantripLimit)) return document;
+  const selectionLimit = kind === "cantrips" ? profile.cantripLimit : (profile.repertoire === "spellbook" ? Infinity : profile.knownLimit || Infinity);
+  if (values.some((id) => !allowed.has(id)) || values.length > selectionLimit) return document;
   const index = entryIndex(entries);
   const field = kind === "cantrips" ? "knownIds" : profile.repertoireField;
   const preserved = document.build.spells[field].filter((id) => {

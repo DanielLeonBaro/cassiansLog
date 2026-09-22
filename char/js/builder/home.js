@@ -1,6 +1,7 @@
 // Renders accessible Character Builder Home preferences and catalog filters.
 import { escapeAttribute, escapeHTML } from "../../../shared/js/text.js";
 import { builderCatalogFilterState } from "./home-model.js";
+import { mountSearchableSelection } from "./searchable-selection.js";
 
 function selected(value, current) {
   return value === current ? " selected" : "";
@@ -34,9 +35,6 @@ export function renderCharacterBuilderHome(container, {
   const state = builderCatalogFilterState(entries, document);
   const locked = disabled || Boolean(pendingRuleset);
   const catalogLocked = locked || loading || Boolean(error);
-  const sourceOptions = state.publications.map((source) => (
-    `<option value="${escapeAttribute(source)}"${preferences.enabledSources.includes(source) ? " selected" : ""}>${escapeHTML(source)}</option>`
-  )).join("");
   const incompatible = pendingRuleset?.incompatible || [];
   const visibleIncompatible = incompatible.slice(0, 8);
 
@@ -72,11 +70,7 @@ export function renderCharacterBuilderHome(container, {
             </select>
           </label>
         </div>
-        <label>
-          <span class="mb-1 block text-sm font-bold">Enabled publications/sources</span>
-          <select id="builder-filter-sources" multiple size="6" aria-describedby="builder-filter-sources-help" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2 text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/15 dark:bg-ink dark:text-white">${sourceOptions}</select>
-          <span id="builder-filter-sources-help" class="mt-1 block text-xs text-stone-500 dark:text-stone-400">No selection enables every publication shown. Use Ctrl, Command, or Shift for multiple sources.</span>
-        </label>
+        <div><div id="builder-filter-sources"></div><span id="builder-filter-sources-help" class="mt-1 block text-xs text-stone-500 dark:text-stone-400">No selection enables every publication shown. Search, add, or remove source chips.</span></div>
         <button id="builder-filter-sources-all" type="button" class="justify-self-start rounded-xl border border-stone-400 px-3 py-2 text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">Enable all shown sources</button>
         <p id="builder-filter-summary" class="rounded-xl border border-sky-600/30 bg-sky-500/10 p-3 text-sm text-sky-700 dark:text-sky-300" role="status" aria-live="polite">
           ${loading ? "Loading Compendium filters…" : error ? escapeHTML(error) : `${state.filteredCount.toLocaleString()} compatible entries available for ${rulesetLabel(state.ruleset)}.`}
@@ -113,9 +107,22 @@ export function renderCharacterBuilderHome(container, {
   });
   container.querySelector("#builder-filter-publisher")?.addEventListener("change", (event) => onChange?.({ publisher: event.target.value }, event.target.id));
   container.querySelector("#builder-filter-automation")?.addEventListener("change", (event) => onChange?.({ automation: event.target.value }, event.target.id));
-  container.querySelector("#builder-filter-sources")?.addEventListener("change", (event) => onChange?.({
-    enabledSources: [...event.target.selectedOptions].map(({ value }) => value),
-  }, event.target.id));
+  mountSearchableSelection(container.querySelector("#builder-filter-sources"), {
+    id: "builder-filter-sources-control",
+    label: "Enabled publications/sources",
+    placeholder: "Search publications…",
+    entries: state.publications.map((source) => ({
+      id: source,
+      name: source,
+      summary: `Enable builder content from ${source}.`,
+      ruleset: state.ruleset,
+      publication: source,
+      automationStatus: "content filter",
+    })),
+    selectedIds: preferences.enabledSources,
+    disabled: catalogLocked,
+    onChange: (enabledSources) => onChange?.({ enabledSources }, "builder-filter-sources-control-search"),
+  });
   container.querySelector("#builder-filter-sources-all")?.addEventListener("click", (event) => onChange?.({ enabledSources: [] }, event.currentTarget.id));
   for (const [id, name] of [
     ["builder-preference-progression", "progression"],

@@ -8,7 +8,7 @@ const tracker = fs.readFileSync("char/js/tracker/index.js", "utf8");
 const styles = fs.readFileSync("shared/styles/tailwind.css", "utf8");
 
 for (const id of [
-  "v4-sheet", "v4-core", "v4-core-grid", "v4-summary-details", "v4-conditions",
+  "v4-sheet", "v4-core", "v4-incomplete-build", "v4-core-grid", "v4-summary-details", "v4-conditions",
   "v4-tabs", "v4-workspace", "v4-background-section", "v4-notes-host",
 ]) assert.ok(layout.includes(`id = \"${id}\"`) || layout.includes(`id=\"${id}\"`), `V4 should create ${id}.`);
 
@@ -24,6 +24,8 @@ assert.doesNotMatch(layout, /cloneNode|outerHTML/);
 assert.match(layout, /role\", \"tablist\"/);
 assert.match(layout, /aria-selected/);
 assert.match(layout, /ArrowLeft/);
+assert.match(layout, /Resume Builder/);
+assert.match(layout, /resumeBuilder=1/);
 assert.match(styles, /\.v4-tab[\s\S]*?focus-visible:ring-2/);
 assert.match(bridge, /style === \"v4\"/);
 assert.match(tracker, /renderV4CoreSummary\(character\)/);

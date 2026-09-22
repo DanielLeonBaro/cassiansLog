@@ -3,11 +3,26 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { writeJSON } = require("../../shared/build/output.cjs");
 const { buildRulesArtifacts } = require("./rules-metadata.cjs");
+const { buildCharacterRuleCorpus } = require("./character-rule-corpus.cjs");
+const { buildClassProgressionReport } = require("./class-progression-report.cjs");
+const { buildSubclassCoverageReport } = require("./subclass-coverage-report.cjs");
+const { buildOriginCoverageReport } = require("./origin-coverage-report.cjs");
+const { buildFeatChoiceCoverageReport } = require("./feat-choice-coverage-report.cjs");
+const { buildSpellCoverageReport } = require("./spell-coverage-report.cjs");
+const { buildEquipmentCoverageReport } = require("./equipment-coverage-report.cjs");
 
 const RULES_METADATA_FILE = "rules-metadata.json";
 const ORIGINAL_IDS_FILE = "original-ids.json";
 const COVERAGE_FILE = "coverage.json";
 const CHARACTER_CERTIFICATION_REPORT_FILE = "character-certification-report.json";
+const CHARACTER_RULE_CORPUS_FILE = "character-rule-corpus.json";
+const CLASS_PROGRESSION_5E_REPORT_FILE = "class-progression-5e-report.json";
+const CLASS_PROGRESSION_55E_REPORT_FILE = "class-progression-5-5e-report.json";
+const SUBCLASS_COVERAGE_REPORT_FILE = "subclass-coverage-report.json";
+const ORIGIN_COVERAGE_REPORT_FILE = "origin-coverage-report.json";
+const FEAT_CHOICE_COVERAGE_REPORT_FILE = "feat-choice-coverage-report.json";
+const SPELL_COVERAGE_REPORT_FILE = "spell-coverage-report.json";
+const EQUIPMENT_COVERAGE_REPORT_FILE = "equipment-coverage-report.json";
 const { CHARACTER_CERTIFICATIONS } = require("./certifications.cjs");
 const CORE_CLASS_CERTIFICATIONS = [
   ["Barbarian", "ID_WOTC_PHB_CLASS_BARBARIAN", "ID_WOTC_PHB24_CLASS_BARBARIAN"],
@@ -43,6 +58,23 @@ function loadStableIdMap(outputRoot) {
 
 function writeRulesArtifacts(outputRoot, entries, generatedAt) {
   const artifacts = buildRulesArtifacts(entries);
+  const subclassCoverageReport = buildSubclassCoverageReport({
+    catalogVersion: artifacts.catalogVersion,
+    entries,
+    rulesMetadata: artifacts.rulesMetadata.entries,
+  });
+  const classGateLevels = new Map();
+  subclassCoverageReport.subclasses.forEach((subclass) => {
+    const metadata = artifacts.rulesMetadata.entries[subclass.id];
+    metadata.parentClassIds = subclass.parentClasses.map(({ id }) => id);
+    metadata.subclassGates = subclass.parentClasses.map(({ id, gate, evidence }) => ({ classId: id, ...gate, evidence }));
+    subclass.parentClasses.forEach(({ id, gate }) => {
+      if (!classGateLevels.has(id)) classGateLevels.set(id, gate.level);
+    });
+  });
+  classGateLevels.forEach((level, id) => {
+    artifacts.rulesMetadata.entries[id].subclassLevel = level;
+  });
   writeJSON(path.join(outputRoot, RULES_METADATA_FILE), {
     ...artifacts.rulesMetadata,
     generatedAt,
@@ -111,18 +143,96 @@ function writeRulesArtifacts(outputRoot, entries, generatedAt) {
       "https://www.dndbeyond.com/sources/dnd/br-2024/creating-a-character",
     ],
   });
+  writeJSON(path.join(outputRoot, CHARACTER_RULE_CORPUS_FILE), {
+    ...buildCharacterRuleCorpus({
+      catalogVersion: artifacts.catalogVersion,
+      entries,
+      rulesMetadata: artifacts.rulesMetadata.entries,
+    }),
+    generatedAt,
+  });
+  writeJSON(path.join(outputRoot, CLASS_PROGRESSION_5E_REPORT_FILE), {
+    ...buildClassProgressionReport({
+      catalogVersion: artifacts.catalogVersion,
+      entries,
+      rulesMetadata: artifacts.rulesMetadata.entries,
+      ruleset: "5e",
+    }),
+    generatedAt,
+  });
+  writeJSON(path.join(outputRoot, CLASS_PROGRESSION_55E_REPORT_FILE), {
+    ...buildClassProgressionReport({
+      catalogVersion: artifacts.catalogVersion,
+      entries,
+      rulesMetadata: artifacts.rulesMetadata.entries,
+      ruleset: "5.5e",
+    }),
+    generatedAt,
+  });
+  writeJSON(path.join(outputRoot, SUBCLASS_COVERAGE_REPORT_FILE), {
+    ...subclassCoverageReport,
+    generatedAt,
+  });
+  writeJSON(path.join(outputRoot, ORIGIN_COVERAGE_REPORT_FILE), {
+    ...buildOriginCoverageReport({
+      catalogVersion: artifacts.catalogVersion,
+      entries,
+      rulesMetadata: artifacts.rulesMetadata.entries,
+    }),
+    generatedAt,
+  });
+  writeJSON(path.join(outputRoot, FEAT_CHOICE_COVERAGE_REPORT_FILE), {
+    ...buildFeatChoiceCoverageReport({
+      catalogVersion: artifacts.catalogVersion,
+      entries,
+      rulesMetadata: artifacts.rulesMetadata.entries,
+    }),
+    generatedAt,
+  });
+  writeJSON(path.join(outputRoot, SPELL_COVERAGE_REPORT_FILE), {
+    ...buildSpellCoverageReport({
+      catalogVersion: artifacts.catalogVersion,
+      entries,
+      rulesMetadata: artifacts.rulesMetadata.entries,
+    }),
+    generatedAt,
+  });
+  writeJSON(path.join(outputRoot, EQUIPMENT_COVERAGE_REPORT_FILE), {
+    ...buildEquipmentCoverageReport({
+      catalogVersion: artifacts.catalogVersion,
+      entries,
+      rulesMetadata: artifacts.rulesMetadata.entries,
+    }),
+    generatedAt,
+  });
   return {
     catalogVersion: artifacts.catalogVersion,
     rulesMetadataFile: RULES_METADATA_FILE,
     originalIdLookupFile: ORIGINAL_IDS_FILE,
     coverageFile: COVERAGE_FILE,
     characterCertificationReportFile: CHARACTER_CERTIFICATION_REPORT_FILE,
+    characterRuleCorpusFile: CHARACTER_RULE_CORPUS_FILE,
+    classProgression5eReportFile: CLASS_PROGRESSION_5E_REPORT_FILE,
+    classProgression55eReportFile: CLASS_PROGRESSION_55E_REPORT_FILE,
+    subclassCoverageReportFile: SUBCLASS_COVERAGE_REPORT_FILE,
+    originCoverageReportFile: ORIGIN_COVERAGE_REPORT_FILE,
+    featChoiceCoverageReportFile: FEAT_CHOICE_COVERAGE_REPORT_FILE,
+    spellCoverageReportFile: SPELL_COVERAGE_REPORT_FILE,
+    equipmentCoverageReportFile: EQUIPMENT_COVERAGE_REPORT_FILE,
   };
 }
 
 module.exports = {
   COVERAGE_FILE,
   CHARACTER_CERTIFICATION_REPORT_FILE,
+  CHARACTER_RULE_CORPUS_FILE,
+  CLASS_PROGRESSION_5E_REPORT_FILE,
+  CLASS_PROGRESSION_55E_REPORT_FILE,
+  SUBCLASS_COVERAGE_REPORT_FILE,
+  ORIGIN_COVERAGE_REPORT_FILE,
+  FEAT_CHOICE_COVERAGE_REPORT_FILE,
+  SPELL_COVERAGE_REPORT_FILE,
+  EQUIPMENT_COVERAGE_REPORT_FILE,
   ORIGINAL_IDS_FILE,
   RULES_METADATA_FILE,
   loadStableIdMap,

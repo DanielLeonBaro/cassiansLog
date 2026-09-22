@@ -79,6 +79,20 @@ function cloudPath(draftId, tail = "") {
   return `api/character-build-drafts/${encodeURIComponent(draftId)}${tail ? `/${tail}` : ""}`;
 }
 
+function ownedIncompleteBuild(document, draftId, ownerUserId) {
+  const marker = document?.build?.finalization;
+  return document?.build?.status === "incomplete"
+    && marker?.draftId === draftId
+    && marker?.ownerUserId === ownerUserId;
+}
+
+function documentForFinalization(document, draftId, ownerUserId) {
+  const next = normalizeCharacterDocument(document);
+  if (next.build.status === "incomplete") next.build.finalization = { draftId, ownerUserId };
+  else delete next.build.finalization;
+  return next;
+}
+
 export async function saveCharacterBuildDraft(value, {
   cloudWrite = writeCloudJSON,
   now = () => new Date().toISOString(),
@@ -138,18 +152,23 @@ export async function deleteCharacterBuildDraft(draftId, {
 async function finishLocally(draft, characterList) {
   const document = draft.document;
   const id = validId(document.id);
-  if (!id || document.build.status !== "complete") throw new CharacterBuildDraftError("Complete Character draft with valid Character ID is required.", { status: 400 });
-  if ((await characterList()).some((character) => character.id === id)) {
+  if (!id) throw new CharacterBuildDraftError("Character draft with valid Character ID is required.", { status: 400 });
+  const user = currentLocalUser();
+  const listed = (await characterList()).find((character) => character.id === id);
+  const characters = storedCharacters();
+  const existing = characters[id];
+  if ((!existing && listed) || (existing && !ownedIncompleteBuild(existing, draft.draftId, user.id))) {
     throw new CharacterBuildDraftError("That character ID already exists.", { status: 409 });
   }
-  const characters = storedCharacters();
-  characters[id] = cloneJSON(document);
+  const persistedDocument = documentForFinalization(document, draft.draftId, user.id);
+  characters[id] = cloneJSON(persistedDocument);
   writeJSON(CHARACTERS_STORAGE_KEY, characters);
   const slug = currentCampaignSlug();
-  const user = currentLocalUser();
   if (slug && localCampaign(slug)?.role === "player") assignLocalCharacterEditor(slug, id, user.id);
-  removeLocalDraft(draft.draftId);
-  return { ok: true, id, document: cloneJSON(document), local: true };
+  const draftRetained = persistedDocument.build.status === "incomplete";
+  if (draftRetained) writeLocalDraft({ ...draft, document: persistedDocument, sync: { state: "saved", error: "" } });
+  else removeLocalDraft(draft.draftId);
+  return { ok: true, id, document: cloneJSON(persistedDocument), local: true, draftRetained };
 }
 
 export async function finalizeCharacterBuildDraft(draftId, {
@@ -162,11 +181,12 @@ export async function finalizeCharacterBuildDraft(draftId, {
   const draft = localCharacterBuildDraft(id);
   if (!draft) throw new CharacterBuildDraftError("Character draft not found.", { status: 404 });
   const characterId = validId(draft.document?.id);
-  if (!characterId || draft.document?.build?.status !== "complete") {
-    throw new CharacterBuildDraftError("Complete Character draft with valid Character ID is required.", { status: 400 });
+  if (!characterId) {
+    throw new CharacterBuildDraftError("Character draft with valid Character ID is required.", { status: 400 });
   }
   if (localOnly) return finishLocally(draft, characterList);
-  if (Object.hasOwn(storedCharacters(), characterId)) {
+  const localExisting = storedCharacters()[characterId];
+  if (localExisting && !ownedIncompleteBuild(localExisting, id, currentLocalUser().id)) {
     throw new CharacterBuildDraftError("That character ID already exists in local recovery data.", { status: 409 });
   }
   try {
@@ -177,7 +197,8 @@ export async function finalizeCharacterBuildDraft(draftId, {
     const characters = storedCharacters();
     characters[response.id] = cloneJSON(response.document);
     writeJSON(CHARACTERS_STORAGE_KEY, characters);
-    removeLocalDraft(id);
+    if (response.draftRetained) writeLocalDraft({ ...draft, document: response.document, sync: { state: "saved", error: "" } });
+    else removeLocalDraft(id);
     return { ...response, cloudSaved: true, cloudError: null };
   } catch (cloudError) {
     writeLocalDraft({ ...draft, sync: { state: "failed", operation: "finalize", error: errorText(cloudError) } }, { now: draft.updatedAt });

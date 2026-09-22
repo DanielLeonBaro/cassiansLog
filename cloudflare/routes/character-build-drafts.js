@@ -90,46 +90,81 @@ async function readDraft(env, scope, draftId) {
   return draftQueries(env, scope, draftId).select.first();
 }
 
+function ownedIncompleteBuild(document, scope, draftId) {
+  const marker = document?.build?.finalization;
+  return document?.build?.status === "incomplete"
+    && marker?.draftId === draftId
+    && marker?.ownerUserId === scope.user.id;
+}
+
+function documentForFinalization(document, scope, draftId) {
+  const next = normalizeCharacterDocument(document);
+  if (next.build.status === "incomplete") next.build.finalization = { draftId, ownerUserId: scope.user.id };
+  else delete next.build.finalization;
+  return next;
+}
+
 async function finalizeDraft(request, env, scope, draftId) {
   if (request.method !== "POST") return error("Method not allowed.", 405);
   const row = await readDraft(env, scope, draftId);
   if (!row) return error("Character draft not found.", 404);
-  const document = parseStored(row.document_json, null);
-  const characterId = safeId(document?.id);
-  if (!characterId || document?.build?.status !== "complete") {
-    return error("Complete Character draft with valid Character ID is required.");
-  }
+  const sourceDocument = parseStored(row.document_json, null);
+  const characterId = safeId(sourceDocument?.id);
+  if (!characterId) return error("Character draft with valid Character ID is required.");
+  const document = documentForFinalization(sourceDocument, scope, draftId);
   const queries = draftQueries(env, scope, draftId);
   const now = new Date().toISOString();
   const documentJSON = JSON.stringify(document);
   const statements = [];
+  let updatingIncomplete = false;
   if (scope.campaignId) {
     const occupied = await env.DB.prepare(
-      "SELECT id FROM campaign_characters WHERE campaign_id = ? AND id = ?",
+      "SELECT id, document_json FROM campaign_characters WHERE campaign_id = ? AND id = ?",
     ).bind(scope.campaignId, characterId).first();
-    if (occupied) return error("That character ID already exists in this campaign.", 409);
+    if (occupied) {
+      if (!ownedIncompleteBuild(parseStored(occupied.document_json, null), scope, draftId)) {
+        return error("That character ID already exists in this campaign.", 409);
+      }
+      updatingIncomplete = true;
+      statements.push(env.DB.prepare(
+        "UPDATE campaign_characters SET document_json = ?, source = 'custom', active = 1, updated_at = ? WHERE campaign_id = ? AND id = ?",
+      ).bind(documentJSON, now, scope.campaignId, characterId));
+      if (scope.campaignId === LEGACY_CAMPAIGN_ID) statements.push(env.DB.prepare(
+        "UPDATE characters SET document_json = ?, source = 'custom', active = 1, updated_at = ? WHERE id = ?",
+      ).bind(documentJSON, now, characterId));
+    }
     if (scope.campaignId === LEGACY_CAMPAIGN_ID) {
       const legacyOccupied = await env.DB.prepare("SELECT id FROM characters WHERE id = ?").bind(characterId).first();
-      if (legacyOccupied) return error("That character ID already exists.", 409);
+      if (legacyOccupied && !updatingIncomplete) return error("That character ID already exists.", 409);
     }
-    statements.push(env.DB.prepare(
-      `INSERT INTO campaign_characters (campaign_id, id, document_json, source, active, created_at, updated_at)
-      VALUES (?, ?, ?, 'custom', 1, ?, ?)`,
-    ).bind(scope.campaignId, characterId, documentJSON, now, now));
-    if (!canManageCampaign(scope.access) && !scope.user.localBypass) statements.push(env.DB.prepare(
-      "INSERT INTO campaign_character_editors (campaign_id, character_id, user_id, assigned_at) VALUES (?, ?, ?, ?)",
-    ).bind(scope.campaignId, characterId, scope.user.id, now));
-    if (scope.campaignId === LEGACY_CAMPAIGN_ID) statements.push(env.DB.prepare(
-      "INSERT INTO characters (id, document_json, source, active, created_at, updated_at) VALUES (?, ?, 'custom', 1, ?, ?)",
-    ).bind(characterId, documentJSON, now, now));
+    if (!updatingIncomplete) {
+      statements.push(env.DB.prepare(
+        `INSERT INTO campaign_characters (campaign_id, id, document_json, source, active, created_at, updated_at)
+        VALUES (?, ?, ?, 'custom', 1, ?, ?)`,
+      ).bind(scope.campaignId, characterId, documentJSON, now, now));
+      if (!canManageCampaign(scope.access) && !scope.user.localBypass) statements.push(env.DB.prepare(
+        "INSERT INTO campaign_character_editors (campaign_id, character_id, user_id, assigned_at) VALUES (?, ?, ?, ?)",
+      ).bind(scope.campaignId, characterId, scope.user.id, now));
+      if (scope.campaignId === LEGACY_CAMPAIGN_ID) statements.push(env.DB.prepare(
+        "INSERT INTO characters (id, document_json, source, active, created_at, updated_at) VALUES (?, ?, 'custom', 1, ?, ?)",
+      ).bind(characterId, documentJSON, now, now));
+    }
   } else {
-    const occupied = await env.DB.prepare("SELECT id FROM characters WHERE id = ?").bind(characterId).first();
-    if (occupied) return error("That character ID already exists.", 409);
-    statements.push(env.DB.prepare(
+    const occupied = await env.DB.prepare("SELECT id, document_json FROM characters WHERE id = ?").bind(characterId).first();
+    if (occupied) {
+      if (!ownedIncompleteBuild(parseStored(occupied.document_json, null), scope, draftId)) {
+        return error("That character ID already exists.", 409);
+      }
+      updatingIncomplete = true;
+      statements.push(env.DB.prepare(
+        "UPDATE characters SET document_json = ?, source = 'custom', active = 1, updated_at = ? WHERE id = ?",
+      ).bind(documentJSON, now, characterId));
+    } else statements.push(env.DB.prepare(
       "INSERT INTO characters (id, document_json, source, active, created_at, updated_at) VALUES (?, ?, 'custom', 1, ?, ?)",
     ).bind(characterId, documentJSON, now, now));
   }
-  statements.push(queries.remove);
+  const draftRetained = document.build.status === "incomplete";
+  if (!draftRetained) statements.push(queries.remove);
   try {
     await env.DB.batch(statements);
   } catch (caught) {
@@ -138,7 +173,7 @@ async function finalizeDraft(request, env, scope, draftId) {
       : "That character ID already exists.", 409);
     throw caught;
   }
-  return json({ ok: true, id: characterId, document, updatedAt: now }, 201);
+  return json({ ok: true, id: characterId, document, updatedAt: now, draftRetained }, updatingIncomplete ? 200 : 201);
 }
 
 async function draftRoute(request, env, scope, parts) {

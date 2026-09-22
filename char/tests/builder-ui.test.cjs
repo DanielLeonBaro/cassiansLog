@@ -10,6 +10,8 @@ for (const id of [
   "detailed-build-entry",
   "quick-setup-panel",
   "character-builder-shell",
+  "character-builder-preview",
+  "character-builder-preview-title",
   "character-builder-progress",
   "character-builder-step-title",
   "character-builder-step-state",
@@ -25,6 +27,8 @@ assert.match(archive, /id="character-builder-step-title" tabindex="-1"/);
 assert.match(archive, /id="character-builder-save-status"[^>]*role="status" aria-live="polite"/);
 assert.match(archive, /id="character-builder-shell" hidden/);
 assert.match(archive, /id="quick-setup-panel"/);
+assert.match(archive, /xl:grid-cols-\[14rem_minmax\(0,1fr\)_18rem\]/);
+assert.match(archive, /id="character-form" class="[^"]*max-w-2xl/);
 assert.match(archive, /Import from D&amp;D Beyond/);
 assert.match(archive, /name="starterMode" value="blank"/);
 
@@ -39,6 +43,8 @@ for (const contract of [
   "Cloud sync was interrupted",
 ]) assert.ok(builder.includes(contract), `Builder controller should preserve ${contract}.`);
 assert.match(builder, /stepTitle\.focus\(\)/, "Step changes should move focus to the new heading.");
+assert.match(builder, /classList\.toggle\("max-w-\[96rem\]", active\)/);
+assert.match(builder, /dataset\.builderLayout = active \? "detailed" : "quick"/);
 assert.match(builder, /retryButton\.addEventListener\("click", persist\)/);
 assert.match(archiveController, /initializeCharacterBuilderShell\(\)/);
 assert.match(archiveController, /builder\?\.reset\(\)/);

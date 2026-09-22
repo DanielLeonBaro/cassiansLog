@@ -92,6 +92,22 @@ function automationStatus(entry) {
   return ["rules-ready", "partial", "manual"].includes(status) ? status : "manual";
 }
 
+function automationGapMessage(entry, status = automationStatus(entry)) {
+  const labels = {
+    "no-automation-data": "no automation data",
+    "unresolved-dependencies": "unresolved Compendium dependencies",
+    "unsupported-expressions": "unsupported rule expressions",
+    uncertified: "unreviewed rule effects",
+  };
+  const reasons = [...new Set((Array.isArray(entry?.automation?.reasons) ? entry.automation.reasons : [])
+    .map((reason) => labels[text(reason)] || text(reason).replaceAll("-", " "))
+    .filter(Boolean))];
+  const missing = reasons.length
+    ? reasons.join(", ")
+    : status === "partial" ? "some rule effects are not reviewed" : "no reviewed rule effects are available";
+  return `${entry?.name || entry?.id} has ${status} automation. Missing automation: ${missing}. Those effects and dependent calculations remain manual.`;
+}
+
 function staticAvailability(entry, build) {
   const entryRuleset = text(entry?.ruleset) || "unknown";
   if (entryRuleset !== "unknown"
@@ -605,7 +621,7 @@ export function evaluateCharacterBuild({ character, catalog } = {}) {
         path: `catalog.${entry.id}`,
         entryId: entry.id,
         blocking: false,
-        message: `${entry.name || entry.id} does not have complete rules automation.`,
+        message: automationGapMessage(entry, status),
       });
     }
     if (staticAvailability(entry, build).reason === "unknown-ruleset") {
@@ -771,7 +787,9 @@ export function evaluateCharacterBuild({ character, catalog } = {}) {
             sourceId: choice.sourceId,
             choiceKey: choice.key,
             blocking: false,
-            message: `${option.label} is selected without automatic rule effects.`,
+            message: option.entry
+              ? automationGapMessage(option.entry, option.automation)
+              : `${option.label} is selected without automatic rule effects; dependent calculations remain manual.`,
           });
         }
         if (!option.entry) return;

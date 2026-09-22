@@ -1,0 +1,16 @@
+{
+  "name": "wikidot-compendium-importer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Portable, provenance-first Wikidot retrieval and compendium export tool.",
+  "license": "MIT",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "crawl": "node src/cli.js crawl",
+    "validate": "node src/cli.js validate",
+    "export:cassians-log": "node src/cli.js export --format cassians-log",
+    "export:aurora": "node src/cli.js export --format aurora",
+    "test": "node --test test/*.test.js"
+  }
+}

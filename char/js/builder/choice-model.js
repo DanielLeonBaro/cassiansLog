@@ -3,7 +3,7 @@ import { normalizeCharacterDocument } from "../model.js";
 import { evaluateCharacterBuild } from "../rules/evaluator.js";
 import { filterBuilderCatalogEntries } from "./home-model.js";
 
-export const BUILDER_CERTIFIED_LEVELS = Object.freeze([1, 2, 3, 4, 5]);
+export const BUILDER_LEVELS = Object.freeze(Array.from({ length: 20 }, (_, index) => index + 1));
 
 const rootTypes = {
   class: new Set(["class"]),
@@ -64,6 +64,9 @@ function uniqueEntries(entries) {
 
 function subclassSupportsClass(subclass, classEntry) {
   if (!subclass || !classEntry) return false;
+  if (Array.isArray(subclass.parentClassIds)) {
+    return subclass.parentClassIds.includes(classEntry.id);
+  }
   const supports = [
     ...(Array.isArray(subclass.facets?.supports) ? subclass.facets.supports : []),
     ...text(subclass.supports).split(","),
@@ -78,6 +81,11 @@ function subclassSupportsClass(subclass, classEntry) {
     `${className} archetype`,
   ]);
   return supports.some((value) => supportedNames.has(value));
+}
+
+function classSubclassLevel(classEntry) {
+  const level = Number(classEntry?.rules?.subclassLevel || classEntry?.subclassLevel || 0);
+  return Number.isFinite(level) && level > 0 ? level : 0;
 }
 
 export function builderRootEntries(entries, value, kind) {
@@ -130,7 +138,7 @@ export function applyBuilderRootSelection(value, entries, kind, id) {
     clearSelectionsFromSources(document, [index.get(previous?.classId), index.get(previous?.subclassId)]);
     if (!nextEntry) document.build.levels = document.build.levels.slice(1);
     else {
-      const level = BUILDER_CERTIFIED_LEVELS.includes(previous?.level) ? previous.level : 1;
+      const level = BUILDER_LEVELS.includes(previous?.level) ? previous.level : 1;
       const nextLevel = { ...(previous || {}), classId: nextEntry.id, subclassId: "", level, hitPointRolls: previous?.hitPointRolls || [] };
       document.build.levels = [nextLevel, ...document.build.levels.slice(1)];
     }
@@ -147,10 +155,10 @@ export function applyBuilderRootSelection(value, entries, kind, id) {
 export function applyBuilderClassLevel(value, entries, level) {
   const document = normalizeCharacterDocument(value);
   const nextLevel = Math.trunc(Number(level));
-  if (!document.build.levels[0]?.classId || !BUILDER_CERTIFIED_LEVELS.includes(nextLevel)) return document;
+  if (!document.build.levels[0]?.classId || !BUILDER_LEVELS.includes(nextLevel)) return document;
   const current = document.build.levels[0];
   const classEntry = entryIndex(entries).get(current.classId);
-  const subclassLevel = Number(classEntry?.rules?.subclassLevel || 0);
+  const subclassLevel = classSubclassLevel(classEntry);
   if (current.subclassId && subclassLevel && nextLevel < subclassLevel) {
     clearSelectionsFromSources(document, [entryIndex(entries).get(current.subclassId)]);
     current.subclassId = "";
@@ -168,7 +176,7 @@ export function applyBuilderSubclassSelection(value, entries, id) {
   const nextEntry = selectableRoot(entries, document, "subclass", nextId);
   if (nextId && !nextEntry) return document;
   const classEntry = entryIndex(entries).get(current.classId);
-  const subclassLevel = Number(classEntry?.rules?.subclassLevel || 0);
+  const subclassLevel = classSubclassLevel(classEntry);
   if (nextEntry && (!subclassLevel || current.level < subclassLevel)) return document;
   clearSelectionsFromSources(document, [entryIndex(entries).get(current.subclassId)]);
   current.subclassId = nextEntry?.id || "";
@@ -225,6 +233,5 @@ export function builderStepEvaluation(value, entries, step) {
 export function builderSubclassLevel(value, entries) {
   const document = normalizeCharacterDocument(value);
   const classEntry = entryIndex(entries).get(document.build.levels[0]?.classId);
-  const level = Number(classEntry?.rules?.subclassLevel || 0);
-  return Number.isFinite(level) && level > 0 ? level : 0;
+  return classSubclassLevel(classEntry);
 }

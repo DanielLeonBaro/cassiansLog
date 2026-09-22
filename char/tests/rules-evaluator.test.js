@@ -295,6 +295,7 @@ const partialCatalog = [
   }),
   catalog.find((candidate) => candidate.id === "armorLight"),
 ];
+partialCatalog[0].automation.reasons = ["unresolved-dependencies", "unsupported-expressions"];
 const partial = evaluateCharacterBuild({
   character: rulesCharacter({ classId: "partialClass", level: 1 }),
   catalog: partialCatalog,
@@ -302,6 +303,7 @@ const partial = evaluateCharacterBuild({
 assert.deepEqual(partial.activeEntries.map((active) => active.id), ["partialClass"]);
 assert.equal(partial.grants.length, 0, "partial content must not apply guessed rules");
 assert.ok(partial.warnings.some((warning) => warning.code === "partial-automation"));
+assert.ok(partial.warnings.some((warning) => warning.message.includes("unresolved Compendium dependencies, unsupported rule expressions")));
 
 const manual = evaluateCharacterBuild({ character: { name: "Legacy" }, catalog });
 assert.deepEqual(manual, {

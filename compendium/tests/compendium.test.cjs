@@ -21,6 +21,30 @@ const originalIds = JSON.parse(
 const coverage = JSON.parse(
   fs.readFileSync(`compendium/data/${manifest.coverageFile}`, "utf8"),
 );
+const characterRuleCorpus = JSON.parse(
+  fs.readFileSync(`compendium/data/${manifest.characterRuleCorpusFile}`, "utf8"),
+);
+const classProgression5e = JSON.parse(
+  fs.readFileSync(`compendium/data/${manifest.classProgression5eReportFile}`, "utf8"),
+);
+const classProgression55e = JSON.parse(
+  fs.readFileSync(`compendium/data/${manifest.classProgression55eReportFile}`, "utf8"),
+);
+const subclassCoverage = JSON.parse(
+  fs.readFileSync(`compendium/data/${manifest.subclassCoverageReportFile}`, "utf8"),
+);
+const originCoverage = JSON.parse(
+  fs.readFileSync(`compendium/data/${manifest.originCoverageReportFile}`, "utf8"),
+);
+const featChoiceCoverage = JSON.parse(
+  fs.readFileSync(`compendium/data/${manifest.featChoiceCoverageReportFile}`, "utf8"),
+);
+const spellCoverage = JSON.parse(
+  fs.readFileSync(`compendium/data/${manifest.spellCoverageReportFile}`, "utf8"),
+);
+const equipmentCoverage = JSON.parse(
+  fs.readFileSync(`compendium/data/${manifest.equipmentCoverageReportFile}`, "utf8"),
+);
 
 assert.equal(manifest.inputFiles, 1951);
 assert.ok(index.length > 10000);
@@ -29,6 +53,23 @@ assert.match(manifest.catalogVersion, /^sha256-[a-f0-9]{20}$/);
 assert.equal(rulesMetadata.catalogVersion, manifest.catalogVersion);
 assert.equal(originalIds.catalogVersion, manifest.catalogVersion);
 assert.equal(coverage.catalogVersion, manifest.catalogVersion);
+assert.equal(characterRuleCorpus.catalogVersion, manifest.catalogVersion);
+assert.equal(characterRuleCorpus.coverage.unresolvedPointers, 0);
+assert.equal(classProgression5e.catalogVersion, manifest.catalogVersion);
+assert.equal(classProgression5e.ruleset, "5e");
+assert.equal(classProgression55e.catalogVersion, manifest.catalogVersion);
+assert.equal(classProgression55e.ruleset, "5.5e");
+assert.equal(subclassCoverage.catalogVersion, manifest.catalogVersion);
+assert.equal(subclassCoverage.summary.subclasses, manifest.categories.find(({ id }) => id === "subclasses").count);
+assert.equal(subclassCoverage.summary.unresolvedParentClasses, 0);
+assert.equal(originCoverage.catalogVersion, manifest.catalogVersion);
+assert.equal(originCoverage.summary.entries, 608);
+assert.equal(featChoiceCoverage.catalogVersion, manifest.catalogVersion);
+assert.equal(featChoiceCoverage.summary.feats, 432);
+assert.equal(spellCoverage.catalogVersion, manifest.catalogVersion);
+assert.equal(spellCoverage.summary.spells, 2046);
+assert.equal(equipmentCoverage.catalogVersion, manifest.catalogVersion);
+assert.equal(equipmentCoverage.summary.items, 3139);
 assert.equal(Object.keys(rulesMetadata.entries).length, manifest.entries);
 assert.equal(Object.keys(originalIds.entries).length, manifest.entries);
 assert.equal(coverage.totals.entries, manifest.entries);

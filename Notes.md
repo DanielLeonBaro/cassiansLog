@@ -18,6 +18,7 @@
 - Fix V2 width (110 rem)
 
 ## In Progress (Out of Tokens)
+- Fix V4 Builder, make it wider, more comfortable, add whole rules (md for books of 2014 and 2024), add all levels to the builder, allow me to finish creation, better spell/cantrip selection panel.
 
 ## In Pause
 - Rework what legacy is, i don't want any hardcodded stuff

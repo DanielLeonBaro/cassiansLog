@@ -84,6 +84,41 @@ export function updateBuilderInventoryQuantity(value, instanceId, quantity) {
   return normalizeCharacterDocument(document);
 }
 
+function containerEntry(entry) {
+  return Boolean(entry?.rules?.inventory?.container && typeof entry.rules.inventory.container === "object");
+}
+
+export function builderInventoryContainers(value, entries, instanceId) {
+  const document = normalizeCharacterDocument(value);
+  const index = indexEntries(entries);
+  const parents = new Map(document.build.inventory.map((item) => [item.instanceId, item.containerId]));
+  const descendants = new Set([instanceId]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    parents.forEach((parentId, childId) => {
+      if (descendants.has(parentId) && !descendants.has(childId)) {
+        descendants.add(childId);
+        changed = true;
+      }
+    });
+  }
+  return document.build.inventory.filter((item) => (
+    !descendants.has(item.instanceId) && containerEntry(index.get(item.definitionId))
+  ));
+}
+
+export function updateBuilderInventoryContainer(value, entries, instanceId, containerId) {
+  const document = normalizeCharacterDocument(value);
+  const item = document.build.inventory.find((candidate) => candidate.instanceId === instanceId);
+  const nextId = text(containerId);
+  if (!item) return document;
+  if (nextId && !builderInventoryContainers(document, entries, instanceId).some((candidate) => candidate.instanceId === nextId)) return document;
+  item.containerId = nextId;
+  document.build.status = "incomplete";
+  return normalizeCharacterDocument(document);
+}
+
 export function removeBuilderInventoryItem(value, instanceId) {
   const document = normalizeCharacterDocument(value);
   if (!document.build.inventory.some((item) => item.instanceId === instanceId)) return document;
@@ -105,6 +140,9 @@ export function equipmentStepValidation(value, entries = []) {
     const entry = index.get(item.definitionId);
     if (!entry) errors.push(`Inventory entry ${item.definitionId || "(missing)"} cannot be resolved.`);
     else if (![document.build.ruleset, "agnostic"].includes(entry.ruleset || "agnostic")) errors.push(`${entry.name || entry.id} belongs to another ruleset.`);
+    if (item.containerId && !builderInventoryContainers(document, entries, item.instanceId).some(({ instanceId }) => instanceId === item.containerId)) {
+      errors.push(`${entry?.name || item.definitionId || "Inventory item"} references an invalid container.`);
+    }
   });
   const coinCount = BUILDER_CURRENCY.reduce((sum, coin) => sum + document.build.currency[coin], 0);
   const hasContent = document.build.inventory.length > 0 || coinCount > 0;

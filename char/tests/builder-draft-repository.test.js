@@ -106,6 +106,35 @@ assert.equal(result.source, "cloud");
 assert.equal(localCharacterBuildDraft("cloud-one").sync.state, "saved");
 await deleteCharacterBuildDraft("cloud-one", { localOnly: true });
 
+await saveCharacterBuildDraft({ draftId: "incomplete-finish", document: document("unfinished-hero"), currentStep: "review" }, {
+  cloudWrite: async (path, body) => ({ draft: { draftId: "incomplete-finish", document: body.document, currentStep: "review",
+    status: "incomplete", version: 1, createdAt: "2026-09-14T02:30:00.000Z", updatedAt: "2026-09-14T02:30:00.000Z" } }),
+});
+result = await finalizeCharacterBuildDraft("incomplete-finish", {
+  localOnly: false,
+  cloudWrite: async () => ({
+    ok: true,
+    id: "unfinished-hero",
+    document: { ...document("unfinished-hero"), build: { ...document("unfinished-hero").build, finalization: { draftId: "incomplete-finish", ownerUserId: "localhost-admin" } } },
+    draftRetained: true,
+  }),
+});
+assert.equal(result.draftRetained, true);
+assert.ok(localCharacterBuildDraft("incomplete-finish"), "Incomplete Finish retains resumable draft.");
+assert.equal(JSON.parse(localStorage.getItem(CHARACTERS_STORAGE_KEY))["unfinished-hero"].build.status, "incomplete");
+
+const resumedComplete = localCharacterBuildDraft("incomplete-finish");
+resumedComplete.document.build.status = "complete";
+await saveCharacterBuildDraft(resumedComplete, {
+  cloudWrite: async (path, body) => ({ draft: { ...resumedComplete, document: body.document, status: "complete" } }),
+});
+result = await finalizeCharacterBuildDraft("incomplete-finish", {
+  localOnly: false,
+  cloudWrite: async () => ({ ok: true, id: "unfinished-hero", document: document("unfinished-hero", "complete"), draftRetained: false }),
+});
+assert.equal(result.draftRetained, false);
+assert.equal(localCharacterBuildDraft("incomplete-finish"), null, "Completed resumed build removes draft.");
+
 await saveCharacterBuildDraft({ draftId: "finish-one", document: document("finished-hero", "complete"), currentStep: "review" }, {
   cloudWrite: async (path, body) => ({ draft: { draftId: "finish-one", document: body.document, currentStep: "review",
     status: "complete", version: 1, createdAt: "2026-09-14T03:00:00.000Z", updatedAt: "2026-09-14T03:00:00.000Z" } }),
@@ -138,6 +167,22 @@ result = await finalizeCharacterBuildDraft("local-finish", { localOnly: true, ch
 assert.equal(result.local, true);
 assert.equal(localCharacterBuildDraft("local-finish"), null);
 assert.equal(JSON.parse(localStorage.getItem(CHARACTERS_STORAGE_KEY))["local-hero"].id, "local-hero");
+
+await saveCharacterBuildDraft({ draftId: "local-incomplete", document: document("local-unfinished"), currentStep: "review" }, {
+  cloudWrite: async (path, body) => ({ draft: { draftId: "local-incomplete", document: body.document, currentStep: "review", status: "incomplete", version: 1 } }),
+});
+result = await finalizeCharacterBuildDraft("local-incomplete", { localOnly: true, characterList: async () => [] });
+assert.equal(result.draftRetained, true);
+assert.ok(localCharacterBuildDraft("local-incomplete"));
+const localResumed = localCharacterBuildDraft("local-incomplete");
+localResumed.document.build.status = "complete";
+await saveCharacterBuildDraft(localResumed, { cloudWrite: async (path, body) => ({ draft: { ...localResumed, document: body.document } }) });
+result = await finalizeCharacterBuildDraft("local-incomplete", {
+  localOnly: true,
+  characterList: async () => [{ id: "local-unfinished", document: JSON.parse(localStorage.getItem(CHARACTERS_STORAGE_KEY))["local-unfinished"] }],
+});
+assert.equal(result.draftRetained, false);
+assert.equal(localCharacterBuildDraft("local-incomplete"), null);
 
 await saveCharacterBuildDraft({ draftId: "collision", document: document("finished-hero", "complete"), currentStep: "review" }, {
   cloudWrite: async (path, body) => ({ draft: { draftId: "collision", document: body.document, currentStep: "review",

@@ -186,4 +186,11 @@ export async function initializeCharacterArchive() {
     }
   });
   load();
+  if (new URLSearchParams(location.search).get("resumeBuilder") === "1" && builder) {
+    controller.open();
+    await builder.openDetailedBuilder();
+    const url = new URL(location.href);
+    url.searchParams.delete("resumeBuilder");
+    history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  }
 }

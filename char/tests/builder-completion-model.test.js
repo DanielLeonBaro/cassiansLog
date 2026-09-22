@@ -11,8 +11,10 @@ import {
   rollBuilderAbilityScores,
 } from "../js/builder/ability-model.js";
 import {
+  applyBuilderClassLevel,
   applyBuilderRootSelection,
   applyBuilderRuleSelection,
+  builderRootEntries,
   builderStepEvaluation,
 } from "../js/builder/choice-model.js";
 import { applyBuilderDescription, descriptionStepValidation } from "../js/builder/description-model.js";
@@ -21,8 +23,10 @@ import {
   applyBuilderCurrency,
   applyBuilderEquipmentMethod,
   builderEquipmentEntries,
+  builderInventoryContainers,
   equipmentStepValidation,
   removeBuilderInventoryItem,
+  updateBuilderInventoryContainer,
   updateBuilderInventoryQuantity,
 } from "../js/builder/equipment-model.js";
 import { applyBuilderHomePreferences } from "../js/builder/home-model.js";
@@ -65,6 +69,28 @@ const malformedRolled = structuredClone(abilityDocument);
 malformedRolled.build.abilityScores.base.str = 19;
 assert.match(abilityScoreValidation(malformedRolled).errors[0], /3 to 18/);
 
+for (const ruleset of ["5e", "5.5e"]) {
+  const seed = createCharacterBuildDraft({ draftId: `level-20-${ruleset.replace(".", "-")}`, ruleset }).document;
+  const classes = builderRootEntries(catalog, seed, "class");
+  assert.ok(classes.length > 0, `${ruleset} should expose classes`);
+  classes.forEach((classEntry, index) => {
+    const isolatedCatalog = [classEntry];
+    let levelTwenty = applyBuilderRootSelection(seed, isolatedCatalog, "class", classEntry.id);
+    levelTwenty = applyBuilderClassLevel(levelTwenty, isolatedCatalog, 20);
+    levelTwenty = applyBuilderDescription(levelTwenty, {
+      name: `Level 20 ${classEntry.name || classEntry.id}`,
+      id: `level-20-${ruleset.replace(".", "-")}-${index}`,
+    });
+    assert.equal(levelTwenty.build.levels[0].level, 20, `${classEntry.name || classEntry.id} should reach level 20`);
+    const review = reviewCharacterBuild(levelTwenty, isolatedCatalog);
+    assert.equal(review.canFinish, true, `${classEntry.name || classEntry.id} level 20 should remain finishable`);
+    if (classEntry.automation?.status !== "rules-ready") {
+      assert.ok(review.pending.some(({ entryId, message }) => entryId === classEntry.id && message.includes("Missing automation:")), `${classEntry.name || classEntry.id} should name missing automation`);
+    }
+    assert.equal(prepareCharacterBuildFinalization(levelTwenty, isolatedCatalog, { confirmIncomplete: true }).finalized, true, `${classEntry.name || classEntry.id} level 20 should finalize after warning confirmation`);
+  });
+}
+
 const manualItem = {
   id: "manual-sword",
   name: "Manual Sword",
@@ -77,18 +103,32 @@ const manualItem = {
   automation: { status: "manual" },
   add: { target: "inventory", value: { name: "Manual Sword" } },
 };
+const containerItem = {
+  ...manualItem,
+  id: "manual-pack",
+  name: "Manual Pack",
+  add: { target: "inventory", value: { name: "Manual Pack" } },
+  rules: { inventory: { container: { capacityWeight: 30 } } },
+};
 let equipmentDocument = createCharacterBuildDraft({ draftId: "equipment-methods" }).document;
 assert.equal(builderEquipmentEntries([manualItem], equipmentDocument)[0].id, "manual-sword", "manual items remain selectable");
-equipmentDocument = addBuilderInventoryItem(equipmentDocument, [manualItem], "manual-sword", 2, () => "item-one");
+equipmentDocument = addBuilderInventoryItem(equipmentDocument, [manualItem, containerItem], "manual-sword", 2, () => "item-one");
 assert.deepEqual(equipmentDocument.build.inventory[0], { instanceId: "item-one", definitionId: "manual-sword", quantity: 2, containerId: "" });
+equipmentDocument = addBuilderInventoryItem(equipmentDocument, [manualItem, containerItem], "manual-pack", 1, () => "pack-one");
+equipmentDocument = addBuilderInventoryItem(equipmentDocument, [manualItem, containerItem], "manual-pack", 1, () => "pack-two");
+assert.deepEqual(builderInventoryContainers(equipmentDocument, [manualItem, containerItem], "item-one").map(({ instanceId }) => instanceId), ["pack-one", "pack-two"]);
+equipmentDocument = updateBuilderInventoryContainer(equipmentDocument, [manualItem, containerItem], "item-one", "pack-one");
+equipmentDocument = updateBuilderInventoryContainer(equipmentDocument, [manualItem, containerItem], "pack-two", "pack-one");
+const cycleSnapshot = structuredClone(equipmentDocument);
+assert.deepEqual(updateBuilderInventoryContainer(equipmentDocument, [manualItem, containerItem], "pack-one", "pack-two"), cycleSnapshot, "container cycles are rejected");
 equipmentDocument = updateBuilderInventoryQuantity(equipmentDocument, "item-one", 3);
 assert.equal(equipmentDocument.build.inventory[0].quantity, 3);
 equipmentDocument = applyBuilderEquipmentMethod(equipmentDocument, "gold");
 equipmentDocument = applyBuilderCurrency(equipmentDocument, "gp", 125);
-assert.equal(equipmentStepValidation(equipmentDocument, [manualItem]).complete, true);
-assert.equal(equipmentDocument.build.inventory.length, 1, "switching methods preserves prior work");
-equipmentDocument = removeBuilderInventoryItem(equipmentDocument, "item-one");
-assert.equal(equipmentDocument.build.inventory.length, 0);
+assert.equal(equipmentStepValidation(equipmentDocument, [manualItem, containerItem]).complete, true);
+assert.equal(equipmentDocument.build.inventory.length, 3, "switching methods preserves prior work");
+equipmentDocument = removeBuilderInventoryItem(equipmentDocument, "pack-one");
+assert.equal(equipmentDocument.build.inventory.find(({ instanceId }) => instanceId === "item-one").containerId, "", "removing a container detaches its contents");
 assert.equal(equipmentDocument.build.currency.gp, 125);
 
 function completeChoices(document, step) {
@@ -165,7 +205,7 @@ assert.equal(wizard.build.spells.spellbookIds.length, 6);
 assert.equal(Object.keys(wizard.build.spells.assignments).length, 9);
 review = reviewCharacterBuild(wizard, catalog);
 assert.equal(review.canFinish, true, review.blockers.map(({ message }) => message).join(" | "));
-assert.ok(review.notices.some(({ code }) => code === "manual-automation"), "manual spell automation is visible but non-blocking");
+assert.ok(review.pending.some(({ code }) => code === "manual-automation"), "manual spell automation requires visible incomplete-finish confirmation");
 const progress = characterBuilderStepStates(wizard, {
   evaluation: builderStepEvaluation(wizard, catalog, "class").evaluation,
   catalog,
@@ -178,9 +218,49 @@ assert.ok(["complete", "warning"].includes(progress.class));
 assert.ok(["complete", "warning"].includes(progress.description));
 assert.equal(progress.review, "incomplete");
 
+let warlock = firstSliceDocument({
+  ruleset: "5e",
+  classId: "phbClassWarlock",
+  backgroundId: "phbBackgroundSage",
+  speciesId: "phbRaceHuman",
+  automation: "",
+});
+let warlockSpells = builderSpellState(warlock, catalog);
+const warlockProfile = warlockSpells.profiles[0];
+assert.ok(warlockProfile.knownLimit > 0, "Warlock fixture should expose a known-spell limit");
+assert.ok(warlockProfile.errors.some((error) => error.includes("known spells")), "missing known spells should remain actionable");
+const rejectedOverLimit = applyBuilderSpellSelection(warlock, catalog, warlockProfile.id, "levelled", warlockProfile.levelled.slice(0, warlockProfile.knownLimit + 1).map(({ id }) => id));
+assert.deepEqual(rejectedOverLimit.build.spells, warlock.build.spells, "known-spell over-selection is rejected");
+warlock = applyBuilderSpellSelection(warlock, catalog, warlockProfile.id, "levelled", warlockProfile.levelled.slice(0, warlockProfile.knownLimit).map(({ id }) => id));
+warlockSpells = builderSpellState(warlock, catalog);
+assert.equal(warlockSpells.profiles[0].selectedLevelledIds.length, warlockProfile.knownLimit);
+
 const blocked = structuredClone(finishDocument);
 blocked.name = "";
 blocked.id = "bad id";
 assert.equal(prepareCharacterBuildFinalization(blocked, catalog).finalized, false);
+
+let incomplete = createCharacterBuildDraft({ draftId: "finish-incomplete" }).document;
+incomplete = applyBuilderDescription(incomplete, { name: "Unfinished Hero" });
+const incompleteSnapshot = structuredClone(incomplete);
+review = reviewCharacterBuild(incomplete, catalog);
+assert.equal(review.canFinish, true, "Valid identity permits Finish even when rule sections are pending.");
+assert.equal(review.requiresConfirmation, true);
+assert.ok(review.pending.some(({ path, impact }) => path === "build.class" && /hit points/i.test(impact)));
+assert.ok(review.pending.some(({ path, impact }) => path === "build.abilities" && /Armor Class/i.test(impact)));
+const confirmation = prepareCharacterBuildFinalization(incomplete, catalog);
+assert.equal(confirmation.finalized, false);
+assert.equal(confirmation.confirmationRequired, true);
+assert.deepEqual(incomplete, incompleteSnapshot, "Opening or cancelling confirmation must not mutate the draft.");
+const incompleteFinalization = prepareCharacterBuildFinalization(incomplete, catalog, { confirmIncomplete: true });
+assert.equal(incompleteFinalization.finalized, true);
+assert.equal(incompleteFinalization.document.build.status, "incomplete");
+assert.ok(incompleteFinalization.document.build.completionWarnings.every(({ message, impact }) => message && impact));
+
+const completedAfterResume = structuredClone(finishDocument);
+completedAfterResume.build.completionWarnings = incompleteFinalization.document.build.completionWarnings;
+const completedFinalization = prepareCharacterBuildFinalization(completedAfterResume, catalog);
+assert.equal(completedFinalization.document.build.status, "complete");
+assert.equal(Object.hasOwn(completedFinalization.document.build, "completionWarnings"), false, "Resolved warnings clear after completing the build.");
 
 console.log("Character Builder completion models passed all methods, spell repertoire, review, and materialization.");

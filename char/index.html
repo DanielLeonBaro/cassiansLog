@@ -162,7 +162,7 @@
             </div>
 
             <section id="character-builder-shell" hidden aria-labelledby="character-builder-step-title">
-                <div class="grid gap-5 lg:grid-cols-[15rem_minmax(0,1fr)]">
+                <div class="grid items-start gap-5 lg:grid-cols-[14rem_minmax(0,1fr)] xl:grid-cols-[14rem_minmax(0,1fr)_18rem]">
                     <nav aria-label="Character builder progress">
                         <ol id="character-builder-progress" class="grid gap-2 sm:grid-cols-2 lg:grid-cols-1"></ol>
                     </nav>
@@ -177,6 +177,11 @@
                         <p id="character-builder-step-description" class="mt-3 text-sm leading-relaxed text-stone-600 dark:text-stone-300"></p>
                         <div id="character-builder-step-content" class="mt-5"></div>
                     </div>
+                    <aside id="character-builder-preview" class="min-w-0 rounded-2xl border border-stone-300 bg-white/60 p-4 dark:border-white/15 dark:bg-white/5 lg:col-start-2 xl:col-start-auto" aria-labelledby="character-builder-preview-title">
+                        <p class="text-xs font-bold uppercase tracking-[0.18em] text-blood-500">Live preview</p>
+                        <h3 id="character-builder-preview-title" class="mt-1 font-display text-xl font-bold">Character at a glance</h3>
+                        <p class="mt-3 text-sm leading-relaxed text-stone-600 dark:text-stone-300">Current choices and calculation warnings will appear here while you build.</p>
+                    </aside>
                 </div>
 
                 <div class="mt-5 flex flex-col gap-3 border-t border-stone-300 pt-4 dark:border-white/15 sm:flex-row sm:items-center sm:justify-between">

@@ -8,6 +8,7 @@ const builder = fs.readFileSync("char/js/builder/index.js", "utf8");
 
 for (const id of [
   "detailed-build-entry", "quick-setup-panel", "character-builder-shell",
+  "character-builder-preview", "character-builder-preview-title",
   "character-builder-progress", "character-builder-step-title", "character-builder-save-status",
   "character-builder-quick-setup", "character-builder-back", "character-builder-next",
 ]) assert.ok(archive.includes(`id="${id}"`), `NPC builder should include ${id}.`);
@@ -16,10 +17,14 @@ assert.match(archive, /Detailed NPC builder/);
 assert.match(archive, /Import from D&amp;D Beyond/);
 assert.match(archive, /name="starterMode" value="blank"/);
 assert.match(archive, /integrations\/character-compendium\/builder\.js/);
+assert.match(archive, /id="npc-form" class="[^"]*max-w-2xl/);
+assert.match(archive, /xl:grid-cols-\[14rem_minmax\(0,1fr\)_18rem\]/);
 assert.match(controller, /initializeCharacterBuilderShell\(\{/);
 assert.match(controller, /entityKind: "npc"/);
 assert.match(controller, /finalizeDraft: finalizeNpcBuildDraft/);
 assert.match(controller, /builder\?\.reset\(\)/);
+assert.match(controller, /get\("resumeBuilder"\) === "1"/);
+assert.match(controller, /await builder\.openDetailedBuilder\(\)/);
 assert.match(builder, /campaignPagePath\(npcMode \? "npc" : "char"\)/);
 assert.match(builder, /cloudDrafts = true/);
 
