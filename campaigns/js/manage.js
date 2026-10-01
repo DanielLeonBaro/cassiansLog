@@ -149,14 +149,15 @@ document.getElementById("campaign-banner-clear").addEventListener("change", (eve
 
 document.getElementById("campaign-password").addEventListener("submit", async (event) => {
   event.preventDefault();
+  const form = event.currentTarget;
   try {
     if (localFallback) {
-      event.currentTarget.reset();
+      form.reset();
       setStatus("Local mode does not require a join password.");
       return;
     }
-    await requestJSON(`${api}/password`, { method: "PUT", body: JSON.stringify({ password: new FormData(event.currentTarget).get("password") }) });
-    event.currentTarget.reset();
+    await requestJSON(`${api}/password`, { method: "PUT", body: JSON.stringify({ password: new FormData(form).get("password") }) });
+    form.reset();
     setStatus("Join password saved. Current members remain joined.");
   } catch (error) { setStatus(error.message, true); }
 });
