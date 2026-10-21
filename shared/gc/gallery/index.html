@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base href="/">
+  <title>Graphic components | Cassian's Log</title>
+  <script src="shared/js/theme-bootstrap.js"></script>
+  <link rel="stylesheet" href="shared/assets/icons/bootstrap-icons.css">
+  <link rel="stylesheet" href="shared/assets/tailwind.css">
+  <link rel="stylesheet" href="shared/gc/styles.css">
+  <script type="module" src="shared/gc/entry.js"></script>
+  <script type="module" src="shared/gc/gallery/page.js"></script>
+</head>
+<body data-gc-page="characters" class="gc-ui bg-ink">
+  <main class="mx-auto max-w-7xl px-6 gc-stack">
+    <header class="gc-page-heading"><div><p class="gc-muted">Cassian's Log · Developer gallery</p><h1>Graphic components</h1></div><div class="gc-toolbar"><label>Preview density<select class="gc-field" data-gallery-density><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label><button class="gc-button" data-variant="secondary" id="theme-toggle" type="button"><i id="theme-icon" class="bi bi-sliders"></i>Appearance</button></div></header>
+    <section class="gc-panel" data-padded><h2>Actions and status</h2><div class="gc-toolbar" data-gallery-buttons></div><div class="gc-toolbar mt-4" data-gallery-badges></div></section>
+    <div class="gc-grid"><section class="gc-panel" data-padded><h2>Fields</h2><div class="gc-form-grid"><label>Character name<input class="gc-field" value="Cassian"></label><label>Search<input class="gc-field" type="search" placeholder="Search characters…"></label><label>Campaign<select class="gc-field"><option>Example campaign</option></select></label><label>Disabled<input class="gc-field" disabled value="Read only"></label><label>Validation error<input class="gc-field" aria-invalid="true" value="Required"></label><label>Notes<textarea class="gc-field">A comfortable reading surface.</textarea></label></div></section>
+    <section class="gc-panel" data-padded><h2>Table</h2><table class="gc-table"><thead><tr><th>Character</th><th>HP</th><th>Initiative</th></tr></thead><tbody><tr><td>Cassian</td><td>50 / 50</td><td>+3</td></tr><tr><td>Elaria</td><td>38 / 42</td><td>+2</td></tr></tbody></table><div class="gc-toolbar mt-4"><button class="gc-button" data-variant="secondary" type="button" data-gallery-dialog>Open dialog</button><button class="gc-button" data-variant="secondary" type="button" data-gallery-drawer>Open drawer</button><div class="relative"><button class="gc-button" data-variant="secondary" type="button" data-gallery-menu-button aria-expanded="false" aria-controls="gallery-menu">Menu</button><div id="gallery-menu" class="gc-panel hidden absolute z-50 p-2"><a class="gc-nav-link" href="char/">Characters</a><a class="gc-nav-link" href="combat-loot/">Combat & Loot</a></div></div></div></section></div>
+    <section class="gc-panel" data-padded><h2>Tabs</h2><div class="gc-tabs" role="tablist" aria-label="Gallery tabs"><button class="gc-button" role="tab" id="gallery-tab-reading" aria-controls="gallery-panel-reading" aria-selected="true">Reading</button><button class="gc-button" role="tab" id="gallery-tab-controls" aria-controls="gallery-panel-controls" aria-selected="false" tabindex="-1">Controls</button></div><div class="py-4" id="gallery-panel-reading" role="tabpanel" aria-labelledby="gallery-tab-reading"><p class="wiki-rich">A clear hierarchy makes long campaign notes easier to scan. Headings, reading width and line spacing stay consistent while the selected palette supplies the character.</p></div><div class="py-4" id="gallery-panel-controls" role="tabpanel" aria-labelledby="gallery-tab-controls" hidden>Controls share sizes, focus indicators and semantic states.</div></section>
+    <section class="gc-grid" data-gallery-states></section>
+  </main>
+  <div id="gallery-dialog" class="gc-overlay fixed inset-0 hidden items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="gallery-dialog-title"><div class="gc-panel w-full max-w-lg" data-padded><h2 id="gallery-dialog-title">Shared dialog</h2><p class="gc-muted">Escape, backdrop close, focus trap and focus restoration use the existing controller.</p><button type="button" class="gc-button mt-4" data-variant="primary" data-gallery-close>Close</button></div></div>
+  <div id="gallery-drawer" class="gc-overlay fixed inset-0 hidden items-center justify-end bg-black/60" role="dialog" aria-modal="true" aria-labelledby="gallery-drawer-title"><div class="gc-drawer"><h2 id="gallery-drawer-title">Detail drawer</h2><p class="gc-muted">Feature content stays with its owner.</p><button class="gc-button mt-4" type="button" data-gallery-close>Close</button></div></div>
+</body>
+</html>

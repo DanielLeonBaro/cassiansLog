@@ -128,8 +128,8 @@ Project data is JSON-compatible, but cloning semantics are part of behavior.
 
 ### Shared visual rules
 
-- Mount the site header through `mountSiteHeader()`.
-- Keep Characters in the Pages menu and keep the Character Tracker's Jump-to navigation separate.
+- Mount the shared GC shell through `mountSiteHeader()` (the existing shared header import remains compatible). Reuse `shared/gc` components and visual tokens; keep feature rules and layouts within their feature.
+- Keep Characters in the role-aware sidebar and keep the Character Tracker's Jump-to navigation separate. Public Initiative uses minimal header chrome. See `shared/gc/README.md` for density preferences, the component gallery, and migration rollout.
 - Respect Admin-controlled section visibility through `data-section-link` and the shared section configuration.
 - Keep the Admin route unlinked from public navigation.
 - Preserve explicit product ordering such as Music's Now Playing, fade settings, Library, then track form.

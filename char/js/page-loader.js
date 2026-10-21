@@ -16,6 +16,7 @@ import { currentCampaign, currentCampaignSlug, localCampaign, localCharacterAcce
 import { isLocalRuntimeHost } from "../../shared/js/runtime-host.js";
 import { currentSession } from "../../shared/js/auth-client.js";
 import { projectNpcForPlayer } from "../../shared/js/npc-visibility.js";
+import { uiPreferencesReady, applyUiPage } from "../../shared/gc/runtime.js";
 
 export function initializeCharacterPage() {
   const loaderScript = document.querySelector("script[data-character]");
@@ -105,9 +106,10 @@ export function initializeCharacterPage() {
 
     try {
       await resolveCharacterShell();
-      const [response, settings] = await Promise.all([
+      const [response, settings, uiPreferences] = await Promise.all([
         fetch(trackerURL),
         runtimeSettingsReady,
+        uiPreferencesReady,
       ]);
       if (!response.ok) throw new Error(`Could not load the tracker layout (${response.status}).`);
 
@@ -120,8 +122,8 @@ export function initializeCharacterPage() {
       document.body.innerHTML = trackerDocument.body.innerHTML;
       document.body.dataset.characterShell = characterShell || "";
       document.body.dataset.trackerKind = trackerKind;
-      if (npcMode) applyCharacterSheetLayout(settings, characterName, trackerKind);
-      else applyCharacterSheetLayout(settings, characterName);
+      applyUiPage(npcMode ? "npc-tracker" : "character-tracker");
+      applyCharacterSheetLayout(settings, characterName, trackerKind, uiPreferences.trackerStyles[trackerKind]);
       const { initializeTrackerHeader } = await import("./tracker/header.js");
       initializeTrackerHeader();
 

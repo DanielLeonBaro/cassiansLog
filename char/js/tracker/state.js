@@ -10,6 +10,11 @@ function runtimeApiPath(characterId, tail) {
   return `api/${resource}/${encodeURIComponent(characterId)}/${tail}`;
 }
 
+function canAccessRuntime() {
+  const context = globalThis.document?.body?.dataset;
+  return context?.trackerKind !== "npc" || context.characterCanEdit !== "false";
+}
+
 export function normalizeCharacterFlag(value) {
   return value === true || Number(value) === 1 ? 1 : 0;
 }
@@ -250,15 +255,18 @@ export function createTrackerState({
     spendInventoryItemCharge,
     toggleInventoryItemState,
     save() {
+      if (!canAccessRuntime()) return false;
       const state = snapshot();
       writeJSON(storageKey, state);
       writeCloudJSON(runtimeApiPath(character.id, "state"), { value: state })
         .catch((error) => console.error("Could not save tracker state to D1:", error));
     },
     load() {
+      if (!canAccessRuntime()) return;
       apply(readJSON(storageKey, null));
     },
     async loadCloud() {
+      if (!canAccessRuntime()) return false;
       const result = await readCloudJSON(runtimeApiPath(character.id, "state"), { fallback: null });
       if (result?.value) {
         apply(result.value);

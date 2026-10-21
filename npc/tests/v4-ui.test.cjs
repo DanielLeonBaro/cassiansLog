@@ -10,8 +10,8 @@ const tracker = fs.readFileSync("char/js/tracker/index.js", "utf8");
 const editor = fs.readFileSync("char/js/editor/index.js", "utf8");
 
 assert.doesNotMatch(settings, /style === "v4" \? DEFAULT_CHARACTER_SHEET_STYLE/);
-assert.match(route, /new Set\(\["v1", "v2", "v3", "v4"\]\)/);
-assert.match(route, /NPC tracker style must be v1, v2, v3, or v4/);
+assert.match(route, /new Set\(\["v1", "v2", "v3", "v4", "v5", "v6"\]\)/);
+assert.match(route, /NPC tracker style must be v1, v2, v3, v4, v5, or v6/);
 assert.match(layout, /sheet\.dataset\.v4Entity/);
 assert.match(layout, /`\$\{entityLabel\(\)\} summary`/);
 assert.match(layout, /`\$\{entityLabel\(\)\} tracker sections`/);

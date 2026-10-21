@@ -32,6 +32,8 @@ async function loadSettings(label, fetchImplementation) {
   assert.equal(module.normalizeCharacterSheetStyle("v2"), "v2");
   assert.equal(module.normalizeCharacterSheetStyle("v3"), "v3");
   assert.equal(module.normalizeCharacterSheetStyle("v4"), "v4");
+  assert.equal(module.normalizeCharacterSheetStyle("v6"), "v6");
+  assert.equal(module.resolveNpcSheetStyle({ characterSheetStyle: "v6" }, "monster"), "v6");
   assert.equal(module.normalizeCharacterSheetStyle("unknown"), "v1");
   const remote = await module.runtimeSettingsReady;
   assert.equal(remote.characterSheetStyle, "v2");

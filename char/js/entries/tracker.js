@@ -7,10 +7,12 @@ import {
   refreshUI,
 } from "../tracker/index.js";
 
-initializeTracker();
+await initializeTracker();
 if (document.body.dataset.characterCanEdit === "false") {
+  const editorToggle = document.getElementById("edit-character-toggle");
+  if (editorToggle) editorToggle.disabled = true;
   document.getElementById("notesSection")?.remove();
-  const v4 = document.documentElement.dataset.characterSheetStyle === "v4";
+  const v4 = (["v4", "v5", "v6"].includes(document.documentElement.dataset.characterSheetStyle));
   const readOnlyControls = v4
     ? 'main [data-tracker-action]:not([data-tracker-action="reset-filters"]):not([data-tracker-action="reset-spell-filters"]):not([data-tracker-action="reset-inventory-filters"]):not([data-tracker-action="open-v4-detail"]), main [data-v4-inventory-container], #hp-controls button, #hp-controls input, #temp-hp-controls button, #temp-hp-controls input, #v4-condition-form button, #v4-condition-form input, #shortRest-btn, #longRest-btn, main .character-tracker, main [data-character-editor-section]'
     : document.body.dataset.trackerKind === "npc"

@@ -1,6 +1,7 @@
 // Loads available themes, applies palette variables, and wires the theme toggle.
 import { currentSession } from "./auth-client.js";
 import { BACKGROUND_GROUPS, normalizeBackgroundId } from "./background-catalog.js";
+import { mountAppearanceControls } from "../gc/appearance.js";
 import { createDialogController } from "./dialog.js";
 import {
   BASE_THEME_ID,
@@ -107,6 +108,14 @@ function readableMuted(text, background) {
   return result;
 }
 
+function readingSurface(background, text, weight) {
+  for (let amount = weight; amount > 0; amount -= 0.01) {
+    const surface = mixHex(background, text, amount);
+    if (contrastRatio(text, surface) >= 4.5) return surface;
+  }
+  return background;
+}
+
 export function resolveThemeAppearance(themeId, {
   reversed = false,
   fontMode = "auto",
@@ -126,16 +135,18 @@ export function resolveThemeAppearance(themeId, {
       : readableForeground(backgroundHex);
   const onAccentHex = readableForeground(accentHex);
   const accentHoverHex = mixHex(accentHex, onAccentHex === "#FFFFFF" ? "#000000" : "#FFFFFF", 0.12);
+  const surfaceHex = readingSurface(backgroundHex, textHex, 0.07);
+  const surfaceStrongHex = readingSurface(backgroundHex, textHex, 0.14);
   return {
     theme,
     backgroundHex,
     accentHex,
     textHex,
-    mutedHex: readableMuted(textHex, backgroundHex),
+    mutedHex: readableMuted(textHex, surfaceStrongHex),
     onAccentHex,
     accentHoverHex,
-    surfaceHex: mixHex(backgroundHex, textHex, 0.07),
-    surfaceStrongHex: mixHex(backgroundHex, textHex, 0.14),
+    surfaceHex,
+    surfaceStrongHex,
     borderHex: mixHex(backgroundHex, textHex, 0.24),
     contrast: contrastRatio(textHex, backgroundHex),
   };
@@ -405,6 +416,7 @@ function mountPicker(button) {
     </div>
   </div>`;
   document.body.append(root);
+  mountAppearanceControls(root.querySelector(".overflow-y-auto"));
   dialogController = createDialogController(root, {
     initialFocus: () => root.querySelector('[data-theme-card][aria-pressed="true"]') || root.querySelector("[data-close-theme]"),
     returnFocus: button,

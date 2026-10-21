@@ -131,6 +131,9 @@ export function initializeCharacterBuilderShell({
     builderForm?.classList.toggle("max-w-2xl", !active);
     builderForm?.classList.toggle("max-w-[96rem]", active);
     if (builderForm) builderForm.dataset.builderLayout = active ? "detailed" : "quick";
+    document.dispatchEvent(new CustomEvent("cassianslog:ui-page", {
+      detail: { id: active ? `${entityKind === "npc" ? "npc" : "character"}-builder` : entityKind === "npc" ? "npcs" : "characters" },
+    }));
   }
 
   function currentEvaluation() {

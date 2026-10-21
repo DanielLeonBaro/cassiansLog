@@ -90,6 +90,16 @@ export function renderV4CoreSummary(character = {}, root = document) {
   const host = root.getElementById("v4-summary-details");
   if (!host) return false;
   const model = v4SummaryModel(character);
+  const resources = root.getElementById("v5-resource-summary");
+  if (resources) {
+    const limited = [
+      ...(character.resources || []),
+      ...(character.actions || []).filter((item) => item.uses),
+      ...(character.features || []).filter((item) => item.uses),
+    ];
+    resources.innerHTML = limited.map((resource) =>
+      `<span class="gc-badge">${escapeHTML(resource.name || "Resource")} <strong>${escapeHTML(String(resource.uses?.current ?? resource.current ?? resource.value ?? 0))} / ${escapeHTML(String(resource.uses?.max ?? resource.max ?? "—"))}</strong></span>`).join("");
+  }
   const buildNotice = root.getElementById("v4-incomplete-build");
   if (buildNotice) {
     buildNotice.hidden = !model.buildIncomplete;
@@ -147,13 +157,13 @@ function panel(id) {
   return element;
 }
 
-function tablist() {
+function tablist(definitions = V4_TAB_DEFINITIONS) {
   const element = document.createElement("div");
   element.id = "v4-tabs";
   element.className = "v4-tabs";
   element.setAttribute("role", "tablist");
   element.setAttribute("aria-label", `${entityLabel()} tracker sections`);
-  V4_TAB_DEFINITIONS.forEach(({ id, label, icon }) => {
+  definitions.forEach(({ id, label, icon }) => {
     const button = document.createElement("button");
     button.id = `v4-tab-${id}`;
     button.type = "button";
@@ -280,13 +290,14 @@ export function activateV4Tab(id, { focus = false } = {}) {
     tab.tabIndex = selected ? 0 : -1;
   });
   controller.panels.forEach((item, panelId) => { item.hidden = panelId !== id; });
+  if (document.documentElement.dataset.characterSheetStyle === "v6") document.dispatchEvent(new CustomEvent("tracker:v6-tab", { detail: { id } }));
   if (focus) controller.tabs.get(id).focus();
   return true;
 }
 
 function handleTabKeydown(event) {
   if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
-  const tabs = [...controller.tabs.values()];
+  const tabs = [...controller.tabs.values()].filter((tab) => !tab.hidden);
   const current = Math.max(0, tabs.indexOf(event.target));
   const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1
     : (current + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
@@ -294,8 +305,8 @@ function handleTabKeydown(event) {
   activateV4Tab(tabs[next].dataset.v4Tab, { focus: true });
 }
 
-export function applyV4CharacterSheetLayout() {
-  if (document.documentElement.dataset.characterSheetStyle !== "v4") return false;
+export function applyV4CharacterSheetLayout({ definitions = V4_TAB_DEFINITIONS } = {}) {
+  if (!["v4", "v5", "v6"].includes(document.documentElement.dataset.characterSheetStyle)) return false;
   if (controller) return true;
   const combatPage = document.getElementById("combat-page");
   const identity = document.getElementById("characterDescription");
@@ -338,8 +349,8 @@ export function applyV4CharacterSheetLayout() {
   vitals?.appendChild(conditions);
   core.append(buildNotice, identity, coreGrid);
 
-  const tabs = tablist();
-  const panels = new Map(V4_TAB_DEFINITIONS.map(({ id }) => [id, panel(id)]));
+  const tabs = tablist(definitions);
+  const panels = new Map(definitions.map(({ id }) => [id, panel(id)]));
   const actionStatus = document.createElement("p");
   actionStatus.id = "v4-action-status";
   actionStatus.className = "sr-only";

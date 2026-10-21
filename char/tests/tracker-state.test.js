@@ -120,4 +120,19 @@ automaticCharacter.extras[0].hp.temp = 0;
 extraState.load();
 assert.deepEqual(automaticCharacter.extras[0].hp, { current: 3, max: 5, temp: 1 });
 
-console.log("Character tracker inventory state tests passed.");
+// A player must not restore a DM's cached conditions/concentration over a redacted NPC.
+globalThis.document = { body: { dataset: { trackerKind: "npc", characterCanEdit: "false" } } };
+const projectedNpc = { id: "private-npc", hp: { current: 0, max: 0, temp: 0 }, conditions: [], inventory: [] };
+localStorage.setItem("dnd-npc-private-npc-state", JSON.stringify({ conditions: ["DM secret"], concentration: { name: "Hidden spell" } }));
+const npcState = createTrackerState({ ...dependencies, character: projectedNpc });
+const projectedBefore = JSON.stringify(projectedNpc);
+npcState.load();
+assert.equal(JSON.stringify(projectedNpc), projectedBefore);
+assert.equal(npcState.save(), false);
+assert.equal(await npcState.loadCloud(), false);
+document.body.dataset.characterCanEdit = "true";
+npcState.load();
+assert.deepEqual(projectedNpc.conditions, ["DM secret"], "A DM still restores private NPC runtime.");
+delete globalThis.document;
+
+console.log("Character tracker inventory state and NPC private-runtime isolation tests passed.");

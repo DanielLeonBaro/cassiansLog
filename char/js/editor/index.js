@@ -1,9 +1,11 @@
+import { GC_CLASSES } from "../../../shared/gc/classes.js";
 // Coordinates the full character editor, focused sections, validation, and saving.
 import { createDialogController } from "../../../shared/js/dialog.js";
 import { readJSON, removeStored, writeJSON } from "../../../shared/js/storage.js";
 import { writeCloudJSON } from "../../../shared/js/cloud-store.js";
 import {
   isLocalRuntimeHost,
+  normalizeCharacterSheetStyle,
   saveCharacterSheetStyleOverride,
 } from "../../../shared/js/settings.js";
 import { escapeAttribute, escapeHTML } from "../../../shared/js/text.js";
@@ -72,11 +74,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
   let returnFocusTarget = null;
   let controller;
 
-  const classes = {
-    button: "inline-flex items-center justify-center gap-2 rounded-xl border border-blood-500 bg-blood-500 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-blood-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold",
-    field: "w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/15 dark:bg-white/5 dark:text-white",
-    panel: "rounded-2xl border border-stone-300/80 bg-white/70 p-4 dark:border-white/10 dark:bg-white/[.04]",
-  };
+  const classes = GC_CLASSES;
   const { renderNode, renderPrimitive, renderVisibilityControl } = createCharacterFieldRenderer({
     classes,
     expandedItems,
@@ -147,8 +145,12 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     </div>`;
   }
 
+  function editsV3Layout() {
+    return draftStyle === "v3" || document.documentElement.dataset.characterSheetStyle === "v3";
+  }
+
   function renderV3LayoutBuilder() {
-    if (draftStyle !== "v3") return "";
+    if (!editsV3Layout()) return "";
     const definitions = new Map(V3_SECTION_DEFINITIONS.map((definition) => [definition.id, definition]));
     return `<div class="mt-5 border-t border-stone-300 pt-5 dark:border-white/10">
       <div class="flex flex-wrap items-start justify-between gap-3">
@@ -174,7 +176,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     const customKeys = Object.keys(draft).filter((key) => !sectionTopLevelKeys.has(key));
     return `<div class="space-y-6">
       <div class="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-stone-700 dark:text-stone-200"><strong class="block">Advanced ${npcMode ? "NPC" : "character"} data</strong><span class="mt-1 block">Technical IDs are read-only. Custom fields remain editable so homebrew data is never discarded.</span></div>
-      ${(canManage || draftStyle === "v3") ? `<section class="${classes.panel}"><h3 class="font-display text-lg font-bold">${npcMode ? "NPC" : "Character"} tracker layout</h3><p class="mt-1 text-sm text-stone-500 dark:text-stone-400">${canManage ? `The style choice applies to ${escapeHTML(draft.name || `this ${entityLabel.toLowerCase()}`)}.` : "The campaign DM controls the style; this grid is personal to you."}</p>${canManage ? `<label class="mt-4 block"><span class="mb-1 block text-xs font-bold text-stone-500 dark:text-stone-400">Style</span><select id="editor-character-sheet-style" class="${classes.field}"><option value="v1" ${draftStyle === "v1" ? "selected" : ""}>Style v1</option><option value="v2" ${draftStyle === "v2" ? "selected" : ""}>Style v2</option><option value="v3" ${draftStyle === "v3" ? "selected" : ""}>Style v3</option><option value="v4" ${draftStyle === "v4" ? "selected" : ""}>Style v4</option></select></label>${renderV1SectionOrder()}` : ""}${renderV3LayoutBuilder()}</section>` : ""}
+      ${(canManage || editsV3Layout()) ? `<section class="${classes.panel}"><h3 class="font-display text-lg font-bold">${npcMode ? "NPC" : "Character"} tracker layout</h3><p class="mt-1 text-sm text-stone-500 dark:text-stone-400">${canManage ? `Campaign style for ${escapeHTML(draft.name || `this ${entityLabel.toLowerCase()}`)}. Your personal Appearance choice takes priority.` : "Choose your tracker style in Appearance; this grid is personal to you."}</p>${canManage ? `<label class="mt-4 block"><span class="mb-1 block text-xs font-bold text-stone-500 dark:text-stone-400">Style</span><select id="editor-character-sheet-style" class="${classes.field}"><option value="v1" ${draftStyle === "v1" ? "selected" : ""}>Style v1</option><option value="v2" ${draftStyle === "v2" ? "selected" : ""}>Style v2</option><option value="v3" ${draftStyle === "v3" ? "selected" : ""}>Style v3</option><option value="v4" ${draftStyle === "v4" ? "selected" : ""}>Style v4</option><option value="v5" ${draftStyle === "v5" ? "selected" : ""}>Style v5</option><option value="v6" ${draftStyle === "v6" ? "selected" : ""}>V6 · Combat Desk</option></select></label>${renderV1SectionOrder()}` : ""}${renderV3LayoutBuilder()}</section>` : ""}
       <section class="${classes.panel}"><h3 class="mb-4 font-display text-lg font-bold">${npcMode ? "NPC" : "Character"} ID</h3>${renderPrimitive(draft.id, ["id"], "id", { readOnly: !canManage })}</section>
       ${metadataKeys.length ? `<section class="${classes.panel}"><h3 class="mb-4 font-display text-lg font-bold">System metadata</h3><div class="space-y-4">${metadataKeys.map((key) => renderPrimitive(JSON.stringify(draft[key], null, 2), [key], key, { readOnly: true })).join("")}</div></section>` : ""}
       <section class="${classes.panel}"><h3 class="mb-1 font-display text-lg font-bold">Custom fields</h3><p class="mb-4 text-sm text-stone-500 dark:text-stone-400">Fields outside the standard ${npcMode ? "NPC" : "character"} schema appear here.</p>${customKeys.length ? `<div class="space-y-4">${customKeys.map((key) => renderNode(draft[key], [key], key)).join("")}</div>` : `<p class="rounded-xl border border-dashed border-stone-300 px-4 py-6 text-center text-sm text-stone-500 dark:border-white/15">No custom fields on this ${entityLabel.toLowerCase()}.</p>`}</section>
@@ -326,7 +328,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
       if (event.target.matches("[data-npc-player-visible]")) draftPlayerVisible = event.target.checked;
       if (event.target.id === "editor-mobile-section") activateSection(event.target.value);
       if (event.target.id === "editor-character-sheet-style") {
-        draftStyle = ["v1", "v2", "v3", "v4"].includes(event.target.value) ? event.target.value : "v1";
+        draftStyle = normalizeCharacterSheetStyle(event.target.value);
         renderEditorFields();
       }
       if (event.target.id === "editor-v3-columns") {
@@ -371,7 +373,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     draftVisibility = { ...baselineVisibility };
     baselinePlayerVisible = document.body.dataset.npcPlayerVisible === "true";
     draftPlayerVisible = baselinePlayerVisible;
-    baselineStyle = ["v1", "v2", "v3", "v4"].includes(document.documentElement.dataset.characterSheetStyle) ? document.documentElement.dataset.characterSheetStyle : "v1";
+    baselineStyle = normalizeCharacterSheetStyle(document.documentElement.dataset.campaignSheetStyle || document.documentElement.dataset.characterSheetStyle);
     draftStyle = baselineStyle;
     baselineV3Layout = currentV3CharacterSheetLayout();
     draftV3Layout = normalizeV3Layout(baselineV3Layout);
@@ -451,12 +453,12 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
       return;
     }
     const v3Move = event.target.closest("[data-v3-section-move]");
-    if (v3Move && draftStyle === "v3") {
+    if (v3Move && editsV3Layout()) {
       draftV3Layout = moveV3SectionBy(draftV3Layout, v3Move.dataset.v3SectionMove, v3Move.dataset.delta);
       renderEditorFields();
       return;
     }
-    if (event.target.closest("[data-v3-layout-reset]") && draftStyle === "v3") {
+    if (event.target.closest("[data-v3-layout-reset]") && editsV3Layout()) {
       draftV3Layout = normalizeV3Layout(DEFAULT_V3_LAYOUT);
       renderEditorFields();
       return;
@@ -574,7 +576,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
 
   function handleV3SectionDragStart(event) {
     const handle = event.target.closest("[data-v3-section-drag]");
-    if (!handle || draftStyle !== "v3") return;
+    if (!handle || !editsV3Layout()) return;
     draggedV3Section = handle.dataset.v3SectionDrag;
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", draggedV3Section);
@@ -582,7 +584,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
 
   function handleV3SectionDragOver(event) {
     const row = event.target.closest("[data-v3-section-row]");
-    if (!row || !draggedV3Section || draftStyle !== "v3") return;
+    if (!row || !draggedV3Section || !editsV3Layout()) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
     row.classList.add("outline", "outline-2", "outline-blood-500");
@@ -594,7 +596,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
 
   function handleV3SectionDrop(event) {
     const row = event.target.closest("[data-v3-section-row]");
-    if (!row || !draggedV3Section || draftStyle !== "v3") return;
+    if (!row || !draggedV3Section || !editsV3Layout()) return;
     event.preventDefault();
     draftV3Layout = moveV3SectionBefore(draftV3Layout, draggedV3Section, row.dataset.v3SectionRow);
     clearV3SectionDragState();

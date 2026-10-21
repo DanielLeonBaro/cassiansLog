@@ -32,7 +32,7 @@ export function getRestDetails(character, items, slots, kind) {
       ? `Current HP returns to ${character.hp.max}, and temporary HP is cleared.`
       : rulesAware
         ? "Current and temporary HP do not change; hit dice can be spent separately."
-        : "Temporary HP is cleared. Current HP does not change.",
+        : "Current and temporary HP do not change.",
     long || !rulesAware
       ? "Death saving throws and Stable are reset."
       : "Death saving throws and Stable do not change.",
@@ -50,6 +50,6 @@ export function getRestDetails(character, items, slots, kind) {
     effects,
     toast: rulesAware
       ? `${title} complete. ${resourceCount} and ${slotCount} restored${long ? "; HP, hit dice, and eligible effects updated" : ""}.`
-      : `${title} complete. ${resourceCount} and ${slotCount} restored; ${long ? "HP, temporary HP," : "temporary HP"} and death saves reset.`,
+      : `${title} complete. ${resourceCount} and ${slotCount} restored; ${long ? "HP, temporary HP, and death saves" : "death saves"} reset.`,
   };
 }

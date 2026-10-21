@@ -12,7 +12,7 @@ export function applySectionVisibility(root = document) {
     ? [root, ...root.querySelectorAll("[data-section-link]")]
     : [...root.querySelectorAll("[data-section-link]")];
   elements.forEach((element) => {
-    const hidden = !isSectionVisible(element.dataset.sectionLink);
+    const hidden = !isSectionVisible(element.dataset.sectionLink) || element.dataset.roleAllowed === "false";
     element.hidden = hidden;
     if (hidden) element.style.setProperty("display", "none", "important");
     else element.style.removeProperty("display");

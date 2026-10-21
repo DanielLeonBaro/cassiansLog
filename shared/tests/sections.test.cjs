@@ -22,7 +22,7 @@ assert.equal(config.sections["dm-screen"], true, "DM Screen navigation should be
 assert.equal(config.sections.combat, true, "Character combat controls should keep their independent setting.");
 assert.equal(config.sections.wiki, true, "Wiki navigation should be enabled by default.");
 
-const siteHeader = fs.readFileSync("shared/js/site-header.js", "utf8");
+const siteHeader = fs.readFileSync("shared/gc/catalog.js", "utf8") + fs.readFileSync("shared/gc/shell.js", "utf8");
 const siteSections = ["characters", "player-screen", "dm-screen", "combat-loot", "compendium", "music", "public-initiative", "wiki"];
 for (const name of siteSections) {
   assert.ok(siteHeader.includes(`id: "${name}"`), `${name} should be defined in the shared site header.`);
@@ -51,7 +51,7 @@ assert.match(siteHeader, /scopeCampaignPageLinks\(slug\)/, "Page-level shortcuts
 assert.match(siteHeader, /selectRememberedCampaign/, "The header should restore each user's last valid campaign.");
 assert.match(siteHeader, /campaignRouteForUnscopedPath/, "Campaign pages should recover their remembered campaign URL.");
 assert.match(siteHeader, /data-site-home/, "The home link should follow the selected campaign from global pages.");
-assert.match(siteHeader, /sectionConfigReady\.then\(syncAvailability\)/, "The Pages dropdown should react to runtime section settings.");
+assert.match(siteHeader, /sectionConfigReady\.then\(syncGroups\)/, "The Pages dropdown should react to runtime section settings.");
 assert.match(siteHeader, /document\.querySelectorAll\("\[data-role-link\]"\)/, "Role visibility should include page-level shortcuts.");
 assert.doesNotMatch(
   siteHeader,
@@ -94,6 +94,7 @@ const elements = [
   sectionElement("wiki", false),
   sectionElement("compendium", true),
   sectionElement("future-section", true),
+  Object.assign(sectionElement("dm-screen", false), { dataset: { sectionLink: "dm-screen", roleAllowed: "false" } }),
 ];
 global.document = {
   baseURI: "https://example.test/cassiansLog/",
@@ -116,6 +117,8 @@ global.fetch = async (url) => {
   assert.equal(elements[1].hidden, false, "Enabled Compendium links should be shown.");
   assert.equal(elements[1].style.getPropertyValue("display"), "");
   assert.equal(elements[2].hidden, false, "Unknown sections should remain visible.");
+  assert.equal(elements[3].hidden, true, "Late section settings must not reveal role-denied links.");
+  assert.equal(elements[3].style.getPropertyValue("display"), "none");
   assert.ok(fs.existsSync("wiki/index.html"), "The direct Wiki page should remain available.");
   console.log(`Section toggle tests passed (${sectionNames.length} configured sections).`);
 })().catch((error) => {

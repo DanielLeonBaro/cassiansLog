@@ -10,16 +10,18 @@
   <script src="shared/js/theme-bootstrap.js"></script>
   <link rel="stylesheet" href="shared/assets/icons/bootstrap-icons.css">
   <link rel="stylesheet" href="shared/assets/tailwind.css">
+    <link rel="stylesheet" href="shared/gc/styles.css">
+    <script type="module" src="shared/gc/entry.js"></script>
   <link rel="icon" href="shared/assets/bat.ico">
 </head>
-<body class="flex min-h-screen flex-col bg-parchment font-sans text-stone-900 antialiased transition-colors dark:bg-ink dark:text-stone-100">
+<body data-gc-page="npcs" class="flex min-h-screen flex-col bg-parchment font-sans text-stone-900 antialiased transition-colors dark:bg-ink dark:text-stone-100">
   <nav data-site-header></nav>
   <main class="relative mx-auto w-full max-w-7xl grow px-4 py-8 sm:px-6 lg:max-w-[110rem] lg:px-8">
     <header class="mx-auto mb-10 max-w-2xl text-center">
       <span class="mb-4 inline-flex items-center rounded-full bg-blood-500 px-3 py-1 text-xs font-bold text-white"><i class="bi bi-person-badge-fill mr-1"></i> NPC archive</span>
       <h1 class="font-display text-4xl font-bold sm:text-5xl">NPC Tracker</h1>
       <p id="npc-archive-description" class="mt-4 text-lg leading-relaxed text-stone-500 dark:text-stone-400">Players see only NPCs and fields revealed by a campaign DM.</p>
-      <button id="add-npc" type="button" class="mt-6 hidden items-center justify-center gap-2 rounded-xl border border-blood-500 bg-blood-500 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blood-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"><i class="bi bi-person-plus-fill"></i> Create NPC</button>
+      <button id="add-npc" type="button" class="gc-button mt-6 hidden items-center justify-center gap-2 rounded-xl border border-blood-500 bg-blood-500 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blood-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"><i class="bi bi-person-plus-fill"></i> Create NPC</button>
     </header>
     <section aria-labelledby="npcs-heading">
       <h2 id="npcs-heading" class="sr-only">Available NPCs</h2>
@@ -31,34 +33,34 @@
   <footer class="relative mx-auto w-full max-w-7xl px-4 py-4 text-center text-sm text-stone-500 dark:text-stone-400 sm:px-6 lg:max-w-[110rem] lg:px-8">Campaign NPCs.</footer>
 
   <div id="npc-dialog" class="fixed inset-0 z-50 hidden items-center justify-center bg-ink/80 p-3 backdrop-blur-sm sm:p-6" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
-    <form id="npc-form" class="max-h-full w-full max-w-2xl overflow-y-auto rounded-2xl border border-stone-300 bg-parchment p-5 shadow-2xl dark:border-white/15 dark:bg-ink sm:p-6">
+    <form id="npc-form" class="gc-panel max-h-full w-full max-w-2xl overflow-y-auto rounded-2xl border border-stone-300 bg-parchment p-5 shadow-2xl dark:border-white/15 dark:bg-ink sm:p-6">
       <div class="mb-6 flex items-start justify-between gap-3">
         <div><p id="dialog-kicker" class="text-xs font-bold uppercase tracking-[0.18em] text-blood-500">Quick setup</p><h2 id="dialog-title" class="mt-1 font-display text-2xl font-bold">Create an NPC</h2><p id="dialog-description" class="mt-1 text-sm text-stone-500 dark:text-stone-400">New NPCs start hidden from players. Reveal fields in the full editor.</p></div>
-        <button id="close-npc-dialog" type="button" class="rounded-xl p-2 hover:bg-stone-200 dark:hover:bg-white/10" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+        <button id="close-npc-dialog" type="button" class="gc-button rounded-xl p-2 hover:bg-stone-200 dark:hover:bg-white/10" aria-label="Close"><i class="bi bi-x-lg"></i></button>
       </div>
       <div id="quick-setup-panel">
-      <section class="mb-6 rounded-2xl border border-blood-500/30 bg-blood-500/10 p-4" aria-labelledby="detailed-build-title">
+      <section class="gc-panel mb-6 rounded-2xl border border-blood-500/30 bg-blood-500/10 p-4" aria-labelledby="detailed-build-title">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div class="max-w-md"><h3 id="detailed-build-title" class="text-sm font-bold">Detailed NPC builder</h3><p id="detailed-build-entry-description" class="mt-1 text-xs text-stone-500 dark:text-stone-400">Build a rules-based NPC with guided choices, automatic calculations, and visible rule sources.</p></div>
-          <button id="detailed-build-entry" type="button" class="inline-flex items-center justify-center gap-2 rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-on-accent hover:bg-blood-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">Start Detailed Build</button>
+          <button id="detailed-build-entry" type="button" class="gc-button inline-flex items-center justify-center gap-2 rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-on-accent hover:bg-blood-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">Start Detailed Build</button>
         </div>
       </section>
-      <section class="mb-6 rounded-2xl border border-sky-600/30 bg-sky-500/10 p-4" aria-labelledby="dnd-beyond-import-title">
+      <section class="gc-panel mb-6 rounded-2xl border border-sky-600/30 bg-sky-500/10 p-4" aria-labelledby="dnd-beyond-import-title">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div><h3 id="dnd-beyond-import-title" class="text-sm font-bold">Import a D&amp;D Beyond character as an NPC</h3><p class="mt-1 text-xs text-stone-500 dark:text-stone-400">Use a public character page or an exported D&amp;D Beyond PDF.</p></div>
-          <button id="dnd-beyond-import-toggle" type="button" aria-controls="dnd-beyond-import-panel" aria-expanded="false" class="inline-flex items-center justify-center gap-2 rounded-xl border border-sky-600 px-3 py-2 text-sm font-bold text-sky-700 hover:bg-sky-600 hover:text-white dark:text-sky-300"><i class="bi bi-box-arrow-in-down" aria-hidden="true"></i> Import from D&amp;D Beyond</button>
+          <button id="dnd-beyond-import-toggle" type="button" aria-controls="dnd-beyond-import-panel" aria-expanded="false" class="gc-button inline-flex items-center justify-center gap-2 rounded-xl border border-sky-600 px-3 py-2 text-sm font-bold text-sky-700 hover:bg-sky-600 hover:text-white dark:text-sky-300"><i class="bi bi-box-arrow-in-down" aria-hidden="true"></i> Import from D&amp;D Beyond</button>
         </div>
         <div id="dnd-beyond-import-panel" class="mt-4 hidden border-t border-sky-600/20 pt-4">
           <label for="dnd-beyond-url" class="block text-sm font-bold">Character page URL</label>
-          <div class="mt-1 flex flex-col gap-2 sm:flex-row"><input id="dnd-beyond-url" type="url" inputmode="url" autocomplete="url" class="min-w-0 grow rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="https://www.dndbeyond.com/characters/123456789"><button id="dnd-beyond-url-import" type="button" class="shrink-0 rounded-xl border border-sky-600 px-4 py-2 text-sm font-bold text-sky-700 hover:bg-sky-600 hover:text-white dark:text-sky-300">Read page</button></div>
+          <div class="mt-1 flex flex-col gap-2 sm:flex-row"><input id="dnd-beyond-url" type="url" inputmode="url" autocomplete="url" class="min-w-0 grow rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="https://www.dndbeyond.com/characters/123456789"><button id="dnd-beyond-url-import" type="button" class="gc-button shrink-0 rounded-xl border border-sky-600 px-4 py-2 text-sm font-bold text-sky-700 hover:bg-sky-600 hover:text-white dark:text-sky-300">Read page</button></div>
           <div class="my-3 flex items-center gap-3 text-xs font-bold uppercase tracking-wider text-stone-400"><span class="h-px grow bg-stone-300 dark:bg-white/15"></span>or<span class="h-px grow bg-stone-300 dark:bg-white/15"></span></div>
           <input id="dnd-beyond-pdf-input" type="file" accept="application/pdf,.pdf" class="sr-only">
-          <button id="dnd-beyond-pdf-import" type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-sky-600 px-4 py-2 text-sm font-bold text-sky-700 hover:bg-sky-600 hover:text-white dark:text-sky-300"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> Choose D&amp;D Beyond PDF</button>
+          <button id="dnd-beyond-pdf-import" type="button" class="gc-button inline-flex items-center justify-center gap-2 rounded-xl border border-sky-600 px-4 py-2 text-sm font-bold text-sky-700 hover:bg-sky-600 hover:text-white dark:text-sky-300"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> Choose D&amp;D Beyond PDF</button>
           <p id="dnd-beyond-import-status" class="mt-3 min-h-5 text-sm text-stone-600 dark:text-stone-300" role="status" aria-live="polite"></p>
         </div>
       </section>
       <div class="grid gap-6 sm:grid-cols-[9rem_1fr]">
-        <div><span class="mb-2 block text-sm font-bold">Portrait</span><button id="new-npc-portrait-button" type="button" class="group relative block w-full overflow-hidden rounded-2xl border border-stone-300 bg-white/60 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/15 dark:bg-white/5" aria-label="Choose NPC portrait"><img id="new-npc-portrait" src="shared/assets/bat.ico" alt="NPC portrait preview" class="aspect-square w-full object-cover"><span class="absolute inset-x-0 bottom-0 bg-black/70 px-2 py-2 text-xs font-bold text-white"><i class="bi bi-camera-fill mr-1"></i> Choose image</span></button><input id="new-npc-portrait-input" type="file" accept="image/*" class="sr-only"></div>
+        <div><span class="mb-2 block text-sm font-bold">Portrait</span><button id="new-npc-portrait-button" type="button" class="gc-button group relative block w-full overflow-hidden rounded-2xl border border-stone-300 bg-white/60 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/15 dark:bg-white/5" aria-label="Choose NPC portrait"><img id="new-npc-portrait" src="shared/assets/bat.ico" alt="NPC portrait preview" class="aspect-square w-full object-cover"><span class="absolute inset-x-0 bottom-0 bg-black/70 px-2 py-2 text-xs font-bold text-white"><i class="bi bi-camera-fill mr-1"></i> Choose image</span></button><input id="new-npc-portrait-input" type="file" accept="image/*" class="sr-only"></div>
         <div class="grid content-start gap-4 sm:grid-cols-2">
           <label class="sm:col-span-2"><span class="mb-1 block text-sm font-bold">NPC name <span class="text-blood-500">*</span></span><input id="new-npc-name" required maxlength="80" autocomplete="off" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="New NPC"></label>
           <label><span class="mb-1 block text-sm font-bold">Status</span><input id="new-npc-status" value="Active" maxlength="32" autocomplete="off" class="w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 dark:border-white/15 dark:bg-white/5 dark:text-white"></label>
@@ -70,7 +72,7 @@
       <fieldset id="new-npc-starting-content" class="mt-6"><legend class="text-sm font-bold">Starting content</legend><div class="mt-2 grid gap-3 sm:grid-cols-2"><label class="flex cursor-pointer gap-3 rounded-xl border border-stone-300 bg-white/60 p-4 has-[:checked]:border-blood-500 dark:border-white/15 dark:bg-white/5"><input type="radio" name="starterMode" value="blank" checked class="mt-1 h-4 w-4 accent-red-700"><span><strong class="block">Clean sheet</strong><span class="mt-1 block text-sm text-stone-500">Core stats and empty lists.</span></span></label><label class="flex cursor-pointer gap-3 rounded-xl border border-stone-300 bg-white/60 p-4 has-[:checked]:border-blood-500 dark:border-white/15 dark:bg-white/5"><input type="radio" name="starterMode" value="starter" class="mt-1 h-4 w-4 accent-red-700"><span><strong class="block">Starter examples</strong><span class="mt-1 block text-sm text-stone-500">Editable sample abilities and gear.</span></span></label></div></fieldset>
       <p id="dnd-beyond-import-summary" class="mt-6 hidden rounded-xl border border-green-600/30 bg-green-500/10 p-3 text-sm text-green-700 dark:text-green-300"></p>
       <p id="npc-form-status" class="mt-5 min-h-5 text-sm text-stone-500 dark:text-stone-400" role="status" aria-live="polite"></p>
-      <div class="mt-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button id="cancel-npc-dialog" type="button" class="rounded-xl border border-stone-400 px-4 py-2 text-sm font-bold">Cancel</button><button id="create-npc-submit" type="submit" class="inline-flex items-center justify-center gap-2 rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-white hover:bg-blood-600 disabled:cursor-wait disabled:opacity-70"><i class="bi bi-arrow-right"></i> Create &amp; continue</button></div>
+      <div class="mt-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button id="cancel-npc-dialog" type="button" class="gc-button rounded-xl border border-stone-400 px-4 py-2 text-sm font-bold">Cancel</button><button id="create-npc-submit" type="submit" class="gc-button inline-flex items-center justify-center gap-2 rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-white hover:bg-blood-600 disabled:cursor-wait disabled:opacity-70"><i class="bi bi-arrow-right"></i> Create &amp; continue</button></div>
       </div>
 
       <section id="character-builder-shell" hidden aria-labelledby="character-builder-step-title">
@@ -88,8 +90,8 @@
           </aside>
         </div>
         <div class="mt-5 flex flex-col gap-3 border-t border-stone-300 pt-4 dark:border-white/15 sm:flex-row sm:items-center sm:justify-between">
-          <div><p id="character-builder-save-status" class="min-h-5 text-sm text-stone-600 dark:text-stone-300" role="status" aria-live="polite"></p><button id="character-builder-retry" type="button" hidden class="mt-1 text-sm font-bold text-blood-500 underline decoration-2 underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">Retry save</button></div>
-          <div class="flex flex-wrap justify-end gap-2"><button id="character-builder-quick-setup" type="button" class="rounded-xl border border-stone-400 px-3 py-2 text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">Quick Setup</button><button id="character-builder-back" type="button" class="rounded-xl border border-stone-400 px-4 py-2 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">Back</button><button id="character-builder-next" type="button" class="rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-on-accent hover:bg-blood-600 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">Next</button></div>
+          <div><p id="character-builder-save-status" class="min-h-5 text-sm text-stone-600 dark:text-stone-300" role="status" aria-live="polite"></p><button id="character-builder-retry" type="button" hidden class="gc-button mt-1 text-sm font-bold text-blood-500 underline decoration-2 underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">Retry save</button></div>
+          <div class="flex flex-wrap justify-end gap-2"><button id="character-builder-quick-setup" type="button" class="gc-button rounded-xl border border-stone-400 px-3 py-2 text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">Quick Setup</button><button id="character-builder-back" type="button" class="gc-button rounded-xl border border-stone-400 px-4 py-2 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">Back</button><button id="character-builder-next" type="button" class="gc-button rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-on-accent hover:bg-blood-600 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">Next</button></div>
         </div>
       </section>
     </form>

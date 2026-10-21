@@ -83,13 +83,16 @@ for (const file of javascriptFiles("integrations")) {
 const rootHTML = fs.readFileSync("index.html", "utf8");
 assert.match(rootHTML, /url=char\//, "The root page must redirect to /char/.");
 assert.ok(fs.existsSync("admin/index.html"), "The admin route must exist.");
-assert.ok(fs.readFileSync("shared/js/site-header.js", "utf8").includes("admin/"), "Role-aware navigation must include Admin.");
-assert.ok(fs.readFileSync("shared/js/site-header.js", "utf8").includes('id: "wiki"'), "Role-aware navigation must include Wiki.");
+const gcCatalog = fs.readFileSync("shared/gc/catalog.js", "utf8");
+const gcShell = fs.readFileSync("shared/gc/shell.js", "utf8");
+assert.ok(gcCatalog.includes("admin/"), "Role-aware navigation must include Admin.");
+assert.ok(gcCatalog.includes('id: "wiki"'), "Role-aware navigation must include Wiki.");
+assert.ok(fs.readFileSync("shared/js/site-header.js", "utf8").includes("../gc/shell.js"), "Header compatibility export must use GC.");
 assert.ok(fs.existsSync("login/index.html"), "The authentication route must exist.");
 const desktopPageWidthClass = "lg:max-w-[110rem]";
 assert.ok(fs.readFileSync("login/index.html", "utf8").includes(desktopPageWidthClass), "Login must use the shared wide desktop page width.");
 assert.ok(fs.existsSync("shared/js/account-menu.js"), "The shared Me account panel must exist.");
-assert.ok(fs.readFileSync("shared/js/site-header.js", "utf8").includes("mountAccountMenu"), "The site header must mount the Me account panel.");
+assert.ok(gcShell.includes("mountAccountMenu"), "The site header must mount the Me account panel.");
 const accountMenu = fs.readFileSync("shared/js/account-menu.js", "utf8");
 for (const control of ["data-email-form", "data-password-form", "google", "data-unlink-provider"]) {
   assert.ok(accountMenu.includes(control), `The Me account panel must include ${control}.`);
@@ -145,6 +148,8 @@ for (const [file, entrypoint] of pageShells) {
   assert.ok(source.includes(desktopPageWidthClass), `${file} must use the shared wide desktop page width.`);
   assert.match(source, /<script type="module"/, `${file} must use a module entrypoint.`);
   assert.ok(source.includes(`src="${entrypoint}"`), `${file} must load ${entrypoint}.`);
+  assert.ok(source.includes('href="shared/gc/styles.css"'), `${file} must load the canonical GC styles.`);
+  assert.ok(source.includes('src="shared/gc/entry.js"'), `${file} must load GC preferences and dynamic component support.`);
 }
 const npcArchiveSource = fs.readFileSync("npc/js/archive.js", "utf8");
 const npcRepositorySource = fs.readFileSync("npc/js/repository.js", "utf8");
@@ -169,7 +174,7 @@ assert.ok(fs.readFileSync("npc/template/index.html", "utf8").includes(desktopPag
 const characterLoader = fs.readFileSync("char/js/page-loader.js", "utf8");
 for (const key of ["CHARACTERS_STORAGE_KEY", "PENDING_CHARACTER_STORAGE_KEY"]) assert.ok(characterLoader.includes(key));
 assert.ok(characterLoader.includes("applyCharacterSheetLayout"), "Every routed character should apply the configured sheet layout.");
-assert.ok(characterLoader.includes("applyCharacterSheetLayout(settings, characterName)"), "Character routes should resolve style overrides by ID.");
+assert.ok(characterLoader.includes("applyCharacterSheetLayout(settings, characterName, trackerKind, uiPreferences.trackerStyles[trackerKind])"), "Character routes should resolve personal styles with campaign/ID fallback.");
 assert.ok(characterLoader.includes("history.replaceState"), "Legacy template links should receive their canonical character URL.");
 assert.ok(characterLoader.includes("dataset.characterShell"), "Tracker loading should preserve the owning character shell.");
 assert.ok(fs.readFileSync("char/js/editor/index.js", "utf8").includes("dataset.characterShell"), "Character saves should preserve bundled ownership after tracker injection.");

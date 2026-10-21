@@ -10,9 +10,11 @@
   <script src="shared/js/theme-bootstrap.js"></script>
   <link rel="stylesheet" href="shared/assets/icons/bootstrap-icons.css">
   <link rel="stylesheet" href="shared/assets/tailwind.css">
+    <link rel="stylesheet" href="shared/gc/styles.css">
+    <script type="module" src="shared/gc/entry.js"></script>
   <link rel="icon" href="shared/assets/bat.ico">
 </head>
-<body class="flex min-h-screen flex-col bg-parchment font-sans text-stone-900 antialiased dark:bg-ink dark:text-stone-100">
+<body data-gc-page="admin" class="flex min-h-screen flex-col bg-parchment font-sans text-stone-900 antialiased dark:bg-ink dark:text-stone-100">
   <nav data-site-header></nav>
   <main class="mx-auto w-full max-w-7xl grow px-4 py-8 sm:px-6 lg:max-w-[110rem] lg:px-8">
     <header class="mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -21,7 +23,7 @@
         <h1 class="mt-1 font-display text-4xl font-bold">Administration</h1>
         <p id="admin-description" class="mt-2 text-stone-500 dark:text-stone-400">Runtime settings are saved directly to D1 and apply without redeploying.</p>
       </div>
-      <button id="admin-lock" type="button" class="rounded-xl border border-blood-500 px-4 py-2 text-sm font-bold text-blood-500"><i class="bi bi-lock-fill mr-2"></i>Lock admin</button>
+      <button id="admin-lock" type="button" class="gc-button rounded-xl border border-blood-500 px-4 py-2 text-sm font-bold text-blood-500"><i class="bi bi-lock-fill mr-2"></i>Lock admin</button>
     </header>
 
     <div id="admin-status" class="mb-6 rounded-2xl border border-stone-300 bg-white/70 p-4 text-sm dark:border-white/10 dark:bg-white/[.05]" role="status">Enter the admin password to continue.</div>
@@ -40,7 +42,7 @@
         <div class="rounded-2xl border border-stone-300 bg-white/70 p-3 shadow-card dark:border-white/10 dark:bg-white/[.05] sm:p-4"><span class="text-[.65rem] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 sm:text-xs">Themes</span><strong id="admin-theme-count" class="mt-1 block font-display text-2xl">—</strong></div>
       </section>
 
-      <section id="site-controls" class="scroll-mt-24 rounded-2xl border border-stone-300 bg-white/70 p-5 shadow-card dark:border-white/10 dark:bg-white/[.05]">
+      <section id="site-controls" class="gc-panel scroll-mt-24 rounded-2xl border border-stone-300 bg-white/70 p-5 shadow-card dark:border-white/10 dark:bg-white/[.05]">
         <div class="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p class="text-xs font-bold uppercase tracking-[.16em] text-blood-500">Site controls</p>
@@ -54,7 +56,7 @@
         </div>
       </section>
 
-      <section id="character-controls" class="scroll-mt-24 rounded-2xl border border-stone-300 bg-white/70 p-5 shadow-card dark:border-white/10 dark:bg-white/[.05]">
+      <section id="character-controls" class="gc-panel scroll-mt-24 rounded-2xl border border-stone-300 bg-white/70 p-5 shadow-card dark:border-white/10 dark:bg-white/[.05]">
         <p class="text-xs font-bold uppercase tracking-[.16em] text-blood-500">Character controls</p>
         <h2 class="font-display text-2xl font-bold">Character sheet style</h2>
         <p class="mt-1 text-sm text-stone-500 dark:text-stone-400">Choose the legacy site default. Campaign-specific layouts stay in each campaign's Manage page.</p>
@@ -84,6 +86,10 @@
               <span><strong class="block">Style v4</strong><small class="text-stone-500 dark:text-stone-400">Rules-aware summary and primary tracker tabs</small></span>
             </span>
           </label>
+          <label class="cursor-pointer rounded-xl border border-stone-300 p-4">
+            <span class="flex items-start gap-3"><input id="character-style-v5" name="character-sheet-style" value="v5" type="radio" class="mt-1 h-5 w-5"><span><strong class="block">Style v5</strong><small class="text-stone-500 dark:text-stone-400">Focused workspace with Overview and Notes</small></span></span>
+          </label>
+          <label class="cursor-pointer rounded-xl border border-stone-300 p-4"><span class="flex items-start gap-3"><input id="character-style-v6" name="character-sheet-style" value="v6" type="radio" class="mt-1 h-5 w-5"><span><strong class="block">V6 · Combat Desk</strong><small>Phone-first combat and assisted turns</small></span></span></label>
         </fieldset>
         <details class="group mt-6 rounded-xl border border-stone-300 dark:border-white/10">
           <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 font-bold"><span><i class="bi bi-grid-1x2-fill mr-2 text-blood-500"></i>Per-character overrides</span><i class="bi bi-chevron-down transition group-open:rotate-180"></i></summary>
@@ -95,28 +101,28 @@
         </details>
       </section>
 
-      <section class="rounded-2xl border border-stone-300 bg-white/70 p-5 shadow-card dark:border-white/10 dark:bg-white/[.05]">
+      <section class="gc-panel rounded-2xl border border-stone-300 bg-white/70 p-5 shadow-card dark:border-white/10 dark:bg-white/[.05]">
         <h2 class="font-display text-2xl font-bold">Legacy site visibility</h2>
         <p class="mt-1 text-sm text-stone-500 dark:text-stone-400">Controls old unscoped pages and sheets. Campaign visibility belongs in each campaign's Manage page.</p>
         <div id="section-settings" class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"></div>
         <div class="mt-5 flex justify-end">
-          <button id="save-settings" type="button" class="rounded-xl bg-blood-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-blood-600"><i class="bi bi-database-check mr-2"></i>Save settings</button>
+          <button id="save-settings" type="button" class="gc-button rounded-xl bg-blood-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-blood-600"><i class="bi bi-database-check mr-2"></i>Save settings</button>
         </div>
       </section>
 
-      <details id="themes" class="group scroll-mt-24 rounded-2xl border border-stone-300 bg-white/70 shadow-card dark:border-white/10 dark:bg-white/[.05]">
+      <details id="themes" class="gc-panel group scroll-mt-24 rounded-2xl border border-stone-300 bg-white/70 shadow-card dark:border-white/10 dark:bg-white/[.05]">
         <summary class="flex cursor-pointer list-none items-center justify-between gap-4 p-5">
           <span><span class="block text-xs font-bold uppercase tracking-[.16em] text-blood-500">Appearance</span><span class="mt-1 block font-display text-2xl font-bold">Themes</span><span class="mt-1 block text-sm font-normal text-stone-500 dark:text-stone-400">Manage the shared catalog. Protected themes always remain available.</span></span>
           <i class="bi bi-chevron-down shrink-0 text-lg transition group-open:rotate-180"></i>
         </summary>
         <div class="border-t border-stone-300 p-5 dark:border-white/10">
-          <div class="flex justify-end"><button id="add-theme" type="button" class="rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-white hover:bg-blood-600"><i class="bi bi-plus-lg mr-2"></i>Add theme</button></div>
+          <div class="flex justify-end"><button id="add-theme" type="button" class="gc-button rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-white hover:bg-blood-600"><i class="bi bi-plus-lg mr-2"></i>Add theme</button></div>
           <div id="theme-admin-unavailable" class="mt-4 hidden rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm">Theme management requires D1 and is unavailable in local static mode.</div>
           <div id="theme-settings" class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2"></div>
         </div>
       </details>
 
-      <section id="people" class="scroll-mt-24 rounded-2xl border border-stone-300 bg-white/70 p-5 shadow-card dark:border-white/10 dark:bg-white/[.05]">
+      <section id="people" class="gc-panel scroll-mt-24 rounded-2xl border border-stone-300 bg-white/70 p-5 shadow-card dark:border-white/10 dark:bg-white/[.05]">
         <p class="text-xs font-bold uppercase tracking-[.16em] text-blood-500">Access</p>
         <h2 class="mt-1 font-display text-2xl font-bold">People and campaign roles</h2>
         <p class="mt-1 max-w-3xl text-sm text-stone-500 dark:text-stone-400">Expand one person to manage campaign roles, assigned characters, theme, legacy access, or password.</p>
@@ -126,10 +132,10 @@
   </main>
 
   <div id="theme-editor-dialog" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="theme-editor-title">
-    <form id="theme-editor-form" class="max-h-full w-full max-w-2xl overflow-y-auto rounded-3xl border border-theme-border bg-theme-surface p-6 text-theme-text shadow-2xl">
+    <form id="theme-editor-form" class="gc-panel max-h-full w-full max-w-2xl overflow-y-auto rounded-3xl border border-theme-border bg-theme-surface p-6 text-theme-text shadow-2xl">
       <div class="flex items-start justify-between gap-4">
         <div><p class="text-xs font-bold uppercase tracking-[.18em] text-blood-500">Theme catalog</p><h2 id="theme-editor-title" class="mt-1 font-display text-3xl font-bold">Add Theme</h2></div>
-        <button type="button" data-close-theme-editor class="rounded-xl p-2 hover:bg-theme-surface-strong" aria-label="Close theme editor"><i class="bi bi-x-lg"></i></button>
+        <button type="button" data-close-theme-editor class="gc-button rounded-xl p-2 hover:bg-theme-surface-strong" aria-label="Close theme editor"><i class="bi bi-x-lg"></i></button>
       </div>
       <input id="theme-editor-id" type="hidden">
       <div class="mt-6 grid gap-4 sm:grid-cols-2">
@@ -147,7 +153,7 @@
       </div>
       <div id="theme-editor-preview" class="mt-4 flex min-h-20 items-center justify-center rounded-2xl border border-theme-border p-4 text-center font-bold">Live preview</div>
       <p id="theme-editor-status" class="mt-3 min-h-5 text-sm text-danger-500" role="alert"></p>
-      <div class="mt-5 flex justify-end gap-2"><button type="button" data-close-theme-editor class="rounded-xl border border-theme-border px-4 py-2 text-sm font-bold">Cancel</button><button id="save-theme" type="submit" class="rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-white hover:bg-blood-600">Save Theme</button></div>
+      <div class="mt-5 flex justify-end gap-2"><button type="button" data-close-theme-editor class="gc-button rounded-xl border border-theme-border px-4 py-2 text-sm font-bold">Cancel</button><button id="save-theme" type="submit" class="gc-button rounded-xl bg-blood-500 px-4 py-2 text-sm font-bold text-white hover:bg-blood-600">Save Theme</button></div>
     </form>
   </div>
   <script type="module" src="admin/js/entry.js"></script>

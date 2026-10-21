@@ -10,6 +10,8 @@ import {
   normalizeV3Layout,
 } from "../../../shared/js/v3-layout.js";
 import { applyV4CharacterSheetLayout, refreshV4CharacterSheetLayout } from "./v4-layout.js";
+import { applyV5CharacterSheetLayout } from "./v5-layout.js";
+import { applyV6CharacterSheetLayout } from "./v6-layout.js";
 
 const desktopQuery = window.matchMedia("(min-width: 1024px)");
 const tabDefinitions = [
@@ -168,8 +170,8 @@ export function refreshCharacterSheetTabs() {
 
 export function placeCharacterSheetHeaderActions() {
   const style = document.documentElement.dataset.characterSheetStyle;
-  if (style !== "v2" && style !== "v4") return;
-  const host = document.getElementById(style === "v4" ? "v4-character-actions" : "v2-character-actions");
+  if (!["v2", "v4", "v5", "v6"].includes(style)) return;
+  const host = document.getElementById(["v4", "v5", "v6"].includes(style) ? "v4-character-actions" : "v2-character-actions");
   if (!host) return;
   ["shortRest-btn", "longRest-btn", "editor-toggle-slot"].forEach((id) => {
     const element = document.getElementById(id);
@@ -197,11 +199,21 @@ function handleJump(event) {
   if (tab) activateCharacterSheetTab(tab);
 }
 
-export function applyCharacterSheetLayout(settings = {}, characterId = "", kind = "character") {
-  const style = kind === "npc"
+export function applyCharacterSheetLayout(settings = {}, characterId = "", kind = "character", personalStyle = "campaign") {
+  const campaignStyle = kind === "npc"
     ? resolveNpcSheetStyle(settings, characterId)
     : resolveCharacterSheetStyle(settings, characterId);
+  const style = ["v1", "v2", "v3", "v4", "v5", "v6"].includes(personalStyle) ? personalStyle : campaignStyle;
+  document.documentElement.dataset.campaignSheetStyle = campaignStyle;
   document.documentElement.dataset.characterSheetStyle = style;
+  if (style === "v6") {
+    applyConfiguredSections(settings.sections || {});
+    return applyV6CharacterSheetLayout() ? style : "v1";
+  }
+  if (style === "v5") {
+    applyConfiguredSections(settings.sections || {});
+    return applyV5CharacterSheetLayout() ? style : "v1";
+  }
   if (style === "v4") {
     applyConfiguredSections(settings.sections || {});
     return applyV4CharacterSheetLayout() ? style : "v1";

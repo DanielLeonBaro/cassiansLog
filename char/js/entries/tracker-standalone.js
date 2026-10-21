@@ -2,19 +2,22 @@
 import { initializeTrackerHeader } from "../tracker/header.js";
 import { applyCharacterSheetLayout } from "../tracker/layout.js";
 import { runtimeSettingsReady } from "../../../shared/js/settings.js";
+import { uiPreferencesReady, applyUiPage } from "../../../shared/gc/runtime.js";
 import { renderCharacterLoadError } from "../load-error.js";
 
 const requested = new URLSearchParams(location.search).get("character") || "cassian";
 const characterName = /^[a-z0-9-]+$/i.test(requested) ? requested : "cassian";
 try {
-  const [response, settings] = await Promise.all([
+  const [response, settings, preferences] = await Promise.all([
     fetch(new URL(`../../${characterName}/character.json`, import.meta.url)),
     runtimeSettingsReady,
+    uiPreferencesReady,
   ]);
   if (!response.ok) throw new Error(`Could not load the character data (${response.status}).`);
   window.character = await response.json();
   document.body.dataset.characterShell = characterName;
-  applyCharacterSheetLayout(settings, characterName);
+  applyUiPage("character-tracker");
+  applyCharacterSheetLayout(settings, characterName, "character", preferences.trackerStyles.character);
   initializeTrackerHeader();
   await import("./tracker.js");
 } catch (error) {

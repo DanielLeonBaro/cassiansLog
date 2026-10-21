@@ -192,8 +192,10 @@ async function main() {
   driver.stdout.on("data", (chunk) => { driverOutput += chunk; });
   driver.stderr.on("data", (chunk) => { driverOutput += chunk; });
   let sessionId = null;
+  let bidiSocket = null;
 
   const close = async () => {
+    bidiSocket?.close();
     if (sessionId) {
       await webdriverRequest(driverPort, "DELETE", `/session/${sessionId}`).catch(() => undefined);
     }
@@ -213,6 +215,7 @@ async function main() {
       capabilities: {
         alwaysMatch: {
           browserName: "firefox",
+          webSocketUrl: true,
           acceptInsecureCerts: true,
           "moz:firefoxOptions": { args: ["-headless"] },
         },
@@ -230,7 +233,19 @@ async function main() {
       return command("POST", "/execute/sync", { script, args });
     }
 
+    let legacyLayoutDefaults = true;
     async function navigate(route) {
+      if (legacyLayoutDefaults) await execute(`
+        if (!location.origin.startsWith("http")) return true;
+        const userId = localStorage.getItem("cassianslog-local-user-v1") || "localhost-admin";
+        const key = "cassianslog-ui-preferences:" + encodeURIComponent(userId);
+        const cached = JSON.parse(localStorage.getItem(key) || "null");
+        localStorage.setItem(key, JSON.stringify({ preferences: {
+          version: 1, density: cached?.preferences?.density || "comfortable", pageDensity: cached?.preferences?.pageDensity || {},
+          sidebarCollapsed: false, trackerStyles: { character: "campaign", npc: "campaign" },
+        }, pending: false }));
+        return true;
+      `);
       await command("POST", "/url", { url: `${base}${route}` });
     }
 
@@ -1114,8 +1129,8 @@ async function main() {
     }
 
     if (includesTag("@themes")) {
-    await navigate("/char/cassian/");
-    await waitFor('return Boolean(document.getElementById("theme-toggle"));', "Theme picker host page did not load");
+    await navigate("/c/aotr/char/cassian/");
+    await waitFor('return Boolean(document.getElementById("theme-toggle")) && Boolean(document.querySelector("[data-theme-dialog]"));', "Theme picker host page did not load");
     const themePicker = await execute(`
       const toggle = document.getElementById("theme-toggle");
       toggle.click();
@@ -1144,7 +1159,7 @@ async function main() {
         accent: getComputedStyle(document.documentElement).getPropertyValue("--theme-accent").trim(),
         hasPattern: getComputedStyle(document.body).backgroundImage.includes("linear-gradient"),
         hasVignette: getComputedStyle(document.body).boxShadow.includes("rgba(0, 0, 0, 0.18)"),
-        hasSoftener: getComputedStyle(document.body).boxShadow.includes("rgba(154, 118, 0, 0.18)"),
+        backgroundUncovered: getComputedStyle(document.body).boxShadow === "none",
         storedTheme: localStorage.getItem("dnd-theme"),
         storedFont: localStorage.getItem("dnd-theme-font"),
         storedBackground: localStorage.getItem("dnd-theme-background"),
@@ -1165,8 +1180,8 @@ async function main() {
       backgroundToken: "154 118 0",
       accent: "244 184 196",
       hasPattern: true,
-      hasVignette: true,
-      hasSoftener: true,
+      hasVignette: false,
+      backgroundUncovered: true,
       storedTheme: "peach-and-lime",
       storedFont: "black",
       storedBackground: "graph-paper",
@@ -2348,11 +2363,17 @@ async function main() {
     }
 
     if (includesTag("@initiative")) {
+    await execute(`
+      localStorage.setItem("cassianslog-local-user-v1", "localhost-admin");
+      const key = "dnd-combat-loot-draft-v1:campaign:aotr";
+      if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify({ currentDocument: { tables: [{ type: "initiative", columns: [{ id: "name", role: "character" }], rows: [{ cells: { name: "Cassian" }, characterLink: { kind: "character", id: "cassian" } }] }] } }));
+      return true;
+    `);
     await smoke(
       "Public Initiative",
-      "/public-initiative/",
+      "/c/aotr/public-initiative/",
       'return document.getElementById("initiative-status").textContent !== "Loading initiative...";',
-      'return Boolean(document.querySelector(\'#initiative-list a[href$="/char/cassian/"][target="_blank"]\')) && !document.querySelector("form, input, textarea, select");',
+      'return Boolean(document.querySelector(\'#initiative-list a[href$="/char/cassian/"][target="_blank"]\')) && !document.querySelector("main form, main input, main textarea, main select") && document.body.dataset.gcShell === "minimal" && !document.querySelector(".gc-sidebar, #gc-page-density");',
     );
     }
 
@@ -2606,6 +2627,243 @@ async function main() {
       }
       await command("POST", "/window/rect", { width: 1280, height: 900 });
       console.log(`Browser alignment audit passed: ${requestedTags.size ? [...requestedTags].join(", ") : "all shipped routes"}, tracker styles, desktop/mobile, Standard/Reversed`);
+    }
+
+    if (includesTag("@gc")) {
+      legacyLayoutDefaults = false;
+      // Window sizing is constrained by Firefox chrome's minimum width. BiDi
+      // sets the actual content viewport, including genuine 390px mobile views.
+      bidiSocket = new WebSocket(session.capabilities.webSocketUrl);
+      await new Promise((resolve, reject) => {
+        bidiSocket.addEventListener("open", resolve, { once: true });
+        bidiSocket.addEventListener("error", reject, { once: true });
+      });
+      let bidiId = 0;
+      const pendingBidi = new Map();
+      bidiSocket.addEventListener("message", (event) => {
+        const response = JSON.parse(event.data);
+        const pending = pendingBidi.get(response.id);
+        if (!pending) return;
+        pendingBidi.delete(response.id);
+        if (response.type === "error") pending.reject(new Error(response.message));
+        else pending.resolve(response.result);
+      });
+      function bidi(method, params) {
+        return new Promise((resolve, reject) => {
+          const id = ++bidiId;
+          pendingBidi.set(id, { resolve, reject });
+          bidiSocket.send(JSON.stringify({ id, method, params }));
+        });
+      }
+      const { contexts } = await bidi("browsingContext.getTree", { maxDepth: 0 });
+      async function setGcViewport(width, height) {
+        await bidi("browsingContext.setViewport", { context: contexts[0].context, viewport: { width, height }, devicePixelRatio: 1 });
+        assert.equal(await execute("return innerWidth;"), width, "GC audit must use the requested CSS viewport width.");
+      }
+      const previewDirectory = process.env.GC_SCREENSHOTS_DIR || "/tmp/cassians-gc-previews";
+      fs.mkdirSync(previewDirectory, { recursive: true });
+      const fixture = JSON.parse(fs.readFileSync(path.join(root, "char/cassian/character.json"), "utf8"));
+      await execute(`
+        localStorage.setItem("cassianslog-local-user-v1", "localhost-admin");
+        localStorage.setItem("cassianslog-last-campaign-v1:localhost-admin", JSON.stringify({ id: "campaign-breugaire", slug: "aotr" }));
+        localStorage.removeItem("cassianslog-ui-preferences:localhost-admin");
+        localStorage.removeItem("cassianslog-ui-preferences:localhost-player-01");
+        const characters = JSON.parse(localStorage.getItem("dnd-characters:campaign:aotr") || "{}");
+        characters.cassian = arguments[0];
+        localStorage.setItem("dnd-characters:campaign:aotr", JSON.stringify(characters));
+        const npcs = JSON.parse(localStorage.getItem("dnd-npcs:campaign:aotr") || "{}");
+        npcs["gc-preview-npc"] = { document: { ...arguments[0], id: "gc-preview-npc", name: "GC Preview NPC" }, visibility: { $default: true }, playerVisible: true };
+        localStorage.setItem("dnd-npcs:campaign:aotr", JSON.stringify(npcs));
+        return true;
+      `, [fixture]);
+      await navigate("/c/aotr/char/cassian/");
+      await waitFor('return document.documentElement.dataset.characterSheetStyle === "v5" && Boolean(document.getElementById("edit-character-toggle"));', "Default V5 tracker did not load");
+      assert.equal(await execute(`
+        const tabs = [...document.querySelectorAll("#v4-tabs [role=tab]")];
+        const labels = tabs.map((tab) => tab.textContent.trim());
+        const originalHp = document.getElementById("hpManager");
+        document.getElementById("v4-tab-notes").click();
+        const notesVisible = !document.getElementById("v4-panel-notes").hidden;
+        document.getElementById("v4-tab-actions").click();
+        const actionVisible = !document.getElementById("v4-panel-actions").hidden;
+        document.getElementById("v4-tab-overview").click();
+        return JSON.stringify(labels) === JSON.stringify(["Overview", "Actions", "Spells", "Inventory", "Features", "Extras", "Notes"])
+          && notesVisible && actionVisible && originalHp === document.getElementById("hpManager")
+          && document.querySelectorAll("#hpManager").length === 1;
+      `), true, "V5 tabs must reuse live tracker controls.");
+      assert.equal(await execute(`
+        const before = window.character.hp.current;
+        document.getElementById("hp-amount").value = "1";
+        document.getElementById("damage-btn").click();
+        const damaged = window.character.hp.current === before - 1;
+        document.getElementById("hp-amount").value = "1";
+        document.getElementById("heal-btn").click();
+        return damaged && window.character.hp.current === before;
+      `), true, "V5 must preserve HP damage/heal behavior.");
+      assert.equal(await execute(`
+        document.getElementById("edit-character-toggle").click();
+        const select = document.getElementById("editor-character-sheet-style");
+        const campaignStyle = select.value === document.documentElement.dataset.campaignSheetStyle;
+        select.value = "v5";
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+        const v5Selected = document.getElementById("editor-character-sheet-style").value === "v5";
+        const restored = document.getElementById("editor-character-sheet-style");
+        restored.value = document.documentElement.dataset.campaignSheetStyle;
+        restored.dispatchEvent(new Event("change", { bubbles: true }));
+        document.getElementById("editor-cancel").click();
+        document.getElementById("v4-tab-actions").click();
+        const use = document.querySelector('[data-v4-action-card="manifest-echo"] [data-tracker-action="request-use"]');
+        const action = window.character.actions.find((item) => item.id === "manifest-echo");
+        const before = action.uses.current;
+        use.click();
+        document.getElementById("v4-use-confirm").click();
+        const consumed = action.uses.current === before - 1;
+        document.querySelector('[data-v4-action-card="shortsword-action"] [data-roll-label="Shortsword Attack"]').click();
+        document.getElementById("v4-tab-spells").click();
+        const cast = document.querySelector('[data-v4-spell-card="vampiric-touch"] [data-tracker-action="request-spell-cast"]');
+        cast.click();
+        const castOpened = !document.getElementById("v4-spell-cast-dialog").classList.contains("hidden");
+        document.getElementById("v4-spell-cast-cancel").click();
+        document.getElementById("v4-tab-inventory").click();
+        const inventoryVisible = !document.getElementById("v4-panel-inventory").hidden && Boolean(document.querySelector("[data-v4-inventory-item]"));
+        document.getElementById("v4-tab-notes").click();
+        document.getElementById("note-title").value = "GC regression";
+        document.getElementById("note-body").value = "V5 keeps live notes.";
+        document.getElementById("save-note-btn").click();
+        return campaignStyle && v5Selected && consumed && castOpened && inventoryVisible
+          && document.getElementById("notes-container").textContent.includes("V5 keeps live notes.");
+      `), true, "V5 must preserve campaign style editing, resources, dice, spell dialogs, inventory, and notes.");
+      for (const style of ["v1", "v2", "v3", "v4", "v5", "campaign"]) {
+        const expectedStyle = style === "campaign" ? await execute(`
+          const settings = JSON.parse(localStorage.getItem("cassianslog-runtime-settings:campaign:aotr") || localStorage.getItem("cassianslog-runtime-settings") || "{}");
+          return settings.characterSheetStyleOverrides?.cassian || settings.characterSheetStyle || "v1";
+        `) : style;
+        await execute(`
+          document.getElementById("theme-toggle").click();
+          const select = document.querySelector('[data-gc-tracker-style="character"]');
+          select.value = arguments[0];
+          select.dispatchEvent(new Event("change", { bubbles: true }));
+          return true;
+        `, [style]);
+        await waitFor(`return JSON.parse(localStorage.getItem("cassianslog-ui-preferences:localhost-admin")).preferences.trackerStyles.character === "${style}";`, "Personal tracker choice did not save");
+        await navigate("/c/aotr/char/cassian/");
+        await waitFor(`return document.documentElement.dataset.characterSheetStyle === "${expectedStyle}" && Boolean(document.getElementById("edit-character-toggle"));`, `Personal ${style} tracker did not load`);
+        assert.equal(await execute('return document.querySelectorAll("#hpManager").length === 1;'), true, "Changing tracker styles must not duplicate HP controls.");
+        if (style === "v3") assert.equal(await execute(`
+          document.getElementById("edit-character-toggle").click();
+          const first = document.querySelector("[data-v3-section-row]").dataset.v3SectionRow;
+          document.querySelector('[data-v3-section-move="' + first + '"][data-delta="1"]').click();
+          const moved = document.querySelector("[data-v3-section-row]").dataset.v3SectionRow !== first;
+          document.querySelector('[data-v3-section-move="' + first + '"][data-delta="-1"]').click();
+          const restored = document.querySelector("[data-v3-section-row]").dataset.v3SectionRow === first;
+          document.getElementById("editor-cancel").click();
+          return moved && restored;
+        `), true, "Personal V3 layout editing must work when the campaign uses another style.");
+      }
+      // Existing detailed interaction tests cover the reused renderer. The new
+      // matrix proves shell/density/palette layout and the new ownership boundary.
+      const previews = [
+        ["characters", "/c/aotr/char/", 'return document.querySelectorAll("#characters article").length > 0;'],
+        ["combat", "/c/aotr/combat-loot/", 'return Boolean(document.getElementById("tracker-list"));'],
+        ["v5", "/c/aotr/char/cassian/", 'return document.documentElement.dataset.characterSheetStyle === "v5" && Boolean(document.getElementById("edit-character-toggle"));'],
+      ];
+      for (const width of [390, 768, 1280, 1920]) {
+        await setGcViewport(width, 1100);
+        for (const density of ["comfortable", "compact"]) {
+          for (const palette of ["cassians-classic", "evil-cassian", "bubblegum"]) {
+            await execute(`
+              localStorage.setItem("cassianslog-ui-preferences:localhost-admin", JSON.stringify({ preferences: { version: 1, density: arguments[0], pageDensity: {}, sidebarCollapsed: false, trackerStyles: { character: "v5", npc: "v5" } }, pending: false }));
+              localStorage.setItem("dnd-theme", arguments[1]);
+              localStorage.setItem("dnd-theme-reversed", "false");
+              localStorage.setItem("dnd-theme-font", "auto");
+              return true;
+            `, [density, palette]);
+            for (const [label, route, ready] of previews) {
+              await navigate(route);
+              await waitFor(ready, `GC ${label} did not load`);
+              await waitFor(`return document.documentElement.dataset.density === "${density}" && document.documentElement.dataset.themePalette === "${palette}";`, "GC preferences did not apply");
+              await auditCurrentLayout(`GC ${width}px ${density} ${palette}: ${label}`);
+              assert.equal(await execute('return getComputedStyle(document.body).boxShadow === "none" && getComputedStyle(document.body).backgroundImage !== "none";'), true, "Saved background must remain visible without a darkening overlay.");
+              if (label === "v5") {
+                assert.equal(await execute(`
+                  const portrait = document.getElementById("character-portrait");
+                  const image = getComputedStyle(portrait);
+                  return portrait.getBoundingClientRect().width >= 96 && image.objectFit === "contain"
+                    && getComputedStyle(document.getElementById("v4-core")).position === "static";
+                `), true, "V5 must show a larger uncropped portrait and a scrolling banner.");
+              }
+              if ([390, 1280].includes(width)) {
+                const screenshot = await command("GET", "/screenshot");
+                const buffer = Buffer.from(screenshot, "base64");
+                fs.writeFileSync(path.join(previewDirectory, `${label}-${width}-${density}-${palette}.png`), buffer);
+                if (palette === "cassians-classic" && density === "comfortable") fs.writeFileSync(path.join(previewDirectory, `${label}-${width}.png`), buffer);
+              }
+            }
+          }
+        }
+      }
+      await setGcViewport(1280, 900);
+      await navigate("/c/aotr/char/cassian/");
+      await waitFor('return Boolean(document.querySelector("[data-v4-action-card]"));', "V5 scrolling check did not load");
+      assert.equal(await execute(`
+        const button = document.getElementById("v4-conversion-open");
+        const icon = button.querySelector(".bi").getBoundingClientRect();
+        const label = button.querySelector("span").getBoundingClientRect();
+        return Math.abs((icon.top + icon.bottom) / 2 - (label.top + label.bottom) / 2) <= 1;
+      `), true, "Button icons and labels must share a vertical center.");
+      await execute('window.scrollTo({ top: document.getElementById("v4-core").offsetHeight + 300, behavior: "instant" }); return true;');
+      await waitFor('return document.getElementById("v4-core").getBoundingClientRect().bottom < 0;', "V5 banner must scroll out of view");
+      await execute('window.scrollTo({ top: 0, behavior: "instant" }); return true;');
+      await setGcViewport(1280, 1100);
+      await navigate("/c/aotr/char/");
+      await waitFor('return Boolean(document.querySelector("[data-gc-nav-collapse]"));', "Sidebar unavailable");
+      await execute('document.querySelector("[data-gc-nav-collapse]").click(); return true;');
+      await waitFor('return document.documentElement.dataset.sidebarCollapsed === "true";', "Sidebar collapse was not saved");
+      assert.equal(await execute('return Math.round(document.getElementById("site-pages-menu").getBoundingClientRect().width) === 48;'), true);
+      await navigate("/c/aotr/char/");
+      await waitFor('return document.documentElement.dataset.sidebarCollapsed === "true";', "Sidebar collapse did not survive reload");
+      await execute(`const density = document.getElementById("gc-page-density"); density.value = "comfortable"; density.dispatchEvent(new Event("change", { bubbles: true })); return true;`);
+      await waitFor('return document.documentElement.dataset.density === "comfortable";', "Page density override failed");
+      await navigate("/c/aotr/combat-loot/");
+      await waitFor('return document.documentElement.dataset.density === "compact";', "Page override changed unrelated page density");
+      await navigate("/c/aotr/char/");
+      await waitFor('return document.documentElement.dataset.density === "comfortable";', "Page override did not persist");
+      await execute(`const density = document.getElementById("gc-page-density"); density.value = "inherit"; density.dispatchEvent(new Event("change", { bubbles: true })); return true;`);
+      await waitFor('return document.documentElement.dataset.density === "compact";', "Density inheritance reset failed");
+      await setGcViewport(390, 900);
+      await execute('document.getElementById("site-pages-menu-button").click(); return true;');
+      await waitFor('return document.documentElement.dataset.navOpen === "true";', "Mobile navigation drawer failed");
+      assert.equal(await execute('return document.getElementById("site-pages-menu").getAttribute("aria-modal") === "true" && document.querySelector("main").inert;'), true);
+      await execute('document.querySelector("[data-gc-nav-close]").dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); return true;');
+      assert.equal(await execute('return document.documentElement.dataset.navOpen === "false" && !document.querySelector("main").inert && document.activeElement.id === "site-pages-menu-button";'), true);
+      await navigate("/c/aotr/npc/gc-preview-npc/");
+      await waitFor('return document.documentElement.dataset.characterSheetStyle === "v5" && Boolean(document.getElementById("v4-condition-form"));', "V5 NPC tracker failed");
+      await auditCurrentLayout("GC NPC workspace mobile");
+      await execute('localStorage.setItem("cassianslog-local-user-v1", "localhost-player-01"); return true;');
+      await navigate("/c/aotr/char/");
+      await waitFor('return document.documentElement.dataset.density === "comfortable" && Boolean(document.querySelector(".gc-sidebar"));', "Other account inherited Admin preferences");
+      await waitFor('return document.querySelector("[data-role-link=admin]").dataset.roleAllowed === "false";', "Sidebar permissions did not settle");
+      assert.equal(await execute('return document.querySelector("[data-role-link=admin]").hidden && document.querySelector("[data-role-link=dm-screen]").hidden;'), true, "Sidebar must retain player permission filtering.");
+      await navigate("/c/aotr/npc/gc-preview-npc/");
+      await waitFor('return document.documentElement.dataset.characterSheetStyle === "v5" && document.body.dataset.characterCanEdit === "false" && [...document.querySelectorAll("main > p")].some((notice) => notice.textContent.startsWith("Player view."));', "Read-only V5 NPC did not load");
+      assert.deepEqual(await execute(`
+        const before = window.character.hp.current;
+        document.getElementById("hp-amount").value = "1";
+        document.getElementById("damage-btn").dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        return { unchanged: window.character.hp.current === before, hpDisabled: document.getElementById("damage-btn").disabled,
+          editDisabled: document.getElementById("edit-character-toggle")?.disabled ?? true,
+          conditionDisabled: document.getElementById("v4-condition-name")?.disabled ?? true };
+      `), { unchanged: true, hpDisabled: true, editDisabled: true, conditionDisabled: true }, "V5 NPC must enforce read-only mutations even for dispatched events.");
+      await execute('localStorage.setItem("cassianslog-local-user-v1", "localhost-admin"); return true;');
+      await setGcViewport(1280, 900);
+      await navigate("/shared/gc/gallery/");
+      await waitFor('return document.querySelectorAll("[data-gallery-buttons] button").length === 5;', "GC gallery failed");
+      await execute('document.querySelector("[data-gallery-dialog]").click(); return true;');
+      await waitFor('return !document.getElementById("gallery-dialog").classList.contains("hidden");', "Shared dialog failed");
+      await execute('document.querySelector("#gallery-dialog [data-gallery-close]").click(); return true;');
+      assert.equal(await execute('return document.activeElement.hasAttribute("data-gallery-dialog");'), true);
+      fs.writeFileSync(path.join(previewDirectory, "gallery-1280.png"), Buffer.from(await command("GET", "/screenshot"), "base64"));
+      console.log("Browser GC passed: V5 live-node reuse, 72 responsive/density/palette combinations, NPCs, sidebar persistence, drawer focus, page inheritance, account isolation, gallery.");
     }
 
     console.log(`Headless Firefox browser smoke tests passed${requestedTags.size ? ` (${[...requestedTags].join(", ")})` : ""}.`);

@@ -7,7 +7,7 @@ export { isLocalRuntimeHost } from "./runtime-host.js";
 
 export const DEFAULT_CHARACTER_SHEET_STYLE = "v1";
 export const LOCAL_RUNTIME_SETTINGS_KEY = "cassianslog-runtime-settings";
-export const CHARACTER_SHEET_STYLES = Object.freeze(["v1", "v2", "v3", "v4"]);
+export const CHARACTER_SHEET_STYLES = Object.freeze(["v1", "v2", "v3", "v4", "v5", "v6"]);
 
 export function normalizeCharacterSheetStyle(value) {
   return CHARACTER_SHEET_STYLES.includes(value) ? value : DEFAULT_CHARACTER_SHEET_STYLE;
@@ -123,7 +123,7 @@ export async function saveCharacterSheetStyleOverride(characterId, style, { kind
     throw new TypeError("Character ID is invalid.");
   }
   if (!CHARACTER_SHEET_STYLES.includes(style)) {
-    throw new TypeError("Character sheet style must be v1, v2, v3, or v4.");
+    throw new TypeError("Character sheet style must be v1, v2, v3, v4, v5, or v6.");
   }
   if (!isLocalRuntimeHost()) {
     const resource = kind === "npc" ? "npcs" : "characters";

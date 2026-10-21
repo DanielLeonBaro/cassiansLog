@@ -8,6 +8,7 @@ const COMPONENT_TAGS = Object.freeze([
   "@combat",
   "@compendium",
   "@core",
+  "@gc",
   "@initiative",
   "@music",
   "@npcs",

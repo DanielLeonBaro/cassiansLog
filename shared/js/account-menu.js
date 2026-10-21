@@ -1,8 +1,10 @@
 // Builds the account dialog for email, password, OAuth, and session actions.
 import { escapeHTML } from "./text.js";
+import { GC_CLASSES } from "../gc/classes.js";
+import { createDialogController } from "./dialog.js";
 
-const fieldClass = "w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold dark:border-white/15 dark:bg-white/5 dark:text-white";
-const secondaryButton = "rounded-xl border border-stone-400 px-4 py-2 text-sm font-bold hover:border-blood-500 hover:text-blood-500 dark:border-white/20";
+const fieldClass = GC_CLASSES.field;
+const secondaryButton = GC_CLASSES.secondaryButton;
 
 async function accountRequest(path, options = {}) {
   const response = await fetch(`api/auth/${path}`, {
@@ -78,20 +80,12 @@ export function mountAccountMenu(button, user) {
   </div>`;
   document.body.append(root);
 
-  const open = () => {
-    root.classList.remove("hidden");
-    root.classList.add("flex");
-    root.querySelector("[data-close-account]").focus();
-  };
-  const close = () => {
-    root.classList.add("hidden");
-    root.classList.remove("flex");
-    button.focus();
-  };
+  const { open, close } = createDialogController(root, {
+    initialFocus: () => root.querySelector("[data-close-account]"),
+    returnFocus: button,
+  });
   button.addEventListener("click", open);
   root.querySelector("[data-close-account]").addEventListener("click", close);
-  root.addEventListener("click", (event) => { if (event.target === root) close(); });
-  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !root.classList.contains("hidden")) close(); });
 
   root.querySelector("[data-email-form]")?.addEventListener("submit", async (event) => {
     event.preventDefault();

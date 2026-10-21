@@ -16,6 +16,8 @@ export function createTrackerViews({
   getSpells,
   isAlwaysPreparedSpell,
   isV4 = () => false,
+  isV6 = () => false,
+  inventoryPin = () => "",
 }) {
   const attunedToggleClasses = "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-300 bg-stone-100 text-stone-600 shadow-sm transition hover:border-yellow-300 hover:text-yellow-500 aria-checked:border-yellow-200 aria-checked:bg-yellow-200 aria-checked:text-yellow-950 dark:border-white/15 dark:bg-white/10 dark:text-stone-300";
   const wearingToggleClasses = "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-300 bg-stone-100 text-stone-600 shadow-sm transition hover:border-violet-300 hover:text-violet-400 aria-checked:border-violet-300 aria-checked:bg-violet-300 aria-checked:text-violet-950 dark:border-white/15 dark:bg-white/10 dark:text-stone-300";
@@ -61,7 +63,7 @@ export function createTrackerViews({
       ? `<div class="v4-inventory-charges"><span>${item.charges.current}/${item.charges.max} charges${item.charges.reset ? ` · ${escapeHTML(formatReset(item.charges.reset))}` : ""}</span><button type="button" data-tracker-action="request-item-charge" data-index="${index}"${item.charges.current < 1 ? " disabled" : ""}>Use charge</button></div>`
       : "";
     const description = item.description ? `<p>${renderRollableText(item.description)}</p>` : "";
-    return `<article class="${ui.card} v4-inventory-item" data-v4-inventory-item="${index}"><div class="${ui.cardHeader}"><div><strong>${escapeHTML(item.name || "Unnamed item")}</strong><div class="mt-2 flex flex-wrap gap-2">${badges}</div></div>${quantity}</div><div class="p-5">${description}<div class="v4-inventory-controls">${equipped}${attuned}${container}</div>${charges}</div></article>`;
+    return `<article class="${ui.card} v4-inventory-item" data-v4-inventory-item="${index}"><div class="${ui.cardHeader}"><div><strong>${escapeHTML(item.name || "Unnamed item")}</strong><div class="mt-2 flex flex-wrap gap-2">${badges}</div></div>${inventoryPin(item, index)}${quantity}</div><div class="p-5">${description}<div class="v4-inventory-controls">${equipped}${attuned}${container}</div>${charges}</div></article>`;
   }
 
   function renderV4Feature(feature) {
@@ -140,6 +142,7 @@ export function createTrackerViews({
 
   function renderSpellSlot(slot, profile) {
     const profileName = profile?.name || "spellcasting";
+    if (isV6()) return `<div class="v6-pool"><div><strong>Level ${slot.level}</strong><span>${formatReset(slot.reset || "long")}</span></div><div><button type="button" aria-label="Decrease ${sanitizeIdentifier(profileName)} level ${slot.level} spell slots" data-tracker-action="spell-slot" data-id="${escapeHTML(slot.id)}" data-delta="-1">−</button><strong>${slot.current}/${slot.max}</strong><button type="button" aria-label="Increase ${sanitizeIdentifier(profileName)} level ${slot.level} spell slots" data-tracker-action="spell-slot" data-id="${escapeHTML(slot.id)}" data-delta="1">+</button></div></div>`;
     return `<div class="rounded-xl border border-stone-200 bg-stone-50/70 dark:border-white/10 dark:bg-white/[.035]"><div class="flex items-center justify-between gap-3 border-b border-stone-200 px-4 py-3 dark:border-white/10"><strong>Level ${slot.level}</strong><span class="${ui.badge} ${ui.badgeDanger}">Max: ${slot.max}</span></div><div class="p-4"><div class="flex items-center justify-between gap-3"><div class="inline-flex gap-2"><button type="button" class="${ui.iconButton}" aria-label="Decrease ${sanitizeIdentifier(profileName)} level ${slot.level} spell slots" data-tracker-action="spell-slot" data-id="${sanitizeIdentifier(slot.id)}" data-delta="-1">−</button><button type="button" class="${ui.iconButton}" aria-label="Increase ${sanitizeIdentifier(profileName)} level ${slot.level} spell slots" data-tracker-action="spell-slot" data-id="${sanitizeIdentifier(slot.id)}" data-delta="1">+</button></div><span class="${ui.badge} ${ui.badgeWarning}">${slot.current}/${slot.max}</span><span class="${ui.badge} ${ui.badgeSecondary}">${formatReset(slot.reset || "long")}</span></div></div></div>`;
   }
 

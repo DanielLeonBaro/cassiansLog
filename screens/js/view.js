@@ -1,3 +1,4 @@
+import { GC_CLASSES } from "../../shared/gc/classes.js";
 // Builds Player and DM Screen DOM and markup from prepared state.
 import { renderRichText } from "../../shared/js/rich-text.js";
 import { escapeAttribute, escapeHTML } from "../../shared/js/text.js";
@@ -15,7 +16,7 @@ export const widgetLabels = {
 };
 
 const abilityLabels = { str: "STR", dex: "DEX", con: "CON", int: "INT", wis: "WIS", cha: "CHA" };
-const fieldClass = "w-full rounded-xl border border-stone-300 bg-white/80 px-3 py-2.5 text-stone-900 outline-none focus:border-blood-500 focus:ring-2 focus:ring-blood-500/20 dark:border-white/15 dark:bg-white/5 dark:text-white";
+const fieldClass = GC_CLASSES.field;
 
 function safeURL(value) {
   return /^https?:\/\/\S+$/i.test(value || "") ? value : "";

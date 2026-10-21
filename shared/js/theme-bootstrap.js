@@ -69,6 +69,13 @@
     }
     return result;
   };
+  const readingSurface = (background, text, weight) => {
+    for (let amount = weight; amount > 0; amount -= 0.01) {
+      const surface = mixHex(background, text, amount);
+      if (contrast(text, surface) >= 4.5) return surface;
+    }
+    return background;
+  };
 
   try {
     const storage = globalThis.localStorage;
@@ -97,6 +104,8 @@
         ? "#FFFFFF"
         : readableForeground(backgroundHex);
     const onAccentHex = readableForeground(accentHex);
+    const surfaceHex = readingSurface(backgroundHex, textHex, 0.07);
+    const surfaceStrongHex = readingSurface(backgroundHex, textHex, 0.14);
     const root = document.documentElement;
     root.dataset.theme = textHex === "#FFFFFF" ? "dark" : "light";
     root.dataset.themePalette = builtInColors[themeId] || cachedTheme ? themeId : BASE_THEME_ID;
@@ -105,11 +114,11 @@
     root.dataset.background = backgroundIds.has(storedBackgroundId) ? storedBackgroundId : "default-squared";
     const values = {
       "--theme-background": backgroundHex,
-      "--theme-surface": mixHex(backgroundHex, textHex, 0.07),
-      "--theme-surface-strong": mixHex(backgroundHex, textHex, 0.14),
+      "--theme-surface": surfaceHex,
+      "--theme-surface-strong": surfaceStrongHex,
       "--theme-border": mixHex(backgroundHex, textHex, 0.24),
       "--theme-text": textHex,
-      "--theme-muted": readableMuted(textHex, backgroundHex),
+      "--theme-muted": readableMuted(textHex, surfaceStrongHex),
       "--theme-accent": accentHex,
       "--theme-accent-hover": mixHex(accentHex, onAccentHex === "#FFFFFF" ? "#000000" : "#FFFFFF", 0.12),
       "--theme-on-accent": onAccentHex,

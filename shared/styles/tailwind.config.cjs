@@ -19,7 +19,7 @@ module.exports = {
     "./wiki/**/*.{html,js}",
     "./integrations/**/*.js",
     "./login/**/*.{html,js}",
-    "./shared/**/*.js",
+    "./shared/**/*.{html,js}",
   ],
   darkMode: ["selector", '[data-theme="dark"]'],
   theme: {
@@ -42,8 +42,8 @@ module.exports = {
         gold: "#d6aa5b",
       },
       fontFamily: {
-        display: ["ui-rounded", "Nunito", "Trebuchet MS", "system-ui", "sans-serif"],
-        sans: ["ui-rounded", "Nunito", "Trebuchet MS", "system-ui", "sans-serif"],
+        display: ["ui-sans-serif", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
+        sans: ["ui-sans-serif", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
       },
       boxShadow: { card: "0 18px 50px -30px rgb(24 24 27 / .45)" },
     },

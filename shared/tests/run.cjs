@@ -10,6 +10,8 @@ if (process.argv.includes("--list-tags")) {
 }
 
 const suites = [
+  ["GC density, preferences, recovery, and race boundaries", "shared/tests/gc.test.js"],
+  ["Authenticated account UI preferences", "cloudflare/tests/ui-preferences.test.js"],
   ["Shared text escaping and JSON cloning", "shared/tests/text.test.js"],
   ["Shared Markdown toolbar editing", "shared/tests/markdown-toolbar.test.js"],
   ["Local runtime host detection", "shared/tests/runtime-host.test.js"],
@@ -69,6 +71,7 @@ const suites = [
   ["V1 character section ordering", "char/tests/section-order.test.cjs"],
   ["V3 configurable character layout", "char/tests/v3-layout.test.js"],
   ["V3 personal layout persistence", "char/tests/v3-layout-repository.test.js"],
+  ["V6 Combat Desk turns and personal state", "char/tests/v6-combat.test.js"],
   ["V4 Character core summary", "char/tests/v4-layout.test.js"],
   ["V4 Character accessible layout", "char/tests/v4-layout-ui.test.cjs"],
   ["V4 Character action use", "char/tests/v4-actions.test.js"],
@@ -142,7 +145,7 @@ const suites = [
 
 function run(title, command, args) {
   console.log(`\nTEST: ${title}`);
-  const result = spawnSync(command, args, { stdio: "inherit" });
+  const result = spawnSync(command, args, { stdio: "inherit", shell: process.platform === "win32" && command.endsWith(".cmd") });
   if (result.status === 0) return;
   console.error(`\nFAILED: ${title}`);
   if (result.error) console.error(result.error.message);
@@ -150,6 +153,8 @@ function run(title, command, args) {
 }
 
 function tagsForSuite(file) {
+  if (file.includes("gc.test")) return ["@gc", "@themes"];
+  if (file.includes("ui-preferences")) return ["@gc", "@auth"];
   if (file.includes("character-build-drafts")) return ["@characters", "@campaigns"];
   if (file.includes("v3-layout") || file.includes("character-layout")) return ["@character-layout"];
   if (file.includes("dnd-beyond")) return ["@characters", "@npcs"];

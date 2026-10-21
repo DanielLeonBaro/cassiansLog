@@ -1,0 +1,92 @@
+// Exercises inheritance, validation, identity isolation, and real sync race boundaries.
+import assert from "node:assert/strict";
+import { normalizeUiPreferences, resolveDensity, changeUiPreferences, validUiPreferences, uiStorageKey } from "../gc/preferences-model.js";
+import { createUiPreferenceStore } from "../gc/preferences-store.js";
+import { renderButton, renderState } from "../gc/components.js";
+
+const defaults = normalizeUiPreferences();
+assert.equal(defaults.density, "comfortable");
+assert.deepEqual(defaults.trackerStyles, { character: "v5", npc: "v5" });
+const custom = changeUiPreferences(defaults, { density: "comfortable", pageDensity: { "combat-loot": "compact" } });
+assert.equal(resolveDensity(custom, "combat-loot"), "compact");
+assert.equal(resolveDensity(custom, "wiki"), "comfortable");
+assert.equal(resolveDensity(changeUiPreferences(custom, { pageDensity: { "combat-loot": "inherit" } }), "combat-loot"), "comfortable");
+assert.equal(validUiPreferences(custom), true);
+for (const invalid of [null, [], { ...custom, version: 2 }, { ...custom, density: "tiny" }, { ...custom, pageDensity: { unknown: "compact" } }, { ...custom, userId: "other" }, { ...custom, trackerStyles: { character: "future", npc: "v5" } }]) {
+  assert.equal(validUiPreferences(invalid), false);
+}
+assert.match(renderButton({ label: '<img onerror="alert(1)">' }), /&lt;img/);
+assert.match(renderState({ title: "Failure", kind: "error" }), /role="alert"/);
+
+const records = new Map();
+const storage = { getItem: (key) => records.get(key) || null, setItem: (key, value) => records.set(key, value) };
+let remote = normalizeUiPreferences({ density: "compact" });
+let fail = false;
+const calls = [];
+const request = async (method, preferences) => {
+  calls.push({ method, preferences });
+  if (fail) throw new Error("Disconnected.");
+  if (method === "PUT") remote = normalizeUiPreferences(preferences);
+  return { preferences: remote };
+};
+const one = createUiPreferenceStore({ userId: "one", storage, request });
+await one.load();
+assert.equal(one.snapshot().preferences.density, "compact", "D1 wins without pending local edits.");
+fail = true;
+await one.update({ density: "comfortable" });
+assert.equal(one.snapshot().pending, true);
+assert.equal(one.snapshot().status, "error");
+const reload = createUiPreferenceStore({ userId: "one", storage, request });
+assert.equal(reload.snapshot().preferences.density, "comfortable");
+fail = false;
+await reload.load();
+assert.equal(remote.density, "comfortable", "Pending local choice must survive remote reconciliation.");
+assert.equal(reload.snapshot().pending, false);
+const deviceRecords = new Map();
+const secondDevice = createUiPreferenceStore({ userId: "one", storage: { getItem: (key) => deviceRecords.get(key) || null, setItem: (key, value) => deviceRecords.set(key, value) }, request });
+await secondDevice.load();
+assert.equal(secondDevice.snapshot().preferences.density, "comfortable", "A fresh device reads the account's saved choice.");
+await secondDevice.update({ density: "compact" });
+await reload.load();
+assert.equal(reload.snapshot().preferences.density, "compact", "A settled browser must adopt a later choice from another device.");
+await reload.update({ density: "comfortable" });
+const two = createUiPreferenceStore({ userId: "two", storage, request, localOnly: true });
+await two.update({ density: "compact" });
+assert.notEqual(uiStorageKey("one"), uiStorageKey("two"));
+assert.equal(reload.snapshot().preferences.density, "comfortable");
+assert.equal(JSON.parse(records.get(uiStorageKey("two"))).pending, false);
+records.set(uiStorageKey("one"), JSON.stringify({ preferences: normalizeUiPreferences({ density: "compact" }), pending: false }));
+reload.refreshFromStorage();
+assert.equal(reload.snapshot().preferences.density, "compact", "Another tab's settled preferences should apply without a reload.");
+
+let finishFirst;
+let finishSecond;
+let sends = 0;
+const racing = createUiPreferenceStore({ userId: "race", storage, request: (method, preferences) => new Promise((resolve) => {
+  sends += 1;
+  const finish = () => resolve({ preferences });
+  if (sends === 1) finishFirst = finish;
+  else finishSecond = finish;
+}) });
+const first = racing.update({ density: "compact" });
+await Promise.resolve();
+const second = racing.update({ density: "comfortable" });
+finishFirst();
+await first;
+assert.equal(racing.snapshot().pending, true, "An earlier save cannot clear a later pending edit.");
+assert.equal(racing.snapshot().preferences.density, "comfortable");
+finishSecond();
+await second;
+assert.equal(racing.snapshot().pending, false);
+let finishOlder;
+const olderTab = createUiPreferenceStore({ userId: "tabs", storage, request: (method, preferences) => new Promise((resolve) => { finishOlder = () => resolve({ preferences }); }) });
+const olderSave = olderTab.update({ density: "compact" });
+await Promise.resolve();
+const newerTab = createUiPreferenceStore({ userId: "tabs", storage, request: async () => { throw new Error("Offline."); } });
+await newerTab.update({ density: "comfortable" });
+finishOlder();
+await olderSave;
+assert.equal(JSON.parse(records.get(uiStorageKey("tabs"))).pending, true, "An old tab must not clear another tab's pending write.");
+assert.equal(JSON.parse(records.get(uiStorageKey("tabs"))).preferences.density, "comfortable");
+assert.ok(calls.some(({ method }) => method === "PUT"));
+console.log("GC defaults, validation, density inheritance, isolation, recovery, and save races passed.");

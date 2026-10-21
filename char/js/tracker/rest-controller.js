@@ -77,7 +77,6 @@ export function createRestController({
     getSpellSlots()
       .filter((slot) => (slot.reset || "long") === "short")
       .forEach((slot) => { slot.current = slot.max; });
-    character.hp.temp = 0;
     resetDeathSaves(character.deathSaves);
     save();
     refresh();

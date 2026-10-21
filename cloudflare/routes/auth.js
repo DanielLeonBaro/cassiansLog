@@ -3,6 +3,7 @@ import { bodyJSON, error, json, safeId } from "../http.js";
 import { BACKGROUND_IDS, REMOVED_BACKGROUND_IDS } from "../../shared/js/background-catalog.js";
 import { THEME_FONT_MODES } from "../../shared/js/theme-catalog.js";
 import { loadUserThemePreference, saveUserThemePreference } from "../themes.js";
+import { uiPreferencesRoute } from "../ui-preferences.js";
 import {
   DEFAULT_ROLES,
   PRIMARY_ADMIN_EMAIL,
@@ -184,6 +185,7 @@ export async function authRoute(request, env, parts) {
     return error("Account changes are disabled while localhost login bypass is active.", 409);
   }
   await ensurePrimaryAdmin(env);
+  if (action === "ui-preferences") return uiPreferencesRoute(request, env);
   if (request.method === "GET" && action === "session") {
     return json({ user: await userWithProviders(request, env) });
   }

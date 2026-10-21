@@ -32,6 +32,6 @@ assert.match(tracker, /renderV4CoreSummary\(character\)/);
 assert.match(tracker, /renderV4Stats\(container, character\)/);
 assert.match(styles, /\[data-character-sheet-style="v4"\]/);
 assert.match(styles, /\.v4-tabs/);
-assert.match(styles, /@media \(max-width: 639px\)[\s\S]*?\[data-character-sheet-style="v4"\] main/);
+assert.match(styles, /@media \(max-width: 639px\)[\s\S]*?\[data-character-sheet-style="v4"\][^\n]* main/);
 
 console.log("V4 Character layout accessible UI contracts passed.");

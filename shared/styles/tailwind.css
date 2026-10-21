@@ -634,15 +634,15 @@
     @apply grid gap-4;
   }
 
-  [data-character-sheet-style="v4"] #characterDescription {
+  :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) #characterDescription {
     @apply mb-0 border-blood-500/40 bg-theme-surface/90 shadow-2xl;
   }
 
-  [data-character-sheet-style="v4"] #characterDescription > .p-5 > div {
+  :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) #characterDescription > .p-5 > div {
     @apply items-center text-left;
   }
 
-  [data-character-sheet-style="v4"] #characterDescription #character-portrait {
+  :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) #characterDescription #character-portrait {
     @apply h-24 w-24 rounded-xl border-2 border-blood-500/60 sm:h-28 sm:w-28;
   }
 
@@ -670,29 +670,29 @@
     @apply grid min-w-0 content-start gap-4;
   }
 
-  [data-character-sheet-style="v4"] #combatAccordion,
-  [data-character-sheet-style="v4"] #quickStatsCard,
-  [data-character-sheet-style="v4"] #hpManager,
-  [data-character-sheet-style="v4"] #death-saves-section,
-  [data-character-sheet-style="v4"] #combatResources,
-  [data-character-sheet-style="v4"] #spellcastingSection,
-  [data-character-sheet-style="v4"] #preparedSpellsSection,
-  [data-character-sheet-style="v4"] #notesSection {
+  :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) #combatAccordion,
+  :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) #quickStatsCard,
+  :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) #hpManager,
+  :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) #death-saves-section,
+  :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) #combatResources,
+  :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) #spellcastingSection,
+  :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) #preparedSpellsSection,
+  :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) #notesSection {
     @apply mb-0;
   }
 
-  [data-character-sheet-style="v4"] #combatAccordion > div > h2,
-  [data-character-sheet-style="v4"] #inventoryAccordion > div > h2 {
+  :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) #combatAccordion > div > h2,
+  :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) #inventoryAccordion > div > h2 {
     @apply hidden;
   }
 
-  [data-character-sheet-style="v4"] #skillsCollapse,
-  [data-character-sheet-style="v4"] #inventoryCollapse {
+  :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) #skillsCollapse,
+  :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) #inventoryCollapse {
     display: block !important;
   }
 
-  [data-character-sheet-style="v4"] #skillsCollapse > div,
-  [data-character-sheet-style="v4"] #inventoryCollapse > div {
+  :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) #skillsCollapse > div,
+  :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) #inventoryCollapse > div {
     @apply p-0;
   }
 
@@ -752,15 +752,15 @@
     @apply rounded bg-theme-surface-strong px-1.5 py-0.5 text-[.65rem] font-bold text-theme-muted;
   }
 
-  [data-character-sheet-style="v4"] #quickStatsCard > .p-5 {
+  :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) #quickStatsCard > .p-5 {
     @apply p-3;
   }
 
-  [data-character-sheet-style="v4"] #quick-stats-grid {
+  :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) #quick-stats-grid {
     @apply grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-8;
   }
 
-  [data-character-sheet-style="v4"] #quick-stats-grid > div {
+  :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) #quick-stats-grid > div {
     @apply rounded-xl border border-theme-border bg-theme-surface px-2 py-3;
   }
 
@@ -945,20 +945,20 @@
     @apply min-h-10 self-end rounded-xl border border-theme-border px-3 py-2 text-sm font-bold transition hover:border-blood-500 hover:text-blood-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold;
   }
 
-  [data-character-sheet-style="v4"] #inventoryAccordion > div > h2 {
+  :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) #inventoryAccordion > div > h2 {
     @apply hidden;
   }
 
-  [data-character-sheet-style="v4"] #inventoryAccordion > div,
-  [data-character-sheet-style="v4"] #inventoryCollapse {
+  :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) #inventoryAccordion > div,
+  :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) #inventoryCollapse {
     @apply border-0 bg-transparent shadow-none;
   }
 
-  [data-character-sheet-style="v4"] #inventoryCollapse > div {
+  :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) #inventoryCollapse > div {
     @apply p-0;
   }
 
-  [data-character-sheet-style="v4"] #inventory-container {
+  :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) #inventory-container {
     @apply lg:grid-cols-2;
   }
 
@@ -1321,15 +1321,15 @@
   }
 
   @media (max-width: 639px) {
-    [data-character-sheet-style="v4"] main {
+    :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) main {
       @apply px-2 pt-3;
     }
 
-    [data-character-sheet-style="v4"] #characterDescription > .p-5 > div {
+    :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) #characterDescription > .p-5 > div {
       @apply grid grid-cols-[auto_minmax(0,1fr)] gap-3;
     }
 
-    [data-character-sheet-style="v4"] #characterDescription #character-portrait {
+    :is([data-character-sheet-style="v4"], [data-character-sheet-style="v5"], [data-character-sheet-style="v6"]) #characterDescription #character-portrait {
       @apply h-20 w-20;
     }
 

@@ -28,11 +28,14 @@ Available tags:
 - `@npcs`
 - `@screens`
 - `@themes`
+- `@gc` — shared components, density/preferences, V5, sidebar/drawer, and exact viewport/palette matrix
 - `@wiki`
 
 Both automated runners accept the same tags. List them with `npm test -- --list-tags` or `npm run test:browser -- --list-tags`. No tags keeps full-suite behavior. Unknown tags fail immediately instead of silently skipping coverage. Choose every component touched by a change; cross-component changes should pass all matching tags.
 
 The runner starts a temporary local static server and a fresh headless Firefox session through GeckoDriver. It does not use the deployed Worker or production D1 database. API requests intentionally return `404`, exercising the browser/local fallback paths.
+
+For focused V6 Combat Desk verification with Chrome or Edge, run `npm run test:combat-desk`. Set `CHROMIUM` to the browser executable when it is not installed at a standard Windows location. This dependency-free check covers V6 combat interactions, personal state, phone and desktop navigation, and modal focus; it does not replace the broader Firefox suite. It uses a temporary profile and local server, and writes preview screenshots under the system temporary directory.
 
 Requirements:
 

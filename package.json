@@ -1,7 +1,7 @@
 {
   "type": "module",
   "scripts": {
-    "build:css": "tailwindcss -c ./shared/styles/tailwind.config.cjs -i ./shared/styles/tailwind.css -o ./shared/assets/tailwind.css --minify",
+    "build:css": "node ./node_modules/tailwindcss/lib/cli.js -c ./shared/styles/tailwind.config.cjs -i ./shared/styles/tailwind.css -o ./shared/assets/tailwind.css --minify",
     "build:site": "npm run build:css && node shared/build/site.cjs",
     "d1:seed": "node cloudflare/scripts/build-seed.cjs",
     "d1:migrate:local": "wrangler d1 migrations apply cassianslog-data --local",
@@ -15,6 +15,7 @@
     "import:wiki": "node wiki/scripts/import.cjs",
     "diff:wiki": "node wiki/scripts/content-diff/check-new-content.cjs",
     "test:browser": "node shared/tests/browser-smoke.test.cjs",
+    "test:combat-desk": "node char/tests/v6-browser.test.cjs",
     "test": "node shared/tests/run.cjs"
   },
   "devDependencies": {

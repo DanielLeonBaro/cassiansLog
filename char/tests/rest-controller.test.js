@@ -31,13 +31,21 @@ assert.equal(items[0].uses.current, 2);
 assert.equal(items[1].uses.current, 0);
 assert.equal(slots[0].current, 2);
 assert.equal(slots[1].current, 0);
-assert.equal(character.hp.temp, 0);
+assert.deepEqual(character.hp, { current: 3, max: 12, temp: 4 });
 assert.deepEqual(character.deathSaves, { failures: 0, successes: 0, stable: 0 });
+
+const shortDetails = getRestDetails(character, items, slots, "short");
+assert.match(shortDetails.effects.join(" "), /Current and temporary HP do not change/);
+assert.doesNotMatch(shortDetails.toast, /temporary HP.*reset/);
+const longDetails = getRestDetails(character, items, slots, "long");
+assert.match(longDetails.effects.join(" "), /temporary HP is cleared/);
+assert.match(longDetails.toast, /temporary HP, and death saves reset/);
 
 controller.longRest();
 assert.equal(items[1].uses.current, 1);
 assert.equal(slots[1].current, 1);
 assert.equal(character.hp.current, 12);
+assert.equal(character.hp.temp, 0);
 assert.equal(saves, 2);
 assert.equal(refreshes, 2);
 

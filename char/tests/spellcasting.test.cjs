@@ -25,6 +25,8 @@ const restControllerCode = fs.readFileSync("char/js/tracker/rest-controller.js",
   .replace(/^import[\s\S]*?;\r?\n/gm, "")
   .replace(/export /g, "");
 const renderingCode = fs.readFileSync("char/js/tracker/rendering.js", "utf8")
+  .replace(/^export \{ GC_CARD_CLASSES as trackerUI \} from .*;\r?\n/m,
+    fs.readFileSync("shared/gc/classes.js", "utf8").replace(/export /g, "") + "\nconst trackerUI = GC_CARD_CLASSES;\n")
   .replace(/^export \{ escapeHTML \} from .*;\r?\n/m, "")
   .replace(/export /g, "");
 const viewsCode = fs.readFileSync("char/js/tracker/views.js", "utf8")
@@ -60,6 +62,8 @@ function loadCharacter(source) {
     writeCloudJSON: async () => ({ ok: true }),
     applyV1CharacterSheetOrder() {},
     refreshCharacterSheetTabs() {},
+    refreshV6Desk() {},
+    v6PinButton: () => "",
     createV4SpellFilterState: () => ({ search: "", level: "", preparation: "", repertoire: "" }),
     createV4InventoryFilterState: () => ({ search: "", status: "", container: "" }),
     v4InventoryItemMatches: () => true,

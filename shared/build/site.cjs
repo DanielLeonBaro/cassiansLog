@@ -37,6 +37,9 @@ function includePublicFile(source) {
   const relative = path.relative(root, source);
   const parts = relative.split(path.sep);
 
+  const gallery = path.join("shared", "gc", "gallery");
+  if (relative === gallery || relative.startsWith(gallery + path.sep)) return false;
+
   if (parts.some((part) => privateDirectories.has(part))) return false;
   if (relative.endsWith(".test.cjs")) return false;
   return true;

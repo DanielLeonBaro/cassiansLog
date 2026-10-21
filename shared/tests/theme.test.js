@@ -121,6 +121,10 @@ for (const theme of BUILT_IN_THEMES) {
     const appearance = resolveThemeAppearance(theme.id, { reversed, fontMode: "auto", themes: BUILT_IN_THEMES });
     assert.ok(appearance.contrast >= 4.5, `${theme.name} ${reversed ? "reversed" : "standard"} text contrast is ${appearance.contrast}`);
     assert.ok(contrastRatio(appearance.onAccentHex, appearance.accentHex) >= 4.5, `${theme.name} accent text must meet AA.`);
+    for (const surface of [appearance.surfaceHex, appearance.surfaceStrongHex]) {
+      assert.ok(contrastRatio(appearance.textHex, surface) >= 4.5, `${theme.name} reading surface text must meet AA.`);
+      assert.ok(contrastRatio(appearance.mutedHex, surface) >= 4.5, `${theme.name} muted surface text must meet AA.`);
+    }
     assert.equal(appearance.textHex, readableForeground(appearance.backgroundHex));
     assert.equal(appearance.backgroundHex, reversed ? theme.accentHex : theme.backgroundHex);
     assert.equal(appearance.accentHex, reversed ? theme.backgroundHex : theme.accentHex);
