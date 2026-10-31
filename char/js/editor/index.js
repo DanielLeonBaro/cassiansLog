@@ -645,7 +645,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
       document.getElementById("editor-export-menu")?.removeAttribute("open");
     } catch (error) {
       console.error(`Could not export character ${format.toUpperCase()}:`, error);
-      status.textContent = `Could not export ${format.toUpperCase()}. Try again.`;
+      status.textContent = `Could not export ${format.toUpperCase()}. ${error?.message || "Try again."}`;
     } finally {
       button.disabled = false;
     }

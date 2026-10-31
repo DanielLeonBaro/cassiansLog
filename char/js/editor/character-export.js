@@ -183,21 +183,21 @@ export function characterPdfData(character = {}) {
     textFields[saveField] = signed(stat.save);
     if (saveIsProficient(stat, character.proficiency)) checkedFields.push(saveCheckbox);
     (Array.isArray(stat.skills) ? stat.skills : []).forEach((skill) => {
-      const fields = SKILL_FIELDS[value(skill.name).trim().toLowerCase()];
+      const fields = SKILL_FIELDS[value(skill?.name).trim().toLowerCase()];
       if (!fields) return;
       textFields[fields[0]] = signed(skill.modifier);
       if (skill.proficiency) checkedFields.push(fields[1]);
     });
   });
 
-  (Array.isArray(character.actions) ? character.actions : []).filter((action) => action.attack || action.damage).slice(0, 3).forEach((action, index) => {
+  (Array.isArray(character.actions) ? character.actions : []).filter((action) => action?.attack || action?.damage).slice(0, 3).forEach((action, index) => {
     const [nameField, attackField, damageField] = WEAPON_FIELDS[index];
     textFields[nameField] = value(action.name);
     textFields[attackField] = attackBonus(action);
     textFields[damageField] = value(action.damage);
   });
 
-  const profiles = Array.isArray(character.spellcasting?.profiles) ? character.spellcasting.profiles : [];
+  const profiles = (Array.isArray(character.spellcasting?.profiles) ? character.spellcasting.profiles : []).filter(Boolean);
   const primaryProfile = profiles[0] || {};
   textFields["Spellcasting Class 2"] = profiles.map((profile) => profile.name).filter(Boolean).join(", ") || value(character.class);
   textFields["SpellcastingAbility 2"] = value(primaryProfile.ability);
@@ -205,7 +205,7 @@ export function characterPdfData(character = {}) {
   textFields["SpellAtkBonus 2"] = signed(primaryProfile.attackBonus);
 
   for (let level = 1; level <= 9; level += 1) {
-    const slots = (Array.isArray(character.spellcasting?.slots) ? character.spellcasting.slots : []).filter((slot) => Number(slot.level) === level);
+    const slots = (Array.isArray(character.spellcasting?.slots) ? character.spellcasting.slots : []).filter((slot) => Number(slot?.level) === level);
     const total = slots.reduce((sum, slot) => sum + (Number(slot.max) || 0), 0);
     const remaining = slots.reduce((sum, slot) => sum + (Number(slot.current) || 0), 0);
     textFields[`SlotsTotal ${18 + level}`] = total ? value(total) : "";
@@ -214,6 +214,7 @@ export function characterPdfData(character = {}) {
 
   const spellsByLevel = new Map();
   (Array.isArray(character.spells) ? character.spells : []).forEach((spell) => {
+    if (!spell) return;
     const level = Math.max(0, Math.min(9, Number(spell.level ?? spell.slotLevel) || 0));
     if (!spellsByLevel.has(level)) spellsByLevel.set(level, []);
     spellsByLevel.get(level).push(value(spell.name));
@@ -255,10 +256,14 @@ export async function fillCharacterPdf(templateBytes, character, pdfLib, portrai
   });
   checkedFields.forEach((name) => fields.get(name)?.check?.());
   if (portrait?.bytes && /(?:png|jpe?g)/i.test(portrait.type || "")) {
-    const image = /png/i.test(portrait.type)
-      ? await pdfDocument.embedPng(portrait.bytes)
-      : await pdfDocument.embedJpg(portrait.bytes);
-    fields.get("CHARACTER IMAGE")?.setImage?.(image);
+    try {
+      const image = /png/i.test(portrait.type)
+        ? await pdfDocument.embedPng(portrait.bytes)
+        : await pdfDocument.embedJpg(portrait.bytes);
+      fields.get("CHARACTER IMAGE")?.setImage?.(image);
+    } catch {
+      // Portraits are optional; an unreadable image must not block the sheet.
+    }
   }
   form.updateFieldAppearances(font);
   return pdfDocument.save({ updateFieldAppearances: false });

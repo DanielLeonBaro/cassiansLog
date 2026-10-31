@@ -58,6 +58,21 @@ assert.equal(mapped.textFields["Spells 1015"], "Healing Word");
 assert.ok(mapped.checkedFields.includes("Check Box 18"), "Dexterity save proficiency should be checked.");
 assert.ok(mapped.checkedFields.includes("Check Box 39"), "Stealth proficiency should be checked.");
 
+assert.deepEqual(characterPdfData({
+  ...character,
+  actions: [null, ...character.actions],
+  spells: [null, ...character.spells],
+  stats: {
+    ...character.stats,
+    str: { ...character.stats.str, skills: [null, ...character.stats.str.skills] },
+  },
+  spellcasting: {
+    ...character.spellcasting,
+    profiles: [null, ...character.spellcasting.profiles],
+    slots: [null, ...character.spellcasting.slots],
+  },
+}), mapped, "Empty legacy collection entries must not prevent exporting valid character data.");
+
 const template = fs.readFileSync("DnD_5E_CharacterSheet - Form Fillable.pdf");
 const portrait = { bytes: fs.readFileSync("char/cassian/portrait.jpg"), type: "image/jpeg" };
 const output = await fillCharacterPdf(template, character, pdfLib, portrait);
@@ -68,5 +83,15 @@ assert.equal(form.getTextField("CharacterName").getText(), character.name);
 assert.equal(form.getTextField("HPMax").getText(), "45");
 assert.equal(form.getTextField("Spells 1015").getText(), "Healing Word");
 assert.equal(form.getCheckBox("Check Box 39").isChecked(), true);
+
+for (const type of ["image/jpeg", "image/png"]) {
+  const bytes = await fillCharacterPdf(template, character, pdfLib, {
+    bytes: new TextEncoder().encode("Portrait is no longer available"),
+    type,
+  });
+  const withoutPortrait = await pdfLib.PDFDocument.load(bytes);
+  assert.equal(withoutPortrait.getForm().getTextField("CharacterName").getText(), character.name,
+    "An unreadable optional portrait must not prevent exporting the character sheet.");
+}
 
 console.log("Character JSON and filled PDF export tests passed.");

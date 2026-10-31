@@ -19,6 +19,7 @@
     "import:wiki": "node wiki/scripts/import.cjs",
     "diff:wiki": "node wiki/scripts/content-diff/check-new-content.cjs",
     "test:browser": "node shared/tests/browser-smoke.test.cjs",
+    "test:character-export": "node char/tests/character-export-browser.test.cjs",
     "test:combat-desk": "node char/tests/v6-browser.test.cjs",
     "preview:trackers": "node char/tests/preview-server.cjs",
     "test:tracker-previews": "node char/tests/tracker-screen-browser.test.cjs",
