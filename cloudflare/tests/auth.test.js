@@ -5,6 +5,7 @@ import {
   DEFAULT_ROLES,
   ASSIGNABLE_ROLES,
   PRIMARY_ADMIN_EMAIL,
+  ensurePrimaryAdmin,
   hashPassword,
   isLocalRequest,
   localBypassUser,
@@ -32,6 +33,35 @@ const row = {
 };
 assert.equal(await verifyPassword(row, "longPassword1!"), true);
 assert.equal(await verifyPassword(row, "wrongPassword1!"), false);
+
+// Bootstrap must fail closed without a valid secret and preserve existing accounts.
+const bootstrapWrites = [];
+const bootstrapDb = (existing = null) => ({
+  prepare(sql) {
+    return {
+      bind(...values) {
+        return {
+          first: async () => existing,
+          run: async () => { bootstrapWrites.push({ sql, values }); },
+        };
+      },
+    };
+  },
+});
+for (const password of [undefined, "", "short1!", "longpassword1"]) {
+  await assert.rejects(
+    ensurePrimaryAdmin({ DB: bootstrapDb(), PRIMARY_ADMIN_PASSWORD: password }),
+    /PRIMARY_ADMIN_PASSWORD/,
+  );
+}
+assert.equal(bootstrapWrites.length, 0);
+await ensurePrimaryAdmin({ DB: bootstrapDb({ id: "existing-admin" }) });
+assert.equal(bootstrapWrites.length, 0, "Existing admins must not require a bootstrap secret or be reset.");
+await ensurePrimaryAdmin({ DB: bootstrapDb(), PRIMARY_ADMIN_PASSWORD: "Bootstrap-secret-123!" });
+assert.equal(bootstrapWrites.length, 1);
+const [, email, hash, salt, iterations] = bootstrapWrites[0].values;
+assert.equal(email, PRIMARY_ADMIN_EMAIL);
+assert.equal(await verifyPassword({ password_hash: hash, password_salt: salt, password_iterations: iterations }, "Bootstrap-secret-123!"), true);
 
 const ordinary = publicUser({ id: "user-1", email: "player@example.com", roles_json: '["wiki"]' });
 assert.deepEqual(ordinary.roles, ["characters", "player-screen", "wiki"], "Character and Player Screen access are mandatory for signed-in accounts.");

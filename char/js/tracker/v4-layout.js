@@ -306,7 +306,7 @@ function handleTabKeydown(event) {
 }
 
 export function applyV4CharacterSheetLayout({ definitions = V4_TAB_DEFINITIONS } = {}) {
-  if (!["v4", "v5", "v6"].includes(document.documentElement.dataset.characterSheetStyle)) return false;
+  if (!["v4", "v5", "v6", "v2.1", "v2.2"].includes(document.documentElement.dataset.characterSheetStyle)) return false;
   if (controller) return true;
   const combatPage = document.getElementById("combat-page");
   const identity = document.getElementById("characterDescription");

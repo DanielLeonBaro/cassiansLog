@@ -1,7 +1,7 @@
 import { DENSITY_PAGES } from "./catalog.js";
 
 export const DENSITIES = Object.freeze(["comfortable", "compact"]);
-export const TRACKER_STYLES = Object.freeze(["v1", "v2", "v3", "v4", "v5", "v6", "campaign"]);
+export const TRACKER_STYLES = Object.freeze(["v1", "v2", "v3", "v4", "v5", "v6", "v2.1", "v2.2", "campaign"]);
 const pageIds = new Set(DENSITY_PAGES.map(({ id }) => id));
 const record = (value) => value && typeof value === "object" && !Array.isArray(value);
 

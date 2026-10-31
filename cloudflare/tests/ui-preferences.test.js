@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import { uiPreferencesRoute } from "../ui-preferences.js";
 import { normalizeUiPreferences } from "../../shared/gc/preferences-model.js";
+import { CHARACTER_SHEET_STYLES, normalizeSettings, loadSettings } from "../settings.js";
+
+const defaultSettings = await loadSettings({ OPEN_WRITES: "true", DB: { prepare: () => ({ first: async () => null }) } });
+assert.equal(defaultSettings.characterSheetStyle, "v1", "Existing campaign defaults remain unchanged");
+for (const style of ["v1", "v2", "v3", "v4", "v5", "v6", "v2.1", "v2.2"]) {
+  assert.equal(CHARACTER_SHEET_STYLES.has(style), true, "Legacy and new styles coexist");
+  assert.equal(normalizeSettings({ ...defaultSettings, characterSheetStyle: style, characterSheetStyleOverrides: { hero: style } }).characterSheetStyle, style);
+}
 
 const saved = new Map();
 let identity = "first-user";
@@ -34,6 +42,12 @@ assert.equal(response.status, 200);
 assert.equal(saved.size, 1);
 response = await uiPreferencesRoute(request("GET"), env);
 assert.deepEqual((await response.json()).preferences, preferences);
+for (const style of ["v2.1", "v2.2"]) {
+  const next = normalizeUiPreferences({ trackerStyles: { character: style, npc: style } });
+  assert.equal((await uiPreferencesRoute(request("PUT", next), env)).status, 200, `Personal ${style} preferences save through the existing API`);
+  const response = await uiPreferencesRoute(request("GET"), env);
+  assert.equal((await response.json()).preferences.trackerStyles.npc, style);
+}
 assert.equal((await uiPreferencesRoute(request("PUT", { ...preferences, userId: "another-user" }), env)).status, 400);
 assert.equal((await uiPreferencesRoute(request("DELETE"), env)).status, 405);
 identity = "second-user";

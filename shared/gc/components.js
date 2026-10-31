@@ -49,7 +49,7 @@ export function createMenuController(button, menu) {
 export function enhanceComponents(root = document.body) {
   if (!root) return;
   const classify = (element) => {
-    if (!(element instanceof Element)) return;
+    if (!(element instanceof Element) || element.closest("[data-gc-skip]")) return;
     if (element.matches("button")) {
       element.classList.add("gc-button");
       if (!element.dataset.variant && element.className.includes("bg-blood-")) element.dataset.variant = "primary";

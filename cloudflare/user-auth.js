@@ -114,7 +114,10 @@ export async function ensurePrimaryAdmin(env) {
   const existing = await env.DB.prepare("SELECT id FROM users WHERE email = ? COLLATE NOCASE")
     .bind(PRIMARY_ADMIN_EMAIL).first();
   if (existing) return;
-  const password = env.PRIMARY_ADMIN_PASSWORD || "adminPass1!";
+  const password = env.PRIMARY_ADMIN_PASSWORD;
+  if (passwordProblem(password)) {
+    throw new Error("Set a policy-compliant PRIMARY_ADMIN_PASSWORD secret before creating the primary administrator.");
+  }
   const credentials = await hashPassword(password);
   const now = new Date().toISOString();
   await env.DB.prepare(

@@ -3,11 +3,8 @@ import { GC_CLASSES } from "../../../shared/gc/classes.js";
 import { createDialogController } from "../../../shared/js/dialog.js";
 import { readJSON, removeStored, writeJSON } from "../../../shared/js/storage.js";
 import { writeCloudJSON } from "../../../shared/js/cloud-store.js";
-import {
-  isLocalRuntimeHost,
-  normalizeCharacterSheetStyle,
-  saveCharacterSheetStyleOverride,
-} from "../../../shared/js/settings.js";
+import { normalizeCharacterSheetStyle } from "../../../shared/js/settings.js";
+import { updateUiPreferences } from "../../../shared/gc/runtime.js";
 import { escapeAttribute, escapeHTML } from "../../../shared/js/text.js";
 import {
   characterStateStorageKey,
@@ -176,7 +173,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     const customKeys = Object.keys(draft).filter((key) => !sectionTopLevelKeys.has(key));
     return `<div class="space-y-6">
       <div class="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-stone-700 dark:text-stone-200"><strong class="block">Advanced ${npcMode ? "NPC" : "character"} data</strong><span class="mt-1 block">Technical IDs are read-only. Custom fields remain editable so homebrew data is never discarded.</span></div>
-      ${(canManage || editsV3Layout()) ? `<section class="${classes.panel}"><h3 class="font-display text-lg font-bold">${npcMode ? "NPC" : "Character"} tracker layout</h3><p class="mt-1 text-sm text-stone-500 dark:text-stone-400">${canManage ? `Campaign style for ${escapeHTML(draft.name || `this ${entityLabel.toLowerCase()}`)}. Your personal Appearance choice takes priority.` : "Choose your tracker style in Appearance; this grid is personal to you."}</p>${canManage ? `<label class="mt-4 block"><span class="mb-1 block text-xs font-bold text-stone-500 dark:text-stone-400">Style</span><select id="editor-character-sheet-style" class="${classes.field}"><option value="v1" ${draftStyle === "v1" ? "selected" : ""}>Style v1</option><option value="v2" ${draftStyle === "v2" ? "selected" : ""}>Style v2</option><option value="v3" ${draftStyle === "v3" ? "selected" : ""}>Style v3</option><option value="v4" ${draftStyle === "v4" ? "selected" : ""}>Style v4</option><option value="v5" ${draftStyle === "v5" ? "selected" : ""}>Style v5</option><option value="v6" ${draftStyle === "v6" ? "selected" : ""}>V6 · Combat Desk</option></select></label>${renderV1SectionOrder()}` : ""}${renderV3LayoutBuilder()}</section>` : ""}
+      <section class="${classes.panel}"><h3 class="font-display text-lg font-bold">${npcMode ? "NPC" : "Character"} tracker layout</h3><p class="mt-1 text-sm text-stone-500 dark:text-stone-400">Your personal layout overrides admin and DM layout settings. Saved for your account across campaigns; character and NPC choices are separate.</p><label class="mt-4 block"><span class="mb-1 block text-xs font-bold text-stone-500 dark:text-stone-400">My layout</span><select id="editor-character-sheet-style" class="${classes.field}"><option value="v1" ${draftStyle === "v1" ? "selected" : ""}>Style v1</option><option value="v2" ${draftStyle === "v2" ? "selected" : ""}>Style v2</option><option value="v3" ${draftStyle === "v3" ? "selected" : ""}>Style v3</option><option value="v4" ${draftStyle === "v4" ? "selected" : ""}>Style v4</option><option value="v5" ${draftStyle === "v5" ? "selected" : ""}>Style v5</option><option value="v6" ${draftStyle === "v6" ? "selected" : ""}>V6 · Combat Desk</option><option value="v2.1" ${draftStyle === "v2.1" ? "selected" : ""}>2.1 · Base</option><option value="v2.2" ${draftStyle === "v2.2" ? "selected" : ""}>2.2 · Character Sheet</option></select></label>${canManage ? renderV1SectionOrder() : ""}${renderV3LayoutBuilder()}</section>
       <section class="${classes.panel}"><h3 class="mb-4 font-display text-lg font-bold">${npcMode ? "NPC" : "Character"} ID</h3>${renderPrimitive(draft.id, ["id"], "id", { readOnly: !canManage })}</section>
       ${metadataKeys.length ? `<section class="${classes.panel}"><h3 class="mb-4 font-display text-lg font-bold">System metadata</h3><div class="space-y-4">${metadataKeys.map((key) => renderPrimitive(JSON.stringify(draft[key], null, 2), [key], key, { readOnly: true })).join("")}</div></section>` : ""}
       <section class="${classes.panel}"><h3 class="mb-1 font-display text-lg font-bold">Custom fields</h3><p class="mb-4 text-sm text-stone-500 dark:text-stone-400">Fields outside the standard ${npcMode ? "NPC" : "character"} schema appear here.</p>${customKeys.length ? `<div class="space-y-4">${customKeys.map((key) => renderNode(draft[key], [key], key)).join("")}</div>` : `<p class="rounded-xl border border-dashed border-stone-300 px-4 py-6 text-center text-sm text-stone-500 dark:border-white/15">No custom fields on this ${entityLabel.toLowerCase()}.</p>`}</section>
@@ -373,7 +370,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     draftVisibility = { ...baselineVisibility };
     baselinePlayerVisible = document.body.dataset.npcPlayerVisible === "true";
     draftPlayerVisible = baselinePlayerVisible;
-    baselineStyle = normalizeCharacterSheetStyle(document.documentElement.dataset.campaignSheetStyle || document.documentElement.dataset.characterSheetStyle);
+    baselineStyle = normalizeCharacterSheetStyle(document.documentElement.dataset.characterSheetStyle || document.documentElement.dataset.campaignSheetStyle);
     draftStyle = baselineStyle;
     baselineV3Layout = currentV3CharacterSheetLayout();
     draftV3Layout = normalizeV3Layout(baselineV3Layout);
@@ -709,15 +706,6 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
       }
     }
     if (characterCloudError) {
-      if (styleChanged && isLocalRuntimeHost()) {
-        try {
-          await saveCharacterSheetStyleOverride(character.id, selectedStyle, { kind: npcMode ? "npc" : "character" });
-          window.location.reload();
-          return;
-        } catch (styleError) {
-          console.error("Could not save the local character sheet style:", styleError);
-        }
-      }
       alert("Changes remain saved in this browser, but could not be saved to the shared cloud database.");
       return;
     }
@@ -727,7 +715,7 @@ export function initializeCharacterEditor({ character, normalizeSpellcastingData
     }
     if (styleChanged) {
       try {
-        await saveCharacterSheetStyleOverride(character.id, selectedStyle, { kind: npcMode ? "npc" : "character" });
+        await updateUiPreferences({ trackerStyles: { [npcMode ? "npc" : "character"]: selectedStyle } });
         window.location.reload();
       } catch (error) {
         console.error("Could not save the character sheet style:", error);

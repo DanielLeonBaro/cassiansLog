@@ -72,6 +72,8 @@ const suites = [
   ["V3 configurable character layout", "char/tests/v3-layout.test.js"],
   ["V3 personal layout persistence", "char/tests/v3-layout-repository.test.js"],
   ["V6 Combat Desk turns and personal state", "char/tests/v6-combat.test.js"],
+  ["Tracker 2.x preview adapter and presentation", "char/tests/tracker-screen.test.js"],
+  ["Tracker 2.x live adapter and style compatibility", "char/tests/tracker-screen-live.test.js"],
   ["V4 Character core summary", "char/tests/v4-layout.test.js"],
   ["V4 Character accessible layout", "char/tests/v4-layout-ui.test.cjs"],
   ["V4 Character action use", "char/tests/v4-actions.test.js"],

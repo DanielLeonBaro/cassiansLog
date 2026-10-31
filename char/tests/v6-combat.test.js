@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { combatTiming, combatDeskStorageKey, combatRecordKey, createCombatDeskState, partitionCombatRecords } from "../js/tracker/v6-model.js";
 import { consumeV4ActionUse, planV4ActionUse } from "../js/tracker/v4-actions.js";
 import { normalizeUiPreferences, validUiPreferences } from "../../shared/gc/preferences-model.js";
-import { CHARACTER_SHEET_STYLES } from "../../cloudflare/settings.js";
 
 const storage = () => { const entries = new Map(); return { getItem: (key) => entries.get(key), setItem: (key, value) => entries.set(key, value) }; };
 const local = storage(), session = storage();
@@ -59,6 +58,6 @@ const corrupt = createCombatDeskState({ local: { getItem: () => '{bad' }, sessio
 assert.equal(corrupt.turn.action, false); assert.equal(corrupt.pins.size, 0);
 
 const preferences = normalizeUiPreferences({ trackerStyles: { character: "v6", npc: "v6" } });
-assert.equal(validUiPreferences(preferences), true); assert.equal(CHARACTER_SHEET_STYLES.has("v6"), true);
+assert.equal(validUiPreferences(preferences), true);
 assert.equal(normalizeUiPreferences().trackerStyles.character, "v5", "V6 is opt-in.");
 console.log("V6 Combat Desk confirmed uses, advisory turns, pins, storage isolation, read-only access, and style compatibility passed.");

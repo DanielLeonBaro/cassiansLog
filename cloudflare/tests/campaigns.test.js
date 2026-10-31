@@ -176,6 +176,12 @@ const hero = { id: "hero", name: "Hero", status: "Hiatus" };
 result = await call(env, cookies.bob, ["curseofstrahd", "characters", "hero"], { method: "PUT", body: { document: hero, source: "custom" } });
 assert.equal(result.response.status, 200);
 assert.equal(result.body.created, true);
+for (const style of ["v2.1", "v2.2"]) {
+  result = await call(env, cookies.alice, ["curseofstrahd", "characters", "hero", "style"], { method:"PUT", body:{style} });
+  assert.equal(result.response.status, 200, `Character ${style} style is accepted`);
+  result = await call(env, cookies.alice, ["curseofstrahd", "settings"]);
+  assert.equal(result.body.settings.characterSheetStyleOverrides.hero, style);
+}
 result = await call(env, cookies.bob, ["curseofstrahd", "characters", "hero", "notes"], { method: "PUT", body: { value: [{ title: "Private" }] } });
 assert.equal(result.response.status, 200);
 result = await call(env, cookies.carol, ["curseofstrahd", "characters", "hero"]);
@@ -249,6 +255,12 @@ result = await call(env, cookies.alice, ["curseofstrahd", "npcs", "masked-one", 
 assert.equal(result.response.status, 200, "Campaign DMs can opt a freeform NPC into V4.");
 result = await call(env, cookies.alice, ["curseofstrahd", "settings"]);
 assert.equal(result.body.settings.npcSheetStyleOverrides["masked-one"], "v4");
+for (const style of ["v2.1", "v2.2"]) {
+  result = await call(env, cookies.alice, ["curseofstrahd", "npcs", "masked-one", "style"], { method: "PUT", body: { style } });
+  assert.equal(result.response.status, 200, `NPC ${style} style is accepted`);
+  result = await call(env, cookies.alice, ["curseofstrahd", "settings"]);
+  assert.equal(result.body.settings.npcSheetStyleOverrides["masked-one"], style);
+}
 result = await call(env, cookies.alice, ["curseofstrahd", "npcs", "masked-one", "style"], { method: "PUT", body: { style: "future" } });
 assert.equal(result.response.status, 400, "Unknown NPC tracker styles remain rejected.");
 result = await call(env, cookies.alice, ["curseofstrahd", "npcs", "masked-one"], {

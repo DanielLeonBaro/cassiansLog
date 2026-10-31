@@ -1,6 +1,6 @@
 # Wikidot Compendium Importer
 
-Standalone Node.js 20+ tool for retrieving user-requested pages from `dnd5e.wikidot.com` and `dnd2024.wikidot.com`, preserving raw evidence, normalizing reviewed records, and later exporting Cassian's Log or Aurora formats.
+Standalone Node.js tool (24.22.1 LTS recommended; supported patched versions are declared in `package.json`) for retrieving user-requested pages from `dnd5e.wikidot.com` and `dnd2024.wikidot.com`, preserving raw evidence, normalizing reviewed records, and later exporting Cassian's Log or Aurora formats.
 
 Public access does not imply redistribution permission. Every record retains its URL, retrieval time, content hash, stated publication, and `licenseStatus`. Review licensing before publishing output.
 

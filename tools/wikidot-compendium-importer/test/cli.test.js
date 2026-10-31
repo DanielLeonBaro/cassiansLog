@@ -64,7 +64,7 @@ test("validation writes deterministic provenance and conflict reports", async (c
   const second = normalizedRecord({ sourcePageUrl: "https://dnd5e.wikidot.com/background:far-traveler-copy", rawSha256: "def456", content: { paragraphs: ["Different"] } });
   const firstWrite = await writeNormalizedRecord(output, first);
   await writeNormalizedRecord(output, second);
-  assert.match(firstWrite.filePath, /normalized\/5e\/sword-coast-adventurer-s-guide\/background/);
+  assert.ok(firstWrite.filePath.includes(path.join("normalized", "5e", "sword-coast-adventurer-s-guide", "background")));
 
   const normal = await validateOutput(output);
   assert.equal(normal.valid, true);

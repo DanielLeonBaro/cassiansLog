@@ -64,7 +64,7 @@ test("normalized output groups by stated publication with deterministic IDs", as
   const second = await writeNormalizedRecord(output, reviewed, { strict: true });
   assert.equal(first.record.id, stableRecordId(record));
   assert.equal(first.record.id, second.record.id);
-  assert.match(first.filePath, /normalized\/5e\/sword-coast-adventurer-s-guide\/background/);
+  assert.ok(first.filePath.includes(path.join("normalized", "5e", "sword-coast-adventurer-s-guide", "background")));
   assert.equal(JSON.parse(await readFile(first.filePath, "utf8")).publication, "Sword Coast Adventurer's Guide");
   await assert.rejects(() => writeNormalizedRecord(output, { ...record, publication: "" }, { strict: true }), /Unknown publication/);
   await assert.rejects(() => writeNormalizedRecord(output, record, { strict: true }), /Unknown license status/);

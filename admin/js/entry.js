@@ -434,7 +434,7 @@ function renderCharacterStyles(characters, overrides = {}) {
           <option value="v3"${selected === "v3" ? " selected" : ""}>Style v3</option>
           <option value="v4"${selected === "v4" ? " selected" : ""}>Style v4</option>
           <option value="v5"${selected === "v5" ? " selected" : ""}>Style v5</option>
-          <option value="v6"${selected === "v6" ? " selected" : ""}>V6 · Combat Desk</option>
+          <option value="v6"${selected === "v6" ? " selected" : ""}>V6 · Combat Desk</option><option value="v2.1" ${selected === "v2.1" ? " selected" : ""}>2.1 · Base</option><option value="v2.2" ${selected === "v2.2" ? " selected" : ""}>2.2 · Character Sheet</option>
         </select>
       </label>`;
   }).join("") || '<p class="text-sm text-stone-500">No characters are currently available for individual overrides.</p>';

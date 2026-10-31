@@ -104,9 +104,9 @@ textarea.gc-field { min-height: 7rem; resize: vertical; }
 .gc-table :is(th, td) { padding: .75rem; border-bottom: 1px solid var(--gc-border); vertical-align: middle; }
 html[data-density="compact"] .gc-table :is(th, td) { padding: .375rem .625rem; }
 .gc-table th { font-weight: 600; color: var(--gc-muted); text-align: left; }
-.gc-tabs { display: flex; gap: .25rem; overflow-x: auto; border-bottom: 1px solid var(--gc-border); }
-.gc-tabs [role="tab"] { white-space: nowrap; border-radius: .375rem .375rem 0 0; border-bottom: 2px solid transparent; background: transparent; }
-.gc-tabs [role="tab"][aria-selected="true"] { color: var(--gc-text); background: var(--gc-surface-strong); font-weight: 650; border-bottom-color: var(--gc-accent); box-shadow: none; }
+.gc-tabs:not([aria-orientation="vertical"]) { display: flex; gap: .25rem; overflow-x: auto; border-bottom: 1px solid var(--gc-border); }
+.gc-tabs:not([aria-orientation="vertical"]) [role="tab"] { white-space: nowrap; border-radius: .375rem .375rem 0 0; border-bottom: 2px solid transparent; background: transparent; }
+.gc-tabs:not([aria-orientation="vertical"]) [role="tab"][aria-selected="true"] { color: var(--gc-text); background: var(--gc-surface-strong); font-weight: 650; border-bottom-color: var(--gc-accent); box-shadow: none; }
 .gc-state { padding: var(--gc-space-8); text-align: center; border: 1px dashed var(--gc-border); border-radius: var(--gc-radius-panel); }
 .gc-state p { color: var(--gc-muted); font-size: .875rem; margin-top: .375rem; }
 .gc-state[data-state="error"] { border-color: #dc2626; }

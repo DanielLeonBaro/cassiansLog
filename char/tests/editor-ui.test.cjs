@@ -66,9 +66,10 @@ assert.match(editor, /Style v2 uses a fixed tabbed layout/, "V2 should explain w
 for (const hook of ["editor-v3-columns", "data-v3-section-drag", "data-v3-section-move", "data-v3-section-span", "data-v3-layout-reset"]) {
   assert.ok(editor.includes(hook), `V3 grid editing should include ${hook}.`);
 }
-assert.match(editor, /Choose your tracker style in Appearance; this grid is personal to you/, "Assigned players should receive personal V3 controls without style authority.");
+assert.match(editor, /Your personal layout overrides admin and DM layout settings/, "Sheet layout selection should explain its personal precedence.");
 assert.match(editor, /saveV3Layout/, "V3 changes should use personal layout persistence.");
-assert.match(editor, /saveCharacterSheetStyleOverride/, "Style changes should use shared persistence.");
+assert.match(editor, /updateUiPreferences\(\{ trackerStyles:/, "Sheet layout changes should use personal appearance persistence.");
+assert.doesNotMatch(editor, /saveCharacterSheetStyleOverride/, "Sheet layout choices must not overwrite admin or DM defaults.");
 for (const id of ["editor-export-menu", "editor-export-json", "editor-export-pdf"]) {
   assert.ok(editor.includes(`id=\"${id}\"`), `Editor should include ${id}.`);
 }

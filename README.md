@@ -6,10 +6,10 @@ The app leaves ability scores, armor class, spell save DCs, prepared-spell limit
 
 ## Run locally
 
-Requirements: Node.js 20 or newer and npm.
+Requirements: Node.js 24.22.1 LTS (see `.node-version`) and npm. Patched Node.js 22.23.4+ and 26.12.1+ are also supported within their respective major versions; older releases are excluded by `engines`.
 
 ```bash
-npm install
+npm ci
 npm run build:site
 npm run d1:migrate:local
 npx wrangler dev
@@ -20,6 +20,10 @@ Open the URL printed by Wrangler. Unauthenticated requests redirect to `/login/`
 Requests served from `localhost`, `127.0.0.1`, or IPv6 loopback bypass login and receive local administrator visibility. The **Me** panel explains that real email, password, and provider changes are disabled during this bypass.
 
 If PowerShell blocks `npm.ps1`, use `npm.cmd`.
+
+Tracker 2.1 Base and 2.2 Character Sheet are optional alongside V1–V6. Choose them
+in Appearance and reopen the character or NPC tracker. See the
+[tracker deployment and rollback guide](docs/tracker-layouts.md).
 
 ## Commands
 
@@ -37,6 +41,8 @@ If PowerShell blocks `npm.ps1`, use `npm.cmd`.
 | `npm test` | Run all feature, integration, architecture, route, and CSS tests; append component tags for focused cases |
 | `npm run test:browser` | Run all local fallback smoke tests in headless Firefox; append component tags for focused cases |
 | `npm audit` | Check dependencies for known vulnerabilities |
+
+Dependency updates use the committed lockfile and weekly Dependabot checks for npm and GitHub Actions. Tailwind remains on 3.4.19 to preserve the existing theme and browser support; `overrides` selects patched `postcss-selector-parser` 7.1.7+ for CVE-2026-104844. Miniflare's Undici is overridden to 7.30.1+ to fix its outstanding HTTP client advisories. Recheck these overrides when updating their parent packages, and verify the CSS build and Wrangler dry run. PDF.js is vendored separately; see `shared/vendor/pdfjs/README.md` for its version and verified update source.
 
 ## Independent feature layout
 
@@ -82,7 +88,7 @@ To refresh the Wiki seed from the configured published campaign source, run `npm
 
 Cloudflare Workers serves the static site, protects every application route, and handles `/api/*`. D1 uses the `DB` binding and database `cassianslog-data`. `OPEN_WRITES: "true"` lets signed-in members edit; setting it to `"false"` limits protected writes to the primary administrator or the legacy `WRITE_TOKEN` flow. Anonymous API requests are rejected either way.
 
-Migration `0006_user_authentication.sql` adds users, provider links, sessions, and short-lived OAuth states. The first authentication request bootstraps the primary administrator as `dleonbaro@gmail.com` with password `adminPass1!`. For a deployment-specific initial password, set the `PRIMARY_ADMIN_PASSWORD` Worker secret before the first sign-in. Passwords are stored as salted PBKDF2-SHA-256 hashes; sessions use hashed, random tokens in secure HTTP-only cookies.
+Migration `0006_user_authentication.sql` adds users, provider links, sessions, and short-lived OAuth states. Before the first production sign-in, set a policy-compliant `PRIMARY_ADMIN_PASSWORD` Worker secret to bootstrap the primary administrator as `dleonbaro@gmail.com`. Bootstrap fails closed when the secret is missing or invalid; there is no shared default password. Existing accounts are preserved and do not require the bootstrap secret. If an earlier deployment used the old shared default, change that account's password through **Me** or Admin to revoke its sessions. Passwords are stored as salted PBKDF2-SHA-256 hashes; sessions use hashed, random tokens in secure HTTP-only cookies.
 
 Google sign-in requires a provider application with this exact callback URL:
 
@@ -104,7 +110,7 @@ The **Me** button beside **Sign out** lets a signed-in user change their passwor
 
 Before pushing to the branch connected to Cloudflare:
 
-1. Run `npm install` and `npm audit --audit-level=high`.
+1. Run `npm ci` and `npm audit` on a supported, patched Node.js release. Before the first production sign-in, set `PRIMARY_ADMIN_PASSWORD` with `npx wrangler secret put PRIMARY_ADMIN_PASSWORD`.
 2. Confirm Wrangler authentication with `npx wrangler whoami` or set `CLOUDFLARE_API_TOKEN` in CI.
 3. In the Google provider console, configure the production callback URL shown above.
 4. Add the two required OAuth values in **Cloudflare → Workers & Pages → cassianslog → Settings → Variables and Secrets**. Store them as secrets. Wrangler declares these names as required and will reject a deployment when one is absent.

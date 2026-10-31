@@ -1212,6 +1212,7 @@ async function main() {
     await execute(`
       window.__characterExports = [];
       URL.createObjectURL = (blob) => {
+        if (blob.type === "application/pdf") window.__characterPdfBlob = blob;
         const exported = { type: blob.type, size: blob.size, filename: "", signature: "" };
         window.__characterExports.push(exported);
         blob.arrayBuffer().then((buffer) => {
@@ -1247,6 +1248,16 @@ async function main() {
     assert.equal(characterExports[1].filename, "cassian-aurelius-von-bloodington-iii.pdf");
     assert.ok(characterExports[1].size > 100_000, "Filled character PDF download should contain the complete sheet.");
     console.log("Browser smoke passed: Character JSON and filled PDF export");
+    await execute(`
+      import("/char/js/archive/dnd-beyond-import.js")
+        .then(({ importDndBeyondPdf }) => importDndBeyondPdf(new File([window.__characterPdfBlob], "character.pdf", { type: "application/pdf" })))
+        .then((character) => { window.__pdfImportResult = { name: character.name, method: character.importSnapshot.method }; })
+        .catch((error) => { window.__pdfImportResult = { error: String(error) }; });
+      return true;
+    `);
+    await waitFor('return Boolean(window.__pdfImportResult);', "PDF reader and worker did not finish importing");
+    assert.deepEqual(await execute('return window.__pdfImportResult;'), { name: "Cassian Aurelius von Bloodington III", method: "pdf" });
+    console.log("Browser smoke passed: PDF export and import through the vendored runtime and worker");
     const characterFlags = await execute(`
       const inspiration = document.getElementById("inspiration-toggle");
       const cinematic = document.getElementById("cinematic-toggle");
@@ -2703,12 +2714,12 @@ async function main() {
       assert.equal(await execute(`
         document.getElementById("edit-character-toggle").click();
         const select = document.getElementById("editor-character-sheet-style");
-        const campaignStyle = select.value === document.documentElement.dataset.campaignSheetStyle;
+        const activeStyle = select.value === document.documentElement.dataset.characterSheetStyle;
         select.value = "v5";
         select.dispatchEvent(new Event("change", { bubbles: true }));
         const v5Selected = document.getElementById("editor-character-sheet-style").value === "v5";
         const restored = document.getElementById("editor-character-sheet-style");
-        restored.value = document.documentElement.dataset.campaignSheetStyle;
+        restored.value = document.documentElement.dataset.characterSheetStyle;
         restored.dispatchEvent(new Event("change", { bubbles: true }));
         document.getElementById("editor-cancel").click();
         document.getElementById("v4-tab-actions").click();
@@ -2730,7 +2741,7 @@ async function main() {
         document.getElementById("note-title").value = "GC regression";
         document.getElementById("note-body").value = "V5 keeps live notes.";
         document.getElementById("save-note-btn").click();
-        return campaignStyle && v5Selected && consumed && castOpened && inventoryVisible
+        return activeStyle && v5Selected && consumed && castOpened && inventoryVisible
           && document.getElementById("notes-container").textContent.includes("V5 keeps live notes.");
       `), true, "V5 must preserve campaign style editing, resources, dice, spell dialogs, inventory, and notes.");
       for (const style of ["v1", "v2", "v3", "v4", "v5", "campaign"]) {

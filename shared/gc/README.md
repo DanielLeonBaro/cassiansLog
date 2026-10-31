@@ -29,9 +29,11 @@ Serve the repository locally and open `/shared/gc/gallery/`. The gallery uses re
 
 ## Preferences and layout
 
-Account preference API: authenticated `GET` and `PUT /api/auth/ui-preferences`. PUT accepts `{ version: 1, density, pageDensity, sidebarCollapsed, trackerStyles: { character, npc } }`. Density values are `comfortable` and `compact`; removing an override restores inheritance. Tracker choices are V1–V5 or `campaign`.
+Account preference API: authenticated `GET` and `PUT /api/auth/ui-preferences`. PUT accepts `{ version: 1, density, pageDensity, sidebarCollapsed, trackerStyles: { character, npc } }`. Density values are `comfortable` and `compact`; removing an override restores inheritance. Tracker choices are V1–V6, `v2.1`, `v2.2`, or `campaign`.
 
-The browser cache is scoped by user ID. D1 is authoritative unless a local write is pending. Pending writes survive reload and retry on reconnect or explicit retry. Localhost/static users retain browser-only settings. Tracker choices apply when opening the tracker, so changing Appearance cannot destroy an active editor draft. V5 is the personal default; `campaign` follows the existing global/per-entity Admin style configuration. V3 saved arrangements are untouched.
+The browser cache is scoped by user ID. D1 is authoritative unless a local write is pending. Pending writes survive reload and retry on reconnect or explicit retry. Localhost/static users retain browser-only settings. Character and NPC layout choices are separate account preferences shared across campaigns. Choosing a layout in Appearance applies it automatically to the matching open tracker: 2.1 and 2.2 switch in place, while changes involving older layouts save and reload. Finish editor drafts before choosing a layout that reloads. V5 remains the personal default; an explicit personal choice takes priority over campaign/entity settings, and `campaign` follows the existing global/per-entity Admin style configuration. V3 saved arrangements are untouched.
+
+Edit sheet → Advanced → Style reads the active view and saves an explicitly changed layout to the same personal preference. It never writes shared campaign/entity layout settings. Cancelling or saving ordinary document edits does not change that preference. The saved personal view continues to override later admin/DM layout choices; inheritance resumes only when the user chooses `campaign` in Appearance.
 
 ## Rollout and rollback
 

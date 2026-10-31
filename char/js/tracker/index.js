@@ -42,11 +42,19 @@ import {
   rollbackCharacterAutomation,
 } from "../conversion.js";
 import { persistCharacterDocument } from "../archive/repository.js";
+import { mountTrackerScreen } from "./screen.js";
+import { createLiveTrackerAdapter } from "./screen-adapter.js";
+import { createCombatDeskState } from "./v6-model.js";
+import { currentSession } from "../../../shared/js/auth-client.js";
+import { campaignPagePath, currentCampaignSlug } from "../../../shared/js/campaign-context.js";
+import { getRestDetails } from "./rest.js";
+import { updateUiPreferences } from "../../../shared/gc/runtime.js";
 
 import { initializeV6Desk, prepareV6Filters, renderV6Combat, refreshV6Desk, markV6Use, v6PinButton, resetV6Timing, restoreV6DetailFocus } from "./v6-layout.js";
 
 const character = window.character;
 let diceRoller = null;
+let trackerScreen = null;
 let pendingV4Use = null;
 let v4UseReturnFocus = null;
 let v4UseReturnId = "";
@@ -140,7 +148,7 @@ const {
   isAlwaysPreparedSpell,
   inventoryPin: (item, index) => v6PinButton({ source: "inventory", item, index }),
   isV6: () => document.documentElement?.dataset?.characterSheetStyle === "v6",
-  isV4: () => (["v4", "v5", "v6"].includes(document.documentElement?.dataset?.characterSheetStyle)),
+  isV4: () => (["v4", "v5", "v6", "v2.1", "v2.2"].includes(document.documentElement?.dataset?.characterSheetStyle)),
 });
 async function initializeApp() {
   await initializeV6Desk({ character, records: getV6Records, reloadCombat: loadResources, reloadInventory: loadInventory, planAction: (id) => planV4ActionUse(character, id), planSpell: (id) => planV4SpellCast(character, id) });
@@ -151,6 +159,7 @@ async function initializeApp() {
   initializeFilters();
   refreshUI();
   setupEvents();
+  await initializeScreen();
   Promise.all([notesController.loadCloud(), trackerState.loadCloud()])
     .then(([notesLoaded, stateLoaded]) => {
       if (notesLoaded || stateLoaded) refreshUI();
@@ -173,13 +182,69 @@ function refreshUI() {
   loadV4ConversionAction();
   loadInventory();
   notesController.render();
-  if ((["v4", "v5", "v6"].includes(document.documentElement?.dataset?.characterSheetStyle))) renderV4CoreSummary(character);
+  if ((["v4", "v5", "v6", "v2.1", "v2.2"].includes(document.documentElement?.dataset?.characterSheetStyle))) renderV4CoreSummary(character);
   applyV1CharacterSheetOrder(character);
   if (typeof refreshV3CharacterSheetLayout === "function") refreshV3CharacterSheetLayout();
   if (typeof refreshV4CharacterSheetLayout === "function") refreshV4CharacterSheetLayout();
   refreshCharacterSheetTabs();
   refreshV6Desk(character);
+  trackerScreen?.render();
   restoreFocus();
+}
+async function initializeScreen() {
+  const root = document.getElementById("tracker-screen");
+  if (!root) return;
+  let user;
+  try { ({ user } = await currentSession()); } catch { /* Personal state can remain anonymous and in memory. */ }
+  const safeStorage = (name) => { try { return window[name]; } catch { return undefined; } };
+  const kind = document.body.dataset.trackerKind || "character";
+  const personal = createCombatDeskState({ userId: user?.id, campaign: currentCampaignSlug(), kind, entityId: character.id, local: safeStorage("localStorage"), session: safeStorage("sessionStorage"), canEdit: canEditCharacter() });
+  const adapter = createLiveTrackerAdapter({ character, kind, personal, trackerState, notes: notesController, canEdit: canEditCharacter, visibleFields: window.npcVisibleFields || [],
+    backHref: campaignPagePath(kind === "npc" ? "npc/" : "char/"),
+    operations: {
+      use: commitV4ActionUse, cast: commitV4SpellCast,
+      charge: (index) => { const result = trackerState.spendInventoryItemCharge(index); if (result.applied) saveState(); return result; },
+      hp: (kind, amount) => { if (kind === "damage") damageHP(amount); else if (kind === "heal") healHP(amount); else if (kind === "temp") setTempHP(amount); else return false; },
+      adjust: (kind, id, delta) => {
+        if (kind === "slot") return changeSpellSlot(id, delta);
+        if (kind === "resource") return changeResource(id, delta);
+        if (kind !== "hit-die") return false;
+        const pool = character.hitDice?.[Number(id)]; if (!pool) return false;
+        pool.current = Math.max(0, Math.min(pool.max, Number(pool.current) + delta)); saveState();
+      },
+      rest: (kind) => kind === "short" ? shortRest() : longRest(),
+      restDetails: (kind) => getRestDetails(character, getAllCharacterItems(), getSpellSlots(), kind),
+      prepare: togglePreparedSpell,
+      canPrepare: (id) => { const spell = character.spells?.find((item) => item.id === id), profile = getSpellcastingProfile(spell?.source); return Boolean(spell && profile?.preparedLimit > 0 && Number(spell.level) > 0 && !isAlwaysPreparedSpell(spell) && (spell.prepared || getPreparedCount(profile.id) < profile.preparedLimit)); },
+      availableInCombat: isSpellAvailableInCombat,
+      tracker: (id, active) => { const item = character.trackers?.find((item) => item.id === id); if (!item) return false; item.active = active; saveState(); },
+      flag: toggleCharacterFlag, condition: addV4Condition,
+      removeCondition: (index) => { const item = character.conditions?.[index]; return removeV4Condition(item?.name || item); },
+      endConcentration: clearV4Concentration, exhaustion: changeV4Exhaustion,
+      deathSave: changeDeathSave, stable: changeStable,
+      note: (title, body, index) => notesController.saveNote(title, body, index),
+      removeNote: (index) => notesController.remove(index),
+      inventory: (index, changes) => character.inventory?.[index]?.instanceId ? changeV4InventoryItem(index, changes) : toggleInventoryItemStatus(index, Object.keys(changes)[0]),
+      extraHP: changeV4ExtraHP,
+      editor: (trigger) => document.dispatchEvent(new CustomEvent("tracker:edit", { detail: { trigger } })),
+      conversion: (trigger) => openV4Conversion(trigger),
+      roll: (formula, label) => diceRoller?.roll(formula, label),
+      account: () => document.getElementById("site-account")?.click(),
+    },
+  });
+  trackerScreen = mountTrackerScreen(root, {
+    adapter, variant: document.documentElement.dataset.characterSheetStyle,
+    onAppearance: () => document.getElementById("theme-toggle")?.click(),
+    onVariantChange: (variant) => {
+      document.documentElement.dataset.characterSheetStyle = variant;
+      return updateUiPreferences({ trackerStyles: { [kind]: variant } });
+    },
+  });
+  document.addEventListener("tracker:layout-change", ({ detail }) => {
+    if (detail.kind !== kind || !["v2.1", "v2.2"].includes(detail.style)) return;
+    document.documentElement.dataset.characterSheetStyle = detail.style;
+    trackerScreen.switchVariant(detail.style, { persist: false });
+  });
 }
 function preserveV6ControlFocus() {
   if (document.documentElement?.dataset?.characterSheetStyle !== "v6") return () => {};
@@ -253,7 +318,7 @@ function loadHP() {
 }
 function loadDeathSaves() {
   const section = document.getElementById("death-saves-section");
-  section?.classList.toggle("hidden", (!["v4", "v5", "v6"].includes(document.documentElement.dataset.characterSheetStyle)) && character.hp.current > 0);
+  section?.classList.toggle("hidden", (!["v4", "v5", "v6", "v2.1", "v2.2"].includes(document.documentElement.dataset.characterSheetStyle)) && character.hp.current > 0);
   ["failures", "successes"].forEach((kind) => {
     document.querySelectorAll(`[data-death-save="${kind}"]`).forEach((button) => {
       const active = Number(button.dataset.index) < character.deathSaves[kind];
@@ -315,7 +380,7 @@ function stepInput(id, delta) {
 function loadStats() {
   const container = document.getElementById("skills-container");
   if (!container) return;
-  if ((["v4", "v5", "v6"].includes(document.documentElement?.dataset?.characterSheetStyle))) {
+  if ((["v4", "v5", "v6", "v2.1", "v2.2"].includes(document.documentElement?.dataset?.characterSheetStyle))) {
     renderV4Stats(container, character);
     return;
   }
@@ -601,7 +666,7 @@ function canEditCharacter() {
 }
 
 function loadV4ConversionAction() {
-  if ((!["v4", "v5", "v6"].includes(document.documentElement?.dataset?.characterSheetStyle))) return;
+  if ((!["v4", "v5", "v6", "v2.1", "v2.2"].includes(document.documentElement?.dataset?.characterSheetStyle))) return;
   const host = document.getElementById("v4-character-actions");
   if (!host) return;
   let button = document.getElementById("v4-conversion-open");
@@ -837,20 +902,27 @@ function selectV4UseResource(selectionId) {
   renderV4UseDialog(pendingV4Use);
 }
 
+function commitV4ActionUse(id, selectionId) {
+  if (!canEditCharacter()) return { applied: false };
+  const result = consumeV4ActionUse(character, id, selectionId);
+  if (!result.applied) return result;
+  markV6Use(findCharacterItem(id), true);
+  const spell = character.spells?.find((item) => item.id === id);
+  if (spell?.concentration) character.concentration = { id: spell.id, name: spell.name };
+  if (result.consumed || spell?.concentration) saveState();
+  return result;
+}
 function confirmV4ActionUse() {
   if (!pendingV4Use?.item || !canEditCharacter()) return false;
   const name = pendingV4Use.name;
-  const result = consumeV4ActionUse(character, pendingV4Use.item.id, pendingV4Use.selectedId);
+  const result = commitV4ActionUse(pendingV4Use.item.id, pendingV4Use.selectedId);
   if (!result.applied) {
     pendingV4Use = result.plan;
     renderV4UseDialog(pendingV4Use);
     return false;
   }
-  markV6Use(pendingV4Use.item, result.applied);
   const consumed = result.consumed;
   const spell = (character.spells || []).find((item) => item.id === pendingV4Use.item.id);
-  if (spell?.concentration) character.concentration = { id: spell.id, name: spell.name };
-  if (consumed || spell?.concentration) saveState();
   if (consumed || spell?.concentration || document.documentElement.dataset.characterSheetStyle === "v6") refreshUI();
   closeV4UseDialog();
   announceV4("v4-action-status", consumed
@@ -964,7 +1036,7 @@ function loadPreparedSpells() {
 }
 
 function loadV4Spells() {
-  if ((!["v4", "v5", "v6"].includes(document.documentElement?.dataset?.characterSheetStyle))) return;
+  if ((!["v4", "v5", "v6", "v2.1", "v2.2"].includes(document.documentElement?.dataset?.characterSheetStyle))) return;
   const container = document.getElementById("v4-spell-list");
   if (!container) return;
   const spells = character.spells || [];
@@ -1072,19 +1144,23 @@ function changeV4SpellCastSelection({ mode, optionId } = {}) {
   renderV4SpellCastDialog(pendingV4SpellCast);
 }
 
+function commitV4SpellCast(id, selection = {}) {
+  if (!canEditCharacter()) return { applied: false };
+  const result = consumeV4SpellCast(character, id, selection);
+  if (result.applied) {
+    if (selection.mode !== "ritual") markV6Use(character.spells?.find((spell) => spell.id === id), true);
+    saveState();
+  }
+  return result;
+}
 function confirmV4SpellCast() {
   if (!pendingV4SpellCast?.spell || !canEditCharacter()) return false;
   const name = pendingV4SpellCast.name;
-  const result = consumeV4SpellCast(character, pendingV4SpellCast.spell.id, {
-    mode: pendingV4SpellCast.mode,
-    optionId: pendingV4SpellCast.selectedId,
-  });
+  const result = commitV4SpellCast(pendingV4SpellCast.spell.id, { mode: pendingV4SpellCast.mode, optionId: pendingV4SpellCast.selectedId });
   if (!result.applied) {
     setText("v4-spell-cast-availability", result.warning);
     return false;
   }
-  if (pendingV4SpellCast.mode !== "ritual") markV6Use(pendingV4SpellCast.spell, result.applied);
-  saveState();
   refreshUI();
   closeV4SpellCastDialog();
   const cast = result.cast;
@@ -1205,7 +1281,7 @@ function loadInventory() {
   const container = document.getElementById("inventory-container");
   if (!container) return;
   const inventory = character.inventory || [];
-  if ((["v4", "v5", "v6"].includes(document.documentElement?.dataset?.characterSheetStyle))) {
+  if ((["v4", "v5", "v6", "v2.1", "v2.2"].includes(document.documentElement?.dataset?.characterSheetStyle))) {
     document.getElementById("inventoryCollapse")?.classList.remove("hidden");
     const models = inventory.map((item, index) => v4InventoryItemModel(item, trackerState.getInventoryItemState(index), inventory));
     const visible = models.map((item, index) => ({ item, index }))
@@ -1317,7 +1393,7 @@ function confirmV4InventoryCharge() {
 }
 
 function loadV4Content() {
-  if ((!["v4", "v5", "v6"].includes(document.documentElement?.dataset?.characterSheetStyle))) return;
+  if ((!["v4", "v5", "v6", "v2.1", "v2.2"].includes(document.documentElement?.dataset?.characterSheetStyle))) return;
   const featureHost = document.getElementById("v4-feature-groups");
   const featureGroups = v4FeatureGroups(character);
   if (featureHost) featureHost.innerHTML = featureGroups.length

@@ -624,7 +624,7 @@ export async function importDndBeyondPdf(file) {
   if (file.size > 20_000_000) throw new Error("The PDF is too large to import (20 MB maximum).");
   const pdfjs = await import("../../../shared/vendor/pdfjs/pdf.mjs");
   pdfjs.GlobalWorkerOptions.workerSrc = "/shared/vendor/pdfjs/pdf.worker.min.mjs";
-  const loadingTask = pdfjs.getDocument({ data: await file.arrayBuffer() });
+  const loadingTask = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), isEvalSupported: false });
   const document = await loadingTask.promise;
   const entries = [];
   try {

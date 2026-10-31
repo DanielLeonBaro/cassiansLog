@@ -4,7 +4,7 @@ import { bodyJSON, error, json, parseStored, safeId } from "../http.js";
 import { normalizeV3Layout, validV3Layout } from "../../shared/js/v3-layout.js";
 import { normalizeNpcVisibility, projectNpcForPlayer } from "../../shared/js/npc-visibility.js";
 
-const NPC_SHEET_STYLES = new Set(["v1", "v2", "v3", "v4", "v5", "v6"]);
+import { CHARACTER_SHEET_STYLES as NPC_SHEET_STYLES } from "../settings.js";
 
 function managerRequired(access) {
   return canManageCampaign(access) ? null : error("Campaign DM access required.", 403);
@@ -135,7 +135,7 @@ async function styleRoute(request, env, id, access) {
   const denied = managerRequired(access);
   if (denied) return denied;
   const style = (await bodyJSON(request))?.style;
-  if (!NPC_SHEET_STYLES.has(style)) return error("NPC tracker style must be v1, v2, v3, v4, v5, or v6.");
+  if (!NPC_SHEET_STYLES.has(style)) return error("NPC tracker style must be v1, v2, v3, v4, v5, v6, v2.1, or v2.2.");
   const row = await env.DB.prepare("SELECT settings_json FROM campaign_settings WHERE campaign_id = ?")
     .bind(access.campaign.id).first();
   const settings = parseStored(row?.settings_json, {});

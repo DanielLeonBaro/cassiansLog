@@ -1,5 +1,9 @@
 {
   "type": "module",
+  "private": true,
+  "engines": {
+    "node": "^22.23.4 || ^24.22.1 || >=26.12.1 <27"
+  },
   "scripts": {
     "build:css": "node ./node_modules/tailwindcss/lib/cli.js -c ./shared/styles/tailwind.config.cjs -i ./shared/styles/tailwind.css -o ./shared/assets/tailwind.css --minify",
     "build:site": "npm run build:css && node shared/build/site.cjs",
@@ -16,13 +20,22 @@
     "diff:wiki": "node wiki/scripts/content-diff/check-new-content.cjs",
     "test:browser": "node shared/tests/browser-smoke.test.cjs",
     "test:combat-desk": "node char/tests/v6-browser.test.cjs",
+    "preview:trackers": "node char/tests/preview-server.cjs",
+    "test:tracker-previews": "node char/tests/tracker-screen-browser.test.cjs",
+    "test:tracker-screens": "node char/tests/tracker-screen-live-browser.test.cjs",
     "test": "node shared/tests/run.cjs"
   },
   "devDependencies": {
-    "fast-xml-parser": "^5.7.0",
+    "fast-xml-parser": "^5.11.2",
     "pdf-lib": "^1.17.1",
-    "tailwindcss": "^3.4.17",
-    "wrangler": "^4.122.0",
-    "yjs": "^13.6.31"
+    "tailwindcss": "^3.4.19",
+    "wrangler": "^4.152.0",
+    "yjs": "^13.6.33"
+  },
+  "overrides": {
+    "postcss-selector-parser": "^7.1.7",
+    "miniflare": {
+      "undici": "^7.30.1"
+    }
   }
 }

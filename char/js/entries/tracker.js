@@ -12,7 +12,7 @@ if (document.body.dataset.characterCanEdit === "false") {
   const editorToggle = document.getElementById("edit-character-toggle");
   if (editorToggle) editorToggle.disabled = true;
   document.getElementById("notesSection")?.remove();
-  const v4 = (["v4", "v5", "v6"].includes(document.documentElement.dataset.characterSheetStyle));
+  const v4 = (["v4", "v5", "v6", "v2.1", "v2.2"].includes(document.documentElement.dataset.characterSheetStyle));
   const readOnlyControls = v4
     ? 'main [data-tracker-action]:not([data-tracker-action="reset-filters"]):not([data-tracker-action="reset-spell-filters"]):not([data-tracker-action="reset-inventory-filters"]):not([data-tracker-action="open-v4-detail"]), main [data-v4-inventory-container], #hp-controls button, #hp-controls input, #temp-hp-controls button, #temp-hp-controls input, #v4-condition-form button, #v4-condition-form input, #shortRest-btn, #longRest-btn, main .character-tracker, main [data-character-editor-section]'
     : document.body.dataset.trackerKind === "npc"
@@ -24,7 +24,8 @@ if (document.body.dataset.characterCanEdit === "false") {
   notice.textContent = document.body.dataset.trackerKind === "npc"
     ? "Player view. Only information revealed by a campaign DM is included."
     : "Read-only character. A campaign DM can assign you as an editor.";
-  document.querySelector("main")?.prepend(notice);
+  if (!document.getElementById("tracker-screen")) document.querySelector("main")?.prepend(notice);
 } else {
-  initializeCharacterEditor({ character, normalizeSpellcastingData, refreshUI });
+  const editor = initializeCharacterEditor({ character, normalizeSpellcastingData, refreshUI });
+  document.addEventListener("tracker:edit", (event) => editor.open({ trigger: event.detail?.trigger }));
 }

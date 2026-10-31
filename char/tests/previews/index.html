@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tracker 2.1 / 2.2 — Design review</title>
+  <style>
+    *{box-sizing:border-box;border-radius:0}body{margin:0;background:#e9eae7;color:#22272d;font:15px/1.4 system-ui,sans-serif}
+    header{padding:18px 24px;background:#fafaf8;border-bottom:1px solid #cdd0ca;display:flex;flex-wrap:wrap;gap:16px 28px;align-items:center}
+    h1{margin:0;font-size:18px;font-weight:650}header p{margin:4px 0 0;color:#626971;font-size:13px}
+    .controls{display:flex;flex-wrap:wrap;gap:12px;align-items:end;flex:1}label{display:grid;gap:4px;font-size:12px;color:#626971}
+    select,button,a{font:inherit;font-size:14px;min-height:44px;color:#22272d}select{padding:8px 28px 8px 10px;border:1px solid #cdd0ca;background:#fff}
+    a{display:flex;align-items:center;text-decoration:none;padding:8px 12px;border:1px solid #cdd0ca;margin-left:auto;white-space:nowrap}
+    :focus-visible{outline:2px solid #9a3c33;outline-offset:3px}.viewport{padding:24px 12px 40px;display:grid;justify-items:center;gap:12px}
+    .caption{display:flex;justify-content:space-between;gap:20px;max-width:100%;font-size:12px;color:#626971}iframe{display:block;height:844px;max-width:100%;border:1px solid #cdd0ca;background:#fafaf8;box-shadow:0 12px 32px #0000000d}
+    @media(max-width:600px){header{padding:14px 12px;gap:12px}.controls{gap:8px}select{max-width:160px}a{margin-left:0}.viewport{padding:16px 0}.caption{padding:0 10px}}
+  </style>
+</head>
+<body>
+  <header>
+    <div><h1>Tracker design review</h1><p>Demo data only. Changes reset when you switch fixture or view.</p></div>
+    <form class="controls" id="preview-controls">
+      <label>View<select name="variant"><option value="v2.1">2.1 · Base</option><option value="v2.2">2.2 · Character Sheet</option></select></label>
+      <label>Fixture<select name="fixture"><option value="fighter">Fighter</option><option value="caster">Spellcaster</option><option value="npc">NPC</option></select></label>
+      <label>Viewport<select name="width"><option value="390">Phone · 390</option><option value="320">Small phone · 320</option><option value="768">Tablet portrait · 768</option><option value="1024">Tablet landscape · 1024</option><option value="1280">Desktop · 1280</option></select></label>
+      <label>Theme<select name="theme"><option value="light">Light</option><option value="dark">Dark</option></select></label>
+      <label>Density<select name="density"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label>
+      <label>Access<select name="readonly"><option value="0">Editable</option><option value="1">Read-only / player</option></select></label>
+    </form>
+    <a id="open-preview" href="./screen.html" target="_blank" rel="noopener">Open full screen</a>
+  </header>
+  <section class="viewport" aria-label="Interactive tracker preview">
+    <div class="caption" id="preview-caption"><span id="preview-label"></span><span>Square corners · touch first</span></div>
+    <iframe id="preview-frame" title="Interactive Tracker 2.1 Base" src="./screen.html"></iframe>
+  </section>
+  <script type="module">
+    const controls = document.getElementById("preview-controls"), frame = document.getElementById("preview-frame");
+    const initial = new URLSearchParams(location.search);
+    for (const [key,value] of initial) { const field=controls.elements.namedItem(key);if(field && [...field.options].some(option=>option.value===value))field.value=value; }
+    function refresh(){
+      const values=new URLSearchParams(new FormData(controls));const width=Number(values.get("width"));
+      const title=values.get("variant")==="v2.2"?"2.2 Character Sheet":"2.1 Base";
+      frame.style.width=`${width}px`;frame.style.height=width<768?"844px":"900px";
+      document.getElementById("preview-caption").style.width=`${width}px`;
+      document.getElementById("preview-label").textContent=`${title} · ${controls.elements.fixture.selectedOptions[0].textContent}`;
+      values.delete("width");frame.src=`./screen.html?${values}`;frame.title=`Interactive Tracker ${title}`;
+      document.getElementById("open-preview").href=frame.src;
+      history.replaceState(null,"",`?${new URLSearchParams(new FormData(controls))}`);
+    }
+    controls.addEventListener("change",refresh);refresh();
+  </script>
+</body>
+</html>

@@ -48,7 +48,19 @@ export function createNotesController({ characterId, cardClasses, escapeHTML }) 
       .join("");
   }
 
+  function saveNote(title, body, index = null) {
+    title = String(title || "").trim(); body = String(body || "").trim();
+    if (!title || !body) return false;
+    const note = { title, body };
+    if (index === null) notes.push(note);
+    else if (notes[index]) notes[index] = note;
+    else return false;
+    persist(); render(); return true;
+  }
+
   return {
+    getNotes: () => notes,
+    saveNote,
     load() {
       notes = currentCampaignSlug() && !isLocalRuntimeHost() ? [] : readJSON(storageKey, []);
     },
@@ -64,13 +76,9 @@ export function createNotesController({ characterId, cardClasses, escapeHTML }) 
       const title = document.getElementById("note-title").value.trim();
       const body = document.getElementById("note-body").value.trim();
       if (!title || !body) return;
-      const note = { title, body };
-      if (editingNote === null) notes.push(note);
-      else notes[editingNote] = note;
+      saveNote(title, body, editingNote);
       editingNote = null;
       clearInputs();
-      persist();
-      render();
     },
     edit(index) {
       const note = notes[index];

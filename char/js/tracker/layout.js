@@ -1,5 +1,5 @@
 // Moves existing tracker sections between V1 flow and V2 tabs without cloning controls.
-import { resolveCharacterSheetStyle, resolveNpcSheetStyle } from "../../../shared/js/settings.js";
+import { CHARACTER_SHEET_STYLES, resolveCharacterSheetStyle, resolveNpcSheetStyle } from "../../../shared/js/settings.js";
 import {
   V1_SECTION_DEFINITIONS,
   normalizeV1SectionOrder,
@@ -170,8 +170,8 @@ export function refreshCharacterSheetTabs() {
 
 export function placeCharacterSheetHeaderActions() {
   const style = document.documentElement.dataset.characterSheetStyle;
-  if (!["v2", "v4", "v5", "v6"].includes(style)) return;
-  const host = document.getElementById(["v4", "v5", "v6"].includes(style) ? "v4-character-actions" : "v2-character-actions");
+  if (!["v2", "v4", "v5", "v6", "v2.1", "v2.2"].includes(style)) return;
+  const host = document.getElementById(["v4", "v5", "v6", "v2.1", "v2.2"].includes(style) ? "v4-character-actions" : "v2-character-actions");
   if (!host) return;
   ["shortRest-btn", "longRest-btn", "editor-toggle-slot"].forEach((id) => {
     const element = document.getElementById(id);
@@ -203,9 +203,23 @@ export function applyCharacterSheetLayout(settings = {}, characterId = "", kind 
   const campaignStyle = kind === "npc"
     ? resolveNpcSheetStyle(settings, characterId)
     : resolveCharacterSheetStyle(settings, characterId);
-  const style = ["v1", "v2", "v3", "v4", "v5", "v6"].includes(personalStyle) ? personalStyle : campaignStyle;
+  const style = CHARACTER_SHEET_STYLES.includes(personalStyle) ? personalStyle : campaignStyle;
   document.documentElement.dataset.campaignSheetStyle = campaignStyle;
   document.documentElement.dataset.characterSheetStyle = style;
+  if (style === "v2.1" || style === "v2.2") {
+    applyConfiguredSections(settings.sections || {});
+    if (!applyV4CharacterSheetLayout()) return "v1";
+    const legacy = document.getElementById("combat-page").closest("main");
+    legacy.hidden = true;
+    legacy.dataset.trackerLegacy = "";
+    // Retain shared dialogs and editor hooks; the new view owns tracker sections.
+    legacy.querySelectorAll('[role="dialog"]').forEach((dialog) => document.body.append(dialog));
+    const root = document.createElement("div");
+    root.id = "tracker-screen";
+    legacy.before(root);
+    document.documentElement.dataset.trackerScreen = "";
+    return style;
+  }
   if (style === "v6") {
     applyConfiguredSections(settings.sections || {});
     return applyV6CharacterSheetLayout() ? style : "v1";

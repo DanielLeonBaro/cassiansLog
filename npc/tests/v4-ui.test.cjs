@@ -10,15 +10,15 @@ const tracker = fs.readFileSync("char/js/tracker/index.js", "utf8");
 const editor = fs.readFileSync("char/js/editor/index.js", "utf8");
 
 assert.doesNotMatch(settings, /style === "v4" \? DEFAULT_CHARACTER_SHEET_STYLE/);
-assert.match(route, /new Set\(\["v1", "v2", "v3", "v4", "v5", "v6"\]\)/);
-assert.match(route, /NPC tracker style must be v1, v2, v3, v4, v5, or v6/);
+assert.match(route, /CHARACTER_SHEET_STYLES as NPC_SHEET_STYLES/, "NPC layouts share the canonical style validator.");
+assert.match(route, /NPC tracker style must be v1, v2, v3, v4, v5, v6, v2.1, or v2.2/);
 assert.match(layout, /sheet\.dataset\.v4Entity/);
 assert.match(layout, /`\$\{entityLabel\(\)\} summary`/);
 assert.match(layout, /`\$\{entityLabel\(\)\} tracker sections`/);
 assert.match(entry, /const readOnlyControls = v4/);
 assert.match(entry, /not\(\[data-tracker-action="open-v4-detail"\]\)/);
 assert.match(tracker, /document\.body\?\.dataset\?\.trackerKind !== "npc"/);
-assert.match(editor, /kind: npcMode \? "npc" : "character"/);
+assert.match(editor, /trackerStyles: \{ \[npcMode \? "npc" : "character"\]: selectedStyle \}/, "Personal layout saves must remain isolated by entity kind.");
 assert.match(editor, /\$\{npcMode \? "NPC" : "Character"\} tracker layout/);
 assert.match(editor, /Fields outside the standard \$\{npcMode \? "NPC" : "character"\} schema/);
 
